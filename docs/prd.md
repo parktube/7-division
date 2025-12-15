@@ -99,8 +99,9 @@ Phase 1부터 Three.js 사용 → Phase 3 3D 확장 자연스러움
 ### Business Success
 
 - Phase 1: 기술 검증 (스켈레톤 테스트 통과)
-- Phase 2: 사용자 검증 (실제 사용 케이스)
-- Phase 3: 시장 검증
+- Phase 2: 도메인 확장 검증 (그룹화, ActionHints)
+- Phase 3: 사용자 검증 (Selection UI, 실제 사용 케이스)
+- Phase 4: 시장 검증
 
 ### Technical Success
 
@@ -112,7 +113,9 @@ Phase 1부터 Three.js 사용 → Phase 3 3D 확장 자연스러움
 
 ## Product Scope
 
-### MVP (Phase 1)
+### Phase 1: 최소 검증 — "사람 스켈레톤을 그려줘"
+
+**목표**: 기초 도형 도구만으로 AI가 복잡한 형상을 만들 수 있는지 검증
 
 - 기초 도형: `line`, `circle`, `rect`
 - 변환: `translate`, `rotate`, `scale`, `delete`
@@ -122,12 +125,25 @@ Phase 1부터 Three.js 사용 → Phase 3 3D 확장 자연스러움
 
 **검증 시나리오**: "사람 스켈레톤을 그려줘"
 
-### Growth (Phase 2)
+### Phase 2: 도메인 확장
 
-- Selection UI (가리키기 + 말하기)
+**목표**: AI가 더 복잡한 구조를 다룰 수 있는지 검증
+
+- Phase 1 도구 + 그룹화, 레이어
+- 더 복잡한 요청: "팔을 구부린 포즈로", "걷는 자세로"
+- ActionHints 동작 확인
+- 검증 UI 프로토타입
+
+### Phase 3: Selection UI + 실사용 테스트
+
+**목표**: "가리키기 + 말하기" 인터랙션 검증
+
+- Selection UI (클릭으로 객체 선택)
+- 실제 작업 시도 (캐릭터 리깅용 스켈레톤 등)
 - DXF 출력
+- 인간-AI 협업 플로우 검증
 
-### Vision (Phase 3+)
+### Phase 4+: Vision
 
 - Gateway + 채팅 UI
 - MCP 래퍼
@@ -138,7 +154,7 @@ Phase 1부터 Three.js 사용 → Phase 3 3D 확장 자연스러움
 
 ## User Journey
 
-### Phase 1: 말하기만
+### Phase 1: 말하기만 (최소 검증)
 
 ```
 사용자: "사람 스켈레톤을 그려줘"
@@ -152,7 +168,21 @@ Claude Code: WASM 엔진 호출 → scene.json 생성
 Claude Code: translate/scale 적용 → scene.json 업데이트
 ```
 
-### Phase 2: 가리키기 + 말하기
+### Phase 2: 도메인 확장 (여전히 말하기만)
+
+```
+사용자: "팔을 구부린 포즈로 바꿔줘"
+    ↓
+Claude Code: 그룹화된 엔티티 인식 → 관절 기준 회전 계산
+    ↓
+WASM: rotate + translate 조합 적용 → scene.json 업데이트
+    ↓
+브라우저: Three.js 렌더링 갱신
+    ↓
+Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
+```
+
+### Phase 3: 가리키기 + 말하기
 
 ```
 사용자: [왼팔 클릭] + "이거 더 길게"
@@ -164,7 +194,7 @@ Claude Code: 선택된 객체 scale 적용 → scene.json 업데이트
 브라우저: Three.js 렌더링 갱신
 ```
 
-### Interaction Pattern
+### Interaction Pattern (Phase 3+)
 
 | 허용 | 불허 |
 |------|------|
@@ -229,7 +259,7 @@ Entity
 | 3D 확장 시 API 재설계 | 중간 | Point 타입을 처음부터 확장 가능하게 설계 |
 | **wasm-bindgen API 설계** | 높음 | 클래스 래퍼 방식 사용, struct 왕복 피함 |
 | **UUID/getrandom 호환성** | 중간 | `js_sys::Math::random()` 또는 `uuid` js feature |
-| **Phase 2 역방향 통신** | 중간 | WebSocket 또는 이벤트 파일 큐 필요 (미리 전제 정리) |
+| **Phase 3 역방향 통신** | 중간 | WebSocket 또는 이벤트 파일 큐 필요 (Selection UI용) |
 | **DXF/STEP 복잡도 과소평가** | 중간 | Phase 3 이후로 미룸, "쉽다" 전제 금지 |
 
 ### 기술 부채 방지
@@ -243,15 +273,17 @@ Entity
 
 ## Out of Scope (Phase 1)
 
-| 항목 | 이유 |
-|------|------|
-| Selection UI | Phase 2에서 추가 |
-| 3D 기능 | 2D 먼저 검증 |
-| DXF/DWG 출력 | SVG로 검증 후 |
-| 채팅 UI | Claude Code로 충분 |
-| MCP 래퍼 | Direct-First 검증 후 |
-| 실시간 협업 | 단일 사용자 먼저 |
-| Undo/Redo UI | 엔진만 구현, UI는 Phase 2 |
+| 항목 | 이유 | 예정 |
+|------|------|------|
+| 그룹화/레이어 | Phase 1은 기초 도형만 | Phase 2 |
+| ActionHints | 도메인 확장 단계에서 | Phase 2 |
+| Selection UI | "가리키기" 인터랙션 | Phase 3 |
+| DXF/DWG 출력 | SVG로 검증 후 | Phase 3 |
+| 3D 기능 | 2D 먼저 검증 | Phase 4+ |
+| 채팅 UI | Claude Code로 충분 | Phase 4+ |
+| MCP 래퍼 | Direct-First 검증 후 | Phase 4+ |
+| 실시간 협업 | 단일 사용자 먼저 | Phase 4+ |
+| Undo/Redo UI | 엔진만 구현 | Phase 2-3 |
 
 ---
 

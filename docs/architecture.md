@@ -5,28 +5,124 @@
 
 ---
 
-## Tech Stack
+## Tech Stack (미결정)
 
-| Layer | Technology | Version | 용도 |
-|-------|------------|---------|------|
-| **CAD Engine** | Rust | 1.75+ | 코어 로직 |
-| | wasm-bindgen | 0.2.x | WASM 바인딩 |
-| | wasm-pack | 0.13.x | WASM 빌드 |
-| | serde | 1.0.x | JSON 직렬화 |
-| | uuid | 1.x | Entity ID 생성 |
-| **Viewer** | TypeScript | 5.x | 타입 안전성 |
-| | Three.js | r170+ | 2D/3D 렌더링 |
-| | Vite | 7.x | 개발 서버/빌드 |
-| | Vitest | 3.x | 테스트 프레임워크 |
-| **Runtime** | Node.js | 20.19+ | WASM 실행 (Claude Code) |
-| | Browser | ES2022+ | 뷰어 실행 |
+> Phase 1 착수 전 팀 합의 필요. 각 기술별 옵션과 트레이드오프 정리.
+> **최종 업데이트: 2025-12-15** (웹 리서치 기반)
 
-### 버전 선택 근거
+### CAD Engine
 
-- **Vite 7.x**: SpineLift에서 검증됨, Vite 5는 보안 패치만 지원
-- **Node.js 20.19+**: Vite 7 요구사항
-- **wasm-pack 0.13.x**: rustwasm 조직 sunset 후 최신 안정 버전
-- **Three.js r170+**: r160은 2024년 초 버전, IIFE 제거로 ESM 전용
+#### Rust 버전
+
+| 옵션 | 버전 | 장점 | 단점 |
+|------|------|------|------|
+| A | 1.85.0 | Rust 2024 Edition 첫 버전, 안정성 | 최신 기능 일부 없음 |
+| B | 1.92.0 | **현재 최신 stable**, 모든 최신 기능 | 일부 환경에서 업데이트 필요 |
+
+> 참고: [Rust Releases](https://releases.rs/)
+
+#### WASM 빌드 도구
+
+> ⚠️ **배경**: rustwasm 조직이 **2025년 7월 sunset**됨.
+> 단, **wasm-bindgen은 [새 조직](https://github.com/wasm-bindgen/wasm-bindgen)으로 이전되어 활발히 유지보수 중** (2025-12-08 업데이트).
+> wasm-pack은 [drager](https://github.com/drager/wasm-pack)가 fork하여 유지보수 중.
+
+| 옵션 | 도구 | 장점 | 단점 |
+|------|------|------|------|
+| A | wasm-pack 0.13.1 ([drager fork](https://github.com/drager/wasm-pack)) | 기존 방식, 문서 풍부, 원클릭 빌드 | 장기 유지보수 불확실 |
+| B | 직접 빌드 (cargo + wasm-bindgen CLI + wasm-opt) | 의존성 최소화, 투명함 | 수동 설정 필요, 빌드 스크립트 작성 |
+| C | [Trunk](https://trunkrs.dev/) | 자동 도구 관리, 풀스택 지원 | 웹앱 번들러 용도 (Node.js 타겟에 부적합) |
+
+**Phase 1 권장**: 옵션 A (wasm-pack) - 빠른 시작, 검증된 방식
+**장기 고려**: 옵션 B (직접 빌드) - wasm-pack 의존성 제거
+
+> 참고: [Life after wasm-pack](https://nickb.dev/blog/life-after-wasm-pack-an-opinionated-deconstruction/)
+
+#### wasm-bindgen 버전
+
+| 옵션 | 버전 | 장점 | 단점 |
+|------|------|------|------|
+| A | 0.2.92 | 안정, 240M+ 다운로드 검증 | - |
+| B | 0.2.99+ | 최신 버그 수정 | 새 버전이라 이슈 가능성 |
+
+#### 기타 Rust 크레이트
+
+| 크레이트 | 권장 버전 | 비고 |
+|----------|----------|------|
+| serde | 1.0.x | 사실상 표준, 최신 사용 |
+| uuid | 1.x | `js` feature 필요 (getrandom 이슈 회피) |
+
+---
+
+### Viewer
+
+#### Node.js 버전
+
+> ⚠️ **Node.js 18은 2025년 4월 EOL**. 신규 프로젝트에서 사용 금지.
+
+| 옵션 | 버전 | 장점 | 단점 |
+|------|------|------|------|
+| A | 20.19.x (Maintenance LTS) | Vite 7 최소 요구사항 충족 | 2027년 4월까지만 지원 |
+| B | 22.x (Maintenance LTS) | Vite 7/8 호환, 더 긴 지원 | 일부 환경 업그레이드 필요 |
+| C | 24.x (Active LTS) | **현재 Active LTS**, 2028년 4월까지 지원 | 가장 최신, 일부 패키지 호환성 이슈 가능 |
+
+> 참고: [Node.js Releases](https://nodejs.org/en/about/previous-releases)
+
+#### Three.js 버전
+
+| 옵션 | 버전 | 장점 | 단점 |
+|------|------|------|------|
+| A | r175 | 안정성 검증됨 | 몇 달 전 버전 |
+| B | r182 | **현재 최신** (2025-12-11 릴리즈) | 최신이라 이슈 가능성 |
+
+> 참고: [Three.js Releases](https://github.com/mrdoob/three.js/releases)
+> 팁: 업데이트 시 10 릴리즈 단위로 점진적 업그레이드 권장 (deprecation 주기)
+
+#### 빌드 도구 (Vite)
+
+> **Vite 8 Beta** (2025-12-03): Rolldown 기반, 빌드 속도 대폭 개선 (46s→6s 사례)
+
+| 옵션 | 버전 | 장점 | 단점 |
+|------|------|------|------|
+| A | 사용 안 함 | 단순함, 정적 서버로 충분 (Polling 시) | HMR 불가, 번들링 직접 구성 |
+| B | 7.2.x | **현재 stable**, Node 20.19+ 또는 22.12+ | Node 18 미지원 |
+| C | 8.x Beta | Rolldown 기반, 빌드 속도 혁신 | Beta 상태, 프로덕션 비권장 |
+
+> 참고: [Vite Releases](https://vite.dev/releases)
+
+#### TypeScript 버전
+
+| 옵션 | 버전 | 장점 | 단점 |
+|------|------|------|------|
+| A | 5.5.x | 안정, 널리 사용 | 최신 기능 없음 |
+| B | 5.7.x | 최신, 타입 추론 개선 | 일부 breaking changes |
+
+#### 테스트 프레임워크
+
+| 옵션 | 도구 | 장점 | 단점 |
+|------|------|------|------|
+| A | Vitest 3.x | Vite 네이티브 통합 | Vite 필요 |
+| B | Jest 29.x | 널리 사용, 독립적 | Vite 없이도 동작, 설정 복잡 |
+
+---
+
+### 버전 선택 의존성
+
+> 일부 버전은 다른 선택에 따라 결정됨
+
+```
+뷰어 갱신 전략 선택
+    │
+    ├─▶ Polling 선택 시
+    │       └─▶ Vite 선택적
+    │       └─▶ Node.js 20+ (18은 EOL)
+    │       └─▶ 테스트: Jest도 가능
+    │
+    └─▶ HMR 선택 시
+            └─▶ Vite 7+ 필수
+            └─▶ Node.js 20.19+ 또는 22.12+
+            └─▶ 테스트: Vitest 권장
+```
 
 ---
 
@@ -52,7 +148,7 @@
 │                        │   - output.svg (옵션)   │     │
 │                        └───────────┬─────────────┘     │
 └────────────────────────────────────┼────────────────────┘
-                                     │ Vite HMR (~50ms)
+                                     │ Polling (Phase 1-2)
                                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │                    Browser Viewer                        │
@@ -60,7 +156,7 @@
 ├─────────────────────────────────────────────────────────┤
 │    ┌─────────────┐     ┌─────────────────────────┐     │
 │    │   Renderer  │     │   Selection UI          │     │
-│    │   (2D/3D)   │     │   (Phase 2)             │     │
+│    │   (2D/3D)   │     │   (Phase 3)             │     │
 │    └─────────────┘     └─────────────────────────┘     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -97,7 +193,7 @@ cad-engine/  (planned)
 │       ├── mod.rs
 │       ├── svg.rs
 │       ├── json.rs
-│       └── dxf.rs       # Phase 2
+│       └── dxf.rs       # Phase 3
 ├── Cargo.toml
 └── pkg/                 # WASM 빌드 결과
 ```
@@ -115,28 +211,69 @@ viewer/  (planned)
 │   │       └── Perspective3D.ts
 │   ├── loader/
 │   │   └── SceneLoader.ts    # JSON → Three.js
-│   └── selection/            # Phase 2
+│   └── selection/            # Phase 3
 │       ├── SelectionManager.ts
 │       └── SelectionEvent.ts
+├── scene.json                # WASM 출력 파일 (여기에 저장)
 ├── index.html
 └── package.json
 ```
+
+### 3. Output 경로 전략 (미결정)
+
+> Phase 1 구현 시 선택 필요.
+
+#### 옵션 A: viewer 내부 저장 (단순함 우선)
+
+```
+프로젝트 루트/
+├── cad-engine/
+│   └── pkg/              # WASM 빌드 결과
+└── viewer/
+    └── scene.json        # WASM 출력 (뷰어가 바로 접근)
+```
+
+**장점**: Polling으로 바로 접근, 별도 설정 불필요
+**단점**: 출력물과 뷰어 코드가 같은 폴더에 섞임
+
+#### 옵션 B: 별도 output 폴더
+
+```
+프로젝트 루트/
+├── cad-engine/
+├── output/
+│   └── scene.json        # WASM 출력
+└── viewer/
+```
+
+**장점**: 관심사 분리 명확
+**단점**: Vite 사용 시 `server.fs.allow` 설정 필요, 경로 관리 복잡
 
 ---
 
 ## Data Flow
 
-### Phase 1: 말하기만
+### Phase 1: 말하기만 (최소 검증)
 
 ```
 1. User → Claude Code: "사람 스켈레톤을 그려줘"
-2. Claude Code → WASM: cad.create_circle({...})
+2. Claude Code → WASM: cad.add_circle(), cad.add_line() 등
 3. WASM → File: scene.json (Three.js용)
-4. File → Browser: Vite HMR (~50ms)
+4. File → Browser: Polling (500ms)
 5. Browser → User: Three.js 렌더링
 ```
 
-### Phase 2: 가리키기 + 말하기
+### Phase 2: 도메인 확장 (여전히 말하기만)
+
+```
+1. User → Claude Code: "팔을 구부린 포즈로 바꿔줘"
+2. Claude Code: 그룹화된 엔티티 인식, 관절 기준 계산
+3. Claude Code → WASM: cad.rotate(), cad.translate() 조합
+4. WASM → File: scene.json 업데이트
+5. Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
+```
+
+### Phase 3: 가리키기 + 말하기
 
 ```
 1. User → Browser: [클릭] 객체 선택
@@ -164,7 +301,7 @@ viewer/  (planned)
 │         │                                               │
 │         └─▶ export_json() 호출 시                       │
 │             └─▶ scene.json 파일 저장                    │
-│                 └─▶ Vite HMR → 브라우저 갱신            │
+│                 └─▶ Polling → 브라우저 갱신             │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -343,8 +480,8 @@ pub trait Serializer {
 
 impl Serializer for SvgSerializer { ... }
 impl Serializer for DxfSerializer { ... }
-impl Serializer for StlSerializer { ... }  // Phase 3 (필수)
-// impl Serializer for StepSerializer { ... }  // Phase 3 (옵션, 추후)
+impl Serializer for StlSerializer { ... }  // Phase 4 (필수)
+// impl Serializer for StepSerializer { ... }  // Phase 4 (옵션, 추후)
 ```
 
 ---
@@ -382,71 +519,103 @@ class CADViewer {
 }
 ```
 
-### 실시간 갱신 (Vite HMR 권장)
+### 뷰어 갱신 전략 (미결정)
 
-> **핵심**: 사용자 체감 속도 = "명령 → 화면 변경" 시간.
-> Polling 500ms는 "느리다"로 체감됨. Vite HMR로 ~50ms 달성.
+> Phase 1 구현 시 선택 필요. Phase별 목표에 따라 결정.
+
+#### 옵션 A: Polling (단순함 우선)
 
 ```typescript
 // viewer/src/main.ts
-import sceneData from '../output/scene.json';
-import { CADViewer } from './renderer/CADViewer';
-
-const viewer = new CADViewer();
-viewer.loadScene(sceneData);
-
-// Vite HMR: 파일 변경 시 즉시 갱신 (~50ms)
-if (import.meta.hot) {
-    import.meta.hot.accept('../output/scene.json', (newModule) => {
-        viewer.loadScene(newModule.default);
-        console.log('[HMR] scene.json updated');
-    });
-}
-```
-
-### 왜 Vite HMR인가?
-
-| 방식 | 체감 지연 | 구현 복잡도 |
-|------|----------|------------|
-| Polling 500ms | 0~500ms | 낮음 |
-| Polling 100ms | 0~100ms | 낮음 (부하↑) |
-| **Vite HMR** | **~50ms** | **낮음 (Vite 내장)** |
-| Custom WebSocket | ~20ms | 높음 |
-
-### 개발 워크플로우
-
-```bash
-# 1. Vite dev server 실행
-cd viewer && npm run dev
-# → http://localhost:5173 에서 뷰어 실행
-# → scene.json 변경 시 자동 갱신
-
-# 2. Claude Code에서 WASM 실행
-# → scene.json 저장
-# → Vite가 파일 변경 감지 → HMR → 브라우저 즉시 갱신
-```
-
-### Fallback: Polling (Vite 없이 테스트 시)
-
-```typescript
-// Vite 없이 단순 테스트할 때만 사용
-setInterval(async () => {
+async function loadScene() {
     const response = await fetch(`scene.json?t=${Date.now()}`, {
         cache: 'no-store'
     });
     const scene = await response.json();
     viewer.loadScene(scene);
-}, 100);  // 100ms로 축소
+}
+
+setInterval(loadScene, 500);  // 500ms polling
+```
+
+**장점**:
+- 구현 최소화, Vite 없이도 동작
+- Phase 1-2 검증 목표에 충분 (AI 추론 능력 검증)
+
+**단점**:
+- 0~500ms 체감 지연
+- 사용자 경험 저하 (Phase 3에서 문제될 수 있음)
+
+#### 옵션 B: Vite HMR (속도 우선)
+
+```typescript
+// viewer/src/main.ts
+import sceneData from './scene.json';
+
+if (import.meta.hot) {
+    import.meta.hot.accept('./scene.json', (newModule) => {
+        viewer.loadScene(newModule.default);
+    });
+}
+```
+
+**장점**:
+- ~50ms 갱신, 네이티브 앱 수준 속도
+- SpineLift에서 검증됨
+
+**단점**:
+- Vite dev server 필요
+- 경로 설정 복잡도 (output 폴더 위치에 따라 `server.fs.allow` 필요)
+
+#### 비교 요약
+
+| 방식 | 체감 지연 | 복잡도 | 권장 시점 |
+|------|----------|--------|----------|
+| Polling 500ms | 0~500ms | 낮음 | Phase 1-2 검증 |
+| Vite HMR | ~50ms | 중간 | Phase 3 사용자 경험 |
+| WebSocket | ~20ms | 높음 | Phase 3 실시간 협업 |
+
+### 개발 워크플로우
+
+```bash
+# 옵션 A (Polling) - 정적 서버로 충분
+cd viewer && npx serve .
+# 또는: python -m http.server 8000
+
+# 옵션 B (HMR) - Vite dev server 필요
+cd viewer && npm run dev
 ```
 
 ---
 
 ## Future Extensions
 
-### Phase 2: Selection UI
+### Phase 2: 도메인 확장 (그룹화, ActionHints)
+
+> Phase 1 도구에 그룹화, 레이어, ActionHints 추가.
+> 여전히 "말하기만" 인터페이스 유지.
+
+**추가 API**:
+```typescript
+// 그룹화
+cad.create_group(name: string, entity_ids: string[]) -> string
+cad.ungroup(group_id: string)
+
+// 레이어
+cad.create_layer(name: string) -> string
+cad.set_layer(entity_id: string, layer_id: string)
+
+// ActionHints (응답에 포함)
+interface ActionHints {
+    recommended: { action: string, reason: string }[];
+    warnings?: string[];
+}
+```
+
+### Phase 3: Selection UI
 
 > **역방향 통신 필요**: "브라우저 선택 → Claude Code" 방향은 파일 polling만으로 불가능합니다.
-> Phase 2에서는 다음 중 하나가 필요합니다:
+> Phase 3에서는 다음 중 하나가 필요합니다:
 > - 로컬 서버 + WebSocket
 > - 이벤트 파일 큐 (브라우저가 파일에 쓰고, Claude Code가 읽음)
 > - Vite HMR WebSocket 활용
@@ -469,7 +638,7 @@ onClick(event) {
 }
 ```
 
-### Phase 3: Gateway + Chat UI
+### Phase 4: Gateway + Chat UI
 
 ```
 User (Browser)
@@ -481,7 +650,7 @@ Claude Code CLI
 CAD Engine
 ```
 
-### Phase 3: MCP Wrapper
+### Phase 4: MCP Wrapper
 
 ```typescript
 // 기존 WASM 엔진을 MCP로 래핑
@@ -500,16 +669,17 @@ const server = new MCPServer({
 
 ## Dependencies
 
-| 컴포넌트 | 기술 | 버전 | 비고 |
-|---------|------|------|------|
-| CAD Engine | Rust | 1.75+ | MSRV |
-| WASM Bindgen | wasm-bindgen | 0.2.x | 안정 (240M+ 다운로드) |
-| Build | wasm-pack | 0.13.x | rustwasm sunset 후 최신 |
-| Viewer | Three.js | r170+ | ESM 전용 (r160+) |
-| Dev Server | Vite | 7.x | SpineLift 검증됨 |
-| Test | Vitest | 3.x | Vite 호환 |
-| E2E Test | Playwright | 1.55+ | Phase 2용 |
-| Runtime | Node.js | 20.19+ | Vite 7 요구사항 |
+> 상세 버전 옵션은 **[Tech Stack (미결정)](#tech-stack-미결정)** 섹션 참조.
+> Phase 1 착수 전 팀 합의로 버전 확정 필요.
+
+| 컴포넌트 | 기술 | 비고 |
+|---------|------|------|
+| CAD Engine | Rust + wasm-bindgen + wasm-pack | WASM 빌드 |
+| Viewer | Three.js + TypeScript | 2D/3D 렌더링 |
+| Dev Server | Vite (선택적) | Polling 시 불필요 |
+| Test | Vitest 또는 Jest | 선택에 따라 |
+| E2E Test | Playwright | Phase 3용 |
+| Runtime | Node.js 18+ 또는 20+ | Vite 선택에 따라 |
 
 ---
 
@@ -641,7 +811,7 @@ describe('CAD Engine WASM', () => {
 });
 ```
 
-### E2E Tests (Phase 2)
+### E2E Tests (Phase 3)
 
 ```typescript
 // Playwright로 뷰어 + Selection UI 테스트
@@ -716,7 +886,7 @@ viewer/src/
 ├── renderer/          # Three.js 렌더러
 │   └── camera/        # 2D/3D 카메라
 ├── loader/            # JSON → Three.js
-└── selection/         # Phase 2 Selection UI
+└── selection/         # Phase 3 Selection UI
 ```
 
 ### 왜 다르게 설계했나?
