@@ -133,9 +133,9 @@ interface DesignHints {
 ```
 Claude Code CLI (Node.js)
     ↓ WASM 직접 로드 & 실행
-Rust CAD 엔진
-    ↓ scene.json 출력 (+ SVG export 옵션)
-브라우저 뷰어 (Three.js, polling으로 갱신)
+Rust CAD 엔진 + wgpu 렌더러 (통합 WASM)
+    ↓ Canvas 직접 렌더링 (또는 scene.json → Three.js fallback)
+브라우저 뷰어
 ```
 
 ### 뷰어 전략
