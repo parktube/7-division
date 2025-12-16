@@ -539,6 +539,67 @@ wgpu 방식:
 | **FemtoVG** | Canvas 2D 스타일 API | [github.com/femtovg/femtovg](https://github.com/femtovg/femtovg) |
 | **wgpu-rust-renderer** | 3D + WASM 예제 | [github.com/takahirox](https://github.com/takahirox/wgpu-rust-renderer) |
 
+#### Rust 그래픽 알고리즘 라이브러리
+
+> **리서치 기반 (2025-12-16)**: CAD에 필요한 핵심 알고리즘 라이브러리 현황
+
+**사용 가능한 라이브러리 (상업용 허용)**:
+
+| 라이브러리 | 용도 | 라이선스 | 안정성 | 최근 활동 |
+|-----------|------|----------|--------|-----------|
+| **wgpu** | GPU 렌더링 | MIT/Apache-2.0 | ⚠️ 활발 (breaking changes) | 2025-01 (v24.0) |
+| **lyon** | Path tessellation | MIT/Apache-2.0 | ✅ 안정 | 2025-01 커밋 |
+| **glyphon** | Text rendering (wgpu용) | MIT/Apache-2.0/Zlib | ✅ 안정 | 활발 |
+| **femtovg** | 2D Canvas API | MIT/Apache-2.0 | ✅ 안정 | 활발 |
+| **cdt** | Delaunay triangulation | MIT/Apache-2.0 | ✅ 안정 | 성숙 |
+| **boostvoronoi** | Voronoi diagram | BSL-1.0 | ✅ 안정 | 성숙 |
+| **geo-booleanop** | Boolean operations | MIT/Apache-2.0 | ✅ 안정 | 성숙 |
+
+> **모든 라이브러리가 상업적 사용 가능** (MIT, Apache-2.0, BSL-1.0 모두 허용적 라이선스)
+
+**Phase별 필요 라이브러리**:
+
+| Phase | 필요 기능 | 라이브러리 | 충족 여부 |
+|-------|----------|-----------|-----------|
+| **1-2** | Path tessellation | lyon | ✅ |
+| **1-2** | Text rendering | glyphon | ✅ |
+| **1-2** | 2D vector drawing | femtovg | ✅ |
+| **3** | Triangulation | cdt | ✅ |
+| **3** | Boolean ops | geo-booleanop | ✅ |
+| **4+** | 3D Boolean | - | ❌ 직접 구현 필요 |
+| **4+** | NURBS/Spline | - | ⚠️ 제한적 |
+
+**C++ CGAL 대비 부족한 영역** (Phase 4+ 해당):
+- 3D Boolean operations
+- NURBS/B-Spline 곡면
+- 고급 Mesh processing
+- Convex Hull 3D
+
+→ Phase 4+에서 필요 시 직접 구현 또는 FFI 바인딩 검토
+
+#### wgpu 생태계 안정성 (리스크)
+
+> **출처**: [The state of realtime graphics in Rust (Feb 2025)](https://valerioviperino.me/the-state-of-realtime-graphics-in-rust-feb-2025/)
+
+**현황**:
+- wgpu v22가 첫 "v1" 릴리스 (2024-07)
+- v24.0.1 (2025-01) 현재도 "moving fast and breaking things" 단계
+- 다수 프레임워크 (ggez, nannou, comfy) 유지보수 중단 또는 지연
+
+**완화 전략**:
+1. **버전 고정**: `wgpu = "=24.0"` 으로 특정 버전 고정
+2. **추상화 레이어**: CADRenderer trait로 wgpu 직접 의존성 격리
+3. **의존성 최소화**: wgpu 핵심 기능만 사용, 고수준 래퍼 피함
+4. **Fallback 유지**: Three.js 옵션 보존
+
+```toml
+# Cargo.toml 예시 - 버전 고정
+[dependencies]
+wgpu = "=24.0"      # 정확한 버전 고정
+lyon = "1.0"        # 안정적, 메이저 버전 고정
+glyphon = "0.9"     # 안정적
+```
+
 **2D Primitives 구현 난이도**:
 
 | 도형 | 구현 방식 | 복잡도 |
