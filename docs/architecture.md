@@ -8,7 +8,7 @@
 ## Tech Stack (미결정)
 
 > Phase 1 착수 전 팀 합의 필요. 각 기술별 옵션과 트레이드오프 정리.
-> **최종 업데이트: 2025-12-15** (웹 리서치 기반)
+> **최종 업데이트: 2025-12-16** (웹 리서치 기반, Electron 결정, WASM 성능/메모리 섹션 추가)
 
 ### CAD Engine
 
@@ -680,6 +680,440 @@ const server = new MCPServer({
 | Test | Vitest 또는 Jest | 선택에 따라 |
 | E2E Test | Playwright | Phase 3용 |
 | Runtime | Node.js 18+ 또는 20+ | Vite 선택에 따라 |
+
+---
+
+## Deployment Strategy
+
+> **리서치 기반 (2025-12-16)**: Cursor, Jan AI, LM Studio, Figma 등 실제 사례 분석
+
+### 데스크톱 프레임워크 선택: Electron
+
+> **결정: Electron 사용** - WebGL/Three.js 기반 CAD 앱에서 Tauri는 치명적 리스크
+
+#### 왜 Electron인가?
+
+| 항목 | Electron | Tauri | 비고 |
+|------|----------|-------|------|
+| **WebGL 성능** | Chromium (최고) | WebKit (4.5배 느림) | **결정적 차이** |
+| **WebGL2** | 완전 지원 | 일부 미작동 보고 | Three.js 필수 |
+| **120Hz** | 네이티브 | 60Hz 고정 | UX 차이 |
+| **앱 크기** | ~100MB | ~10MB | 트레이드오프 허용 |
+| **메모리** | 100-300MB | 30-40MB | 트레이드오프 허용 |
+| **성숙도** | VS Code, Figma, Slack | Jan AI (LLM 앱) | 그래픽 앱 검증됨 |
+
+> 참고: [Tauri vs Electron 2025](https://codeology.co.nz/articles/tauri-vs-electron-2025-desktop-development.html)
+
+#### Tauri WebGL 치명적 문제 (우리 프로젝트에 부적합)
+
+> **경고**: WebGL/Three.js 앱에서 Tauri 사용 금지
+
+| 문제 | 상세 | 출처 |
+|------|------|------|
+| **WebGL2 미작동** | WKWebView에서 WebGL2 사용 불가 | [GitHub #2866](https://github.com/tauri-apps/tauri/issues/2866) |
+| **Safari 4.5배 느림** | Chrome 7초 vs Safari 32초 | [Apple Developer](https://developer.apple.com/forums/thread/696821) |
+| **60fps→jittery** | FPS 표시 정상인데 화면 끊김 | [Babylon.js Forum](https://forum.babylonjs.com/t/performance-between-safari-and-wkwebview-tauri/60811) |
+| **Metal 백엔드 문제** | Apple WebGL→Metal 변환 구조적 이슈 | 근본 해결 어려움 |
+
+**Tauri가 적합한 앱**: LLM 채팅 (Jan AI), 텍스트 에디터 - WebGL 없는 앱
+**Tauri가 부적합한 앱**: CAD, 게임, 3D 뷰어 - **우리 프로젝트**
+
+### 권장 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   AI-Native CAD (권장 구조)                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                 Electron App (~100MB)                    │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │   │
+│  │  │  Chromium   │  │  Node.js    │  │ WASM CAD Engine │  │   │
+│  │  │  (Three.js) │  │  (IPC/파일) │  │ (기하학 연산)   │  │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────────┘  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                              │                                  │
+│                              ▼                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                    LLM 연결 (선택)                       │   │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────────────┐   │   │
+│  │  │ 로컬 LLM  │  │ 사용자 API │  │ 서비스 API (옵션) │   │   │
+│  │  │ (Ollama)  │  │ 키 입력    │  │                   │   │   │
+│  │  └───────────┘  └───────────┘  └───────────────────┘   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 참고 사례
+
+#### Figma (Electron + WebGL)
+- **프레임워크**: Electron + BrowserView
+- **렌더링**: WebGL 기반 캔버스
+- **특징**: 웹/데스크톱 동일 코드베이스
+- [Figma BrowserView](https://www.figma.com/blog/introducing-browserview-for-electron/)
+
+#### Jan AI (Tauri - 참고만)
+- **프레임워크**: Tauri (Rust + WebView)
+- **특징**: LLM 채팅 앱 (WebGL 없음)
+- **교훈**: WebGL 없는 앱에서만 Tauri 유효
+- [GitHub - Jan AI](https://github.com/janhq/jan)
+
+#### Cursor (피해야 할 패턴)
+- **문제점**: 서버 의존적 - 모든 요청이 Cursor 서버 경유
+- **오프라인**: 불가능
+- [Cursor 아키텍처 분석](https://www.tensorzero.com/blog/reverse-engineering-cursors-llm-client/)
+
+### LLM 연결 옵션
+
+| 옵션 | 방식 | 장점 | 단점 |
+|------|------|------|------|
+| A | 로컬 LLM (Ollama 등) | 완전 오프라인, 보안, 무료 | 하드웨어 필요, 성능 제한 |
+| B | 사용자 API 키 입력 | 단순, 비용 사용자 부담 | 키 관리 책임 사용자 |
+| C | 서비스 API 제공 | UX 간편, 모델 선택 가능 | 서비스 운영 비용 발생 |
+
+> **핵심 원칙**: Cursor와 달리 **서버 의존성 없이** 옵션 A, B가 완전히 동작해야 함
+
+### 초기 전략 (Phase 1-2)
+
+1. **Electron 로컬 앱**: WebGL 성능 보장, Figma 검증 패턴
+2. **오프라인 우선**: 로컬 LLM (옵션 A) 완전 지원
+3. **클라우드 선택적**: 사용자 API 키 (옵션 B) 지원
+4. **수요 검증 후**: 서비스 API (옵션 C), 웹 버전 고려
+
+### 장기 확장성
+
+- **Figma/Slack 모델**: 데스크톱 + 웹 동시 제공 가능
+- **엔터프라이즈**: 옵션 A (로컬 LLM)로 완전 폐쇄망 지원
+- **SaaS**: 옵션 C 확장으로 구독 모델 가능
+
+### WASM 크로스 플랫폼 현황
+
+> **리서치 기반 (2025-12-16)**: 브라우저 호환성 및 rustwasm 생태계 상황
+
+#### 브라우저 호환성
+
+| 브라우저 | WASM 지원 | 비고 |
+|----------|----------|------|
+| Chrome | 57+ (2017~) | 완전 지원 |
+| Firefox | 52+ (2017~) | 완전 지원 |
+| Safari | 11+ (2017~) | 완전 지원, WasmGC 미지원 |
+| Edge | 16+ (2017~) | 완전 지원 (Chromium 기반) |
+| IE | 미지원 | 전 버전 미지원 |
+
+> 전체 호환성 점수: 92/100, 83% 웹 사용자 접근 가능
+> 참고: [Can I Use - WASM](https://caniuse.com/wasm)
+
+#### 주요 제한사항
+
+| 제한 | 영향 | 우리 프로젝트 영향 |
+|------|------|-------------------|
+| **DOM 직접 조작 불가** | JS 경유 필수 | Three.js가 처리 → 영향 없음 |
+| **WasmGC 미지원** (Safari) | GC 언어 컴파일 제한 | Rust는 GC 없음 → 영향 없음 |
+| **WASM Threads** | Cross-Origin Isolation 필요 | 아래 상세 참조 |
+| **4GB 메모리 제한** | WASM 32비트 한계 | 아래 상세 참조 |
+| **iOS Chrome** | WebKit 사용 (Safari와 동일) | 모바일 Phase 4+ → 추후 검토 |
+
+### WASM 성능 및 메모리 관리
+
+> **중요**: CAD 프로젝트가 커질수록 CPU/메모리 컨트롤이 핵심 과제
+
+#### WASM Threads (멀티스레딩)
+
+**브라우저 지원 현황**:
+
+| 브라우저 | 지원 버전 | 상태 |
+|----------|----------|------|
+| Chrome | 74+ (2019~) | 완전 지원 |
+| Firefox | 79+ (2020~) | 완전 지원 |
+| Safari | 14.1+ (2021~) | 완전 지원 |
+| Edge | 79+ (Chromium) | 완전 지원 |
+
+> 참고: [Can I Use - WASM Threads](https://caniuse.com/wasm-threads)
+
+**필수 요구사항 - Cross-Origin Isolation**:
+
+```
+WASM Threads = SharedArrayBuffer 사용
+SharedArrayBuffer = Spectre 취약점 때문에 기본 비활성화
+
+활성화 조건 (서버 헤더):
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+**Electron에서**: Chromium 번들이므로 헤더 설정으로 WASM Threads 완전 지원
+
+> 참고: [MDN - SharedArrayBuffer](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer)
+
+#### SharedArrayBuffer: 언제 정말 필요한가?
+
+> 리서치 기반: 실제 사용 사례 분석
+
+**SharedArrayBuffer 없이도 되는 경우** (Web Workers로 충분):
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  작업이 독립적 = SharedArrayBuffer 불필요                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  예: 각 픽셀/도형을 독립적으로 계산                              │
+│                                                                 │
+│  Main Thread                                                    │
+│      │                                                          │
+│      ├── postMessage(도형1~100) ──▶ Worker 1 ──▶ 결과 반환      │
+│      ├── postMessage(도형101~200) ──▶ Worker 2 ──▶ 결과 반환    │
+│      └── postMessage(도형201~300) ──▶ Worker 3 ──▶ 결과 반환    │
+│                                                                 │
+│  → 데이터 복사 발생하지만, 독립 작업이면 충분히 빠름              │
+│  → COOP/COEP 헤더 불필요                                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> 참고: [Tweag - Wasm Threads and Messages](https://www.tweag.io/blog/2022-11-24-wasm-threads-and-messages/)
+
+**SharedArrayBuffer가 정말 필요한 경우**:
+
+| 상황 | 왜 필요한가 | 예시 |
+|------|------------|------|
+| **동기적 스레드 통신** | 락/배리어로 조율 필요 | 물리 시뮬레이션 |
+| **같은 메모리 공유** | 복사 없이 직접 접근 | 대용량 메시 편집 |
+| **대용량 데이터** | 복사 비용이 연산 비용 초과 | 수백만 vertex |
+| **Emscripten pthread** | C++ 멀티스레드 코드 포팅 | 기존 CAD 엔진 |
+
+> 참고: [Emscripten Wasm Workers](https://emscripten.org/docs/api_reference/wasm_workers.html)
+
+**우리 프로젝트 분석**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  Phase별 SharedArrayBuffer 필요성                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Phase 1: 불필요 ✓                                              │
+│  - line, circle, rect 수십~수백 개                              │
+│  - 단일 스레드로 <1ms 처리                                       │
+│                                                                 │
+│  Phase 2: 불필요 ✓                                              │
+│  - 그룹화, 레이어 추가                                          │
+│  - 여전히 단일 스레드로 충분                                     │
+│                                                                 │
+│  Phase 3: 선택적 (SIMD 우선)                                    │
+│  - 복잡한 3D 도형                                               │
+│  - SIMD로 4배 향상 먼저 시도                                     │
+│  - 그래도 부족하면 Web Workers (독립 작업)                       │
+│                                                                 │
+│  Phase 4+: 필요할 수 있음                                       │
+│  - 수백만 vertex 메시                                           │
+│  - 동시 편집 (같은 메모리 접근)                                  │
+│  - 이 시점에 COOP/COEP 헤더 설정                                │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**결론**: Phase 1-3은 SharedArrayBuffer 없이 개발 가능. Phase 4+에서 필요 시 도입.
+
+> 참고: [web.dev - WASM Threads](https://web.dev/articles/wasm-threads)
+
+**성능 향상 벤치마크** (TensorFlow WASM):
+
+| 최적화 | 성능 향상 |
+|--------|----------|
+| SIMD만 | 1.7~4.5배 |
+| SIMD + 멀티스레딩 | 추가 1.8~2.9배 |
+| **총합** | **최대 13배** |
+
+> 참고: [InfoQ - WASM SIMD & Multi-Threading](https://www.infoq.com/articles/webassembly-simd-multithreading-performance-gains/)
+
+#### 4GB 메모리 제한
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    WASM 메모리 아키텍처                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  WASM 32비트 = 최대 4GB 선형 메모리                             │
+│  (Chrome: 예전 2GB → 현재 4GB)                                  │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Phase 1-2: 안전                                        │   │
+│  │  - 단순 도형 수백~수천 개 = 수십 MB                       │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Phase 3+: 주의 필요                                     │   │
+│  │  - 복잡한 3D 모델 = 수백 MB~수 GB                        │   │
+│  │  - Undo/Redo 히스토리 누적                               │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  Phase 4+: 한계 도달 가능                                │   │
+│  │  - 대형 CAD 어셈블리 = 4GB 초과 가능                     │   │
+│  │  - 완화: 분할 로딩, LOD, Memory64 (미래)                 │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> 참고: [Rust Forum - WASM 4GB Workarounds](https://users.rust-lang.org/t/wasm-32bit-4gb-workarounds/55490)
+
+#### Phase별 성능 전략
+
+| Phase | CPU 전략 | 메모리 전략 |
+|-------|----------|------------|
+| **Phase 1** | 단일 스레드 충분 | 수십 MB, 관리 불필요 |
+| **Phase 2** | 단일 스레드 | 히스토리 크기 제한 |
+| **Phase 3** | SIMD 고려 (기하 연산) | LOD, 점진적 로딩 |
+| **Phase 4+** | 멀티스레딩 필수 | 분할 로딩, 메모리 풀 |
+
+#### CAD 최적화 기법 (Phase 3+)
+
+**메모리 최적화**:
+
+```rust
+// 1. 메모리 풀 - 빈번한 할당/해제 방지
+struct EntityPool {
+    entities: Vec<Entity>,
+    free_indices: Vec<usize>,
+}
+
+// 2. LOD (Level of Detail)
+fn get_entity_lod(&self, zoom: f64) -> EntityLOD {
+    if zoom < 0.1 { EntityLOD::BoundingBox }
+    else if zoom < 0.5 { EntityLOD::Simplified }
+    else { EntityLOD::Full }
+}
+
+// 3. 점진적 로딩
+fn load_scene_incremental(&mut self, chunk_size: usize) {
+    // 청크 단위로 로딩, UI 블로킹 방지
+}
+```
+
+**CPU 최적화**:
+
+```rust
+// 1. SIMD (wasm32-unknown-unknown + simd128)
+#[cfg(target_feature = "simd128")]
+fn transform_points_simd(points: &mut [f32]) {
+    // 4개 점 동시 변환
+}
+
+// 2. 멀티스레딩 (rayon + wasm-bindgen-rayon)
+#[cfg(feature = "parallel")]
+fn mesh_geometry_parallel(&self) -> Mesh {
+    self.faces.par_iter()
+        .map(|face| face.triangulate())
+        .collect()
+}
+```
+
+> 참고: [Medium - WebAssembly for CAD](https://altersquare.medium.com/webassembly-for-cad-applications-when-javascript-isnt-fast-enough-56fcdc892004)
+
+#### Memory64: 4GB 제한 해제 (Stable)
+
+> **2025년 현재: 더 이상 실험적이 아님!**
+
+**브라우저 지원 현황**:
+
+| 브라우저 | 버전 | 상태 |
+|----------|------|------|
+| Chrome | 133+ (2025.01) | **Stable** |
+| Firefox | 134+ (2025.01) | **Stable** |
+| Safari | 구현 중 | 2025년 내 예상 |
+| Edge | Chromium 기반 | **Stable** |
+
+> WASM 3.0에 공식 포함 (2025년 9월 17일 완료)
+> 참고: [SpiderMonkey Blog](https://spidermonkey.dev/blog/2025/01/15/is-memory64-actually-worth-using.html)
+
+**Rust 지원**:
+
+```rust
+// wasm64-unknown-unknown 타겟 (Stable)
+// Cargo.toml 또는 빌드 시
+rustup target add wasm64-unknown-unknown
+cargo build --target wasm64-unknown-unknown
+```
+
+> 참고: [Rust wasm64 Target](https://doc.rust-lang.org/rustc/platform-support/wasm64-unknown-unknown.html)
+
+**성능 트레이드오프** (중요):
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Memory64 성능 고려사항                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  장점:                                                          │
+│  - 4GB 제한 해제 → 현재 8GB까지 (JS 엔진 제한)                  │
+│  - 대형 CAD 어셈블리 처리 가능                                  │
+│                                                                 │
+│  단점:                                                          │
+│  - 포인터 크기 2배 (4바이트 → 8바이트)                          │
+│  - 메모리 사용량 증가                                           │
+│  - 성능 저하 10~100% 가능                                       │
+│                                                                 │
+│  결론:                                                          │
+│  - 4GB 초과 필요할 때만 사용                                    │
+│  - "더 현대적"이거나 "더 빠른" 것이 아님                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> 참고: [Chrome Status - Memory64](https://chromestatus.com/feature/5070065734516736)
+
+**우리 프로젝트 적용**:
+
+> **참고**: SpineLift (동일 팀 프로젝트)가 이미 4GB+ 메모리 사용 중
+>
+> 복잡한 CAD 어셈블리는 예상보다 빨리 4GB 한계에 도달할 수 있음
+
+| Phase | Memory64 필요성 | 이유 |
+|-------|----------------|------|
+| Phase 1-2 | 불필요 | 단순 도형, 수십 MB |
+| Phase 3 | 모니터링 | 3D 도형 복잡도에 따라 변동 |
+| Phase 4+ | **높음** | SpineLift 사례로 볼 때 조기 도달 가능 |
+
+**전략**:
+1. Phase 3부터 메모리 사용량 모니터링
+2. 2GB 도달 시 Memory64 전환 준비 시작
+3. 성능 저하(10~100%) 감수 vs 기능 제한 트레이드오프 검토
+
+**사용 시점**: 실제로 4GB 초과 시에만 전환. 성능 저하 감수 필요.
+
+#### Rust WASM 생태계 현황 (2025)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    rustwasm 조직 상황                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [2025년 7월] rustwasm 조직 sunset 발표                         │
+│  [2025년 9월] 전체 아카이브 예정                                │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  wasm-bindgen → 새 조직으로 이전 (활발히 유지보수)       │   │
+│  │  github.com/wasm-bindgen/wasm-bindgen                   │   │
+│  │  새 메인테이너: @daxpedda, @guybedford (Cloudflare)     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │  wasm-pack → drager fork로 유지보수                      │   │
+│  │  github.com/drager/wasm-pack                            │   │
+│  │  장기 유지보수 불확실 → 직접 빌드 전환 고려              │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+> 참고: [Sunsetting rustwasm](https://blog.rust-lang.org/inside-rust/2025/07/21/sunsetting-the-rustwasm-github-org/), [Life after wasm-pack](https://nickb.dev/blog/life-after-wasm-pack-an-opinionated-deconstruction/)
+
+#### 완화 전략
+
+1. **wasm-bindgen 의존**: 새 조직에서 활발히 유지보수 중 → 안전
+2. **wasm-pack 대안 준비**: 직접 빌드 스크립트 옵션 B 문서화 완료
+3. **브라우저 타겟 명확화**: IE 미지원, 최신 브라우저만 지원
 
 ---
 

@@ -38,7 +38,7 @@ AI-Native CAD는 "말하고 가리키면, AI가 만든다" 패러다임의 CAD �
 
 ## Project Classification
 
-**Technical Type:** Web App (WASM 기반)
+**Technical Type:** Desktop App (Electron + WASM 기반)
 **Domain:** Design Tools / Creative
 **Complexity:** High (새로운 패러다임)
 **Project Context:** Greenfield - 백지에서 시작
@@ -79,8 +79,8 @@ Phase 1부터 Three.js 사용 → Phase 3 3D 확장 자연스러움
 
 **Output**:
 - Phase 1: scene.json (Three.js 렌더링용) + SVG export
-- Phase 2: DXF export
-- Phase 3: STL (필수), STEP (옵션)
+- Phase 3: DXF export (2D 업계 표준)
+- Phase 4+: STL (필수), STEP (옵션) - 3D 확장 시
 
 ---
 
@@ -149,6 +149,48 @@ Phase 1부터 Three.js 사용 → Phase 3 3D 확장 자연스러움
 - MCP 래퍼
 - 로컬 LLM 지원
 - 3D 확장
+
+---
+
+## Deployment Strategy
+
+> **리서치 기반 (2025-12-16)**: Cursor, Jan AI, LM Studio, Figma 등 실제 사례 분석
+
+### 배포 방식
+
+| Phase | 방식 | 상세 |
+|-------|------|------|
+| Phase 1-2 | **로컬 앱** | Electron 기반 데스크톱 앱 (~100MB) |
+| Phase 3+ | 로컬 + 웹 | 수요에 따라 웹 버전 추가 가능 |
+
+### 데스크톱 프레임워크: Electron
+
+> **결정: Electron** - WebGL/Three.js 기반 CAD 앱에서 Tauri는 치명적 리스크
+
+| 항목 | Electron | Tauri |
+|------|----------|-------|
+| **WebGL 성능** | Chromium (최고) | WebKit (4.5배 느림) |
+| **검증 사례** | Figma, VS Code | Jan AI (LLM 앱, WebGL 없음) |
+| **앱 크기** | ~100MB | ~10MB |
+
+**Tauri 부적합 이유**: WebGL2 미작동, Safari 4.5배 느림, 60Hz 고정 등
+**참고**: Tauri는 LLM 채팅앱 등 WebGL 없는 앱에만 적합
+
+### LLM 연결 옵션
+
+| 옵션 | 방식 | Phase |
+|------|------|-------|
+| A | 로컬 LLM (Ollama 등) | Phase 1+ |
+| B | 사용자 API 키 입력 | Phase 1+ |
+| C | 서비스 API 제공 | Phase 4+ (수요 시) |
+
+### 핵심 원칙
+
+1. **오프라인 우선**: Cursor와 달리 서버 의존 없이 완전 동작
+2. **클라우드 선택적**: 사용자가 원할 때만 클라우드 API 연결
+3. **Figma 모델 참조**: Electron + WebGL, 웹/데스크톱 동일 코드베이스
+
+> 상세: [Architecture - Deployment Strategy](./architecture.md#deployment-strategy)
 
 ---
 
@@ -261,6 +303,9 @@ Entity
 | **UUID/getrandom 호환성** | 중간 | `js_sys::Math::random()` 또는 `uuid` js feature |
 | **Phase 3 역방향 통신** | 중간 | WebSocket 또는 이벤트 파일 큐 필요 (Selection UI용) |
 | **DXF/STEP 복잡도 과소평가** | 중간 | Phase 3 이후로 미룸, "쉽다" 전제 금지 |
+| **Electron 앱 크기** | 낮음 | ~100MB 허용 (WebGL 성능 우선), Figma도 동일 전략 |
+| **rustwasm 조직 sunset** | 중간 | wasm-bindgen 새 조직 이전 완료, wasm-pack은 직접 빌드 대안 준비 |
+| **WASM 브라우저 호환성** | 낮음 | IE 미지원 (영향 없음), 92/100 호환성 점수, 83% 사용자 커버 |
 
 ### 기술 부채 방지
 
