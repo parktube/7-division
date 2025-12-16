@@ -488,176 +488,171 @@ impl Serializer for StlSerializer { ... }  // Phase 4 (필수)
 
 ## Viewer Architecture
 
-### 렌더링 기술 옵션 (고려사항)
+### 렌더링 기술 선택 (고려사항)
 
-> **리서치 기반 (2025-12-16)**: Three.js 외 대안 기술 검토
+> **리서치 기반 (2025-12-16)**: Three.js vs wgpu 상세 비교
 >
-> Phase 1은 Three.js로 시작, Phase 3+ 성능 요구에 따라 재검토
+> **권장: wgpu** - 통합 아키텍처의 장기 이점이 초기 구현 비용을 상회
 
-#### 옵션 비교
+#### Three.js vs wgpu 비교
 
-| 옵션 | 언어 | 렌더링 | WASM | 3D | 번들 크기 | 성숙도 |
-|------|------|--------|------|-----|----------|--------|
-| **Three.js** | JS | WebGL/WebGPU | ❌ | ✓ | ~1MB | ★★★★★ |
-| **wgpu** | Rust | WebGPU | ✓ | ✓ | ~500KB | ★★★☆☆ |
-| **Bevy** | Rust | wgpu 기반 | ✓ | ✓ | 3.5MB+ | ★★★☆☆ |
-| **CanvasKit** | C++ | WebGL (2D) | ✓ | ❌ | 2.9MB | ★★★★☆ |
+| 항목 | Three.js | wgpu |
+|------|----------|------|
+| **언어** | JavaScript | Rust |
+| **렌더링** | WebGL/WebGPU | WebGPU (WebGL2 fallback) |
+| **CAD 엔진 통합** | ❌ JSON 중간 레이어 | ✓ 단일 WASM |
+| **2D 지원** | ✓ OrthographicCamera | ✓ 직접 구현 |
+| **3D 지원** | ✓ PerspectiveCamera | ✓ 직접 구현 |
+| **번들 크기** | ~1MB (JS) | ~500KB (WASM) |
+| **네이티브 성능** | ❌ JS 오버헤드 | ✓ Rust |
+| **타입 안전성** | ⚠️ TypeScript | ✓ Rust 컴파일 타임 |
 
-#### Three.js (현재 선택)
-
-**장점**:
-- 성숙한 생태계, 풍부한 문서
-- CAD/3D 에디터 사례 다수 (Figma, Spline 등)
-- OrthographicCamera로 2D CAD 충분
-- WebGPU 지원 진행 중
-
-**단점**:
-- JS 오버헤드
-- 대규모 모델 (수십만 vertex) 시 한계 가능
-
-> 참고: [Three.js](https://threejs.org/)
-
-#### wgpu (Rust → WASM) - 장기 고려
-
-**특징**:
-- 순수 Rust WebGPU 구현
-- 네이티브: Vulkan/Metal/DX12, WASM: WebGPU/WebGL2
-- CAD 엔진과 동일 언어 = 통합 WASM 가능
+#### 아키텍처 비교
 
 ```
-현재:  CAD Engine (Rust/WASM) → scene.json → Three.js (JS)
-통합:  CAD Engine + Renderer (Rust/WASM) → Canvas 직접
+Three.js 방식:
+┌──────────────┐    JSON     ┌──────────────┐
+│ CAD Engine   │ ──────────▶ │  Three.js    │
+│ (Rust/WASM)  │   파일 I/O   │  (JS)        │
+└──────────────┘             └──────────────┘
+     ✗ 두 개의 런타임, 데이터 변환 오버헤드
+
+wgpu 방식:
+┌─────────────────────────────────────────┐
+│      CAD Engine + Renderer              │
+│           (Rust/WASM)                   │
+│                                         │
+│   Geometry ──▶ GPU Buffer ──▶ Render    │
+└─────────────────────────────────────────┘
+     ✓ 단일 런타임, 직접 GPU 접근
 ```
 
-**WebGPU 브라우저 지원 (2025)**:
-- Chrome 113+, Edge 113+, Firefox 141+, Safari (macOS Tahoe 26)
+#### wgpu 구현 가능성
 
-> 참고: [wgpu.rs](https://wgpu.rs/), [WebGPU 브라우저 지원](https://web.dev/blog/webgpu-supported-major-browsers)
+**참조 가능한 오픈소스**:
 
-#### Bevy (Rust 게임 엔진)
+| 프로젝트 | 용도 | 링크 |
+|----------|------|------|
+| **Learn Wgpu** | 단계별 튜토리얼 | [sotrh.github.io/learn-wgpu](https://sotrh.github.io/learn-wgpu/) |
+| **wgpu/examples** | 공식 예제 | [github.com/gfx-rs/wgpu](https://github.com/gfx-rs/wgpu/tree/trunk/examples) |
+| **lyon** | Path tessellation (Bezier) | [github.com/nical/lyon](https://github.com/nical/lyon) |
+| **FemtoVG** | Canvas 2D 스타일 API | [github.com/femtovg/femtovg](https://github.com/femtovg/femtovg) |
+| **wgpu-rust-renderer** | 3D + WASM 예제 | [github.com/takahirox](https://github.com/takahirox/wgpu-rust-renderer) |
 
-**장점**: ECS 아키텍처, 2D 렌더링 2배 빠름
-**단점**: WASM 멀티스레딩 미지원, 번들 3.5MB+, 게임 엔진 오버헤드
+**2D Primitives 구현 난이도**:
 
-> 참고: [Bevy WASM](https://bevy-cheatbook.github.io/platforms/wasm.html)
-
-#### CanvasKit/Skia (2D 전문)
-
-**특징**: Figma가 사용, GPU 가속 2D, SVG/Canvas2D보다 빠름
-**한계**: 3D 미지원 → Phase 4+ 3D 확장 시 부적합
-
-> 참고: [CanvasKit - Skia](https://skia.org/docs/user/modules/canvaskit/)
+| 도형 | 구현 방식 | 복잡도 |
+|------|----------|--------|
+| Line | `LineList` topology | 낮음 |
+| Rect | 2 triangles | 낮음 |
+| Circle | sin/cos 정점 또는 SDF shader | 중간 |
+| Arc | 각도 기반 정점 생성 | 중간 |
+| Bezier | lyon tessellation | 중간 (라이브러리 활용) |
 
 #### Phase별 권장
 
-| Phase | 권장 | 이유 |
-|-------|------|------|
-| Phase 1-2 | **Three.js** | 검증된 생태계, 빠른 개발 |
-| Phase 3 | 성능 평가 | Three.js 한계 도달 시 wgpu 검토 |
-| Phase 4+ | wgpu 고려 | 통합 아키텍처 (CAD + Renderer 단일 WASM) |
+| Phase | 렌더러 | 이유 |
+|-------|--------|------|
+| **Phase 1** | wgpu (2D) | 통합 아키텍처 시작, 참조 소스 충분 |
+| **Phase 2** | wgpu (2D 확장) | 그룹화, 레이어 추가 |
+| **Phase 3** | wgpu (2D + 3D) | 카메라 전환으로 3D 확장 |
+| **Phase 4+** | wgpu (최적화) | 성능 튜닝, 대규모 모델 |
 
-**wgpu 전환 검토 조건**:
-- Three.js 성능 한계 도달 (수십만 vertex)
-- CAD 엔진 + 뷰어 Rust 통합 원할 때
-- WebGPU 브라우저 지원 완전 안정화 시
+#### Fallback 옵션: Three.js
+
+wgpu 구현 중 예상치 못한 블로커 발생 시:
+
+- WebGPU 브라우저 호환성 이슈
+- WASM 디버깅 난항
+- 일정 압박
+
+→ Three.js로 전환 가능 (CAD 엔진 코드는 그대로 유지)
+
+#### 기타 옵션 (참고)
+
+| 옵션 | 특징 | 적합성 |
+|------|------|--------|
+| **Bevy** | wgpu 기반 게임 엔진 | ❌ 오버헤드, 3.5MB+ |
+| **CanvasKit** | Figma 사용, 2D 최적화 | ❌ 3D 미지원 |
+| **rend3** | wgpu 기반 3D | ⚠️ 유지보수 모드 |
 
 ---
 
-### Three.js 기반 통합 렌더러
+### wgpu 기반 통합 렌더러 (목표 구조)
 
-```typescript
-class CADViewer {
-    private scene: THREE.Scene;
-    private camera: THREE.Camera;
-    private renderer: THREE.WebGLRenderer;
+```rust
+// renderer/src/lib.rs
+pub struct CADRenderer {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    pipeline_2d: wgpu::RenderPipeline,
+    pipeline_3d: wgpu::RenderPipeline,
+    camera: Camera,
+}
 
+impl CADRenderer {
     // 2D 모드
-    set2DMode() {
-        this.camera = new THREE.OrthographicCamera(...);
-        this.camera.position.z = 100;
-        this.camera.lookAt(0, 0, 0);
+    pub fn set_2d_mode(&mut self) {
+        self.camera = Camera::orthographic(/* ... */);
     }
 
     // 3D 모드
-    set3DMode() {
-        this.camera = new THREE.PerspectiveCamera(...);
-        this.controls = new OrbitControls(this.camera, ...);
+    pub fn set_3d_mode(&mut self) {
+        self.camera = Camera::perspective(/* ... */);
     }
 
-    // JSON → Three.js 변환
-    loadScene(json: SceneJSON) {
-        for (const entity of json.entities) {
-            const mesh = this.createMesh(entity);
-            this.scene.add(mesh);
+    // Scene 직접 렌더링 (JSON 변환 없음)
+    pub fn render(&mut self, scene: &Scene) {
+        // GPU 버퍼에 직접 기하 데이터 전송
+        for entity in &scene.entities {
+            self.draw_entity(entity);
         }
     }
 }
 ```
 
-### 뷰어 갱신 전략 (미결정)
+### 뷰어 갱신 전략
 
-> Phase 1 구현 시 선택 필요. Phase별 목표에 따라 결정.
+> wgpu 통합 시 JSON 파일 polling 불필요 → 직접 렌더링
 
-#### 옵션 A: Polling (단순함 우선)
+#### 통합 아키텍처 (wgpu)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Claude Code 세션                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  1. Claude Code가 CAD Engine 함수 호출                          │
+│     scene.add_circle(0, 0, 10);                                 │
+│                                                                 │
+│  2. Rust 엔진이 Scene 상태 업데이트 + 렌더링                     │
+│     (WASM 내부에서 직접 처리)                                    │
+│                                                                 │
+│  3. wgpu가 Canvas에 즉시 반영                                    │
+│     (파일 I/O 없음, ~1ms)                                       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Fallback: JSON + Polling (Three.js 사용 시)
 
 ```typescript
-// viewer/src/main.ts
-async function loadScene() {
-    const response = await fetch(`scene.json?t=${Date.now()}`, {
-        cache: 'no-store'
-    });
-    const scene = await response.json();
+// Three.js fallback 시에만 사용
+setInterval(async () => {
+    const scene = await fetch('scene.json').then(r => r.json());
     viewer.loadScene(scene);
-}
-
-setInterval(loadScene, 500);  // 500ms polling
+}, 500);
 ```
-
-**장점**:
-- 구현 최소화, Vite 없이도 동작
-- Phase 1-2 검증 목표에 충분 (AI 추론 능력 검증)
-
-**단점**:
-- 0~500ms 체감 지연
-- 사용자 경험 저하 (Phase 3에서 문제될 수 있음)
-
-#### 옵션 B: Vite HMR (속도 우선)
-
-```typescript
-// viewer/src/main.ts
-import sceneData from './scene.json';
-
-if (import.meta.hot) {
-    import.meta.hot.accept('./scene.json', (newModule) => {
-        viewer.loadScene(newModule.default);
-    });
-}
-```
-
-**장점**:
-- ~50ms 갱신, 네이티브 앱 수준 속도
-- SpineLift에서 검증됨
-
-**단점**:
-- Vite dev server 필요
-- 경로 설정 복잡도 (output 폴더 위치에 따라 `server.fs.allow` 필요)
-
-#### 비교 요약
-
-| 방식 | 체감 지연 | 복잡도 | 권장 시점 |
-|------|----------|--------|----------|
-| Polling 500ms | 0~500ms | 낮음 | Phase 1-2 검증 |
-| Vite HMR | ~50ms | 중간 | Phase 3 사용자 경험 |
-| WebSocket | ~20ms | 높음 | Phase 3 실시간 협업 |
 
 ### 개발 워크플로우
 
 ```bash
-# 옵션 A (Polling) - 정적 서버로 충분
-cd viewer && npx serve .
-# 또는: python -m http.server 8000
+# wgpu 렌더러 (권장)
+cd cad-engine
+wasm-pack build --target web --release
+# 브라우저에서 직접 테스트
 
-# 옵션 B (HMR) - Vite dev server 필요
+# Three.js fallback
 cd viewer && npm run dev
 ```
 
