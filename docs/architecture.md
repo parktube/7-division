@@ -488,6 +488,81 @@ impl Serializer for StlSerializer { ... }  // Phase 4 (필수)
 
 ## Viewer Architecture
 
+### 렌더링 기술 옵션 (고려사항)
+
+> **리서치 기반 (2025-12-16)**: Three.js 외 대안 기술 검토
+>
+> Phase 1은 Three.js로 시작, Phase 3+ 성능 요구에 따라 재검토
+
+#### 옵션 비교
+
+| 옵션 | 언어 | 렌더링 | WASM | 3D | 번들 크기 | 성숙도 |
+|------|------|--------|------|-----|----------|--------|
+| **Three.js** | JS | WebGL/WebGPU | ❌ | ✓ | ~1MB | ★★★★★ |
+| **wgpu** | Rust | WebGPU | ✓ | ✓ | ~500KB | ★★★☆☆ |
+| **Bevy** | Rust | wgpu 기반 | ✓ | ✓ | 3.5MB+ | ★★★☆☆ |
+| **CanvasKit** | C++ | WebGL (2D) | ✓ | ❌ | 2.9MB | ★★★★☆ |
+
+#### Three.js (현재 선택)
+
+**장점**:
+- 성숙한 생태계, 풍부한 문서
+- CAD/3D 에디터 사례 다수 (Figma, Spline 등)
+- OrthographicCamera로 2D CAD 충분
+- WebGPU 지원 진행 중
+
+**단점**:
+- JS 오버헤드
+- 대규모 모델 (수십만 vertex) 시 한계 가능
+
+> 참고: [Three.js](https://threejs.org/)
+
+#### wgpu (Rust → WASM) - 장기 고려
+
+**특징**:
+- 순수 Rust WebGPU 구현
+- 네이티브: Vulkan/Metal/DX12, WASM: WebGPU/WebGL2
+- CAD 엔진과 동일 언어 = 통합 WASM 가능
+
+```
+현재:  CAD Engine (Rust/WASM) → scene.json → Three.js (JS)
+통합:  CAD Engine + Renderer (Rust/WASM) → Canvas 직접
+```
+
+**WebGPU 브라우저 지원 (2025)**:
+- Chrome 113+, Edge 113+, Firefox 141+, Safari (macOS Tahoe 26)
+
+> 참고: [wgpu.rs](https://wgpu.rs/), [WebGPU 브라우저 지원](https://web.dev/blog/webgpu-supported-major-browsers)
+
+#### Bevy (Rust 게임 엔진)
+
+**장점**: ECS 아키텍처, 2D 렌더링 2배 빠름
+**단점**: WASM 멀티스레딩 미지원, 번들 3.5MB+, 게임 엔진 오버헤드
+
+> 참고: [Bevy WASM](https://bevy-cheatbook.github.io/platforms/wasm.html)
+
+#### CanvasKit/Skia (2D 전문)
+
+**특징**: Figma가 사용, GPU 가속 2D, SVG/Canvas2D보다 빠름
+**한계**: 3D 미지원 → Phase 4+ 3D 확장 시 부적합
+
+> 참고: [CanvasKit - Skia](https://skia.org/docs/user/modules/canvaskit/)
+
+#### Phase별 권장
+
+| Phase | 권장 | 이유 |
+|-------|------|------|
+| Phase 1-2 | **Three.js** | 검증된 생태계, 빠른 개발 |
+| Phase 3 | 성능 평가 | Three.js 한계 도달 시 wgpu 검토 |
+| Phase 4+ | wgpu 고려 | 통합 아키텍처 (CAD + Renderer 단일 WASM) |
+
+**wgpu 전환 검토 조건**:
+- Three.js 성능 한계 도달 (수십만 vertex)
+- CAD 엔진 + 뷰어 Rust 통합 원할 때
+- WebGPU 브라우저 지원 완전 안정화 시
+
+---
+
 ### Three.js 기반 통합 렌더러
 
 ```typescript
