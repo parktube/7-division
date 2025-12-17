@@ -39,9 +39,9 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
   - [ ] 1.2: ID로 Entity 찾기 로직
   - [ ] 1.3: transform.scale 곱셈 로직
 
-- [ ] **Task 2: 에러 처리** (AC: #3)
+- [ ] **Task 2: 입력 보정** (AC: #3)
   - [ ] 2.1: sx <= 0 또는 sy <= 0 검증
-  - [ ] 2.2: 에러 반환 구현
+  - [ ] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
 
 - [ ] **Task 3: Scene에 통합** (AC: #1, #4)
   - [ ] 3.1: Scene impl에 scale 메서드 추가
@@ -51,7 +51,7 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
   - [ ] 4.1: 기본 scale 테스트 (확대)
   - [ ] 4.2: 축소 scale 테스트
   - [ ] 4.3: 비균일 scale 테스트
-  - [ ] 4.4: 0 이하 scale 에러 테스트
+  - [ ] 4.4: 0 이하 scale 보정 테스트 (abs() 변환 확인)
   - [ ] 4.5: 누적 scale 테스트
 
 ## Dev Notes
@@ -69,26 +69,24 @@ impl Scene {
     ///
     /// # Arguments
     /// * `id` - 대상 Entity의 ID
-    /// * `sx` - x축 스케일 비율 (양수)
-    /// * `sy` - y축 스케일 비율 (양수)
+    /// * `sx` - x축 스케일 비율 (음수/0 → abs()로 보정)
+    /// * `sy` - y축 스케일 비율 (음수/0 → abs()로 보정)
     ///
     /// # Returns
-    /// * 성공 시 Ok(()), 실패 시 Err
-    pub fn scale(&mut self, id: &str, sx: f64, sy: f64) -> Result<(), JsValue> {
-        if sx <= 0.0 || sy <= 0.0 {
-            return Err(JsValue::from_str("Scale values must be positive"));
+    /// * 성공 시 Ok(true), ID 미발견 시 Ok(false)
+    pub fn scale(&mut self, id: &str, sx: f64, sy: f64) -> bool {
+        // 관대한 입력 보정: 음수/0은 abs()로 변환
+        let sx = if sx <= 0.0 { sx.abs().max(0.001) } else { sx };
+        let sy = if sy <= 0.0 { sy.abs().max(0.001) } else { sy };
+
+        if let Some(entity) = self.entities.iter_mut().find(|e| e.id == id) {
+            // 기존 값에 곱셈
+            entity.transform.scale[0] *= sx;
+            entity.transform.scale[1] *= sy;
+            true
+        } else {
+            false  // ID 미발견 시 no-op
         }
-
-        let entity = self.entities
-            .iter_mut()
-            .find(|e| e.id == id)
-            .ok_or_else(|| JsValue::from_str(&format!("Entity not found: {}", id)))?;
-
-        // 기존 값에 곱셈
-        entity.transform.scale[0] *= sx;
-        entity.transform.scale[1] *= sy;
-
-        Ok(())
     }
 }
 ```

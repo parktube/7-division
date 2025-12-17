@@ -29,13 +29,18 @@ So that **MCP 없이 직접 CAD 함수를 호출할 수 있다** (Direct-First A
 
 ## Tasks / Subtasks
 
+- [ ] **Task 0: 환경 준비** (AC: #1, #2) ⚠️ 필수 선행
+  - [ ] 0.1: `rustup update` 실행 (Rust 1.85.0+ 필수, Edition 2024 지원)
+  - [ ] 0.2: `rustc --version` 으로 1.85.0 이상 확인
+  - [ ] 0.3: `wasm-pack --version` 확인 (0.13.1)
+
 - [ ] **Task 1: 프로젝트 구조 생성** (AC: #1)
   - [ ] 1.1: `cad-engine/` 디렉토리 생성
   - [ ] 1.2: `cargo init --lib` 으로 Rust 라이브러리 프로젝트 초기화
   - [ ] 1.3: Rust 2024 Edition 설정 확인 (`edition = "2024"`)
 
 - [ ] **Task 2: Cargo.toml 의존성 설정** (AC: #1, #2)
-  - [ ] 2.1: `wasm-bindgen = "0.2.92"` 추가
+  - [ ] 2.1: `wasm-bindgen = "0.2"` 추가 (최신 버전 유지)
   - [ ] 2.2: `serde = { version = "1.0", features = ["derive"] }` 추가
   - [ ] 2.3: `serde_json = "1.0"` 추가
   - [ ] 2.4: `uuid = { version = "1", features = ["v4", "js"] }` 추가 (getrandom 이슈 회피)
@@ -111,8 +116,10 @@ fn generate_id() -> String {
 |---------|------|------|
 | **Rust** | stable | 1.85.0+ (2024 Edition) |
 | **wasm-pack** | drager fork | 0.13.1 |
-| **wasm-bindgen** | - | 0.2.92 |
+| **wasm-bindgen** | - | 0.2 (최신 유지) |
 | **Node.js** | LTS | 22.x |
+
+> ⚠️ **중요**: Rust 1.85.0 이상 필요 (Edition 2024 지원). `rustup update` 먼저 실행할 것.
 
 ### wasm-bindgen 주의사항
 
@@ -155,7 +162,7 @@ edition = "2024"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = "0.2.92"
+wasm-bindgen = "0.2"  # 최신 버전 유지
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1", features = ["v4", "js"] }

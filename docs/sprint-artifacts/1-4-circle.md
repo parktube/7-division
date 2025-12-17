@@ -40,10 +40,10 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
   - [ ] 1.2: CircleGeometry 생성
   - [ ] 1.3: Entity 추가 및 ID 반환
 
-- [ ] **Task 2: 반지름 검증** (AC: #2)
+- [ ] **Task 2: 반지름 보정** (AC: #2)
   - [ ] 2.1: radius <= 0 검증 로직 추가
-  - [ ] 2.2: 에러 반환 또는 abs() 변환 중 선택
-  - [ ] 2.3: 검증 로직 문서화
+  - [ ] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
+  - [ ] 2.3: 보정 로직 문서화
 
 - [ ] **Task 3: Scene에 통합** (AC: #1, #3, #4)
   - [ ] 3.1: Scene impl에 add_circle 메서드 추가
@@ -51,7 +51,7 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 
 - [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3)
   - [ ] 4.1: 기본 원 생성 테스트
-  - [ ] 4.2: 음수 반지름 에러 테스트
+  - [ ] 4.2: 음수 반지름 보정 테스트 (abs() 변환 확인)
   - [ ] 4.3: 음수 좌표 허용 테스트
 
 ## Dev Notes
@@ -70,14 +70,13 @@ impl Scene {
     /// # Arguments
     /// * `x` - 중심점 x 좌표
     /// * `y` - 중심점 y 좌표
-    /// * `radius` - 반지름 (양수)
+    /// * `radius` - 반지름 (음수/0 → abs()로 보정)
     ///
     /// # Returns
     /// * 생성된 Entity의 ID (문자열)
-    pub fn add_circle(&mut self, x: f64, y: f64, radius: f64) -> Result<String, JsValue> {
-        if radius <= 0.0 {
-            return Err(JsValue::from_str("Radius must be positive"));
-        }
+    pub fn add_circle(&mut self, x: f64, y: f64, radius: f64) -> String {
+        // 관대한 입력 보정: 음수/0은 abs()로 변환
+        let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
         let id = generate_id();
         let entity = Entity {
@@ -93,7 +92,7 @@ impl Scene {
         };
 
         self.entities.push(entity);
-        Ok(id)
+        id
     }
 }
 ```

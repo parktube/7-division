@@ -23,10 +23,11 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 **Then** abs()로 양수 변환되어 정상 생성된다
 **And** (정책: 관대한 입력 보정, docs/architecture.md#Error Handling Policy)
 
-### AC3: 좌하단 원점 기준 (Y-up 좌표계)
-**Given** Y-up 좌표계에서 origin이 좌하단인 경우
+### AC3: Y-up 중심 좌표계
+**Given** 중심 원점 Y-up 좌표계 (CAD 표준)
 **When** add_rect(0, 0, 100, 50) 호출
 **Then** origin(0,0)에서 width=100, height=50인 사각형이 생성된다
+**And** Canvas 2D 뷰어에서는 Y-flip 변환 후 표시 (Story 2.3)
 **And** (정책: docs/architecture.md#Coordinate System Contract)
 
 ### AC4: 시맨틱 함수명 (NFR9)
@@ -41,10 +42,10 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
   - [ ] 1.2: RectGeometry 생성
   - [ ] 1.3: Entity 추가 및 ID 반환
 
-- [ ] **Task 2: 크기 검증** (AC: #2)
+- [ ] **Task 2: 크기 보정** (AC: #2)
   - [ ] 2.1: width <= 0 또는 height <= 0 검증
-  - [ ] 2.2: 에러 반환 또는 abs() 변환 중 선택
-  - [ ] 2.3: 검증 로직 문서화
+  - [ ] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
+  - [ ] 2.3: 보정 로직 문서화
 
 - [ ] **Task 3: Scene에 통합** (AC: #1, #4)
   - [ ] 3.1: Scene impl에 add_rect 메서드 추가
@@ -52,8 +53,8 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 
 - [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3)
   - [ ] 4.1: 기본 사각형 생성 테스트
-  - [ ] 4.2: 음수 크기 에러 테스트
-  - [ ] 4.3: 좌상단 원점 좌표계 테스트
+  - [ ] 4.2: 음수 크기 보정 테스트 (abs() 변환 확인)
+  - [ ] 4.3: Y-up 중심 좌표계 테스트
 
 ## Dev Notes
 
@@ -69,17 +70,17 @@ impl Scene {
     /// 사각형(Rect) 도형을 생성합니다.
     ///
     /// # Arguments
-    /// * `x` - 원점(좌상단) x 좌표
-    /// * `y` - 원점(좌상단) y 좌표
-    /// * `width` - 너비 (양수)
-    /// * `height` - 높이 (양수)
+    /// * `x` - 원점 x 좌표 (Y-up 중심 좌표계)
+    /// * `y` - 원점 y 좌표 (Y-up 중심 좌표계)
+    /// * `width` - 너비 (음수/0 → abs()로 보정)
+    /// * `height` - 높이 (음수/0 → abs()로 보정)
     ///
     /// # Returns
     /// * 생성된 Entity의 ID (문자열)
-    pub fn add_rect(&mut self, x: f64, y: f64, width: f64, height: f64) -> Result<String, JsValue> {
-        if width <= 0.0 || height <= 0.0 {
-            return Err(JsValue::from_str("Width and height must be positive"));
-        }
+    pub fn add_rect(&mut self, x: f64, y: f64, width: f64, height: f64) -> String {
+        // 관대한 입력 보정: 음수/0은 abs()로 변환
+        let width = if width <= 0.0 { width.abs().max(0.001) } else { width };
+        let height = if height <= 0.0 { height.abs().max(0.001) } else { height };
 
         let id = generate_id();
         let entity = Entity {
@@ -96,7 +97,7 @@ impl Scene {
         };
 
         self.entities.push(entity);
-        Ok(id)
+        id
     }
 }
 ```
@@ -122,21 +123,21 @@ pub enum Geometry {
 }
 ```
 
-### 좌표계
+### 좌표계 (Y-up 중심 좌표계)
 
 ```
-   (0,0) ──────────► x
-      │
-      │    ┌────────────┐
-      │    │   Rect     │
-      │    │  (x,y)     │ height
-      │    └────────────┘
-      ▼         width
-      y
+      y ▲
+        │    ┌────────────┐
+        │    │   Rect     │ height
+        │    │  (x,y)     │
+        │    └────────────┘
+        │         width
+  ──────┼──────────────────► x
+        │ (0,0) = 중심
 ```
 
-- origin은 좌상단 기준
-- Canvas 2D 좌표계와 일치 (y축 아래로 증가)
+- CAD 엔진: Y-up 중심 좌표계 (수학적 표준)
+- Canvas 2D 뷰어: Y-flip 변환 필요 (Story 2.3에서 처리)
 
 ### 디렉토리 구조
 

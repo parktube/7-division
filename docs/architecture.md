@@ -16,7 +16,7 @@
 |---------|------|------|------|
 | **CAD Engine** | Rust | 1.85.0+ (stable) | WASM 빌드 |
 | **WASM 빌드** | wasm-pack | 0.13.1 | drager fork |
-| **WASM 바인딩** | wasm-bindgen | 0.2.92 | 안정 버전 |
+| **WASM 바인딩** | wasm-bindgen | 0.2 (최신) | Cargo.toml에서 최신 유지 |
 | **런타임** | Node.js | 22.x LTS | Maintenance LTS |
 | **뷰어** | HTML Canvas 2D | - | 가장 단순 |
 | **빌드 도구** | 없음 (정적 서버) | - | Phase 1 단순화 |
