@@ -233,30 +233,39 @@ cad-engine/  (planned)
 
 ### 2. Browser Viewer
 
+#### Phase 1 (Canvas 2D)
+
+```
+viewer/
+├── index.html          # 정적 HTML
+├── renderer.js         # Canvas 2D 렌더링
+└── scene.json          # WASM 출력 파일
+```
+
+#### Phase 2+ (Three.js → wgpu 진화)
+
 ```
 viewer/  (planned)
 ├── src/
 │   ├── main.ts
 │   ├── renderer/
-│   │   ├── ThreeRenderer.ts
-│   │   └── camera/
-│   │       ├── Orthographic2D.ts
-│   │       └── Perspective3D.ts
+│   │   ├── CanvasRenderer.ts   # Phase 2: Three.js
+│   │   └── WgpuRenderer.ts     # Phase 3: wgpu
 │   ├── loader/
-│   │   └── SceneLoader.ts    # JSON → Three.js
-│   └── selection/            # Phase 3
+│   │   └── SceneLoader.ts
+│   └── selection/              # Phase 3
 │       ├── SelectionManager.ts
 │       └── SelectionEvent.ts
-├── scene.json                # WASM 출력 파일 (여기에 저장)
+├── scene.json
 ├── index.html
 └── package.json
 ```
 
-### 3. Output 경로 전략 (미결정)
+### 3. Output 경로 전략
 
-> Phase 1 구현 시 선택 필요.
+> **결정됨**: 옵션 A (viewer 내부 저장)
 
-#### 옵션 A: viewer 내부 저장 (단순함 우선)
+#### 옵션 A: viewer 내부 저장 ✅ 선택됨
 
 ```
 프로젝트 루트/
@@ -267,9 +276,9 @@ viewer/  (planned)
 ```
 
 **장점**: Polling으로 바로 접근, 별도 설정 불필요
-**단점**: 출력물과 뷰어 코드가 같은 폴더에 섞임
+**선택 이유**: Phase 1은 정적 서버(python -m http.server)만 사용, Vite 미사용
 
-#### 옵션 B: 별도 output 폴더
+#### 옵션 B: 별도 output 폴더 (Phase 2+ 고려)
 
 ```
 프로젝트 루트/
@@ -280,7 +289,7 @@ viewer/  (planned)
 ```
 
 **장점**: 관심사 분리 명확
-**단점**: Vite 사용 시 `server.fs.allow` 설정 필요, 경로 관리 복잡
+**Phase 2에서 검토**: Vite/번들러 도입 시 재평가
 
 ---
 
@@ -291,9 +300,9 @@ viewer/  (planned)
 ```
 1. User → Claude Code: "사람 스켈레톤을 그려줘"
 2. Claude Code → WASM: cad.add_circle(), cad.add_line() 등
-3. WASM → File: scene.json (Three.js용)
+3. WASM → File: scene.json
 4. File → Browser: Polling (500ms)
-5. Browser → User: Three.js 렌더링
+5. Browser → User: Canvas 2D 렌더링
 ```
 
 ### Phase 2: 도메인 확장 (여전히 말하기만)
@@ -478,7 +487,7 @@ const rightArm = scene.add_line(new Float64Array([30, 60, 0, 70]));
 const leftLeg = scene.add_line(new Float64Array([-15, 0, 0, 20]));
 const rightLeg = scene.add_line(new Float64Array([15, 0, 0, 20]));
 
-// JSON 출력 (Three.js 렌더링용)
+// JSON 출력 (Canvas 2D 렌더링용)
 const json = scene.export_json();
 fs.writeFileSync('scene.json', json);
 
@@ -515,6 +524,122 @@ impl Serializer for SvgSerializer { ... }
 impl Serializer for DxfSerializer { ... }
 impl Serializer for StlSerializer { ... }  // Phase 4 (필수)
 // impl Serializer for StepSerializer { ... }  // Phase 4 (옵션, 추후)
+```
+
+---
+
+## Coordinate System Contract
+
+> **단일 소스**: 모든 좌표계 관련 결정의 기준점
+
+### 월드 좌표계 (CAD Engine 내부)
+
+| 속성 | 값 | 이유 |
+|------|-----|------|
+| **Y축 방향** | Y-up (양수가 위) | wgpu NDC와 일치, 수학적 직관 |
+| **원점** | (0, 0) = 화면 중앙 | 대칭 도형 작업 용이 |
+| **단위** | 픽셀 (Phase 1) | 단순화 |
+
+### 회전 규칙
+
+| 속성 | 값 | 비고 |
+|------|-----|------|
+| **단위** | 라디안 | `std::f64::consts::PI` 사용 |
+| **양수 방향** | 반시계방향 (CCW) | 수학적 표준, Y-up에서 직관적 |
+| **피벗** | 도형 원점 기준 | translate로 피벗 보정 가능 |
+
+```
+    +Y (위)
+     │
+     │  ↺ 양수 회전 (CCW)
+     │
+─────┼────── +X (오른쪽)
+     │
+     │
+```
+
+### Rect origin 규칙
+
+| 속성 | 값 | 비고 |
+|------|-----|------|
+| **origin** | 좌하단 (left-bottom) | Y-up 좌표계와 일관 |
+| **width** | +X 방향으로 확장 | |
+| **height** | +Y 방향으로 확장 | |
+
+```
+       (x, y+h) ───── (x+w, y+h)
+           │             │
+           │             │
+       (x, y) ─────── (x+w, y)  ← origin
+```
+
+### 렌더러별 좌표 변환
+
+| 렌더러 | 좌표계 | 변환 방법 |
+|--------|--------|----------|
+| **Canvas 2D** | Y-down | `ctx.scale(1, -1)` + translate |
+| **SVG** | Y-down | `<g transform="scale(1,-1)">` |
+| **wgpu** | Y-up (NDC) | 변환 불필요 |
+
+### 피벗 보정 가이드 (AI용)
+
+"팔을 돌려줘" 같은 요청에서 피벗 문제 해결:
+
+```javascript
+// 어깨(pivot)를 기준으로 팔 회전
+const pivot = [0, 70];  // 어깨 좌표
+scene.translate(armId, -pivot[0], -pivot[1]);  // 피벗을 원점으로
+scene.rotate(armId, Math.PI / 4);               // 회전
+scene.translate(armId, pivot[0], pivot[1]);     // 원위치
+```
+
+---
+
+## Error Handling Policy
+
+> **원칙**: AI가 예측 가능하게 동작하고, 디버깅이 쉬운 에러 처리
+
+### 함수군별 에러 처리
+
+| 함수군 | 동작 | 반환 타입 | 이유 |
+|--------|------|----------|------|
+| **add_*** | 입력 보정 후 생성 | `Result<String, JsValue>` | 관대한 입력, ID 반환 |
+| **transform** | ID 미발견 시 no-op | `Result<bool, JsValue>` | false=미발견, 체이닝 용이 |
+| **delete** | ID 미발견 시 no-op | `Result<bool, JsValue>` | false=미발견 |
+| **export_*** | 항상 성공 | `String` | 빈 Scene도 유효한 출력 |
+
+### 입력 보정 규칙
+
+| 케이스 | 보정 방법 | 예시 |
+|--------|----------|------|
+| **음수 radius** | `abs()` 변환 | `-10` → `10` |
+| **음수 width/height** | `abs()` 변환 | `-5` → `5` |
+| **0 이하 scale** | `max(0.001, abs(v))` | `0` → `0.001` |
+| **홀수 좌표 (Line)** | 마지막 좌표 무시 | `[0,0,1,1,2]` → `[0,0,1,1]` |
+| **좌표 2개 미만 (Line)** | 에러 반환 | `Err("최소 2개 좌표 필요")` |
+
+### 에러 메시지 형식
+
+```rust
+// 디버깅 용이한 에러 메시지
+Err(JsValue::from_str(&format!(
+    "[{}] {}: {}",
+    function_name,  // "add_line"
+    error_type,     // "invalid_input"
+    detail          // "최소 2개 좌표 필요"
+)))
+```
+
+### AI 호출 패턴 가이드
+
+```javascript
+// 체이닝 가능한 패턴 (transform이 false 반환해도 계속 진행)
+const moved = scene.translate(id, 10, 0);
+const rotated = scene.rotate(id, Math.PI/4);
+const scaled = scene.scale(id, 2, 2);
+
+// 결과 확인 (선택적)
+if (!moved) console.log(`${id} not found, skipped translate`);
 ```
 
 ---
