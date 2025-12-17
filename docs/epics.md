@@ -25,6 +25,10 @@ FR1: Rust CAD 엔진을 WASM으로 빌드하여 Node.js에서 직접 로드/실�
 FR2: 기초 도형 `line(points)` - 두 점 사이의 선분을 생성할 수 있어야 한다
 FR3: 기초 도형 `circle(x, y, radius)` - 중심점과 반지름으로 원을 생성할 수 있어야 한다
 FR4: 기초 도형 `rect(x, y, width, height)` - 원점, 너비, 높이로 사각형을 생성할 수 있어야 한다
+FR17: Style 데이터 구조 - stroke(width, color, dash, cap, join)와 fill(color)을 정의할 수 있어야 한다
+FR18: 스타일 적용 도형 생성 - draw_*(geometry, style)로 스타일이 적용된 도형을 생성할 수 있어야 한다
+FR19: 스타일 수정 - set_stroke/set_fill로 기존 도형의 스타일을 변경할 수 있어야 한다
+FR20: 기초 도형 `arc(cx, cy, radius, start_angle, end_angle)` - 호를 생성할 수 있어야 한다
 FR5: 변환 `translate(id, dx, dy)` - 엔티티를 지정된 거리만큼 이동시킬 수 있어야 한다
 FR6: 변환 `rotate(id, angle)` - 엔티티를 지정된 각도만큼 회전시킬 수 있어야 한다
 FR7: 변환 `scale(id, sx, sy)` - 엔티티를 지정된 비율로 확대/축소할 수 있어야 한다
@@ -387,6 +391,134 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 - origin은 좌하단 기준 (Y-up 좌표계)
 
 **Requirements Fulfilled:** FR4
+
+---
+
+## Story 1.6: Arc 도형 생성 기능
+
+> **재정렬 사유**: Arc는 Line(1.3), Circle(1.4), Rect(1.5)와 같은 기초 도형(Primitive)입니다.
+> Style 시스템(1.7~1.9)보다 먼저 정의되어야 합니다.
+
+As a **AI 에이전트 (Claude Code)**,
+I want **호(arc)를 생성할 수 있도록**,
+So that **스켈레톤의 곡선 팔, 관절 회전 표시 등을 표현할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene 인스턴스가 존재
+**When** `scene.add_arc(cx, cy, radius, start_angle, end_angle)` 호출
+**Then** Arc 타입의 Entity가 생성된다
+**And** geometry에 center, radius, start_angle, end_angle이 저장된다
+
+**Given** radius가 0 이하인 경우
+**When** add_arc 호출
+**Then** abs()로 양수 변환되어 정상 생성된다 (관대한 입력 보정)
+
+**Given** Scene 인스턴스가 존재
+**When** `scene.draw_arc(cx, cy, radius, start_angle, end_angle, style_json)` 호출
+**Then** 스타일이 적용된 Arc가 생성된다
+
+**Technical Notes:**
+- 각도 단위: 라디안
+- 양수 각도 = 반시계방향 (CCW, Y-up 좌표계)
+- PRD에 정의됨: `arc(radius, startAngle, endAngle)`
+
+**Requirements Fulfilled:** FR20
+
+**Details:** [docs/sprint-artifacts/1-6-arc.md](./sprint-artifacts/1-6-arc.md)
+
+---
+
+## Story 1.7: Style 데이터 구조 정의
+
+> **설계 결정**: Style은 Renderer가 아닌 Entity에 포함됩니다.
+> - 이유: 도면 출력(DXF, SVG, PDF)시 스타일 정보가 필요
+> - 3D 확장 시 Material Reference로 발전 가능
+
+As a **AI 에이전트 (Claude Code)**,
+I want **도형의 선(stroke)과 면(fill) 스타일을 정의하는 데이터 구조가 있도록**,
+So that **"빨간 원", "파란 점선" 같은 스타일이 적용된 도형을 생성할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** CAD 엔진 개발 중
+**When** Style 구조체를 정의할 때
+**Then** StrokeStyle (width, color, dash, cap, join)이 포함된다
+**And** FillStyle (color)이 포함된다
+**And** Style은 stroke와 fill을 Option으로 갖는다
+
+**Given** Style 구조체
+**When** `Style::default()` 호출
+**Then** stroke: 검은색 1px, fill: None으로 설정된다 (기존 호환)
+
+**Technical Notes:**
+- LineCap: Butt, Round, Square
+- LineJoin: Miter, Round, Bevel
+- color: [f64; 4] - RGBA (0.0-1.0)
+
+**Requirements Fulfilled:** FR17
+
+**Details:** [docs/sprint-artifacts/1-7-style-system.md](./sprint-artifacts/1-7-style-system.md)
+
+---
+
+## Story 1.8: 도형 생성 시 Style 적용
+
+As a **AI 에이전트 (Claude Code)**,
+I want **도형 생성 시 스타일을 함께 지정할 수 있도록**,
+So that **"빨간 테두리의 파란 원" 같은 요청을 한 번의 호출로 처리할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene 인스턴스가 존재
+**When** `scene.draw_circle(x, y, radius, style_json)` 호출
+**Then** 스타일이 적용된 Circle Entity가 생성된다
+
+**Given** 잘못된 style_json이 주어진 경우
+**When** draw_* 함수 호출
+**Then** 기본 스타일로 대체되어 생성된다 (관대한 입력 보정)
+
+**Given** 기존 add_* 함수 사용 시
+**When** add_circle(x, y, radius) 호출
+**Then** 기본 스타일로 생성된다 (하위 호환)
+
+**Technical Notes:**
+- draw_circle, draw_line, draw_rect, draw_arc 추가
+- 기존 add_* 함수는 유지 (하위 호환)
+
+**Requirements Fulfilled:** FR18
+
+**Details:** [docs/sprint-artifacts/1-8-styled-shape-creation.md](./sprint-artifacts/1-8-styled-shape-creation.md)
+
+---
+
+## Story 1.9: 스타일 수정 Action 함수
+
+As a **AI 에이전트 (Claude Code)**,
+I want **기존 도형의 스타일을 변경할 수 있도록**,
+So that **"이 원을 빨간색으로 바꿔줘" 같은 수정 요청을 처리할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene에 Entity가 존재
+**When** `scene.set_stroke(id, stroke_json)` 호출
+**Then** 해당 Entity의 stroke가 업데이트된다
+
+**Given** Scene에 Entity가 존재
+**When** `scene.set_fill(id, fill_json)` 호출
+**Then** 해당 Entity의 fill이 업데이트된다
+
+**Given** 존재하지 않는 ID
+**When** set_stroke/set_fill 호출
+**Then** Ok(false) 반환하고 무시된다 (ID 미발견 시 no-op)
+
+**Technical Notes:**
+- set_stroke, set_fill, remove_stroke, remove_fill 함수
+- 부분 업데이트 지원 (color만 변경 등)
+
+**Requirements Fulfilled:** FR19
+
+**Details:** [docs/sprint-artifacts/1-9-style-modification.md](./sprint-artifacts/1-9-style-modification.md)
 
 ---
 
