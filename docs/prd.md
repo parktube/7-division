@@ -19,7 +19,7 @@ date: '2025-12-14'
 # Product Requirements Document - AI-Native CAD
 
 **Author:** Hoons
-**Date:** 2025-12-16 (Updated)
+**Date:** 2025-12-17 (Updated)
 
 ---
 
@@ -133,20 +133,25 @@ interface DesignHints {
 ```
 Claude Code CLI (Node.js)
     ↓ WASM 직접 로드 & 실행
-Rust CAD 엔진 + wgpu 렌더러 (통합 WASM)
-    ↓ Canvas 직접 렌더링 (또는 scene.json → Three.js fallback)
-브라우저 뷰어
+Rust CAD 엔진
+    ↓ scene.json 출력
+브라우저 뷰어 (Phase 1: Canvas 2D / Phase 2+: Three.js)
 ```
 
-### 뷰어 전략
+### 뷰어 전략 (점진적 도입)
 
-> **권장: wgpu** - CAD 엔진과 렌더러를 단일 Rust/WASM으로 통합
-> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택-고려사항))
+> Phase별 점진적 복잡도 증가 - 빠른 검증 우선
+> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택-phase별-점진적-도입))
 
-- **2D**: OrthographicCamera + z=0 평면
-- **3D**: PerspectiveCamera + orbit controls
-- **전환**: 카메라 교체만으로 geometry 유지
-- **Fallback**: Three.js (wgpu 블로커 발생 시)
+| Phase | 렌더러 | 이유 |
+|-------|--------|------|
+| **Phase 1** | HTML Canvas 2D | 가장 단순, 빠른 검증 |
+| **Phase 2** | Three.js | 3D 준비, 마이그레이션 비용 감수 |
+| **Phase 3+** | wgpu (검토) | 성능 필요 시 도입 |
+
+- **Phase 1**: Canvas 2D로 2D 도형 렌더링 (line, circle, rect)
+- **Phase 2**: Three.js로 마이그레이션 (3D 준비)
+- **Phase 3+**: 성능 병목 시 wgpu 검토
 
 ### CAD 엔진 (Rust → WASM)
 
@@ -206,9 +211,9 @@ Rust CAD 엔진 + wgpu 렌더러 (통합 WASM)
 
 - 기초 도형: `line`, `circle`, `rect`
 - 변환: `translate`, `rotate`, `scale`, `delete`
-- 출력: scene.json (Three.js용) + SVG export
+- 출력: scene.json + SVG export
 - Claude Code 직접 실행
-- Three.js 뷰어 (polling 방식)
+- **Canvas 2D 뷰어** (polling 방식) - 가장 단순하게 시작
 
 **검증 시나리오**: "사람 스켈레톤을 그려줘"
 
@@ -220,6 +225,7 @@ Rust CAD 엔진 + wgpu 렌더러 (통합 WASM)
 - 더 복잡한 요청: "팔을 구부린 포즈로", "걷는 자세로"
 - ActionHints 동작 확인
 - 검증 UI 프로토타입
+- **Three.js로 뷰어 마이그레이션** (3D 준비)
 
 ### Phase 3: Selection UI + 실사용 테스트
 
@@ -290,14 +296,14 @@ Rust CAD 엔진 + wgpu 렌더러 (통합 WASM)
     ↓
 Claude Code: WASM 엔진 호출 → scene.json 생성
     ↓
-브라우저: Three.js 렌더링 (polling으로 갱신)
+브라우저: Canvas 2D 렌더링 (polling으로 갱신)
     ↓
 사용자: 결과 확인 → "팔을 더 길게"
     ↓
 Claude Code: translate/scale 적용 → scene.json 업데이트
 ```
 
-### Phase 2: 도메인 확장 (여전히 말하기만)
+### Phase 2: 도메인 확장 (Three.js 도입)
 
 ```
 사용자: "팔을 구부린 포즈로 바꿔줘"
@@ -306,7 +312,7 @@ Claude Code: 그룹화된 엔티티 인식 → 관절 기준 회전 계산
     ↓
 WASM: rotate + translate 조합 적용 → scene.json 업데이트
     ↓
-브라우저: Three.js 렌더링 갱신
+브라우저: Three.js 렌더링 갱신 (3D 준비 완료)
     ↓
 Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
 ```
@@ -428,7 +434,7 @@ Entity
 - [ ] 변환 4종: `translate`, `rotate`, `scale`, `delete`
 - [ ] scene.json 출력 정상 동작
 - [ ] Claude Code에서 WASM 직접 호출 성공
-- [ ] Three.js 뷰어에서 scene.json 렌더링 (polling)
+- [ ] Canvas 2D 뷰어에서 scene.json 렌더링 (polling)
 
 ### 검증 시나리오 통과
 

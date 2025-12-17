@@ -1,14 +1,28 @@
 # Architecture Document - AI-Native CAD
 
 **Author:** Hoons
-**Date:** 2025-12-16 (Updated)
+**Date:** 2025-12-17 (Updated)
 
 ---
 
-## Tech Stack (미결정)
+## Tech Stack (Phase 1 확정)
 
-> Phase 1 착수 전 팀 합의 필요. 각 기술별 옵션과 트레이드오프 정리.
-> **최종 업데이트: 2025-12-16** (웹 리서치 기반, Electron 결정, WASM 성능/메모리 섹션 추가)
+> **최종 업데이트: 2025-12-17** - Phase 1 기준 기술 스택 확정
+> Phase 2 이후 마이그레이션은 별도 검토
+
+### Phase 1 Tech Stack Summary
+
+| 컴포넌트 | 기술 | 버전 | 비고 |
+|---------|------|------|------|
+| **CAD Engine** | Rust | 1.85.0+ (stable) | WASM 빌드 |
+| **WASM 빌드** | wasm-pack | 0.13.1 | drager fork |
+| **WASM 바인딩** | wasm-bindgen | 0.2.92 | 안정 버전 |
+| **런타임** | Node.js | 22.x LTS | Maintenance LTS |
+| **뷰어** | HTML Canvas 2D | - | 가장 단순 |
+| **빌드 도구** | 없음 (정적 서버) | - | Phase 1 단순화 |
+| **테스트** | Vitest | 3.x | 또는 Jest |
+
+---
 
 ### CAD Engine
 
@@ -16,9 +30,10 @@
 
 | 옵션 | 버전 | 장점 | 단점 |
 |------|------|------|------|
-| A | 1.85.0 | Rust 2024 Edition 첫 버전, 안정성 | 최신 기능 일부 없음 |
-| B | 1.92.0 | **현재 최신 stable**, 모든 최신 기능 | 일부 환경에서 업데이트 필요 |
+| ~~A~~ | ~~1.85.0~~ | Rust 2024 Edition 첫 버전, 안정성 | 최신 기능 일부 없음 |
+| **B ✓** | **1.85.0+ (stable)** | Rust 2024 Edition, 안정성 | - |
 
+> **결정**: 1.85.0 이상 stable 사용 (2024 Edition 기준)
 > 참고: [Rust Releases](https://releases.rs/)
 
 #### WASM 빌드 도구
@@ -29,21 +44,22 @@
 
 | 옵션 | 도구 | 장점 | 단점 |
 |------|------|------|------|
-| A | wasm-pack 0.13.1 ([drager fork](https://github.com/drager/wasm-pack)) | 기존 방식, 문서 풍부, 원클릭 빌드 | 장기 유지보수 불확실 |
+| **A ✓** | **wasm-pack 0.13.1** ([drager fork](https://github.com/drager/wasm-pack)) | 기존 방식, 문서 풍부, 원클릭 빌드 | 장기 유지보수 불확실 |
 | B | 직접 빌드 (cargo + wasm-bindgen CLI + wasm-opt) | 의존성 최소화, 투명함 | 수동 설정 필요, 빌드 스크립트 작성 |
-| C | [Trunk](https://trunkrs.dev/) | 자동 도구 관리, 풀스택 지원 | 웹앱 번들러 용도 (Node.js 타겟에 부적합) |
+| ~~C~~ | ~~Trunk~~ | ~~자동 도구 관리~~ | Node.js 타겟에 부적합 |
 
-**Phase 1 권장**: 옵션 A (wasm-pack) - 빠른 시작, 검증된 방식
-**장기 고려**: 옵션 B (직접 빌드) - wasm-pack 의존성 제거
-
+> **결정**: 옵션 A (wasm-pack) - 빠른 시작
+> **장기 고려**: 옵션 B (직접 빌드) - wasm-pack 이슈 발생 시 전환
 > 참고: [Life after wasm-pack](https://nickb.dev/blog/life-after-wasm-pack-an-opinionated-deconstruction/)
 
 #### wasm-bindgen 버전
 
 | 옵션 | 버전 | 장점 | 단점 |
 |------|------|------|------|
-| A | 0.2.92 | 안정, 240M+ 다운로드 검증 | - |
+| **A ✓** | **0.2.92** | 안정, 240M+ 다운로드 검증 | - |
 | B | 0.2.99+ | 최신 버그 수정 | 새 버전이라 이슈 가능성 |
+
+> **결정**: 0.2.92 - 안정성 우선
 
 #### 기타 Rust 크레이트
 
@@ -54,7 +70,7 @@
 
 ---
 
-### Viewer
+### Viewer / Runtime
 
 #### Node.js 버전
 
@@ -63,20 +79,31 @@
 | 옵션 | 버전 | 장점 | 단점 |
 |------|------|------|------|
 | A | 20.19.x (Maintenance LTS) | Vite 7 최소 요구사항 충족 | 2027년 4월까지만 지원 |
-| B | 22.x (Maintenance LTS) | Vite 7/8 호환, 더 긴 지원 | 일부 환경 업그레이드 필요 |
-| C | 24.x (Active LTS) | **현재 Active LTS**, 2028년 4월까지 지원 | 가장 최신, 일부 패키지 호환성 이슈 가능 |
+| **B ✓** | **22.x (Maintenance LTS)** | Vite 7/8 호환, 더 긴 지원 | - |
+| C | 24.x (Active LTS) | 현재 Active LTS | 일부 패키지 호환성 이슈 가능 |
 
+> **결정**: 22.x LTS - 안정성과 지원 기간 균형
 > 참고: [Node.js Releases](https://nodejs.org/en/about/previous-releases)
 
-#### Three.js 버전
+#### Phase 1 뷰어: HTML Canvas 2D
+
+> Phase 1에서는 별도 라이브러리 없이 브라우저 내장 Canvas 2D API 사용
+
+| 옵션 | 기술 | 장점 | 단점 |
+|------|------|------|------|
+| **✓** | **HTML Canvas 2D** | 가장 단순, 의존성 없음, 100% 호환 | 3D 미지원 |
+
+> **결정**: Canvas 2D - Phase 1 단순화
+
+#### Phase 2+ 뷰어: Three.js (참고)
 
 | 옵션 | 버전 | 장점 | 단점 |
 |------|------|------|------|
 | A | r175 | 안정성 검증됨 | 몇 달 전 버전 |
 | B | r182 | **현재 최신** (2025-12-11 릴리즈) | 최신이라 이슈 가능성 |
 
+> Phase 2 착수 시 결정 (Phase 1에서는 불필요)
 > 참고: [Three.js Releases](https://github.com/mrdoob/three.js/releases)
-> 팁: 업데이트 시 10 릴리즈 단위로 점진적 업그레이드 권장 (deprecation 주기)
 
 #### 빌드 도구 (Vite)
 
@@ -84,10 +111,12 @@
 
 | 옵션 | 버전 | 장점 | 단점 |
 |------|------|------|------|
-| A | 사용 안 함 | 단순함, 정적 서버로 충분 (Polling 시) | HMR 불가, 번들링 직접 구성 |
-| B | 7.2.x | **현재 stable**, Node 20.19+ 또는 22.12+ | Node 18 미지원 |
-| C | 8.x Beta | Rolldown 기반, 빌드 속도 혁신 | Beta 상태, 프로덕션 비권장 |
+| **A ✓** | **사용 안 함** | 단순함, 정적 서버로 충분 | HMR 불가 |
+| B | 7.2.x | 현재 stable | Phase 1에서는 과잉 |
+| C | 8.x Beta | Rolldown 기반 | Beta 상태 |
 
+> **결정**: Phase 1에서는 Vite 미사용 - 정적 HTML + polling으로 충분
+> Phase 2+에서 Vite 7.x 도입 검토
 > 참고: [Vite Releases](https://vite.dev/releases)
 
 #### TypeScript 버전
@@ -95,14 +124,18 @@
 | 옵션 | 버전 | 장점 | 단점 |
 |------|------|------|------|
 | A | 5.5.x | 안정, 널리 사용 | 최신 기능 없음 |
-| B | 5.7.x | 최신, 타입 추론 개선 | 일부 breaking changes |
+| **B ✓** | **5.7.x** | 최신, 타입 추론 개선 | - |
+
+> **결정**: 5.7.x - 최신 기능 활용 (Phase 1 뷰어는 JS로 단순 구현)
 
 #### 테스트 프레임워크
 
 | 옵션 | 도구 | 장점 | 단점 |
 |------|------|------|------|
-| A | Vitest 3.x | Vite 네이티브 통합 | Vite 필요 |
-| B | Jest 29.x | 널리 사용, 독립적 | Vite 없이도 동작, 설정 복잡 |
+| **A ✓** | **Vitest 3.x** | 빠름, 현대적 | - |
+| B | Jest 29.x | 널리 사용 | 설정 복잡 |
+
+> **결정**: Vitest 3.x - Vite 없이도 사용 가능, 빠른 실행
 
 ---
 
@@ -148,15 +181,15 @@
 │                        │   - output.svg (옵션)   │     │
 │                        └───────────┬─────────────┘     │
 └────────────────────────────────────┼────────────────────┘
-                                     │ Polling (Phase 1-2)
+                                     │ Polling
                                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │                    Browser Viewer                        │
-│                     (Three.js)                          │
+│          (Phase 1: Canvas 2D / Phase 2+: Three.js)      │
 ├─────────────────────────────────────────────────────────┤
 │    ┌─────────────┐     ┌─────────────────────────┐     │
 │    │   Renderer  │     │   Selection UI          │     │
-│    │   (2D/3D)   │     │   (Phase 3)             │     │
+│    │   (2D)      │     │   (Phase 3)             │     │
 │    └─────────────┘     └─────────────────────────┘     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -488,13 +521,97 @@ impl Serializer for StlSerializer { ... }  // Phase 4 (필수)
 
 ## Viewer Architecture
 
-### 렌더링 기술 선택 (고려사항)
+### 렌더링 기술 선택 (Phase별 점진적 도입)
 
-> **리서치 기반 (2025-12-16)**: Three.js vs wgpu 상세 비교
+> **리서치 기반 (2025-12-16)**: Phase별 점진적 복잡도 증가 전략
 >
-> **권장: wgpu** - 통합 아키텍처의 장기 이점이 초기 구현 비용을 상회
+> **Phase 1: HTML Canvas 2D (JS)** - 개념 검증에 집중, 구현 부담 최소화
+> **Phase 2: Three.js** - 3D 준비, 마이그레이션 비용 감수
+> **Phase 3+: wgpu 검토** - 성능 필요 시 도입
 
-#### Three.js vs wgpu 비교
+#### Phase별 렌더러 전략
+
+| Phase | 렌더러 | 이유 | 트레이드오프 |
+|-------|--------|------|-------------|
+| **Phase 1** | HTML Canvas 2D | 가장 단순, 빠른 검증 | 3D 미지원 |
+| **Phase 2** | Three.js | 3D 준비, 성숙한 생태계 | JSON 변환 오버헤드 |
+| **Phase 3+** | wgpu (검토) | 성능 최적화 필요 시 | 구현 비용 높음 |
+
+#### Phase 1: HTML Canvas 2D (권장)
+
+```
+┌──────────────┐    JSON     ┌──────────────┐
+│ CAD Engine   │ ──────────▶ │  Canvas 2D   │
+│ (Rust/WASM)  │   파일 I/O   │  (JS)        │
+└──────────────┘             └──────────────┘
+     ✓ 가장 단순, 구현 1일
+     ✓ 브라우저 100% 호환
+     ✓ 디버깅 용이
+     ✗ 3D 미지원 (Phase 1에서는 불필요)
+```
+
+**구현 예시 (Phase 1)**:
+```javascript
+// viewer/src/renderer.js
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+function render(scene) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const entity of scene.entities) {
+    switch (entity.type) {
+      case 'circle':
+        ctx.beginPath();
+        ctx.arc(entity.geometry.center[0], entity.geometry.center[1],
+                entity.geometry.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        break;
+      case 'line':
+        ctx.beginPath();
+        ctx.moveTo(entity.geometry.points[0][0], entity.geometry.points[0][1]);
+        for (const p of entity.geometry.points.slice(1)) {
+          ctx.lineTo(p[0], p[1]);
+        }
+        ctx.stroke();
+        break;
+      case 'rect':
+        ctx.strokeRect(entity.geometry.origin[0], entity.geometry.origin[1],
+                       entity.geometry.width, entity.geometry.height);
+        break;
+    }
+  }
+}
+```
+
+#### Phase 2+: Three.js
+
+```
+┌──────────────┐    JSON     ┌──────────────┐
+│ CAD Engine   │ ──────────▶ │  Three.js    │
+│ (Rust/WASM)  │   파일 I/O   │  (JS)        │
+└──────────────┘             └──────────────┘
+     ✓ 3D 준비 완료
+     ✓ 풍부한 생태계
+     ⚠️ 두 개의 런타임
+```
+
+#### Phase 3+: wgpu (옵션)
+
+성능 병목이 발생하거나 대규모 모델 처리가 필요할 때 검토:
+
+```
+┌─────────────────────────────────────────┐
+│      CAD Engine + Renderer              │
+│           (Rust/WASM)                   │
+│                                         │
+│   Geometry ──▶ GPU Buffer ──▶ Render    │
+└─────────────────────────────────────────┘
+     ✓ 단일 런타임, 직접 GPU 접근
+     ✓ 최고 성능
+     ✗ 구현 비용 높음
+```
+
+#### Three.js vs wgpu 비교 (참고)
 
 | 항목 | Three.js | wgpu |
 |------|----------|------|
@@ -504,28 +621,8 @@ impl Serializer for StlSerializer { ... }  // Phase 4 (필수)
 | **2D 지원** | ✓ OrthographicCamera | ✓ 직접 구현 |
 | **3D 지원** | ✓ PerspectiveCamera | ✓ 직접 구현 |
 | **번들 크기** | ~1MB (JS) | ~500KB (WASM) |
-| **네이티브 성능** | ❌ JS 오버헤드 | ✓ Rust |
-| **타입 안전성** | ⚠️ TypeScript | ✓ Rust 컴파일 타임 |
-
-#### 아키텍처 비교
-
-```
-Three.js 방식:
-┌──────────────┐    JSON     ┌──────────────┐
-│ CAD Engine   │ ──────────▶ │  Three.js    │
-│ (Rust/WASM)  │   파일 I/O   │  (JS)        │
-└──────────────┘             └──────────────┘
-     ✗ 두 개의 런타임, 데이터 변환 오버헤드
-
-wgpu 방식:
-┌─────────────────────────────────────────┐
-│      CAD Engine + Renderer              │
-│           (Rust/WASM)                   │
-│                                         │
-│   Geometry ──▶ GPU Buffer ──▶ Render    │
-└─────────────────────────────────────────┘
-     ✓ 단일 런타임, 직접 GPU 접근
-```
+| **구현 난이도** | 낮음 | 높음 |
+| **생태계 성숙도** | 높음 | 중간 (활발히 발전 중) |
 
 #### wgpu 구현 가능성
 
@@ -610,24 +707,33 @@ glyphon = "0.9"     # 안정적
 | Arc | 각도 기반 정점 생성 | 중간 |
 | Bezier | lyon tessellation | 중간 (라이브러리 활용) |
 
-#### Phase별 권장
+#### Phase별 권장 (점진적 도입)
 
 | Phase | 렌더러 | 이유 |
 |-------|--------|------|
-| **Phase 1** | wgpu (2D) | 통합 아키텍처 시작, 참조 소스 충분 |
-| **Phase 2** | wgpu (2D 확장) | 그룹화, 레이어 추가 |
-| **Phase 3** | wgpu (2D + 3D) | 카메라 전환으로 3D 확장 |
-| **Phase 4+** | wgpu (최적화) | 성능 튜닝, 대규모 모델 |
+| **Phase 1** | HTML Canvas 2D | 가장 단순, 빠른 개념 검증 |
+| **Phase 2** | Three.js | 3D 준비, 마이그레이션 비용 감수 |
+| **Phase 3** | Three.js (또는 wgpu 검토) | 성능 필요 시 wgpu 도입 |
+| **Phase 4+** | wgpu (필요 시) | 대규모 모델, 성능 최적화 |
 
-#### Fallback 옵션: Three.js
+#### 마이그레이션 비용 허용
 
-wgpu 구현 중 예상치 못한 블로커 발생 시:
+Phase 1 → Phase 2 마이그레이션:
+- Canvas 2D → Three.js로 렌더러 교체
+- scene.json 포맷은 동일 유지
+- CAD 엔진 변경 없음
 
-- WebGPU 브라우저 호환성 이슈
-- WASM 디버깅 난항
-- 일정 압박
+> **의도적 선택**: Phase 1에서 빠르게 검증하고, Phase 2에서 마이그레이션 비용을 감수하는 것이
+> 처음부터 wgpu를 구현하는 것보다 전체 일정에 유리
 
-→ Three.js로 전환 가능 (CAD 엔진 코드는 그대로 유지)
+#### wgpu 도입 시점 (Phase 3+)
+
+wgpu를 검토해야 하는 신호:
+- Three.js에서 렌더링 병목 발생
+- 대규모 모델 (수만 개 도형) 처리 필요
+- CAD 엔진과 렌더러 간 JSON 변환 오버헤드 문제
+
+→ Phase 3 이후 성능 프로파일링 결과에 따라 결정
 
 #### 기타 옵션 (참고)
 
@@ -639,7 +745,9 @@ wgpu 구현 중 예상치 못한 블로커 발생 시:
 
 ---
 
-### wgpu 기반 통합 렌더러 (목표 구조)
+### wgpu 기반 통합 렌더러 (Phase 3+ 옵션)
+
+> **참고**: Phase 3 이후 성능 요구사항에 따라 검토. Phase 1-2에서는 사용하지 않음.
 
 ```rust
 // renderer/src/lib.rs
@@ -674,9 +782,10 @@ impl CADRenderer {
 
 ### 뷰어 갱신 전략
 
-> wgpu 통합 시 JSON 파일 polling 불필요 → 직접 렌더링
+> Phase 1-2: JSON 파일 polling 방식
+> Phase 3+: wgpu 통합 시 직접 렌더링 가능
 
-#### 통합 아키텍처 (wgpu)
+#### Phase 1-2: JSON + Polling (기본)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -686,23 +795,37 @@ impl CADRenderer {
 │  1. Claude Code가 CAD Engine 함수 호출                          │
 │     scene.add_circle(0, 0, 10);                                 │
 │                                                                 │
-│  2. Rust 엔진이 Scene 상태 업데이트 + 렌더링                     │
-│     (WASM 내부에서 직접 처리)                                    │
+│  2. WASM이 scene.json 파일 출력                                  │
 │                                                                 │
-│  3. wgpu가 Canvas에 즉시 반영                                    │
-│     (파일 I/O 없음, ~1ms)                                       │
+│  3. 브라우저가 polling으로 갱신 (500ms 간격)                     │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Fallback: JSON + Polling (Three.js 사용 시)
-
-```typescript
-// Three.js fallback 시에만 사용
+```javascript
+// Phase 1: Canvas 2D
 setInterval(async () => {
     const scene = await fetch('scene.json').then(r => r.json());
-    viewer.loadScene(scene);
+    renderCanvas2D(scene);  // ctx.arc(), ctx.lineTo() 등
 }, 500);
+
+// Phase 2+: Three.js
+setInterval(async () => {
+    const scene = await fetch('scene.json').then(r => r.json());
+    renderThreeJS(scene);
+}, 500);
+```
+
+#### Phase 3+: wgpu 통합 (옵션)
+
+성능 요구사항에 따라 직접 렌더링으로 전환:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  1. Claude Code가 CAD Engine 함수 호출                          │
+│  2. Rust 엔진이 Scene 상태 업데이트 + 렌더링                     │
+│  3. wgpu가 Canvas에 즉시 반영 (파일 I/O 없음, ~1ms)             │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### 개발 워크플로우
