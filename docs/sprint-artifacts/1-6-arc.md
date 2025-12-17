@@ -16,10 +16,11 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시, 부채꼴 등을 표
 
 ### AC1: 기본 Arc 생성
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_arc(cx, cy, radius, start_angle, end_angle)` 호출
+**When** `scene.add_arc("shoulder_arc", cx, cy, radius, start_angle, end_angle)` 호출
 **Then** Arc 타입의 Entity가 생성된다
 **And** geometry에 `{ center: [cx, cy], radius, start_angle, end_angle }` 저장
-**And** 고유한 ID가 반환된다
+**And** name ("shoulder_arc")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 ### AC2: 각도 단위 (라디안)
 **Given** 각도가 라디안으로 주어짐
@@ -56,13 +57,15 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시, 부채꼴 등을 표
   - [ ] 1.3: serde 직렬화 확인
 
 - [ ] **Task 2: add_arc 함수 구현** (AC: #1, #2, #3, #4, #6)
-  - [ ] 2.1: `add_arc(cx, cy, radius, start_angle, end_angle) -> String`
-  - [ ] 2.2: 음수 radius 보정 (abs().max(0.001))
-  - [ ] 2.3: Entity 생성 및 ID 반환
+  - [ ] 2.1: `add_arc(name: &str, cx, cy, radius, start_angle, end_angle) -> Result<String, JsValue>`
+  - [ ] 2.2: name 중복 체크 (has_entity)
+  - [ ] 2.3: 음수 radius 보정 (abs().max(0.001))
+  - [ ] 2.4: Entity 생성 (metadata.name = name) 및 name 반환
 
 - [ ] **Task 3: draw_arc 함수 구현** (AC: #5, #6)
-  - [ ] 3.1: `draw_arc(cx, cy, radius, start_angle, end_angle, style_json) -> String`
-  - [ ] 3.2: 스타일 파싱 및 적용
+  - [ ] 3.1: `draw_arc(name: &str, cx, cy, radius, start_angle, end_angle, style_json) -> Result<String, JsValue>`
+  - [ ] 3.2: name 중복 체크
+  - [ ] 3.3: 스타일 파싱 및 적용
 
 - [ ] **Task 4: 테스트** (AC: #1-#5)
   - [ ] 4.1: 기본 arc 생성 테스트
@@ -103,12 +106,15 @@ pub enum EntityType {
 
 #### add_arc 함수
 
+> **AX 원칙**: name이 첫 번째 파라미터입니다. AI는 "shoulder_arc", "joint_range" 같은 의미있는 이름으로 Entity를 식별합니다.
+
 ```rust
 #[wasm_bindgen]
 impl Scene {
     /// 호(Arc)를 생성합니다.
     ///
     /// # Arguments
+    /// * `name` - Entity 이름 (예: "shoulder_arc") - Scene 내 unique
     /// * `cx` - 중심점 x 좌표
     /// * `cy` - 중심점 y 좌표
     /// * `radius` - 반지름
@@ -116,20 +122,27 @@ impl Scene {
     /// * `end_angle` - 끝 각도 (라디안, 양수 = CCW)
     ///
     /// # Returns
-    /// * 생성된 Entity의 ID
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복
     pub fn add_arc(
         &mut self,
+        name: &str,
         cx: f64,
         cy: f64,
         radius: f64,
         start_angle: f64,
         end_angle: f64,
-    ) -> String {
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        }
+
         let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
-        let id = generate_id();
+        let id = generate_id();  // 내부 ID (JSON export용)
         let entity = Entity {
-            id: id.clone(),
+            id,
             entity_type: EntityType::Arc,
             geometry: Geometry::Arc {
                 center: [cx, cy],
@@ -139,23 +152,33 @@ impl Scene {
             },
             transform: Transform::default(),
             style: Style::default(),
-            metadata: Metadata::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                layer: None,
+                locked: false,
+            },
         };
 
         self.entities.push(entity);
-        id
+        Ok(name.to_string())
     }
 
     /// 스타일이 적용된 호(Arc)를 생성합니다.
     pub fn draw_arc(
         &mut self,
+        name: &str,
         cx: f64,
         cy: f64,
         radius: f64,
         start_angle: f64,
         end_angle: f64,
         style_json: &str,
-    ) -> String {
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        }
+
         let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
         let style = serde_json::from_str::<Style>(style_json)
@@ -163,7 +186,7 @@ impl Scene {
 
         let id = generate_id();
         let entity = Entity {
-            id: id.clone(),
+            id,
             entity_type: EntityType::Arc,
             geometry: Geometry::Arc {
                 center: [cx, cy],
@@ -173,11 +196,15 @@ impl Scene {
             },
             transform: Transform::default(),
             style,
-            metadata: Metadata::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                layer: None,
+                locked: false,
+            },
         };
 
         self.entities.push(entity);
-        id
+        Ok(name.to_string())
     }
 }
 ```
@@ -185,24 +212,27 @@ impl Scene {
 ### JavaScript 호출 예시
 
 ```javascript
-// 90도 호 (3시 → 12시 방향)
-const arc1 = scene.add_arc(0, 0, 50, 0, Math.PI / 2);
+// 90도 호 (3시 → 12시 방향) - name 필수
+scene.add_arc("quarter_arc", 0, 0, 50, 0, Math.PI / 2);
 
 // 반원 (3시 → 9시 방향)
-const arc2 = scene.add_arc(0, 0, 50, 0, Math.PI);
+scene.add_arc("half_circle", 0, 0, 50, 0, Math.PI);
 
 // 3/4 원
-const arc3 = scene.add_arc(0, 0, 50, 0, Math.PI * 1.5);
+scene.add_arc("three_quarter", 0, 0, 50, 0, Math.PI * 1.5);
 
 // 스타일 적용 호 (빨간 2px)
-const styledArc = scene.draw_arc(0, 0, 50, 0, Math.PI, JSON.stringify({
+scene.draw_arc("styled_arc", 0, 0, 50, 0, Math.PI, JSON.stringify({
     stroke: { width: 2, color: [1, 0, 0, 1] }
 }));
 
 // 스켈레톤 관절 표시
-const shoulderJoint = scene.draw_arc(0, 70, 5, -Math.PI/4, Math.PI/4, JSON.stringify({
+scene.draw_arc("shoulder_joint", 0, 70, 5, -Math.PI/4, Math.PI/4, JSON.stringify({
     stroke: { width: 1, color: [0.5, 0.5, 0.5, 1] }
 }));
+
+// 이후 수정 시 name으로 식별
+scene.set_stroke("shoulder_joint", JSON.stringify({ color: [1, 0, 0, 1] }));  // 빨간색으로
 ```
 
 ### 각도 규칙

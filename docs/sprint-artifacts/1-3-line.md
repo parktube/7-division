@@ -12,14 +12,15 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 
 ### AC1: 기본 선분 생성
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_line(Float64Array([x1, y1, x2, y2]))` 호출
+**When** `scene.add_line("spine", Float64Array([x1, y1, x2, y2]))` 호출
 **Then** Line 타입의 Entity가 생성된다
 **And** geometry에 `{ points: [[x1, y1], [x2, y2]] }` 형태로 저장된다
-**And** 고유한 ID가 반환된다
+**And** name ("spine")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 ### AC2: 폴리라인 (4개 이상 좌표)
 **Given** 4개 이상의 좌표가 주어진 경우 (폴리라인)
-**When** `scene.add_line(Float64Array([x1, y1, x2, y2, x3, y3, x4, y4]))` 호출
+**When** `scene.add_line("left_arm", Float64Array([x1, y1, x2, y2, x3, y3, x4, y4]))` 호출
 **Then** 연결된 선분들이 하나의 Entity로 생성된다
 **And** geometry.points에 4개 점이 순서대로 저장된다
 
@@ -42,10 +43,11 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
   - [ ] 1.3: `primitives/line.rs` 파일 생성
 
 - [ ] **Task 2: Line 생성 함수 구현** (AC: #1, #2, #4)
-  - [ ] 2.1: `add_line(&mut self, points: js_sys::Float64Array) -> String` 구현
-  - [ ] 2.2: Float64Array를 Vec<[f64; 2]>로 변환
-  - [ ] 2.3: LineGeometry 생성 및 Entity 추가
-  - [ ] 2.4: 생성된 ID 반환
+  - [ ] 2.1: `add_line(&mut self, name: &str, points: js_sys::Float64Array) -> Result<String, JsValue>` 구현
+  - [ ] 2.2: name 중복 체크 (has_entity)
+  - [ ] 2.3: Float64Array를 Vec<[f64; 2]>로 변환
+  - [ ] 2.4: LineGeometry 생성 및 Entity 추가 (metadata.name = name)
+  - [ ] 2.5: name 반환
 
 - [ ] **Task 3: 에러 처리** (AC: #3)
   - [ ] 3.1: 좌표 개수 검증 (짝수인지 확인)
@@ -67,6 +69,8 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 
 #### add_line 함수 시그니처
 
+> **AX 원칙**: name이 첫 번째 파라미터입니다. AI는 "spine", "left_arm" 같은 의미있는 이름으로 Entity를 식별합니다.
+
 ```rust
 use js_sys::Float64Array;
 use wasm_bindgen::prelude::*;
@@ -76,11 +80,18 @@ impl Scene {
     /// 선분(Line) 도형을 생성합니다.
     ///
     /// # Arguments
+    /// * `name` - Entity 이름 (예: "spine", "left_arm") - Scene 내 unique
     /// * `points` - [x1, y1, x2, y2, ...] 형태의 Float64Array
     ///
     /// # Returns
-    /// * 생성된 Entity의 ID (문자열)
-    pub fn add_line(&mut self, points: Float64Array) -> Result<String, JsValue> {
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복 또는 잘못된 입력
+    pub fn add_line(&mut self, name: &str, points: Float64Array) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        }
+
         let points_vec: Vec<f64> = points.to_vec();
 
         // 짝수 개수 검증
@@ -99,18 +110,22 @@ impl Scene {
             .map(|chunk| [chunk[0], chunk[1]])
             .collect();
 
-        let id = generate_id();
+        let id = generate_id();  // 내부 ID (JSON export용)
         let entity = Entity {
-            id: id.clone(),
+            id,
             entity_type: EntityType::Line,
             geometry: Geometry::Line { points: point_pairs },
             transform: Transform::default(),
             style: Style::default(),
-            metadata: Metadata::default(),
+            metadata: Metadata {
+                name: name.to_string(),  // name으로 식별
+                layer: None,
+                locked: false,
+            },
         };
 
         self.entities.push(entity);
-        Ok(id)
+        Ok(name.to_string())  // name 반환 (AI가 추적하기 쉬움)
     }
 }
 ```
@@ -118,9 +133,9 @@ impl Scene {
 #### Float64Array 처리 (NFR12)
 
 ```rust
-// JS에서 호출:
-const points = new Float64Array([0, 100, 0, 50]);  // 2점
-const id = scene.add_line(points);
+// JS에서 호출 (name 필수):
+const spine = scene.add_line("spine", new Float64Array([0, 100, 0, 50]));
+console.log(spine);  // "spine"
 
 // Rust에서 처리:
 let points_vec: Vec<f64> = points.to_vec();  // [0, 100, 0, 50]
@@ -129,20 +144,23 @@ let points_vec: Vec<f64> = points.to_vec();  // [0, 100, 0, 50]
 ### 스켈레톤 예시 (검증 시나리오)
 
 ```javascript
-// 스켈레톤 척추
-const spine = scene.add_line(new Float64Array([0, 90, 0, 50]));
+// 스켈레톤 척추 - name이 첫 번째 파라미터
+scene.add_line("spine", new Float64Array([0, 90, 0, 50]));
 
-// 왼팔 (상완 + 하완)
-const leftArm = scene.add_line(new Float64Array([0, 85, -20, 70, -25, 50]));
+// 왼팔 (상완 + 하완) - 의미있는 이름 사용
+scene.add_line("left_arm", new Float64Array([0, 85, -20, 70, -25, 50]));
 
 // 오른팔
-const rightArm = scene.add_line(new Float64Array([0, 85, 20, 70, 25, 50]));
+scene.add_line("right_arm", new Float64Array([0, 85, 20, 70, 25, 50]));
 
 // 왼다리
-const leftLeg = scene.add_line(new Float64Array([0, 50, -15, 20, -15, 0]));
+scene.add_line("left_leg", new Float64Array([0, 50, -15, 20, -15, 0]));
 
 // 오른다리
-const rightLeg = scene.add_line(new Float64Array([0, 50, 15, 20, 15, 0]));
+scene.add_line("right_leg", new Float64Array([0, 50, 15, 20, 15, 0]));
+
+// 이후 수정 시 name으로 식별
+scene.set_stroke("left_arm", JSON.stringify({ color: [1, 0, 0, 1] }));  // 왼팔을 빨간색으로
 ```
 
 ### 디렉토리 구조

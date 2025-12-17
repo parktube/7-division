@@ -11,14 +11,14 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
 ## Acceptance Criteria
 
 ### AC1: 기본 스케일
-**Given** Scene에 Entity가 존재 (ID로 식별)
-**When** `scene.scale(id, sx, sy)` 호출
+**Given** Scene에 Entity가 존재 (name으로 식별)
+**When** `scene.scale(name, sx, sy)` 호출
 **Then** 해당 Entity의 transform.scale 값이 [sx, sy]로 설정된다
 **And** 기존 scale 값이 있으면 곱해진다 ([prev_sx * sx, prev_sy * sy])
 
 ### AC2: 비균일 스케일
 **Given** sx와 sy가 다른 경우 (비균일 스케일)
-**When** scale(id, 2, 1) 호출
+**When** scale(name, 2, 1) 호출
 **Then** 가로로만 2배 늘어나는 변환이 적용된다
 
 ### AC3: 0 이하 스케일 처리
@@ -29,14 +29,14 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
 
 ### AC4: 축소 (1 미만)
 **Given** scale 값이 1 미만인 경우 (축소)
-**When** scale(id, 0.5, 0.5) 호출
+**When** scale(name, 0.5, 0.5) 호출
 **Then** 도형이 절반 크기로 축소된다
 
 ## Tasks / Subtasks
 
 - [ ] **Task 1: scale 함수 구현** (AC: #1, #2)
-  - [ ] 1.1: `scale(&mut self, id: &str, sx: f64, sy: f64)` 구현
-  - [ ] 1.2: ID로 Entity 찾기 로직
+  - [ ] 1.1: `scale(&mut self, name: &str, sx: f64, sy: f64)` 구현
+  - [ ] 1.2: name으로 Entity 찾기 로직
   - [ ] 1.3: transform.scale 곱셈 로직
 
 - [ ] **Task 2: 입력 보정** (AC: #3)
@@ -73,8 +73,8 @@ impl Scene {
     /// * `sy` - y축 스케일 비율 (음수/0 → abs()로 보정)
     ///
     /// # Returns
-    /// * 성공 시 Ok(true), ID 미발견 시 Ok(false)
-    pub fn scale(&mut self, id: &str, sx: f64, sy: f64) -> bool {
+    /// * 성공 시 Ok(true), name 미발견 시 Ok(false)
+    pub fn scale(&mut self, name: &str, sx: f64, sy: f64) -> bool {
         // 관대한 입력 보정: 음수/0은 abs()로 변환
         let sx = if sx <= 0.0 { sx.abs().max(0.001) } else { sx };
         let sy = if sy <= 0.0 { sy.abs().max(0.001) } else { sy };
@@ -85,7 +85,7 @@ impl Scene {
             entity.transform.scale[1] *= sy;
             true
         } else {
-            false  // ID 미발견 시 no-op
+            false  // name 미발견 시 no-op
         }
     }
 }

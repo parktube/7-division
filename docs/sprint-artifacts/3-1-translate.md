@@ -11,16 +11,17 @@ So that **"왼쪽 팔을 더 왼쪽으로" 같은 수정 요청을 처리할 수
 ## Acceptance Criteria
 
 ### AC1: 기본 이동
-**Given** Scene에 Entity가 존재 (ID로 식별)
-**When** `scene.translate(id, dx, dy)` 호출
+**Given** Scene에 Entity가 존재 (name으로 식별)
+**When** `scene.translate("left_arm", dx, dy)` 호출
 **Then** 해당 Entity의 transform.translate 값이 [dx, dy]로 설정된다
 **And** 기존 translate 값이 있으면 누적된다 ([prev_dx + dx, prev_dy + dy])
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
-### AC2: 유효하지 않은 ID 처리
-**Given** 존재하지 않는 ID로 translate 호출
-**When** translate("invalid_id", 10, 20) 실행
+### AC2: 유효하지 않은 name 처리
+**Given** 존재하지 않는 name으로 translate 호출
+**When** translate("unknown_entity", 10, 20) 실행
 **Then** Result<bool>에서 Ok(false) 반환 (no-op)
-**And** (정책: ID 미발견 시 no-op, docs/architecture.md#Error Handling Policy)
+**And** (정책: name 미발견 시 no-op, docs/architecture.md#Error Handling Policy)
 **And** 다른 Entity들은 영향받지 않는다
 
 ### AC3: JSON Export 반영
@@ -36,12 +37,12 @@ So that **"왼쪽 팔을 더 왼쪽으로" 같은 수정 요청을 처리할 수
   - [ ] 1.3: `transforms/translate.rs` 파일 생성
 
 - [ ] **Task 2: translate 함수 구현** (AC: #1)
-  - [ ] 2.1: `translate(&mut self, id: &str, dx: f64, dy: f64)` 구현
-  - [ ] 2.2: ID로 Entity 찾기 로직
+  - [ ] 2.1: `translate(&mut self, name: &str, dx: f64, dy: f64)` 구현
+  - [ ] 2.2: name으로 Entity 찾기 로직 (metadata.name 사용)
   - [ ] 2.3: transform.translate 누적 로직
 
 - [ ] **Task 3: 에러 처리** (AC: #2)
-  - [ ] 3.1: ID 미발견 시 에러 반환 또는 무시
+  - [ ] 3.1: name 미발견 시 Ok(false) 반환 (no-op)
   - [ ] 3.2: 에러 처리 방식 문서화
 
 - [ ] **Task 4: Scene에 통합** (AC: #1, #3)
@@ -60,6 +61,8 @@ So that **"왼쪽 팔을 더 왼쪽으로" 같은 수정 요청을 처리할 수
 
 #### translate 함수 시그니처
 
+> **AX 원칙**: name으로 Entity를 식별합니다. AI는 "left_arm", "head" 같은 의미있는 이름을 사용합니다.
+
 ```rust
 use wasm_bindgen::prelude::*;
 
@@ -68,23 +71,24 @@ impl Scene {
     /// Entity를 지정된 거리만큼 이동합니다.
     ///
     /// # Arguments
-    /// * `id` - 대상 Entity의 ID
+    /// * `name` - 대상 Entity의 이름 (예: "left_arm")
     /// * `dx` - x축 이동 거리
     /// * `dy` - y축 이동 거리
     ///
     /// # Returns
-    /// * 성공 시 Ok(()), 실패 시 Err
-    pub fn translate(&mut self, id: &str, dx: f64, dy: f64) -> Result<(), JsValue> {
-        let entity = self.entities
-            .iter_mut()
-            .find(|e| e.id == id)
-            .ok_or_else(|| JsValue::from_str(&format!("Entity not found: {}", id)))?;
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    pub fn translate(&mut self, name: &str, dx: f64, dy: f64) -> Result<bool, JsValue> {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_str() == name) {
+            Some(e) => e,
+            None => return Ok(false),  // name 미발견 시 no-op
+        };
 
         // 기존 값에 누적
         entity.transform.translate[0] += dx;
         entity.transform.translate[1] += dy;
 
-        Ok(())
+        Ok(true)
     }
 }
 ```

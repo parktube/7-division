@@ -12,10 +12,11 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 
 ### AC1: 기본 사각형 생성
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_rect(x, y, width, height)` 호출
+**When** `scene.add_rect("torso", x, y, width, height)` 호출
 **Then** Rect 타입의 Entity가 생성된다
 **And** geometry에 `{ origin: [x, y], width: width, height: height }` 형태로 저장된다
-**And** 고유한 ID가 반환된다
+**And** name ("torso")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 ### AC2: 음수 크기 처리
 **Given** width 또는 height가 0 이하인 경우
@@ -38,9 +39,10 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 ## Tasks / Subtasks
 
 - [ ] **Task 1: Rect 생성 함수 구현** (AC: #1, #3, #4)
-  - [ ] 1.1: `add_rect(&mut self, x: f64, y: f64, width: f64, height: f64) -> String` 구현
-  - [ ] 1.2: RectGeometry 생성
-  - [ ] 1.3: Entity 추가 및 ID 반환
+  - [ ] 1.1: `add_rect(&mut self, name: &str, x: f64, y: f64, width: f64, height: f64) -> Result<String, JsValue>` 구현
+  - [ ] 1.2: name 중복 체크 (has_entity)
+  - [ ] 1.3: RectGeometry 생성 (metadata.name = name)
+  - [ ] 1.4: Entity 추가 및 name 반환
 
 - [ ] **Task 2: 크기 보정** (AC: #2)
   - [ ] 2.1: width <= 0 또는 height <= 0 검증
@@ -62,6 +64,8 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 
 #### add_rect 함수 시그니처
 
+> **AX 원칙**: name이 첫 번째 파라미터입니다. AI는 "torso", "background" 같은 의미있는 이름으로 Entity를 식별합니다.
+
 ```rust
 use wasm_bindgen::prelude::*;
 
@@ -70,21 +74,28 @@ impl Scene {
     /// 사각형(Rect) 도형을 생성합니다.
     ///
     /// # Arguments
+    /// * `name` - Entity 이름 (예: "torso", "background") - Scene 내 unique
     /// * `x` - 원점 x 좌표 (Y-up 중심 좌표계)
     /// * `y` - 원점 y 좌표 (Y-up 중심 좌표계)
     /// * `width` - 너비 (음수/0 → abs()로 보정)
     /// * `height` - 높이 (음수/0 → abs()로 보정)
     ///
     /// # Returns
-    /// * 생성된 Entity의 ID (문자열)
-    pub fn add_rect(&mut self, x: f64, y: f64, width: f64, height: f64) -> String {
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복
+    pub fn add_rect(&mut self, name: &str, x: f64, y: f64, width: f64, height: f64) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        }
+
         // 관대한 입력 보정: 음수/0은 abs()로 변환
         let width = if width <= 0.0 { width.abs().max(0.001) } else { width };
         let height = if height <= 0.0 { height.abs().max(0.001) } else { height };
 
-        let id = generate_id();
+        let id = generate_id();  // 내부 ID (JSON export용)
         let entity = Entity {
-            id: id.clone(),
+            id,
             entity_type: EntityType::Rect,
             geometry: Geometry::Rect {
                 origin: [x, y],
@@ -93,11 +104,15 @@ impl Scene {
             },
             transform: Transform::default(),
             style: Style::default(),
-            metadata: Metadata::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                layer: None,
+                locked: false,
+            },
         };
 
         self.entities.push(entity);
-        id
+        Ok(name.to_string())
     }
 }
 ```
@@ -105,8 +120,11 @@ impl Scene {
 #### 스켈레톤 몸통 예시
 
 ```javascript
-// 스켈레톤 몸통 (rect - 선택적, line으로도 가능)
-const torso = scene.add_rect(-5, 50, 10, 40);  // 좌상단 (-5, 50), 10x40
+// 스켈레톤 몸통 (rect) - name 필수
+scene.add_rect("torso", -5, 50, 10, 40);  // 좌상단 (-5, 50), 10x40
+
+// 이후 수정 시 name으로 식별
+scene.set_fill("torso", JSON.stringify({ color: [0.5, 0.5, 0.5, 1] }));  // 회색으로
 ```
 
 ### Geometry 구조

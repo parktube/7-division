@@ -12,10 +12,11 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 
 ### AC1: 기본 원 생성
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_circle(x, y, radius)` 호출
+**When** `scene.add_circle("head", x, y, radius)` 호출
 **Then** Circle 타입의 Entity가 생성된다
 **And** geometry에 `{ center: [x, y], radius: radius }` 형태로 저장된다
-**And** 고유한 ID가 반환된다
+**And** name ("head")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 ### AC2: 음수 반지름 처리
 **Given** radius가 0 이하인 경우
@@ -36,9 +37,10 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 ## Tasks / Subtasks
 
 - [ ] **Task 1: Circle 생성 함수 구현** (AC: #1, #4)
-  - [ ] 1.1: `add_circle(&mut self, x: f64, y: f64, radius: f64) -> String` 구현
-  - [ ] 1.2: CircleGeometry 생성
-  - [ ] 1.3: Entity 추가 및 ID 반환
+  - [ ] 1.1: `add_circle(&mut self, name: &str, x: f64, y: f64, radius: f64) -> Result<String, JsValue>` 구현
+  - [ ] 1.2: name 중복 체크 (has_entity)
+  - [ ] 1.3: CircleGeometry 생성 (metadata.name = name)
+  - [ ] 1.4: Entity 추가 및 name 반환
 
 - [ ] **Task 2: 반지름 보정** (AC: #2)
   - [ ] 2.1: radius <= 0 검증 로직 추가
@@ -60,6 +62,8 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 
 #### add_circle 함수 시그니처
 
+> **AX 원칙**: name이 첫 번째 파라미터입니다. AI는 "head", "joint_elbow" 같은 의미있는 이름으로 Entity를 식별합니다.
+
 ```rust
 use wasm_bindgen::prelude::*;
 
@@ -68,19 +72,26 @@ impl Scene {
     /// 원(Circle) 도형을 생성합니다.
     ///
     /// # Arguments
+    /// * `name` - Entity 이름 (예: "head", "joint_elbow") - Scene 내 unique
     /// * `x` - 중심점 x 좌표
     /// * `y` - 중심점 y 좌표
     /// * `radius` - 반지름 (음수/0 → abs()로 보정)
     ///
     /// # Returns
-    /// * 생성된 Entity의 ID (문자열)
-    pub fn add_circle(&mut self, x: f64, y: f64, radius: f64) -> String {
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복
+    pub fn add_circle(&mut self, name: &str, x: f64, y: f64, radius: f64) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        }
+
         // 관대한 입력 보정: 음수/0은 abs()로 변환
         let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
-        let id = generate_id();
+        let id = generate_id();  // 내부 ID (JSON export용)
         let entity = Entity {
-            id: id.clone(),
+            id,
             entity_type: EntityType::Circle,
             geometry: Geometry::Circle {
                 center: [x, y],
@@ -88,11 +99,15 @@ impl Scene {
             },
             transform: Transform::default(),
             style: Style::default(),
-            metadata: Metadata::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                layer: None,
+                locked: false,
+            },
         };
 
         self.entities.push(entity);
-        id
+        Ok(name.to_string())
     }
 }
 ```
@@ -100,8 +115,11 @@ impl Scene {
 #### 스켈레톤 머리 예시
 
 ```javascript
-// 스켈레톤 머리 (circle)
-const head = scene.add_circle(0, 100, 10);  // 중심 (0, 100), 반지름 10
+// 스켈레톤 머리 (circle) - name 필수
+scene.add_circle("head", 0, 100, 10);  // 중심 (0, 100), 반지름 10
+
+// 이후 수정 시 name으로 식별
+scene.set_fill("head", JSON.stringify({ color: [1, 0.8, 0.6, 1] }));  // 살색으로
 ```
 
 ### Geometry 구조

@@ -16,11 +16,18 @@ So that **도형들을 하나의 씬에서 관리하고 추적할 수 있다**.
 **Then** Scene 인스턴스가 생성되고 이름이 "my-scene"으로 설정된다
 **And** 빈 entities 배열이 초기화된다
 
-### AC2: Entity 추가 및 ID 반환
+### AC2: Entity 추가 및 name 기반 식별
 **Given** Scene 인스턴스가 존재
-**When** Entity를 추가하는 함수 호출
-**Then** 고유한 ID(문자열)가 반환된다
+**When** Entity를 추가하는 함수 호출 (name 필수)
+**Then** name이 Entity에 저장되고, 동일한 name이 반환된다
 **And** Entity가 Scene의 entities에 추가된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
+
+### AC2.1: name 중복 방지
+**Given** Scene에 "head"라는 이름의 Entity가 존재
+**When** 같은 이름 "head"로 Entity 추가 시도
+**Then** Err(JsValue) 반환하여 중복 불가 알림
+**And** Scene 내 name은 unique해야 함
 
 ### AC3: wasm-bindgen 패턴 준수
 **Given** wasm-bindgen 제약
@@ -49,10 +56,11 @@ So that **도형들을 하나의 씬에서 관리하고 추적할 수 있다**.
   - [ ] 2.3: `#[wasm_bindgen(constructor)]` 으로 new 함수 구현
   - [ ] 2.4: entities 벡터 초기화 로직 작성
 
-- [ ] **Task 3: ID 생성 유틸리티** (AC: #2, #3)
-  - [ ] 3.1: `generate_id()` 함수 작성 (uuid js feature 사용)
-  - [ ] 3.2: 또는 `js_sys::Math::random()` 기반 대안 구현
-  - [ ] 3.3: ID 고유성 테스트 작성
+- [ ] **Task 3: name 기반 Entity 식별** (AC: #2, #2.1)
+  - [ ] 3.1: Entity.metadata.name 필수화 (Option → String)
+  - [ ] 3.2: Scene에 `find_by_name(name: &str)` 헬퍼 메서드
+  - [ ] 3.3: name 중복 체크 로직 (`has_entity(name)`)
+  - [ ] 3.4: 내부 id는 UUID 유지 (JSON export용)
 
 - [ ] **Task 4: lib.rs 통합** (AC: #4)
   - [ ] 4.1: `mod scene;` 추가
@@ -123,11 +131,23 @@ pub struct Style {
     pub stroke_width: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// **AX 원칙**: Entity는 UUID(id)가 아닌 의미있는 이름(name)으로 식별합니다.
+/// AI는 "head", "left_arm" 같은 이름을 자연어처럼 이해합니다.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Metadata {
-    pub name: Option<String>,
+    pub name: String,             // 필수! Scene 내 unique
     pub layer: Option<String>,
     pub locked: bool,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Metadata {
+            name: String::new(),  // 주의: 실제 사용 시 반드시 설정해야 함
+            layer: None,
+            locked: false,
+        }
+    }
 }
 ```
 

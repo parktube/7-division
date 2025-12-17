@@ -12,21 +12,22 @@ So that **"빨간 테두리의 파란 원을 그려줘" 같은 요청을 한 번
 
 ### AC1: draw_circle 함수 (스타일 포함 생성)
 **Given** Scene 인스턴스가 존재
-**When** `scene.draw_circle(x, y, radius, style_json)` 호출
+**When** `scene.draw_circle("head", x, y, radius, style_json)` 호출
 **Then** Circle Entity가 지정된 스타일로 생성된다
-**And** 고유한 ID가 반환된다
+**And** name ("head")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 ### AC2: draw_line 함수 (스타일 포함 생성)
 **Given** Scene 인스턴스가 존재
-**When** `scene.draw_line(points, style_json)` 호출
+**When** `scene.draw_line("spine", points, style_json)` 호출
 **Then** Line Entity가 지정된 스타일로 생성된다
-**And** 고유한 ID가 반환된다
+**And** name ("spine")이 반환된다
 
 ### AC3: draw_rect 함수 (스타일 포함 생성)
 **Given** Scene 인스턴스가 존재
-**When** `scene.draw_rect(x, y, width, height, style_json)` 호출
+**When** `scene.draw_rect("torso", x, y, width, height, style_json)` 호출
 **Then** Rect Entity가 지정된 스타일로 생성된다
-**And** 고유한 ID가 반환된다
+**And** name ("torso")이 반환된다
 
 ### AC4: 스타일 JSON 파싱
 **Given** style_json 문자열이 주어짐
@@ -48,18 +49,20 @@ So that **"빨간 테두리의 파란 원을 그려줘" 같은 요청을 한 번
 ## Tasks / Subtasks
 
 - [ ] **Task 1: draw_circle 구현** (AC: #1, #4, #6)
-  - [ ] 1.1: `draw_circle(x, y, radius, style_json: &str)` 시그니처
-  - [ ] 1.2: style_json 파싱 로직
-  - [ ] 1.3: 파싱 실패 시 기본값 적용
-  - [ ] 1.4: Entity 생성 및 ID 반환
+  - [ ] 1.1: `draw_circle(name: &str, x, y, radius, style_json: &str)` 시그니처
+  - [ ] 1.2: name 중복 체크 (has_entity)
+  - [ ] 1.3: style_json 파싱 로직 (실패 시 기본값)
+  - [ ] 1.4: Entity 생성 (metadata.name = name) 및 name 반환
 
 - [ ] **Task 2: draw_line 구현** (AC: #2, #4, #6)
-  - [ ] 2.1: `draw_line(points: Float64Array, style_json: &str)` 시그니처
-  - [ ] 2.2: style_json 파싱 및 Entity 생성
+  - [ ] 2.1: `draw_line(name: &str, points: Float64Array, style_json: &str)` 시그니처
+  - [ ] 2.2: name 중복 체크 및 style_json 파싱
+  - [ ] 2.3: Entity 생성 및 name 반환
 
 - [ ] **Task 3: draw_rect 구현** (AC: #3, #4, #6)
-  - [ ] 3.1: `draw_rect(x, y, w, h, style_json: &str)` 시그니처
-  - [ ] 3.2: style_json 파싱 및 Entity 생성
+  - [ ] 3.1: `draw_rect(name: &str, x, y, w, h, style_json: &str)` 시그니처
+  - [ ] 3.2: name 중복 체크 및 style_json 파싱
+  - [ ] 3.3: Entity 생성 및 name 반환
 
 - [ ] **Task 4: 기존 함수 유지** (AC: #5)
   - [ ] 4.1: add_circle, add_line, add_rect는 그대로 유지
@@ -78,6 +81,8 @@ So that **"빨간 테두리의 파란 원을 그려줘" 같은 요청을 한 번
 
 #### draw_circle 함수 시그니처
 
+> **AX 원칙**: name이 첫 번째 파라미터입니다. AI는 의미있는 이름으로 Entity를 식별합니다.
+
 ```rust
 use wasm_bindgen::prelude::*;
 
@@ -86,19 +91,21 @@ impl Scene {
     /// 스타일이 적용된 원을 생성합니다.
     ///
     /// # Arguments
+    /// * `name` - Entity 이름 (예: "head") - Scene 내 unique
     /// * `x` - 중심점 x 좌표
     /// * `y` - 중심점 y 좌표
     /// * `radius` - 반지름
     /// * `style_json` - 스타일 JSON 문자열
     ///
-    /// # Example style_json
-    /// ```json
-    /// {
-    ///   "stroke": { "width": 2, "color": [0, 0, 1, 1] },
-    ///   "fill": { "color": [1, 0, 0, 0.5] }
-    /// }
-    /// ```
-    pub fn draw_circle(&mut self, x: f64, y: f64, radius: f64, style_json: &str) -> String {
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복
+    pub fn draw_circle(&mut self, name: &str, x: f64, y: f64, radius: f64, style_json: &str) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        }
+
         let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
         // 스타일 파싱 (실패 시 기본값)
@@ -107,7 +114,7 @@ impl Scene {
 
         let id = generate_id();
         let entity = Entity {
-            id: id.clone(),
+            id,
             entity_type: EntityType::Circle,
             geometry: Geometry::Circle {
                 center: [x, y],
@@ -115,11 +122,15 @@ impl Scene {
             },
             transform: Transform::default(),
             style,
-            metadata: Metadata::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                layer: None,
+                locked: false,
+            },
         };
 
         self.entities.push(entity);
-        id
+        Ok(name.to_string())
     }
 }
 ```
@@ -127,24 +138,27 @@ impl Scene {
 ### JavaScript 호출 예시
 
 ```javascript
-// 빨간 테두리 + 파란 채움
-const id = scene.draw_circle(0, 0, 10, JSON.stringify({
+// 빨간 테두리 + 파란 채움 - name 필수
+scene.draw_circle("head", 0, 0, 10, JSON.stringify({
     stroke: { width: 2, color: [1, 0, 0, 1] },  // 빨간 테두리
     fill: { color: [0, 0, 1, 0.5] }              // 반투명 파란 채움
 }));
 
 // stroke만 (fill 없음)
-const id2 = scene.draw_circle(50, 0, 10, JSON.stringify({
+scene.draw_circle("outline_circle", 50, 0, 10, JSON.stringify({
     stroke: { width: 1, color: [0, 0, 0, 1] }
 }));
 
 // fill만 (stroke 없음)
-const id3 = scene.draw_circle(100, 0, 10, JSON.stringify({
+scene.draw_circle("filled_circle", 100, 0, 10, JSON.stringify({
     fill: { color: [0, 1, 0, 1] }
 }));
 
-// 기존 방식 (하위 호환)
-const id4 = scene.add_circle(150, 0, 10);  // 검은색 1px stroke
+// 기존 방식 (하위 호환) - name 필수
+scene.add_circle("simple_circle", 150, 0, 10);  // 검은색 1px stroke
+
+// 이후 수정 시 name으로 식별
+scene.set_fill("head", JSON.stringify({ color: [1, 0.8, 0.6, 1] }));  // 살색으로
 ```
 
 ### 스타일 JSON 단축 표현

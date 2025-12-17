@@ -11,8 +11,8 @@ So that **"오른쪽 팔을 없애줘" 같은 요청을 처리할 수 있다**.
 ## Acceptance Criteria
 
 ### AC1: 기본 삭제
-**Given** Scene에 Entity가 존재 (ID로 식별)
-**When** `scene.delete(id)` 호출
+**Given** Scene에 Entity가 존재 (name으로 식별)
+**When** `scene.delete(name)` 호출
 **Then** 해당 Entity가 Scene의 entities 배열에서 제거된다
 **And** 다음 export_json()에 해당 Entity가 포함되지 않는다
 
@@ -20,7 +20,7 @@ So that **"오른쪽 팔을 없애줘" 같은 요청을 처리할 수 있다**.
 **Given** 존재하지 않는 ID로 delete 호출
 **When** delete("invalid_id") 실행
 **Then** Result<bool>에서 Ok(false) 반환 (no-op)
-**And** (정책: ID 미발견 시 no-op, docs/architecture.md#Error Handling Policy)
+**And** (정책: name 미발견 시 no-op, docs/architecture.md#Error Handling Policy)
 **And** 다른 Entity들은 영향받지 않는다
 
 ### AC3: 부분 삭제
@@ -32,12 +32,12 @@ So that **"오른쪽 팔을 없애줘" 같은 요청을 처리할 수 있다**.
 ## Tasks / Subtasks
 
 - [ ] **Task 1: delete 함수 구현** (AC: #1)
-  - [ ] 1.1: `delete(&mut self, id: &str)` 구현
+  - [ ] 1.1: `delete(&mut self, name: &str)` 구현
   - [ ] 1.2: entities.retain(|e| e.id != id) 패턴 사용
   - [ ] 1.3: 삭제 성공/실패 반환
 
 - [ ] **Task 2: 에러 처리** (AC: #2)
-  - [ ] 2.1: ID 미발견 시 처리 방식 결정
+  - [ ] 2.1: name 미발견 시 처리 방식 결정
   - [ ] 2.2: 에러 반환 또는 무시 구현
 
 - [ ] **Task 3: Scene에 통합** (AC: #1, #3)
@@ -47,7 +47,7 @@ So that **"오른쪽 팔을 없애줘" 같은 요청을 처리할 수 있다**.
 - [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3)
   - [ ] 4.1: 단일 Entity 삭제 테스트
   - [ ] 4.2: 여러 Entity 중 하나 삭제 테스트
-  - [ ] 4.3: 잘못된 ID 삭제 테스트
+  - [ ] 4.3: 잘못된 name 삭제 테스트
   - [ ] 4.4: export_json에서 삭제 확인 테스트
 
 ## Dev Notes
@@ -67,8 +67,8 @@ impl Scene {
     /// * `id` - 삭제할 Entity의 ID
     ///
     /// # Returns
-    /// * 성공 시 Ok(true), ID 미발견 시 Ok(false), 에러 시 Err
-    pub fn delete(&mut self, id: &str) -> Result<bool, JsValue> {
+    /// * 성공 시 Ok(true), name 미발견 시 Ok(false), 에러 시 Err
+    pub fn delete(&mut self, name: &str) -> Result<bool, JsValue> {
         let before_len = self.entities.len();
 
         self.entities.retain(|e| e.id != id);

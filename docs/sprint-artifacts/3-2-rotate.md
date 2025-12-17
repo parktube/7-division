@@ -11,8 +11,8 @@ So that **"팔을 위로 들어" 같은 포즈 변경 요청을 처리할 수 �
 ## Acceptance Criteria
 
 ### AC1: 기본 회전
-**Given** Scene에 Entity가 존재 (ID로 식별)
-**When** `scene.rotate(id, angle)` 호출 (angle은 라디안)
+**Given** Scene에 Entity가 존재 (name으로 식별)
+**When** `scene.rotate(name, angle)` 호출 (angle은 라디안)
 **Then** 해당 Entity의 transform.rotate 값이 angle로 설정된다
 **And** 기존 rotate 값이 있으면 누적된다 (prev_angle + angle)
 
@@ -29,8 +29,8 @@ So that **"팔을 위로 들어" 같은 포즈 변경 요청을 처리할 수 �
 ## Tasks / Subtasks
 
 - [ ] **Task 1: rotate 함수 구현** (AC: #1)
-  - [ ] 1.1: `rotate(&mut self, id: &str, angle: f64)` 구현
-  - [ ] 1.2: ID로 Entity 찾기 로직
+  - [ ] 1.1: `rotate(&mut self, name: &str, angle: f64)` 구현
+  - [ ] 1.2: name으로 Entity 찾기 로직
   - [ ] 1.3: transform.rotate 누적 로직
 
 - [ ] **Task 2: 각도 처리** (AC: #2, #3)
@@ -68,7 +68,7 @@ impl Scene {
     ///
     /// # Returns
     /// * 성공 시 Ok(()), 실패 시 Err
-    pub fn rotate(&mut self, id: &str, angle: f64) -> Result<(), JsValue> {
+    pub fn rotate(&mut self, name: &str, angle: f64) -> Result<(), JsValue> {
         let entity = self.entities
             .iter_mut()
             .find(|e| e.id == id)
