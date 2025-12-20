@@ -568,7 +568,7 @@ fs.writeFileSync('viewer/scene.json', json);
 - [ ] `cargo clippy -- -D warnings` 경고 없음
 - [ ] `cargo fmt --check` 통과
 - [ ] `cargo test` 모든 테스트 통과
-- [ ] `wasm-pack build --target nodejs` 성공
+- [ ] `wasm-pack build --target nodejs --release` 성공
 
 ### JavaScript (viewer)
 - [ ] `npm test` 통과 (있는 경우)

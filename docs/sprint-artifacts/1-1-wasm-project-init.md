@@ -259,11 +259,13 @@ Claude Opus 4.5
 - cad-engine/Cargo.toml (신규)
 - cad-engine/src/lib.rs (신규)
 - cad-engine/.gitignore (신규)
-- package.json (신규 - npm scripts)
+- package.json (신규 - npm scripts, drager fork 커밋 해시 고정)
 - test-wasm.mjs (검증용)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - status: done)
-- docs/architecture.md (수정 - wasm-pack/wasm-bindgen 버전 통일)
+- docs/architecture.md (수정 - wasm-pack/wasm-bindgen 버전, 빌드 명령 통일)
 - docs/epics.md (수정 - wasm-pack/wasm-bindgen 버전 통일)
+- README.md (수정 - drager fork 설치, --release 빌드)
+- CONTRIBUTING.md (수정 - drager fork 설치 3곳, CI 빌드 --release)
 
 **빌드 산출물 (git 제외):**
 - cad-engine/pkg/* → .gitignore에 의해 제외, `npm run build`로 생성
@@ -336,6 +338,15 @@ Claude Opus 4.5
 | L1 | LOW | wasm-pack git tag만 고정 (재현성 리스크) | ✅ Fixed: --rev 커밋 해시로 고정 |
 
 > **wasm-pack v0.13.1 커밋**: `24bdca457abad34e444912e6165eb71422a51046`
+
+#### Review Round 7 - 프로젝트 전체 문서 통일
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | README.md, CONTRIBUTING.md 누락 (한 곳만 수정) | ✅ Fixed: 전체 grep으로 4곳 수정 |
+| M2 | MEDIUM | File List에 수정 파일 미반영 | ✅ Fixed: README.md, CONTRIBUTING.md 추가 |
+| M3 | MEDIUM | README 빌드 명령이 dev만 제시 | ✅ Fixed: --release 추가 |
+
+> **교훈**: 리뷰 수정 시 전체 grep 검색 필수. 스토리 File List/Review Log 동시 갱신.
 
 #### 테스트 검증 결과
 ```

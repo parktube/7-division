@@ -45,9 +45,9 @@ cd 7-division
 ### Build & Run (Phase 1 완료 후)
 
 ```bash
-# CAD Engine 빌드
+# CAD Engine 빌드 (release)
 cd cad-engine
-wasm-pack build --target nodejs
+wasm-pack build --target nodejs --release
 
 # Viewer 실행 (정적 서버)
 cd ../viewer
