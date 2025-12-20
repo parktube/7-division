@@ -259,6 +259,7 @@ Claude Opus 4.5
 - cad-engine/Cargo.toml (신규)
 - cad-engine/src/lib.rs (신규)
 - cad-engine/.gitignore (신규)
+- cad-engine/LICENSE (신규 - MIT)
 - package.json (신규 - npm scripts, drager fork 커밋 해시 고정)
 - test-wasm.mjs (검증용)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - status: done)
