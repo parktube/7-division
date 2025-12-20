@@ -1,0 +1,26 @@
+[package]
+name = "cad-engine"
+version = "0.1.0"
+edition = "2024"
+description = "AI-Native CAD Engine - Rust WASM core"
+repository = "https://github.com/parktube/7-division"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = []
+dev = ["console_error_panic_hook"]
+console_error_panic_hook = ["dep:console_error_panic_hook"]
+
+[dependencies]
+wasm-bindgen = "0.2.92"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1", features = ["v4", "js"] }
+js-sys = "0.3"
+console_error_panic_hook = { version = "0.1", optional = true }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"

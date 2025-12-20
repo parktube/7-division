@@ -1,0 +1,16 @@
+{
+  "name": "7-division",
+  "version": "0.1.0",
+  "description": "AI-Native CAD Engine",
+  "type": "module",
+  "scripts": {
+    "setup": "rustup update && rustup target add wasm32-unknown-unknown && cargo install --git https://github.com/nicholasbishop/nickel-wasm-pack.git --tag v0.13.1 --force",
+    "build": "cd cad-engine && wasm-pack build --target nodejs",
+    "test": "cd cad-engine && cargo test",
+    "test:wasm": "node test-wasm.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {}
+}

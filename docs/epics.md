@@ -86,8 +86,8 @@ NFR13: uuid js feature 또는 js_sys::Math::random() 사용 (getrandom 이슈 �
 **Tech Stack (Architecture 결정사항)**
 
 - Rust 1.85.0+ (stable, 2024 Edition)
-- wasm-pack 0.13.1 (drager fork)
-- wasm-bindgen 0.2 (최신 버전 유지)
+- wasm-pack 0.13.1 (nickel fork, drager 계승)
+- wasm-bindgen 0.2.92 (버전 고정)
 - Node.js 22.x LTS
 - HTML Canvas 2D (Phase 1 뷰어)
 - Vitest 3.x (테스트)
