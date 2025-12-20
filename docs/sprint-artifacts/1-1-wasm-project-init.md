@@ -53,7 +53,7 @@ So that **MCP 없이 직접 CAD 함수를 호출할 수 있다** (Direct-First A
   - [x] 3.3: 테스트용 간단한 exported 함수 작성 (예: `greet() -> String`)
 
 - [x] **Task 4: WASM 빌드 및 검증** (AC: #1, #2)
-  - [x] 4.1: `wasm-pack build --target nodejs` 실행
+  - [x] 4.1: `wasm-pack build --target nodejs --release` 실행
   - [x] 4.2: `pkg/` 디렉토리 생성 확인
   - [x] 4.3: Node.js에서 import 테스트 스크립트 작성
   - [x] 4.4: 호출 지연 시간 측정 (--release 빌드) → **avg=0.006ms, max=0.035ms** (< 1ms 목표 달성)
@@ -326,6 +326,16 @@ Claude Opus 4.5
 | M2 | MEDIUM | epics.md wasm-bindgen "0.2" 버전 표기 | ✅ Fixed: "0.2.92" 명시 |
 | M3 | MEDIUM | package.json nickel URL 오류 (404) | ✅ Fixed: drager/wasm-pack URL로 수정 |
 | L1 | LOW | build:release 스크립트 누락 | ✅ Fixed: npm scripts에 추가 |
+
+#### Review Round 6 재리뷰 - 빌드/테스트 일관성
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | architecture.md 설치 가이드 upstream wasm-pack 사용 | ✅ Fixed: drager fork + commit hash 고정 |
+| M2 | MEDIUM | Task 4.1 dev 빌드 vs 4.4 release 측정 불일치 | ✅ Fixed: Task 4.1도 --release 명시 |
+| M3 | MEDIUM | test:wasm이 build:release 보장 안함 | ✅ Fixed: npm run build:release && 체이닝 |
+| L1 | LOW | wasm-pack git tag만 고정 (재현성 리스크) | ✅ Fixed: --rev 커밋 해시로 고정 |
+
+> **wasm-pack v0.13.1 커밋**: `24bdca457abad34e444912e6165eb71422a51046`
 
 #### 테스트 검증 결과
 ```

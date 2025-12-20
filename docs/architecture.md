@@ -1523,8 +1523,8 @@ WASM 엔진은 동일, LLM 레이어만 교체.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
-# wasm-pack
-cargo install wasm-pack
+# wasm-pack (drager fork v0.13.1)
+cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
 # Node.js (20+)
 # https://nodejs.org/ 또는 nvm 사용
