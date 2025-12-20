@@ -34,8 +34,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # 2. WASM 타겟 추가
 rustup target add wasm32-unknown-unknown
 
-# 3. wasm-pack 설치
-cargo install wasm-pack
+# 3. wasm-pack 설치 (drager fork v0.13.1)
+cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
 # 4. 프로젝트 클론
 git clone git@github.com:parktube/7-division.git

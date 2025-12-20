@@ -12,7 +12,7 @@ cd 7-division
 
 # 2. 개발 환경 설정
 rustup target add wasm32-unknown-unknown
-cargo install wasm-pack
+cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
 # 3. 현재 스프린트 상태 확인
 cat docs/sprint-artifacts/sprint-status.yaml
@@ -32,8 +32,8 @@ source $HOME/.cargo/env
 # 2. WASM 타겟 추가
 rustup target add wasm32-unknown-unknown
 
-# 3. wasm-pack 설치
-cargo install wasm-pack
+# 3. wasm-pack 설치 (drager fork v0.13.1)
+cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
 # 4. 설치 확인
 rustc --version        # 1.85.0+
@@ -617,8 +617,8 @@ jobs:
 
       - name: WASM Build
         run: |
-          cargo install wasm-pack
-          wasm-pack build --target nodejs
+          cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
+          wasm-pack build --target nodejs --release
         working-directory: cad-engine
 
   viewer:

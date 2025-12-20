@@ -1535,8 +1535,8 @@ cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad3
 ```bash
 # CAD Engine (WASM)
 cd cad-engine
-wasm-pack build --target nodejs    # Node.js용 (Claude Code)
-wasm-pack build --target web       # 브라우저용 (옵션)
+wasm-pack build --target nodejs --release    # Node.js용 (Claude Code)
+wasm-pack build --target web --release       # 브라우저용 (옵션)
 
 # Viewer
 cd viewer
