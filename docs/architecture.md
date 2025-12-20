@@ -15,7 +15,7 @@
 | 컴포넌트 | 기술 | 버전 | 비고 |
 |---------|------|------|------|
 | **CAD Engine** | Rust | 1.85.0+ (stable) | WASM 빌드 |
-| **WASM 빌드** | wasm-pack | 0.13.1 | nickel fork (drager 계승) |
+| **WASM 빌드** | wasm-pack | 0.13.1 | [drager fork](https://github.com/drager/wasm-pack) |
 | **WASM 바인딩** | wasm-bindgen | 0.2.92 | 버전 고정 |
 | **런타임** | Node.js | 22.x LTS | Maintenance LTS |
 | **뷰어** | HTML Canvas 2D | - | 가장 단순 |

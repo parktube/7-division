@@ -115,13 +115,13 @@ fn generate_id() -> String {
 | 컴포넌트 | 기술 | 버전 |
 |---------|------|------|
 | **Rust** | stable | 1.85.0+ (2024 Edition) |
-| **wasm-pack** | nickel fork (drager 계승) | 0.13.1 |
+| **wasm-pack** | [drager fork](https://github.com/drager/wasm-pack) | 0.13.1 |
 | **wasm-bindgen** | - | 0.2.92 (고정) |
 | **Node.js** | LTS | 22.x |
 
 > ⚠️ **중요**: Rust 1.85.0 이상 필요 (Edition 2024 지원). `rustup update` 먼저 실행할 것.
 >
-> **wasm-pack fork 참고**: nickel-wasm-pack은 drager fork를 계승하여 유지보수 중인 버전입니다.
+> **wasm-pack fork 참고**: rustwasm/wasm-pack이 sunset된 후 [drager/wasm-pack](https://github.com/drager/wasm-pack)이 커뮤니티 유지보수 fork입니다.
 
 ### wasm-bindgen 주의사항
 
@@ -308,16 +308,24 @@ Claude Opus 4.5
 | M1 | MEDIUM | File List 누락 (sprint-status.yaml) | ✅ Fixed |
 | M2 | MEDIUM | 문서 wasm-bindgen "0.2" vs 구현 "0.2.92" 불일치 | ✅ Fixed |
 | M3 | MEDIUM | Task 4.4 성능 수치 outdated | ✅ Fixed: avg/max 표기 |
-| M4 | MEDIUM | drager vs nickel fork 혼동 | ✅ Fixed: 관계 명시 |
+| M4 | MEDIUM | fork 명칭 혼동 | ✅ Fixed: drager fork로 통일 |
 | L1 | LOW | dev feature 사용법 미문서화 | ✅ Fixed: 가이드 추가 |
 
 #### Review Round 5 - Source-of-truth 문서 통일
 | ID | Severity | Issue | Status |
 |----|----------|-------|--------|
-| M1 | MEDIUM | architecture.md/epics.md drager fork 표기 | ✅ Fixed: nickel fork로 통일 |
+| M1 | MEDIUM | architecture.md/epics.md fork 표기 불일치 | ✅ Fixed: drager fork로 통일 |
 | M2 | MEDIUM | setup에 --force 없음 | ✅ Fixed: --force 추가 |
 | M3 | MEDIUM | 빌드 프로파일(release) 미명시 | ✅ Fixed: Task 4.4에 명시 |
 | L1 | LOW | .coderabbit.yaml 스토리 범위 밖 | ✅ Fixed: 별도 커밋 분리 |
+
+#### Review Round 6 - 문서/설정 정합성 최종 점검
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | architecture.md/epics.md drager fork 불일치 | ✅ Fixed: 모든 문서 drager fork로 통일 |
+| M2 | MEDIUM | epics.md wasm-bindgen "0.2" 버전 표기 | ✅ Fixed: "0.2.92" 명시 |
+| M3 | MEDIUM | package.json nickel URL 오류 (404) | ✅ Fixed: drager/wasm-pack URL로 수정 |
+| L1 | LOW | build:release 스크립트 누락 | ✅ Fixed: npm scripts에 추가 |
 
 #### 테스트 검증 결과
 ```
