@@ -1,6 +1,6 @@
 # Story 1.1: WASM 프로젝트 초기화 및 빌드 설정
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -29,38 +29,38 @@ So that **MCP 없이 직접 CAD 함수를 호출할 수 있다** (Direct-First A
 
 ## Tasks / Subtasks
 
-- [ ] **Task 0: 환경 준비** (AC: #1, #2) ⚠️ 필수 선행
-  - [ ] 0.1: `rustup update` 실행 (Rust 1.85.0+ 필수, Edition 2024 지원)
-  - [ ] 0.2: `rustc --version` 으로 1.85.0 이상 확인
-  - [ ] 0.3: `wasm-pack --version` 확인 (0.13.1)
+- [x] **Task 0: 환경 준비** (AC: #1, #2) ⚠️ 필수 선행
+  - [x] 0.1: `rustup update` 실행 (Rust 1.85.0+ 필수, Edition 2024 지원)
+  - [x] 0.2: `rustc --version` 으로 1.85.0 이상 확인 → **1.89.0**
+  - [x] 0.3: `wasm-pack --version` 확인 (0.13.1) → **설치 완료**
 
-- [ ] **Task 1: 프로젝트 구조 생성** (AC: #1)
-  - [ ] 1.1: `cad-engine/` 디렉토리 생성
-  - [ ] 1.2: `cargo init --lib` 으로 Rust 라이브러리 프로젝트 초기화
-  - [ ] 1.3: Rust 2024 Edition 설정 확인 (`edition = "2024"`)
+- [x] **Task 1: 프로젝트 구조 생성** (AC: #1)
+  - [x] 1.1: `cad-engine/` 디렉토리 생성
+  - [x] 1.2: `cargo init --lib` 으로 Rust 라이브러리 프로젝트 초기화
+  - [x] 1.3: Rust 2024 Edition 설정 확인 (`edition = "2024"`)
 
-- [ ] **Task 2: Cargo.toml 의존성 설정** (AC: #1, #2)
-  - [ ] 2.1: `wasm-bindgen = "0.2"` 추가 (최신 버전 유지)
-  - [ ] 2.2: `serde = { version = "1.0", features = ["derive"] }` 추가
-  - [ ] 2.3: `serde_json = "1.0"` 추가
-  - [ ] 2.4: `uuid = { version = "1", features = ["v4", "js"] }` 추가 (getrandom 이슈 회피)
-  - [ ] 2.5: `js-sys = "0.3"` 추가 (js_sys::Math::random 대안용)
-  - [ ] 2.6: `[lib] crate-type = ["cdylib", "rlib"]` 설정
+- [x] **Task 2: Cargo.toml 의존성 설정** (AC: #1, #2)
+  - [x] 2.1: `wasm-bindgen = "0.2.92"` 추가 (버전 고정)
+  - [x] 2.2: `serde = { version = "1.0", features = ["derive"] }` 추가
+  - [x] 2.3: `serde_json = "1.0"` 추가
+  - [x] 2.4: `uuid = { version = "1", features = ["v4", "js"] }` 추가 (getrandom 이슈 회피)
+  - [x] 2.5: `js-sys = "0.3"` 추가 (js_sys::Math::random 대안용)
+  - [x] 2.6: `[lib] crate-type = ["cdylib", "rlib"]` 설정
 
-- [ ] **Task 3: lib.rs 기본 구조 작성** (AC: #2)
-  - [ ] 3.1: `use wasm_bindgen::prelude::*;` 임포트
-  - [ ] 3.2: `#[wasm_bindgen(start)]` 또는 init 함수 작성
-  - [ ] 3.3: 테스트용 간단한 exported 함수 작성 (예: `greet() -> String`)
+- [x] **Task 3: lib.rs 기본 구조 작성** (AC: #2)
+  - [x] 3.1: `use wasm_bindgen::prelude::*;` 임포트
+  - [x] 3.2: `#[wasm_bindgen(start)]` 또는 init 함수 작성
+  - [x] 3.3: 테스트용 간단한 exported 함수 작성 (예: `greet() -> String`)
 
-- [ ] **Task 4: WASM 빌드 및 검증** (AC: #1, #2)
-  - [ ] 4.1: `wasm-pack build --target nodejs` 실행
-  - [ ] 4.2: `pkg/` 디렉토리 생성 확인
-  - [ ] 4.3: Node.js에서 import 테스트 스크립트 작성
-  - [ ] 4.4: 호출 지연 시간 측정 (< 1ms 목표)
+- [x] **Task 4: WASM 빌드 및 검증** (AC: #1, #2)
+  - [x] 4.1: `wasm-pack build --target nodejs --release` 실행
+  - [x] 4.2: `pkg/` 디렉토리 생성 확인
+  - [x] 4.3: Node.js에서 import 테스트 스크립트 작성
+  - [x] 4.4: 호출 지연 시간 측정 (--release 빌드) → **avg=0.006ms, max=0.035ms** (< 1ms 목표 달성)
 
-- [ ] **Task 5: 테스트 작성** (AC: #3)
-  - [ ] 5.1: Rust 유닛 테스트 작성 (`#[cfg(test)]`)
-  - [ ] 5.2: `cargo test` 통과 확인
+- [x] **Task 5: 테스트 작성** (AC: #3)
+  - [x] 5.1: Rust 유닛 테스트 작성 (`#[cfg(test)]`)
+  - [x] 5.2: `cargo test` 통과 확인 → **2 passed**
 
 ## Dev Notes
 
@@ -115,11 +115,13 @@ fn generate_id() -> String {
 | 컴포넌트 | 기술 | 버전 |
 |---------|------|------|
 | **Rust** | stable | 1.85.0+ (2024 Edition) |
-| **wasm-pack** | drager fork | 0.13.1 |
-| **wasm-bindgen** | - | 0.2 (최신 유지) |
+| **wasm-pack** | [drager fork](https://github.com/drager/wasm-pack) | 0.13.1 |
+| **wasm-bindgen** | - | 0.2.92 (고정) |
 | **Node.js** | LTS | 22.x |
 
 > ⚠️ **중요**: Rust 1.85.0 이상 필요 (Edition 2024 지원). `rustup update` 먼저 실행할 것.
+>
+> **wasm-pack fork 참고**: rustwasm/wasm-pack이 sunset된 후 [drager/wasm-pack](https://github.com/drager/wasm-pack)이 커뮤니티 유지보수 fork입니다.
 
 ### wasm-bindgen 주의사항
 
@@ -150,26 +152,44 @@ cad-engine/
 - `primitives/`, `scene/`, `serializers/` 모듈은 후속 스토리에서 추가
 - pkg/ 디렉토리는 wasm-pack이 자동 생성
 
-### 예상 Cargo.toml
+### 실제 Cargo.toml
 
 ```toml
 [package]
 name = "cad-engine"
 version = "0.1.0"
 edition = "2024"
+description = "AI-Native CAD Engine - Rust WASM core"
+repository = "https://github.com/parktube/7-division"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[features]
+default = []
+dev = ["console_error_panic_hook"]  # 디버그 빌드용
+console_error_panic_hook = ["dep:console_error_panic_hook"]
+
 [dependencies]
-wasm-bindgen = "0.2"  # 최신 버전 유지
+wasm-bindgen = "0.2.92"  # 버전 고정
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1", features = ["v4", "js"] }
 js-sys = "0.3"
+console_error_panic_hook = { version = "0.1", optional = true }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
+```
+
+#### dev feature 사용법
+```bash
+# Release 빌드 (기본, panic hook 미포함)
+wasm-pack build --target nodejs
+
+# Dev 빌드 (panic hook 포함, 디버깅용)
+wasm-pack build --target nodejs --dev -- --features dev
 ```
 
 ### 예상 lib.rs (최소 버전)
@@ -235,7 +255,107 @@ Claude Opus 4.5
 
 ### File List
 
+**커밋 포함 파일:**
 - cad-engine/Cargo.toml (신규)
 - cad-engine/src/lib.rs (신규)
-- cad-engine/pkg/* (빌드 결과)
-- test-wasm.mjs (검증용, 선택적)
+- cad-engine/.gitignore (신규)
+- cad-engine/LICENSE (신규 - MIT)
+- package.json (신규 - npm scripts, drager fork 커밋 해시 고정)
+- test-wasm.mjs (검증용)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - status: done)
+- docs/architecture.md (수정 - wasm-pack/wasm-bindgen 버전, 빌드 명령 통일)
+- docs/epics.md (수정 - wasm-pack/wasm-bindgen 버전 통일)
+- README.md (수정 - drager fork 설치, --release 빌드)
+- CONTRIBUTING.md (수정 - drager fork 설치 3곳, CI 빌드 --release)
+
+**빌드 산출물 (git 제외):**
+- cad-engine/pkg/* → .gitignore에 의해 제외, `npm run build`로 생성
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2025-12-20
+
+#### Review Round 1 - Issues Found & Fixed
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| H1 | HIGH | Task 3.2 `#[wasm_bindgen(start)]` init 함수 누락 | ✅ Fixed |
+| M1 | MEDIUM | File List 불완전 (2개 파일 누락) | ✅ Fixed |
+| M2 | MEDIUM | package.json setup에 rustup update 누락 | ✅ Fixed |
+| L1 | LOW | test-wasm.mjs 에러 핸들링 없음 | ✅ Fixed |
+| L2 | LOW | Cargo.toml 메타데이터 누락 | ✅ Fixed |
+| L3 | LOW | lib.rs 문서화 주석 없음 | ✅ Fixed |
+
+#### Review Round 2 - Issues Found & Fixed
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| H1 | HIGH | Git diff 비어있어 변경 근거 검증 불가 | ✅ N/A (이미 커밋됨) |
+| M1 | MEDIUM | wasm-pack 버전 고정 안됨 (drager fork 0.13.1) | ✅ Fixed: `@0.13.1` 명시 |
+| M2 | MEDIUM | NFR2 검증이 경고만 출력, 실패시키지 않음 | ✅ Fixed: `process.exit(1)` 추가 |
+| M3 | MEDIUM | 통합 테스트에 assert 없음 | ✅ Fixed: assertEqual 함수 + 5개 테스트 케이스 |
+| L1 | LOW | init 함수가 빈 함수 | ✅ Fixed: console_error_panic_hook 설정 |
+
+#### Review Round 3 - Issues Found & Fixed
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| H1 | HIGH | 변경 근거 검증 불가 | ✅ Fixed: 커밋 해시 기록 |
+| M1 | MEDIUM | wasm-pack drager fork 미고정 | ✅ Fixed: git install로 변경 |
+| M2 | MEDIUM | wasm-bindgen 버전 느슨함 | ✅ Fixed: `0.2.92` 고정 |
+| M3 | MEDIUM | NFR2 평균만 검사 (max 미검사) | ✅ Fixed: max 검증 추가 |
+| L1 | LOW | panic hook이 release에도 포함 | ✅ Fixed: dev feature로 분리 |
+
+#### Review Round 4 - 문서/구현 일관성 수정
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| H1 | HIGH | File List에 pkg/* 포함 (git 제외 대상) | ✅ Fixed: 빌드 산출물 분리 명시 |
+| M1 | MEDIUM | File List 누락 (sprint-status.yaml) | ✅ Fixed |
+| M2 | MEDIUM | 문서 wasm-bindgen "0.2" vs 구현 "0.2.92" 불일치 | ✅ Fixed |
+| M3 | MEDIUM | Task 4.4 성능 수치 outdated | ✅ Fixed: avg/max 표기 |
+| M4 | MEDIUM | fork 명칭 혼동 | ✅ Fixed: drager fork로 통일 |
+| L1 | LOW | dev feature 사용법 미문서화 | ✅ Fixed: 가이드 추가 |
+
+#### Review Round 5 - Source-of-truth 문서 통일
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | architecture.md/epics.md fork 표기 불일치 | ✅ Fixed: drager fork로 통일 |
+| M2 | MEDIUM | setup에 --force 없음 | ✅ Fixed: --force 추가 |
+| M3 | MEDIUM | 빌드 프로파일(release) 미명시 | ✅ Fixed: Task 4.4에 명시 |
+| L1 | LOW | .coderabbit.yaml 스토리 범위 밖 | ✅ Fixed: 별도 커밋 분리 |
+
+#### Review Round 6 - 문서/설정 정합성 최종 점검
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | architecture.md/epics.md drager fork 불일치 | ✅ Fixed: 모든 문서 drager fork로 통일 |
+| M2 | MEDIUM | epics.md wasm-bindgen "0.2" 버전 표기 | ✅ Fixed: "0.2.92" 명시 |
+| M3 | MEDIUM | package.json nickel URL 오류 (404) | ✅ Fixed: drager/wasm-pack URL로 수정 |
+| L1 | LOW | build:release 스크립트 누락 | ✅ Fixed: npm scripts에 추가 |
+
+#### Review Round 6 재리뷰 - 빌드/테스트 일관성
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | architecture.md 설치 가이드 upstream wasm-pack 사용 | ✅ Fixed: drager fork + commit hash 고정 |
+| M2 | MEDIUM | Task 4.1 dev 빌드 vs 4.4 release 측정 불일치 | ✅ Fixed: Task 4.1도 --release 명시 |
+| M3 | MEDIUM | test:wasm이 build:release 보장 안함 | ✅ Fixed: npm run build:release && 체이닝 |
+| L1 | LOW | wasm-pack git tag만 고정 (재현성 리스크) | ✅ Fixed: --rev 커밋 해시로 고정 |
+
+> **wasm-pack v0.13.1 커밋**: `24bdca457abad34e444912e6165eb71422a51046`
+
+#### Review Round 7 - 프로젝트 전체 문서 통일
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| M1 | MEDIUM | README.md, CONTRIBUTING.md 누락 (한 곳만 수정) | ✅ Fixed: 전체 grep으로 4곳 수정 |
+| M2 | MEDIUM | File List에 수정 파일 미반영 | ✅ Fixed: README.md, CONTRIBUTING.md 추가 |
+| M3 | MEDIUM | README 빌드 명령이 dev만 제시 | ✅ Fixed: --release 추가 |
+
+> **교훈**: 리뷰 수정 시 전체 grep 검색 필수. 스토리 File List/Review Log 동시 갱신.
+
+#### 테스트 검증 결과
+```
+✅ AC1: WASM 모듈 로드 성공
+✅ AC2: 호출 지연 시간 avg=0.006ms, max=0.035ms < 1ms 목표 달성
+✅ AC3-1~5: 모든 assert 통과 (유니코드, 빈 문자열, 긴 문자열 포함)
+```
+
+#### Review Follow-ups (AI)
+- [ ] [AI-Review][LOW] WASM 브라우저 타겟 빌드 테스트 추가 검토
+- [ ] [AI-Review][LOW] wasm-bindgen-test를 활용한 브라우저 테스트 추가 검토

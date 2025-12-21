@@ -15,8 +15,8 @@
 | 컴포넌트 | 기술 | 버전 | 비고 |
 |---------|------|------|------|
 | **CAD Engine** | Rust | 1.85.0+ (stable) | WASM 빌드 |
-| **WASM 빌드** | wasm-pack | 0.13.1 | drager fork |
-| **WASM 바인딩** | wasm-bindgen | 0.2 (최신) | Cargo.toml에서 최신 유지 |
+| **WASM 빌드** | wasm-pack | 0.13.1 | [drager fork](https://github.com/drager/wasm-pack) |
+| **WASM 바인딩** | wasm-bindgen | 0.2.92 | 버전 고정 |
 | **런타임** | Node.js | 22.x LTS | Maintenance LTS |
 | **뷰어** | HTML Canvas 2D | - | 가장 단순 |
 | **빌드 도구** | 없음 (정적 서버) | - | Phase 1 단순화 |
@@ -1523,8 +1523,8 @@ WASM 엔진은 동일, LLM 레이어만 교체.
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup target add wasm32-unknown-unknown
 
-# wasm-pack
-cargo install wasm-pack
+# wasm-pack (drager fork v0.13.1)
+cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
 # Node.js (20+)
 # https://nodejs.org/ 또는 nvm 사용
@@ -1535,8 +1535,8 @@ cargo install wasm-pack
 ```bash
 # CAD Engine (WASM)
 cd cad-engine
-wasm-pack build --target nodejs    # Node.js용 (Claude Code)
-wasm-pack build --target web       # 브라우저용 (옵션)
+wasm-pack build --target nodejs --release    # Node.js용 (Claude Code)
+wasm-pack build --target web --release       # 브라우저용 (옵션)
 
 # Viewer
 cd viewer

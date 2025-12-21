@@ -1,0 +1,41 @@
+# CodeRabbit Configuration
+# https://docs.coderabbit.ai/guides/configure-coderabbit
+
+language: ko-KR
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  tools:
+    clippy:
+      enabled: true
+
+  path_instructions:
+    - path: "cad-engine/**/*.rs"
+      instructions: |
+        Rust WASM 엔진 코드입니다.
+        - wasm-bindgen 패턴 준수 확인
+        - 메모리 안전성 검토
+        - JS 인터페이스 설계 검토
+        - panic 가능성 확인
+
+    - path: "**/*.mjs"
+      instructions: |
+        Node.js ESM 테스트 코드입니다.
+        - WASM 모듈 로드 패턴 확인
+        - 에러 핸들링 검토
+        - NFR (성능 요구사항) 검증 로직 확인
+
+    - path: "docs/sprint-artifacts/*.md"
+      instructions: |
+        스토리/에픽 문서입니다.
+        - AC (Acceptance Criteria) 명확성 확인
+        - Task 완료 상태 일관성 검토
+
+chat:
+  auto_reply: true

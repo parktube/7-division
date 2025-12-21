@@ -1,0 +1,17 @@
+{
+  "name": "7-division",
+  "version": "0.1.0",
+  "description": "AI-Native CAD Engine",
+  "type": "module",
+  "scripts": {
+    "setup": "rustup update && rustup target add wasm32-unknown-unknown && cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046",
+    "build": "wasm-pack build cad-engine --target nodejs",
+    "build:release": "wasm-pack build cad-engine --target nodejs --release",
+    "test": "cargo test --manifest-path cad-engine/Cargo.toml",
+    "test:wasm": "npm run build:release && node test-wasm.mjs",
+    "test:wasm:dev": "npm run build && node test-wasm.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
