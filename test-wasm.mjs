@@ -1,16 +1,17 @@
 // test-wasm.mjs
-// WASM 모듈 통합 테스트 - AC1, AC2, AC3 검증
+// WASM 모듈 통합 테스트 - Story 1.1 & 1.2 검증
 
 const NFR2_LATENCY_LIMIT_MS = 1.0;
 const WARMUP_RUNS = 3;
 const BENCHMARK_RUNS = 10;
 
-let greet;
+let greet, Scene;
 
 // AC1: WASM 모듈 로드 테스트
 try {
     const module = await import('./cad-engine/pkg/cad_engine.js');
     greet = module.greet;
+    Scene = module.Scene;
     console.log("✅ AC1: WASM 모듈 로드 성공");
 } catch (error) {
     console.error("❌ AC1 FAILED: WASM 모듈 로드 실패");
@@ -73,5 +74,44 @@ assertEqual(greet(""), "Hello, !", "AC3-3: greet('') 빈 문자열");
 // 엣지 케이스 테스트
 assertEqual(greet("한글"), "Hello, 한글!", "AC3-4: greet('한글') 유니코드");
 assertEqual(greet("A".repeat(100)), `Hello, ${"A".repeat(100)}!`, "AC3-5: greet(긴 문자열)");
+
+// ========================================
+// Story 1.2: Scene 클래스 테스트
+// ========================================
+console.log("\n--- Story 1.2: Scene 클래스 테스트 ---");
+
+// AC1: Scene 인스턴스 생성
+try {
+    const scene = new Scene("my-scene");
+    assertEqual(scene.name, "my-scene", "Scene AC1-1: Scene 이름 설정");
+    assertEqual(scene.entity_count, 0, "Scene AC1-2: 빈 entities 초기화");
+    console.log("✅ Scene AC1: Scene 인스턴스 생성 성공");
+} catch (error) {
+    console.error("❌ Scene AC1 FAILED: Scene 인스턴스 생성 실패");
+    console.error(`상세: ${error.message}`);
+    process.exit(1);
+}
+
+// AC4: Node.js에서 Scene 사용 가능
+try {
+    const scene1 = new Scene("test-scene-1");
+    const scene2 = new Scene("another-scene");
+
+    assertEqual(scene1.name, "test-scene-1", "Scene AC4-1: 다중 Scene 생성");
+    assertEqual(scene2.name, "another-scene", "Scene AC4-2: 다중 Scene 이름");
+
+    // list_entities() 테스트 (빈 배열)
+    const emptyList = JSON.parse(scene1.list_entities());
+    assertEqual(emptyList.length, 0, "Scene AC4-3: 빈 Entity 목록");
+
+    // has_entity() 테스트
+    assertEqual(scene1.has_entity("nonexistent"), false, "Scene AC4-4: has_entity(존재하지 않음)");
+
+    console.log("✅ Scene AC4: Node.js에서 Scene 사용 가능");
+} catch (error) {
+    console.error("❌ Scene AC4 FAILED: Scene 사용 실패");
+    console.error(`상세: ${error.message}`);
+    process.exit(1);
+}
 
 console.log("\n🎉 All tests passed!");
