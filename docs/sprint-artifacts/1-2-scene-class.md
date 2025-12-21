@@ -1,6 +1,6 @@
 # Story 1.2: Scene 클래스 및 Entity 구조 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -42,35 +42,35 @@ So that **도형들을 하나의 씬에서 관리하고 추적할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Entity 구조체 정의** (AC: #2, #3)
-  - [ ] 1.1: `scene/` 모듈 디렉토리 생성
-  - [ ] 1.2: `entity.rs` 파일 생성
-  - [ ] 1.3: Entity 구조체 정의 (id, type, geometry, transform, style, metadata)
-  - [ ] 1.4: EntityType enum 정의 (Line, Circle, Rect)
-  - [ ] 1.5: Geometry enum 정의 (LineGeometry, CircleGeometry, RectGeometry)
-  - [ ] 1.6: Transform 구조체 정의 (translate, rotate, scale)
+- [x] **Task 1: Entity 구조체 정의** (AC: #2, #3)
+  - [x] 1.1: `scene/` 모듈 디렉토리 생성
+  - [x] 1.2: `entity.rs` 파일 생성
+  - [x] 1.3: Entity 구조체 정의 (id, type, geometry, transform, style, metadata)
+  - [x] 1.4: EntityType enum 정의 (Line, Circle, Rect)
+  - [x] 1.5: Geometry enum 정의 (LineGeometry, CircleGeometry, RectGeometry)
+  - [x] 1.6: Transform 구조체 정의 (translate, rotate, scale)
 
-- [ ] **Task 2: Scene 클래스 구현** (AC: #1, #3)
-  - [ ] 2.1: `scene/mod.rs` 파일 생성
-  - [ ] 2.2: Scene 구조체 정의 (name, entities)
-  - [ ] 2.3: `#[wasm_bindgen(constructor)]` 으로 new 함수 구현
-  - [ ] 2.4: entities 벡터 초기화 로직 작성
+- [x] **Task 2: Scene 클래스 구현** (AC: #1, #3)
+  - [x] 2.1: `scene/mod.rs` 파일 생성
+  - [x] 2.2: Scene 구조체 정의 (name, entities)
+  - [x] 2.3: `#[wasm_bindgen(constructor)]` 으로 new 함수 구현
+  - [x] 2.4: entities 벡터 초기화 로직 작성
 
-- [ ] **Task 3: name 기반 Entity 식별** (AC: #2, #2.1)
-  - [ ] 3.1: Entity.metadata.name 필수화 (Option → String)
-  - [ ] 3.2: Scene에 `find_by_name(name: &str)` 헬퍼 메서드
-  - [ ] 3.3: name 중복 체크 로직 (`has_entity(name)`)
-  - [ ] 3.4: 내부 id는 UUID 유지 (JSON export용)
+- [x] **Task 3: name 기반 Entity 식별** (AC: #2, #2.1)
+  - [x] 3.1: Entity.metadata.name 필수화 (Option → String)
+  - [x] 3.2: Scene에 `find_by_name(name: &str)` 헬퍼 메서드
+  - [x] 3.3: name 중복 체크 로직 (`has_entity(name)`)
+  - [x] 3.4: 내부 id는 UUID 유지 (JSON export용)
 
-- [ ] **Task 4: lib.rs 통합** (AC: #4)
-  - [ ] 4.1: `mod scene;` 추가
-  - [ ] 4.2: Scene을 wasm_bindgen export에 포함
-  - [ ] 4.3: WASM 빌드 및 테스트
+- [x] **Task 4: lib.rs 통합** (AC: #4)
+  - [x] 4.1: `mod scene;` 추가
+  - [x] 4.2: Scene을 wasm_bindgen export에 포함
+  - [x] 4.3: WASM 빌드 및 테스트
 
-- [ ] **Task 5: 테스트 작성** (AC: #1, #2)
-  - [ ] 5.1: Scene 생성 테스트
-  - [ ] 5.2: Entity 추가 시 ID 반환 테스트
-  - [ ] 5.3: Node.js에서 import 테스트
+- [x] **Task 5: 테스트 작성** (AC: #1, #2)
+  - [x] 5.1: Scene 생성 테스트
+  - [x] 5.2: Entity 추가 시 ID 반환 테스트
+  - [x] 5.3: Node.js에서 import 테스트
 
 ## Dev Notes
 

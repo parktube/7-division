@@ -21,7 +21,7 @@ development_status:
         priority: P0
         depends_on: []
       1-2-scene-class:
-        status: ready-for-dev
+        status: done
         title: "Scene 데이터 구조"
         priority: P0
         depends_on: [1-1-wasm-project-init]
