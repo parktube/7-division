@@ -11,6 +11,10 @@ reviews:
   review_status: true
   collapse_walkthrough: false
 
+  tools:
+    clippy:
+      enabled: true
+
   path_instructions:
     - path: "cad-engine/**/*.rs"
       instructions: |
