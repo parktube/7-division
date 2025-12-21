@@ -62,8 +62,7 @@ impl Scene {
             style: Style::default(),
             metadata: Metadata {
                 name: name.to_string(),
-                layer: None,
-                locked: false,
+                ..Default::default()
             },
         };
 
