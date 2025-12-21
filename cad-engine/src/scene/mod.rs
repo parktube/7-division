@@ -1,9 +1,27 @@
+use std::fmt;
 use wasm_bindgen::prelude::*;
 use uuid::Uuid;
 
 pub mod entity;
 
 use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SceneError {
+    DuplicateEntityName(String),
+}
+
+impl fmt::Display for SceneError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SceneError::DuplicateEntityName(name) => {
+                write!(f, "Entity '{}' already exists", name)
+            }
+        }
+    }
+}
+
+impl std::error::Error for SceneError {}
 
 #[wasm_bindgen]
 pub struct Scene {
@@ -13,19 +31,6 @@ pub struct Scene {
 
 fn generate_id() -> String {
     Uuid::new_v4().to_string()
-}
-
-fn duplicate_name_error(name: &str) -> JsValue {
-    #[cfg(target_arch = "wasm32")]
-    {
-        JsValue::from_str(&format!("Entity '{}' already exists", name))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let _ = name;
-        JsValue::NULL
-    }
 }
 
 impl Scene {
@@ -44,9 +49,9 @@ impl Scene {
         name: &str,
         entity_type: EntityType,
         geometry: Geometry,
-    ) -> Result<String, JsValue> {
+    ) -> Result<String, SceneError> {
         if self.has_entity(name) {
-            return Err(duplicate_name_error(name));
+            return Err(SceneError::DuplicateEntityName(name.to_string()));
         }
 
         let entity = Entity {
@@ -93,12 +98,19 @@ impl Scene {
                 points: vec![[0.0, 0.0], [0.0, 0.0]],
             },
         )
+        .map_err(|err| JsValue::from_str(&err.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sample_geometry() -> Geometry {
+        Geometry::Line {
+            points: vec![[0.0, 0.0], [1.0, 1.0]],
+        }
+    }
 
     #[test]
     fn test_scene_new() {
@@ -111,7 +123,7 @@ mod tests {
     fn test_add_entity_returns_name() {
         let mut scene = Scene::new("test");
         let name = scene
-            .add_entity("head")
+            .add_entity_internal("head", EntityType::Line, sample_geometry())
             .expect("add_entity should succeed");
 
         assert_eq!(name, "head");
@@ -125,8 +137,17 @@ mod tests {
     #[test]
     fn test_add_entity_duplicate_name() {
         let mut scene = Scene::new("test");
-        scene.add_entity("head").expect("first add_entity should succeed");
+        scene
+            .add_entity_internal("head", EntityType::Line, sample_geometry())
+            .expect("first add_entity should succeed");
 
-        assert!(scene.add_entity("head").is_err());
+        let err = scene
+            .add_entity_internal("head", EntityType::Line, sample_geometry())
+            .expect_err("duplicate name should error");
+        assert_eq!(err.to_string(), "Entity 'head' already exists");
+        assert!(matches!(
+            err,
+            SceneError::DuplicateEntityName(name) if name == "head"
+        ));
     }
 }
