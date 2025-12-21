@@ -1,5 +1,9 @@
 use wasm_bindgen::prelude::*;
 
+pub mod scene;
+
+pub use scene::Scene;
+
 /// WASM 모듈 초기화 함수
 /// Node.js에서 모듈 로드 시 자동 실행
 /// - dev feature 활성화 시 패닉 훅 설정 (디버깅 개선)
