@@ -4,9 +4,9 @@
   "description": "AI-Native CAD Engine",
   "type": "module",
   "scripts": {
-    "setup": "rustup update && rustup target add wasm32-unknown-unknown && cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force",
-    "build": "cd cad-engine && wasm-pack build --target nodejs",
-    "build:release": "cd cad-engine && wasm-pack build --target nodejs --release",
+    "setup": "rustup update && rustup target add wasm32-unknown-unknown && cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046",
+    "build": "wasm-pack build cad-engine --target nodejs",
+    "build:release": "wasm-pack build cad-engine --target nodejs --release",
     "test": "cd cad-engine && cargo test",
     "test:wasm": "npm run build:release && node test-wasm.mjs"
   },
