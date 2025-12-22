@@ -181,11 +181,20 @@ function renderCircle(geometry, style) {
     return;
   }
   const { center, radius } = circle;
-  if (!Array.isArray(center) || center.length < 2 || !Number.isFinite(radius)) {
+  if (!Array.isArray(center) || center.length < 2) {
+    return;
+  }
+  const [x, y] = center;
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(radius) ||
+    radius < 0
+  ) {
     return;
   }
   ctx.beginPath();
-  ctx.arc(center[0], center[1], radius, 0, Math.PI * 2);
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
   applyFill(style?.fill);
   applyStroke(resolveStroke(style));
 }
