@@ -18,6 +18,8 @@ const state = {
   pixelRatio: window.devicePixelRatio || 1,
 };
 
+let pollTimer = null;
+
 function formatTime(date) {
   return date.toLocaleTimeString('en-US', {
     hour12: false,
@@ -315,6 +317,31 @@ window.addEventListener('resize', () => {
   resizeCanvas();
 });
 
+function startPolling() {
+  if (pollTimer) {
+    return;
+  }
+  pollTimer = setInterval(fetchScene, POLL_INTERVAL_MS);
+}
+
+function stopPolling() {
+  if (!pollTimer) {
+    return;
+  }
+  clearInterval(pollTimer);
+  pollTimer = null;
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    stopPolling();
+    return;
+  }
+  fetchScene();
+  startPolling();
+}
+
+document.addEventListener('visibilitychange', handleVisibilityChange);
+
 resizeCanvas();
-fetchScene();
-setInterval(fetchScene, POLL_INTERVAL_MS);
+handleVisibilityChange();
