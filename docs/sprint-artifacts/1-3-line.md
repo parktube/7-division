@@ -18,11 +18,12 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 **And** name ("spine")이 반환된다
 **And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
-### AC2: 폴리라인 (4개 이상 좌표)
-**Given** 4개 이상의 좌표가 주어진 경우 (폴리라인)
-**When** `scene.add_line("left_arm", Float64Array([x1, y1, x2, y2, x3, y3, x4, y4]))` 호출
+### AC2: 폴리라인 (6개 이상 값 = 3점 이상)
+**Given** 6개 이상의 값이 주어진 경우 (폴리라인, 3점 이상)
+**When** `scene.add_line("left_arm", Float64Array([x1, y1, x2, y2, x3, y3]))` 호출
 **Then** 연결된 선분들이 하나의 Entity로 생성된다
-**And** geometry.points에 4개 점이 순서대로 저장된다
+**And** geometry.points에 3개 점이 순서대로 저장된다
+**And** (참고: 최소 4개 값 = 2점 필요)
 
 ### AC3: 입력 보정 (홀수 좌표)
 **Given** 홀수 개의 좌표가 주어진 경우
@@ -220,12 +221,22 @@ Claude Opus 4.5
 
 ### File List
 
+**코드:**
 - cad-engine/src/primitives/mod.rs (신규)
 - cad-engine/src/primitives/line.rs (신규)
 - cad-engine/src/scene/mod.rs (수정 - add_line, add_line_internal 추가)
 - cad-engine/src/lib.rs (수정 - mod primitives 추가)
+
+**스토리/스프린트:**
 - docs/sprint-artifacts/1-3-line.md (수정 - 상태 및 Task 완료 표시)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - 1-3-line status 변경)
+
+**문서 일관성 수정 (name 파라미터 반영):**
+- docs/epics.md (수정 - Story 1.2~1.8 name 파라미터 추가)
+- docs/architecture.md (수정 - API 시그니처 및 예제 코드)
+- docs/sprint-artifacts/1-8-styled-shape-creation.md (수정 - AC5)
+- docs/sprint-artifacts/2-1-json-export.md (수정 - 예제 코드)
+- docs/sprint-artifacts/2-2-canvas-2d-viewer.md (수정 - 다이어그램)
 
 ### Change Log
 
