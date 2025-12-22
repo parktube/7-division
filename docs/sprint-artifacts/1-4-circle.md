@@ -252,7 +252,7 @@ $ wasm-pack build --target nodejs --features dev
 
 ### File List
 
-> Commits: b6ab06d, 666d0d7, a029e84, d2539e4, 89f3792, eca891a, 67a3acc
+> Branch: `feature/story-1-3` (e3c41a8 이후 모든 커밋 포함)
 
 - cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증, add_entity 제거)
 - cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 순서 변경, trim 후 검증, 테스트 5개)
