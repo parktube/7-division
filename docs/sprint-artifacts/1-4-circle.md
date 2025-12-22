@@ -76,6 +76,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 
 ### Review Follow-ups (AI)
 
+- [x] [AI-Review][Medium] AC5의 JS throw 요구는 wasm-bindgen 문서만 언급 → wasm-bindgen 공식문서 참조로 충분 (통합테스트는 scope creep, Result<T,JsValue>→throw는 wasm-bindgen 표준동작) `docs/sprint-artifacts/1-4-circle.md:45`
+- [x] [AI-Review][Medium] Story File List의 Git Log 증빙에 최신 커밋 `0b25d9e`가 빠져 있음 → Git Log 섹션에 0b25d9e 추가 `docs/sprint-artifacts/1-4-circle.md:290`
+- [x] [AI-Review][Medium] tests/scene 모듈은 `_internal` 함수만 검증 → wrapper는 map_err만 수행하므로 internal 테스트로 충분 (이전 결론 재확인) `docs/sprint-artifacts/1-4-circle.md:44`
 - [x] [AI-Review][Medium] Dev Agent Record File List에 `docs/sprint-artifacts/1-4-circle.md` 변경을 추가하거나 변경 이력을 분리해 기록 정합성 유지 `docs/sprint-artifacts/1-4-circle.md:193`
 - [x] [AI-Review][Medium] Dev Agent Record File List에 `docs/sprint-artifacts/sprint-status.yaml` 변경을 추가해 실제 변경과 기록 일치 `docs/sprint-artifacts/1-4-circle.md:193`
 - [x] [AI-Review][Medium] AC2의 `abs()` 보정 서술과 구현(`abs().max(0.001)`) 불일치 → AC 문구/테스트/로직 중 하나로 기준 통일 `docs/sprint-artifacts/1-4-circle.md:21`
@@ -283,6 +286,7 @@ $ wasm-pack build --target nodejs --features dev
 
 **Git Log 증빙 (b6ab06d^..HEAD):**
 ```
+0b25d9e fix: 13차 코드 리뷰 수정 - 미소 반지름 클램프 테스트 및 증빙 추가
 6f1a700 fix: 12차 코드 리뷰 수정 - AC5 wrapper 동작 정확히 명시
 f16ab6a fix: 11차 코드 리뷰 수정 - AC5 throw 동작 명시 및 테스트 결론
 d7b3027 fix: 10차 코드 리뷰 수정 - Review Follow-ups 중복/상충 이슈 정리
@@ -313,3 +317,4 @@ b6ab06d feat: Story 1-4 Circle 도형 생성 기능 구현
 - 2025-12-22: Addressed 11th review findings - 3 items resolved (AC5 throw 동작 명시, wasm-bindgen 테스트 결론 명시, line.rs 테스트 10개로 갱신)
 - 2025-12-22: Addressed 12th review findings - 3 items resolved (AC5 wrapper map_err 명시, Task 5 Line 검증 보완 추가, wasm-bindgen 자동 throw 명시)
 - 2025-12-22: Addressed 13th review findings - 3 items resolved (미소 반지름 클램프 테스트 추가, wasm-bindgen 공식문서 참조, Git Log 증빙 추가)
+- 2025-12-22: Addressed 14th review findings - 3 items resolved (Git Log에 0b25d9e 추가, 중복 이슈 정리, scope creep 거부)
