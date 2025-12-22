@@ -72,7 +72,7 @@ development_status:
         priority: P0
         depends_on: [1-2-scene-class]
       2-2-canvas-2d-viewer:
-        status: ready-for-dev
+        status: done
         title: "Canvas 2D Viewer"
         priority: P0
         depends_on: [2-1-json-export]  # scene.json 필요
