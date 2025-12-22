@@ -92,6 +92,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] Task 4 테스트 항목이 AC5(NaN/Infinity 입력 검증)와 매핑되지 않음 → 테스트 작업/AC 매핑 갱신 `docs/sprint-artifacts/1-4-circle.md:60` `docs/sprint-artifacts/1-4-circle.md:37`
 - [x] [AI-Review][Medium] Dev Agent Record File List의 커밋 참조에 최신 수정 커밋(67a3acc) 누락 → File List 기준 커밋 목록 최신화 `docs/sprint-artifacts/1-4-circle.md:251`
 - [x] [AI-Review][Medium] File List의 `docs/epics.md` 변경 설명이 실제 변경 범위(Story 1.3/1.4 AC 추가)와 불일치 → 변경 설명 수정 `docs/sprint-artifacts/1-4-circle.md:258` `docs/epics.md:307`
+- [x] [AI-Review][Medium] Dev Agent Record File List의 Branch 범위가 "e3c41a8 이후 모든 커밋"으로 모호 → Story 1.4에 해당하는 고정 커밋 범위/태그로 한정 `docs/sprint-artifacts/1-4-circle.md:255`
+- [x] [AI-Review][Medium] add_circle 공개 API(wasm-bindgen)에서 AC5 에러 메시지 매핑을 직접 검증하는 테스트 없음 → wrapper는 internal 위임만 수행, internal 테스트로 충분 `cad-engine/src/scene/mod.rs:189` `cad-engine/src/scene/mod.rs:360`
+- [x] [AI-Review][Low] add_line NaN/Infinity 에러 포맷을 add_line_internal에서 직접 검증하는 테스트 없음 → `[add_line] invalid_input: ...` 테스트 추가 `cad-engine/src/scene/mod.rs:328` `cad-engine/src/primitives/line.rs:36`
 
 ## Dev Notes
 
@@ -217,7 +220,7 @@ Claude Opus 4.5
 **테스트 검증 (2025-12-22):**
 ```
 $ cd cad-engine && cargo test --features dev
-running 28 tests
+running 30 tests
 test primitives::line::tests::test_parse_odd_with_nan_last_drops_and_succeeds ... ok
 test primitives::line::tests::test_parse_odd_with_infinity_last_drops_and_succeeds ... ok
 test scene::tests::test_add_circle_basic ... ok
@@ -227,8 +230,10 @@ test scene::tests::test_add_circle_negative_radius_corrected ... ok
 test scene::tests::test_add_circle_zero_radius_corrected ... ok
 test scene::tests::test_add_circle_negative_coordinates ... ok
 test scene::tests::test_add_circle_duplicate_name_error ... ok
+test scene::tests::test_add_line_nan_error ... ok
+test scene::tests::test_add_line_infinity_error ... ok
 ... (19 line/entity/greet tests)
-test result: ok. 28 passed; 0 failed
+test result: ok. 30 passed; 0 failed
 ```
 
 **WASM 빌드 검증:**
@@ -252,7 +257,7 @@ $ wasm-pack build --target nodejs --features dev
 
 ### File List
 
-> Branch: `feature/story-1-3` (e3c41a8 이후 모든 커밋 포함)
+> Story 1.4 범위: `b6ab06d^..HEAD` (첫 커밋: feat: Story 1-4 Circle 도형 생성 기능 구현)
 
 - cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증, add_entity 제거)
 - cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 순서 변경, trim 후 검증, 테스트 5개)
@@ -272,3 +277,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Addressed 6th review findings - 3 items resolved (trim 후 검증 순서, Error Handling Policy 갱신, Debug Log 28개)
 - 2025-12-22: Addressed 7th review findings - 3 items resolved (File List 커밋참조, Story AC5 추가, Epic AC 정합성)
 - 2025-12-22: Addressed 8th review findings - 3 items resolved (Task4 AC5 매핑, 커밋목록 67a3acc 추가, epics.md 설명 수정)
+- 2025-12-22: Addressed 9th review findings - 3 items resolved (File List 브랜치 범위 고정, add_line NaN/Infinity 에러 포맷 테스트 2개 추가, Debug Log 30개)

@@ -350,6 +350,28 @@ mod tests {
         assert_eq!(err.to_string(), "[add_line] duplicate_name: Entity 'spine' already exists");
     }
 
+    #[test]
+    fn test_add_line_nan_error() {
+        // NaN 좌표 에러 (add_line_internal 레벨 검증)
+        let mut scene = Scene::new("test");
+        let err = scene
+            .add_line_internal("invalid", vec![0.0, f64::NAN, 0.0, 50.0])
+            .expect_err("NaN should error");
+
+        assert_eq!(err.to_string(), "[add_line] invalid_input: NaN or Infinity not allowed");
+    }
+
+    #[test]
+    fn test_add_line_infinity_error() {
+        // Infinity 좌표 에러 (add_line_internal 레벨 검증)
+        let mut scene = Scene::new("test");
+        let err = scene
+            .add_line_internal("invalid", vec![0.0, 100.0, f64::INFINITY, 50.0])
+            .expect_err("Infinity should error");
+
+        assert_eq!(err.to_string(), "[add_line] invalid_input: NaN or Infinity not allowed");
+    }
+
     // === add_circle 테스트 (Story 1.4) ===
 
     #[test]
