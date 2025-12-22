@@ -15,6 +15,7 @@ pub enum EntityType {
     Line,
     Circle,
     Rect,
+    Arc,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +26,12 @@ pub enum Geometry {
         origin: [f64; 2],
         width: f64,
         height: f64,
+    },
+    Arc {
+        center: [f64; 2],
+        radius: f64,
+        start_angle: f64,  // 라디안, 0 = 3시 방향
+        end_angle: f64,    // 라디안, 양수 = 반시계방향 (CCW)
     },
 }
 

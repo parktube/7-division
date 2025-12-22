@@ -2,6 +2,7 @@ use std::fmt;
 use wasm_bindgen::prelude::*;
 use uuid::Uuid;
 use js_sys::Float64Array;
+use serde_json;
 
 pub mod entity;
 
@@ -182,6 +183,55 @@ impl Scene {
             },
         )
     }
+
+    /// 내부용 Arc 생성 함수 (테스트용)
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "shoulder_arc") - Scene 내 unique
+    /// * `cx` - 중심점 x 좌표
+    /// * `cy` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `start_angle` - 시작 각도 (라디안, 0 = 3시 방향)
+    /// * `end_angle` - 끝 각도 (라디안, 양수 = CCW)
+    ///
+    /// # Errors
+    /// * NaN/Infinity 입력 시 에러 반환
+    fn add_arc_internal(
+        &mut self,
+        name: &str,
+        cx: f64,
+        cy: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+    ) -> Result<String, SceneError> {
+        // NaN/Infinity 검증 (유효하지 않은 geometry 방지)
+        if !cx.is_finite() || !cy.is_finite() || !radius.is_finite()
+            || !start_angle.is_finite() || !end_angle.is_finite() {
+            return Err(SceneError::InvalidInput(
+                "[add_arc] invalid_input: NaN or Infinity not allowed".to_string(),
+            ));
+        }
+
+        // 관대한 입력 보정: 음수/0 반지름은 abs().max(0.001)로 변환
+        let radius = if radius <= 0.0 {
+            radius.abs().max(0.001)
+        } else {
+            radius
+        };
+
+        self.add_entity_internal(
+            "add_arc",
+            name,
+            EntityType::Arc,
+            Geometry::Arc {
+                center: [cx, cy],
+                radius,
+                start_angle,
+                end_angle,
+            },
+        )
+    }
 }
 
 #[wasm_bindgen]
@@ -275,6 +325,113 @@ impl Scene {
     ) -> Result<String, JsValue> {
         self.add_rect_internal(name, x, y, width, height)
             .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 호(Arc) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "shoulder_arc") - Scene 내 unique
+    /// * `cx` - 중심점 x 좌표
+    /// * `cy` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `start_angle` - 시작 각도 (라디안, 0 = 3시 방향)
+    /// * `end_angle` - 끝 각도 (라디안, 양수 = CCW)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    ///
+    /// # 입력 보정
+    /// 음수/0 반지름은 abs().max(0.001)로 양수 변환
+    pub fn add_arc(
+        &mut self,
+        name: &str,
+        cx: f64,
+        cy: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+    ) -> Result<String, JsValue> {
+        self.add_arc_internal(name, cx, cy, radius, start_angle, end_angle)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 스타일이 적용된 호(Arc)를 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 - Scene 내 unique
+    /// * `cx` - 중심점 x 좌표
+    /// * `cy` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `start_angle` - 시작 각도 (라디안)
+    /// * `end_angle` - 끝 각도 (라디안)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    pub fn draw_arc(
+        &mut self,
+        name: &str,
+        cx: f64,
+        cy: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_arc] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // NaN/Infinity 검증
+        if !cx.is_finite() || !cy.is_finite() || !radius.is_finite()
+            || !start_angle.is_finite() || !end_angle.is_finite() {
+            return Err(JsValue::from_str(
+                "[draw_arc] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 관대한 입력 보정: 음수/0 반지름은 abs().max(0.001)로 변환
+        let radius = if radius <= 0.0 {
+            radius.abs().max(0.001)
+        } else {
+            radius
+        };
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json)
+            .unwrap_or_else(|_| Style::default());
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Arc,
+            geometry: Geometry::Arc {
+                center: [cx, cy],
+                radius,
+                start_angle,
+                end_angle,
+            },
+            transform: Transform::default(),
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+        };
+
+        self.entities.push(entity);
+        Ok(name.to_string())
     }
 }
 
@@ -770,5 +927,175 @@ mod tests {
             .add_rect_internal("invalid", 0.0, 0.0, 10.0, f64::NEG_INFINITY)
             .expect_err("NEG_INFINITY height should error");
         assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+    }
+
+    // === add_arc 테스트 (Story 1.6) ===
+
+    #[test]
+    fn test_add_arc_basic() {
+        // AC1: 기본 Arc 생성
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_arc_internal("quarter_arc", 0.0, 0.0, 50.0, 0.0, std::f64::consts::FRAC_PI_2)
+            .expect("add_arc should succeed");
+
+        assert_eq!(name, "quarter_arc");
+        assert_eq!(scene.entity_count(), 1);
+
+        let entity = scene.find_by_name("quarter_arc").unwrap();
+        assert_eq!(entity.metadata.name, "quarter_arc");
+        assert!(matches!(entity.entity_type, EntityType::Arc));
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { center, radius, start_angle, end_angle }
+            if center == &[0.0, 0.0] && *radius == 50.0
+                && *start_angle == 0.0 && (*end_angle - std::f64::consts::FRAC_PI_2).abs() < 1e-10
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_90_degrees() {
+        // AC2: 90도 호 (0 to π/2)
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_arc_internal("arc_90", 0.0, 0.0, 50.0, 0.0, std::f64::consts::FRAC_PI_2)
+            .expect("90 degree arc should succeed");
+
+        assert_eq!(name, "arc_90");
+        let entity = scene.find_by_name("arc_90").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { start_angle, end_angle, .. }
+            if *start_angle == 0.0 && (*end_angle - std::f64::consts::FRAC_PI_2).abs() < 1e-10
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_half_circle() {
+        // AC2: 반원 (0 to π)
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_arc_internal("half_circle", 0.0, 0.0, 50.0, 0.0, std::f64::consts::PI)
+            .expect("half circle should succeed");
+
+        assert_eq!(name, "half_circle");
+        let entity = scene.find_by_name("half_circle").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { start_angle, end_angle, .. }
+            if *start_angle == 0.0 && (*end_angle - std::f64::consts::PI).abs() < 1e-10
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_negative_radius_corrected() {
+        // AC3: 음수 반지름 → abs()로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_arc_internal("neg_radius", 0.0, 0.0, -25.0, 0.0, std::f64::consts::PI)
+            .expect("negative radius should be corrected");
+
+        assert_eq!(name, "neg_radius");
+        let entity = scene.find_by_name("neg_radius").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { radius, .. } if *radius == 25.0
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_zero_radius_corrected() {
+        // AC3: 0 반지름 → 0.001로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_arc_internal("zero_radius", 0.0, 0.0, 0.0, 0.0, std::f64::consts::PI)
+            .expect("zero radius should be corrected");
+
+        assert_eq!(name, "zero_radius");
+        let entity = scene.find_by_name("zero_radius").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { radius, .. } if *radius == 0.001
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_full_circle_plus() {
+        // AC4: 360도 이상 각도 허용
+        let mut scene = Scene::new("test");
+        let full_plus = std::f64::consts::PI * 2.5; // 450도
+        let name = scene
+            .add_arc_internal("full_plus", 0.0, 0.0, 50.0, 0.0, full_plus)
+            .expect("360+ degrees should be allowed");
+
+        assert_eq!(name, "full_plus");
+        let entity = scene.find_by_name("full_plus").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { end_angle, .. } if (*end_angle - full_plus).abs() < 1e-10
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_negative_angles() {
+        // 음수 각도 허용 (시계 방향)
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_arc_internal("neg_angle", 0.0, 0.0, 50.0, 0.0, -std::f64::consts::FRAC_PI_2)
+            .expect("negative angles should be allowed");
+
+        assert_eq!(name, "neg_angle");
+        let entity = scene.find_by_name("neg_angle").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Arc { end_angle, .. } if (*end_angle + std::f64::consts::FRAC_PI_2).abs() < 1e-10
+        ));
+    }
+
+    #[test]
+    fn test_add_arc_duplicate_name_error() {
+        // name 중복 시 에러
+        let mut scene = Scene::new("test");
+        scene
+            .add_arc_internal("arc1", 0.0, 0.0, 50.0, 0.0, std::f64::consts::PI)
+            .expect("first add should succeed");
+
+        let err = scene
+            .add_arc_internal("arc1", 10.0, 10.0, 25.0, 0.0, 1.0)
+            .expect_err("duplicate name should error");
+
+        assert_eq!(err.to_string(), "[add_arc] duplicate_name: Entity 'arc1' already exists");
+    }
+
+    #[test]
+    fn test_add_arc_nan_error() {
+        // NaN 입력 시 에러
+        let mut scene = Scene::new("test");
+
+        let err = scene
+            .add_arc_internal("invalid", f64::NAN, 0.0, 50.0, 0.0, 1.0)
+            .expect_err("NaN cx should error");
+        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_arc_internal("invalid", 0.0, 0.0, 50.0, f64::NAN, 1.0)
+            .expect_err("NaN start_angle should error");
+        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+    }
+
+    #[test]
+    fn test_add_arc_infinity_error() {
+        // Infinity 입력 시 에러
+        let mut scene = Scene::new("test");
+
+        let err = scene
+            .add_arc_internal("invalid", 0.0, 0.0, f64::INFINITY, 0.0, 1.0)
+            .expect_err("Infinity radius should error");
+        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_arc_internal("invalid", 0.0, 0.0, 50.0, 0.0, f64::NEG_INFINITY)
+            .expect_err("NEG_INFINITY end_angle should error");
+        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
     }
 }

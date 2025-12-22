@@ -36,12 +36,12 @@ development_status:
         priority: P0
         depends_on: [1-2-scene-class]
       1-5-rect:
-        status: review
+        status: done
         title: "Rect 도구"
         priority: P0
         depends_on: [1-2-scene-class]
       1-6-arc:
-        status: ready-for-dev
+        status: review
         title: "Arc 도형 생성"
         priority: P0
         depends_on: [1-2-scene-class]
