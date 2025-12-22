@@ -8,6 +8,8 @@
     "build": "wasm-pack build cad-engine --target nodejs",
     "build:release": "wasm-pack build cad-engine --target nodejs --release",
     "test": "cargo test --manifest-path cad-engine/Cargo.toml",
+    "test:js": "node --test viewer/renderer.test.js",
+    "test:all": "npm test && npm run test:js",
     "test:wasm": "npm run build:release && node test-wasm.mjs",
     "test:wasm:dev": "npm run build && node test-wasm.mjs"
   },
