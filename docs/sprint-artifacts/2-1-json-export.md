@@ -147,8 +147,8 @@ import { Scene } from './cad-engine/pkg/cad_engine.js';
 import fs from 'fs';
 
 const scene = new Scene("skeleton");
-scene.add_circle(0, 100, 10);  // 머리
-scene.add_line(new Float64Array([0, 90, 0, 50]));  // 척추
+scene.add_circle("head", 0, 100, 10);  // 머리
+scene.add_line("spine", new Float64Array([0, 90, 0, 50]));  // 척추
 
 // JSON 출력 및 파일 저장
 const json = scene.export_json();

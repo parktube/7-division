@@ -418,30 +418,28 @@ impl Scene {
         }
     }
 
-    pub fn add_circle(&mut self, x: f64, y: f64, radius: f64) -> String {
-        let id = generate_id();  // UUID 대안 사용
-        // ... entity 추가
-        id
+    // AX 원칙: name이 첫 번째 파라미터 (AI가 의미있는 이름으로 식별)
+    pub fn add_circle(&mut self, name: &str, x: f64, y: f64, radius: f64) -> String {
+        // ... entity 추가 (name으로 식별)
+        name.to_string()
     }
 
     // Vec<f64> 대신 js_sys::Float64Array로 명확히
-    pub fn add_line(&mut self, points: js_sys::Float64Array) -> String {
+    pub fn add_line(&mut self, name: &str, points: js_sys::Float64Array) -> String {
         let points_vec: Vec<f64> = points.to_vec();
-        let id = generate_id();
-        // ... entity 추가
-        id
+        // ... entity 추가 (name으로 식별)
+        name.to_string()
     }
 
-    pub fn add_rect(&mut self, x: f64, y: f64, w: f64, h: f64) -> String {
-        let id = generate_id();
-        // ... entity 추가
-        id
+    pub fn add_rect(&mut self, name: &str, x: f64, y: f64, w: f64, h: f64) -> String {
+        // ... entity 추가 (name으로 식별)
+        name.to_string()
     }
 
-    pub fn translate(&mut self, id: &str, dx: f64, dy: f64) { /* ... */ }
-    pub fn rotate(&mut self, id: &str, angle: f64) { /* ... */ }
-    pub fn scale(&mut self, id: &str, sx: f64, sy: f64) { /* ... */ }
-    pub fn delete(&mut self, id: &str) { /* ... */ }
+    pub fn translate(&mut self, name: &str, dx: f64, dy: f64) { /* ... */ }
+    pub fn rotate(&mut self, name: &str, angle: f64) { /* ... */ }
+    pub fn scale(&mut self, name: &str, sx: f64, sy: f64) { /* ... */ }
+    pub fn delete(&mut self, name: &str) { /* ... */ }
 
     pub fn export_json(&self) -> String { /* ... */ }
     pub fn export_svg(&self) -> String { /* ... */ }
@@ -473,19 +471,19 @@ const { Scene } = await import('./cad_engine.js');
 // 클래스 인스턴스 생성
 const scene = new Scene("skeleton");
 
-// 머리
-const head = scene.add_circle(0, 100, 20);
+// 머리 - name이 첫 번째 파라미터 (AX 원칙)
+const head = scene.add_circle("head", 0, 100, 20);
 
 // 몸통 - Float64Array 사용
-const body = scene.add_line(new Float64Array([0, 80, 0, 20]));
+const body = scene.add_line("spine", new Float64Array([0, 80, 0, 20]));
 
 // 팔
-const leftArm = scene.add_line(new Float64Array([-30, 60, 0, 70]));
-const rightArm = scene.add_line(new Float64Array([30, 60, 0, 70]));
+const leftArm = scene.add_line("left_arm", new Float64Array([-30, 60, 0, 70]));
+const rightArm = scene.add_line("right_arm", new Float64Array([30, 60, 0, 70]));
 
 // 다리
-const leftLeg = scene.add_line(new Float64Array([-15, 0, 0, 20]));
-const rightLeg = scene.add_line(new Float64Array([15, 0, 0, 20]));
+const leftLeg = scene.add_line("left_leg", new Float64Array([-15, 0, 0, 20]));
+const rightLeg = scene.add_line("right_leg", new Float64Array([15, 0, 0, 20]));
 
 // JSON 출력 (Canvas 2D 렌더링용)
 const json = scene.export_json();
@@ -918,7 +916,7 @@ impl CADRenderer {
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  1. Claude Code가 CAD Engine 함수 호출                          │
-│     scene.add_circle(0, 0, 10);                                 │
+│     scene.add_circle("test", 0, 0, 10);                         │
 │                                                                 │
 │  2. WASM이 scene.json 파일 출력                                  │
 │                                                                 │

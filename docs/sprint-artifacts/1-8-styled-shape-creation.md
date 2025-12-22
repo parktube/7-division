@@ -37,7 +37,7 @@ So that **"빨간 테두리의 파란 원을 그려줘" 같은 요청을 한 번
 
 ### AC5: 기존 add_* 함수 유지 (하위 호환)
 **Given** 기존 코드에서 add_circle 사용 중
-**When** add_circle(x, y, radius) 호출
+**When** add_circle(name, x, y, radius) 호출
 **Then** 기본 스타일(검은색 1px stroke)로 생성된다
 **And** 기존 동작과 동일하다
 
