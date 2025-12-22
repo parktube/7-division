@@ -95,10 +95,13 @@ impl Scene {
 
         let points_vec: Vec<f64> = points.to_vec();
 
-        // 짝수 개수 검증
-        if points_vec.len() % 2 != 0 {
-            return Err(JsValue::from_str("Points must be pairs of x,y coordinates"));
-        }
+        // 홀수 개수일 경우 마지막 좌표 무시 (AC3: 관대한 입력 보정)
+        let valid_len = if points_vec.len() % 2 != 0 {
+            points_vec.len() - 1
+        } else {
+            points_vec.len()
+        };
+        let points_vec = &points_vec[..valid_len];
 
         // 최소 2점 (4개 값) 필요
         if points_vec.len() < 4 {

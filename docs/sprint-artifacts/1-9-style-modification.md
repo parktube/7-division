@@ -101,7 +101,7 @@ impl Scene {
     /// * Ok(true) - 성공
     /// * Ok(false) - name 미발견
     pub fn set_stroke(&mut self, name: &str, stroke_json: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -122,7 +122,7 @@ impl Scene {
 
     /// stroke를 제거합니다 (선 없음).
     pub fn remove_stroke(&mut self, name: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -133,7 +133,7 @@ impl Scene {
 
     /// 기존 도형의 fill 스타일을 변경합니다.
     pub fn set_fill(&mut self, name: &str, fill_json: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -147,7 +147,7 @@ impl Scene {
 
     /// fill을 제거합니다 (채움 없음).
     pub fn remove_fill(&mut self, name: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -213,7 +213,7 @@ cad-engine/src/
 ### Dependencies
 
 - Story 1.2 (Scene 클래스)
-- Story 1.6 (Style 데이터 구조)
+- Story 1.7 (Style 시스템)
 
 ## References
 
