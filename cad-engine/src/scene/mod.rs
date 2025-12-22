@@ -10,6 +10,7 @@ pub mod entity;
 use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
 use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 use crate::primitives::parse_line_points;
+use crate::serializers::json::serialize_scene;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SceneError {
@@ -261,9 +262,8 @@ impl Scene {
     }
 
     /// Scene을 JSON으로 내보냅니다.
-    pub fn export_json(&self) -> Result<String, JsValue> {
-        serde_json::to_string_pretty(&self.entities)
-            .map_err(|e| JsValue::from_str(&e.to_string()))
+    pub fn export_json(&self) -> String {
+        serialize_scene(&self.name, &self.entities)
     }
 
     /// 선분(Line) 도형을 생성합니다.
@@ -824,6 +824,64 @@ mod tests {
         let scene = Scene::new("my-scene");
         assert_eq!(scene.get_name(), "my-scene");
         assert_eq!(scene.entity_count(), 0);
+    }
+
+    #[test]
+    fn test_export_json_empty_scene() {
+        let scene = Scene::new("empty");
+        let json = scene.export_json();
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+
+        let entities = value
+            .get("entities")
+            .and_then(|v| v.as_array())
+            .expect("entities array");
+        assert!(entities.is_empty());
+    }
+
+    #[test]
+    fn test_export_json_with_entities() {
+        let mut scene = Scene::new("skeleton");
+        scene
+            .add_circle_internal("head", 0.0, 100.0, 10.0)
+            .expect("circle should succeed");
+        scene
+            .add_line_internal("spine", vec![0.0, 90.0, 0.0, 50.0])
+            .expect("line should succeed");
+
+        let json = scene.export_json();
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+
+        assert_eq!(value.get("name").and_then(|v| v.as_str()), Some("skeleton"));
+
+        let entities = value
+            .get("entities")
+            .and_then(|v| v.as_array())
+            .expect("entities array");
+        assert_eq!(entities.len(), 2);
+
+        let circle = &entities[0];
+        assert!(
+            circle
+                .get("id")
+                .and_then(|v| v.as_str())
+                .map(|id| !id.is_empty())
+                .unwrap_or(false)
+        );
+        assert_eq!(
+            circle.get("entity_type").and_then(|v| v.as_str()),
+            Some("Circle")
+        );
+        assert!(circle.get("geometry").and_then(|g| g.get("Circle")).is_some());
+        assert!(circle.get("transform").is_some());
+
+        let line = &entities[1];
+        assert_eq!(
+            line.get("entity_type").and_then(|v| v.as_str()),
+            Some("Line")
+        );
+        assert!(line.get("geometry").and_then(|g| g.get("Line")).is_some());
+        assert!(line.get("transform").is_some());
     }
 
     #[test]
