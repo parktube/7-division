@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub use super::style::{FillStyle, LineCap, LineJoin, StrokeStyle, Style};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
     pub id: String,
@@ -15,6 +17,7 @@ pub enum EntityType {
     Line,
     Circle,
     Rect,
+    Arc,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,6 +28,12 @@ pub enum Geometry {
         origin: [f64; 2],
         width: f64,
         height: f64,
+    },
+    Arc {
+        center: [f64; 2],
+        radius: f64,
+        start_angle: f64,  // 라디안, 0 = 3시 방향
+        end_angle: f64,    // 라디안, 양수 = 반시계방향 (CCW)
     },
 }
 
@@ -45,22 +54,6 @@ impl Default for Transform {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Style {
-    pub stroke: Option<String>,
-    pub fill: Option<String>,
-    pub stroke_width: Option<f64>,
-}
-
-impl Default for Style {
-    fn default() -> Self {
-        Self {
-            stroke: Some("#000000".to_string()),
-            fill: None,
-            stroke_width: Some(1.0),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Metadata {

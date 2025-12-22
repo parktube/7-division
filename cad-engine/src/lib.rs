@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+pub mod primitives;
 pub mod scene;
 
 pub use scene::Scene;

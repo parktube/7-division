@@ -1,6 +1,6 @@
 # Story 1.9: 스타일 수정 Action 함수
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -47,31 +47,35 @@ So that **"이 원을 빨간색으로 바꿔줘" 같은 수정 요청을 처리�
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: set_stroke 구현** (AC: #1, #5, #6)
-  - [ ] 1.1: `set_stroke(name: &str, stroke_json: &str) -> Result<bool, JsValue>`
-  - [ ] 1.2: Entity 조회 (name으로) 및 stroke 업데이트
-  - [ ] 1.3: name 미발견 시 Ok(false) 반환
-  - [ ] 1.4: 부분 업데이트 (기존 값 merge)
+- [x] **Task 1: set_stroke 구현** (AC: #1, #5, #6)
+  - [x] 1.1: `set_stroke(name: &str, stroke_json: &str) -> Result<bool, JsValue>`
+  - [x] 1.2: Entity 조회 (name으로) 및 stroke 업데이트
+  - [x] 1.3: name 미발견 시 Ok(false) 반환
+  - [x] 1.4: 부분 업데이트 (기존 값 merge)
 
-- [ ] **Task 2: set_fill 구현** (AC: #2, #5)
-  - [ ] 2.1: `set_fill(name: &str, fill_json: &str) -> Result<bool, JsValue>`
-  - [ ] 2.2: Entity 조회 (name으로) 및 fill 업데이트
+- [x] **Task 2: set_fill 구현** (AC: #2, #5)
+  - [x] 2.1: `set_fill(name: &str, fill_json: &str) -> Result<bool, JsValue>`
+  - [x] 2.2: Entity 조회 (name으로) 및 fill 업데이트
 
-- [ ] **Task 3: remove_stroke 구현** (AC: #3, #5)
-  - [ ] 3.1: `remove_stroke(name: &str) -> Result<bool, JsValue>`
-  - [ ] 3.2: style.stroke = None 설정
+- [x] **Task 3: remove_stroke 구현** (AC: #3, #5)
+  - [x] 3.1: `remove_stroke(name: &str) -> Result<bool, JsValue>`
+  - [x] 3.2: style.stroke = None 설정
 
-- [ ] **Task 4: remove_fill 구현** (AC: #4, #5)
-  - [ ] 4.1: `remove_fill(name: &str) -> Result<bool, JsValue>`
-  - [ ] 4.2: style.fill = None 설정
+- [x] **Task 4: remove_fill 구현** (AC: #4, #5)
+  - [x] 4.1: `remove_fill(name: &str) -> Result<bool, JsValue>`
+  - [x] 4.2: style.fill = None 설정
 
-- [ ] **Task 5: 테스트** (AC: #1-#6)
-  - [ ] 5.1: set_stroke 전체 업데이트 테스트
-  - [ ] 5.2: set_stroke 부분 업데이트 테스트
-  - [ ] 5.3: set_fill 테스트
-  - [ ] 5.4: remove_stroke 테스트
-  - [ ] 5.5: remove_fill 테스트
-  - [ ] 5.6: name 미발견 테스트
+- [x] **Task 5: 테스트** (AC: #1-#6)
+  - [x] 5.1: set_stroke 전체 업데이트 테스트
+  - [x] 5.2: set_stroke 부분 업데이트 테스트
+  - [x] 5.3: set_fill 테스트
+  - [x] 5.4: remove_stroke 테스트
+  - [x] 5.5: remove_fill 테스트
+  - [x] 5.6: name 미발견 테스트
+
+### Review Follow-ups (AI) - 2025-12-22
+
+- [x] **[AI-Review][LOW]** `find_by_name_mut` 헬퍼 메서드가 직접 테스트되지 않음. set_*/remove_* 함수에서 간접 테스트됨. [mod.rs:52-56] → **Accepted**: 간접 테스트 커버리지로 충분. 별도 직접 테스트 불필요.
 
 ## Dev Notes
 
@@ -97,7 +101,7 @@ impl Scene {
     /// * Ok(true) - 성공
     /// * Ok(false) - name 미발견
     pub fn set_stroke(&mut self, name: &str, stroke_json: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -118,7 +122,7 @@ impl Scene {
 
     /// stroke를 제거합니다 (선 없음).
     pub fn remove_stroke(&mut self, name: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -129,7 +133,7 @@ impl Scene {
 
     /// 기존 도형의 fill 스타일을 변경합니다.
     pub fn set_fill(&mut self, name: &str, fill_json: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -143,7 +147,7 @@ impl Scene {
 
     /// fill을 제거합니다 (채움 없음).
     pub fn remove_fill(&mut self, name: &str) -> Result<bool, JsValue> {
-        let entity = match self.entities.iter_mut().find(|e| e.metadata.name.as_deref() == Some(name)) {
+        let entity = match self.entities.iter_mut().find(|e| e.metadata.name == name) {
             Some(e) => e,
             None => return Ok(false),
         };
@@ -209,7 +213,7 @@ cad-engine/src/
 ### Dependencies
 
 - Story 1.2 (Scene 클래스)
-- Story 1.6 (Style 데이터 구조)
+- Story 1.7 (Style 시스템)
 
 ## References
 
@@ -222,7 +226,28 @@ cad-engine/src/
 
 Claude Opus 4.5
 
+### Context Reference
+
+- serde_json::Value를 사용한 부분 업데이트 구현 (기존 필드 유지)
+- find_by_name_mut 헬퍼 메서드 추가
+
+### Completion Notes List
+
+- find_by_name_mut: Entity 조회 헬퍼 메서드 추가
+- set_stroke: 부분 업데이트 지원 (JSON에 있는 필드만 변경, 나머지 유지)
+- set_fill: FillStyle 설정
+- remove_stroke: stroke = None
+- remove_fill: fill = None
+- name 미발견 시 Ok(false) 반환 (no-op)
+- WASM 경계 테스트 통과: 전체/부분 업데이트, remove, unknown entity
+- 전체 테스트 60개 통과
+
+### Change Log
+
+- 2025-12-22: Story 1.9 스타일 수정 Action 함수 완료
+
 ### File List
 
-- cad-engine/src/scene/mod.rs (수정 - set_*/remove_* 추가)
-- cad-engine/src/scene/style.rs (수정 - merge_from 추가)
+- cad-engine/src/scene/mod.rs (수정 - find_by_name_mut, set_stroke, set_fill, remove_stroke, remove_fill, style import 추가)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-8: done, 1-9: review)
+- docs/sprint-artifacts/1-9-style-modification.md (수정 - 태스크 체크, Dev Agent Record 업데이트)

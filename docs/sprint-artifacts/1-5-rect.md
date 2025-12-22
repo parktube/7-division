@@ -1,6 +1,6 @@
 # Story 1.5: Rect 도형 생성 기능
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -38,25 +38,29 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Rect 생성 함수 구현** (AC: #1, #3, #4)
-  - [ ] 1.1: `add_rect(&mut self, name: &str, x: f64, y: f64, width: f64, height: f64) -> Result<String, JsValue>` 구현
-  - [ ] 1.2: name 중복 체크 (has_entity)
-  - [ ] 1.3: RectGeometry 생성 (metadata.name = name)
-  - [ ] 1.4: Entity 추가 및 name 반환
+- [x] **Task 1: Rect 생성 함수 구현** (AC: #1, #3, #4)
+  - [x] 1.1: `add_rect(&mut self, name: &str, x: f64, y: f64, width: f64, height: f64) -> Result<String, JsValue>` 구현
+  - [x] 1.2: name 중복 체크 (has_entity)
+  - [x] 1.3: RectGeometry 생성 (metadata.name = name)
+  - [x] 1.4: Entity 추가 및 name 반환
 
-- [ ] **Task 2: 크기 보정** (AC: #2)
-  - [ ] 2.1: width <= 0 또는 height <= 0 검증
-  - [ ] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
-  - [ ] 2.3: 보정 로직 문서화
+- [x] **Task 2: 크기 보정** (AC: #2)
+  - [x] 2.1: width <= 0 또는 height <= 0 검증
+  - [x] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
+  - [x] 2.3: 보정 로직 문서화
 
-- [ ] **Task 3: Scene에 통합** (AC: #1, #4)
-  - [ ] 3.1: Scene impl에 add_rect 메서드 추가
-  - [ ] 3.2: wasm_bindgen export 확인
+- [x] **Task 3: Scene에 통합** (AC: #1, #4)
+  - [x] 3.1: Scene impl에 add_rect 메서드 추가
+  - [x] 3.2: wasm_bindgen export 확인
 
-- [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3)
-  - [ ] 4.1: 기본 사각형 생성 테스트
-  - [ ] 4.2: 음수 크기 보정 테스트 (abs() 변환 확인)
-  - [ ] 4.3: Y-up 중심 좌표계 테스트
+- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3)
+  - [x] 4.1: 기본 사각형 생성 테스트
+  - [x] 4.2: 음수 크기 보정 테스트 (abs() 변환 확인)
+  - [x] 4.3: Y-up 중심 좌표계 테스트
+
+### Review Follow-ups (AI) - 2025-12-22
+
+- [x] [AI-Review][HIGH] draw_rect에서 NaN/Infinity 검증 및 크기 보정 로직이 add_rect_internal과 중복됨. DRY 원칙 위반. [mod.rs:581-615] → **Accepted**: draw_* 함수는 스타일 파싱 포함으로 _internal 재사용이 복잡함. 현재 구조 유지.
 
 ## Dev Notes
 
@@ -121,7 +125,7 @@ impl Scene {
 
 ```javascript
 // 스켈레톤 몸통 (rect) - name 필수
-scene.add_rect("torso", -5, 50, 10, 40);  // 좌상단 (-5, 50), 10x40
+scene.add_rect("torso", -5, 50, 10, 40);  // 좌하단 (-5, 50), 10x40 (위쪽으로 확장)
 
 // 이후 수정 시 name으로 식별
 scene.set_fill("torso", JSON.stringify({ color: [0.5, 0.5, 0.5, 1] }));  // 회색으로
@@ -134,9 +138,9 @@ scene.set_fill("torso", JSON.stringify({ color: [0.5, 0.5, 0.5, 1] }));  // 회�
 pub enum Geometry {
     // ... Line, Circle
     Rect {
-        origin: [f64; 2],  // [x, y] - 좌상단
-        width: f64,
-        height: f64,
+        origin: [f64; 2],  // [x, y] - 좌하단 기준점 (anchor point)
+        width: f64,        // 오른쪽(+x)으로 확장
+        height: f64,       // 위쪽(+y)으로 확장
     },
 }
 ```
@@ -146,15 +150,17 @@ pub enum Geometry {
 ```
       y ▲
         │    ┌────────────┐
-        │    │   Rect     │ height
-        │    │  (x,y)     │
+        │    │   Rect     │ height (+y)
+        │    │            │
         │    └────────────┘
-        │         width
+        │    (x,y)  width (+x)
   ──────┼──────────────────► x
-        │ (0,0) = 중심
+        │ (0,0) = 화면 중심
 ```
 
-- CAD 엔진: Y-up 중심 좌표계 (수학적 표준)
+- **좌표계**: Y-up 중심 좌표계 (수학적 표준, Y가 위로 증가)
+- **origin**: Rect의 좌하단 기준점 (anchor point)
+- **확장 방향**: width는 +x, height는 +y 방향으로 확장
 - Canvas 2D 뷰어: Y-flip 변환 필요 (Story 2.3에서 처리)
 
 ### 디렉토리 구조
@@ -171,6 +177,20 @@ cad-engine/src/
     ├── circle.rs
     └── rect.rs         # ← 이 스토리 (선택적 분리)
 ```
+
+### WASM 테스트 전략
+
+> **참고**: `JsValue`는 WASM 환경에서만 사용 가능하여 `cargo test`로는 직접 테스트 불가
+
+- **단위 테스트**: `_internal` 함수로 핵심 로직 검증 (NaN/Infinity, 크기 보정, 중복 체크)
+- **WASM 경계 테스트**: Node.js에서 빌드된 WASM 모듈 직접 호출하여 검증
+
+  ```bash
+  wasm-pack build --target nodejs
+  node -e "const w = require('./pkg'); const s = new w.Scene('t'); console.log(s.add_rect('r', 0, 0, 10, 10));"
+  ```
+
+- 이 패턴은 `add_line`, `add_circle`과 동일함
 
 ### Project Structure Notes
 
@@ -192,15 +212,31 @@ cad-engine/src/
 
 ### Context Reference
 
+- Story 1.4 Circle 패턴 참조하여 일관된 구현
+
 ### Agent Model Used
 
 Claude Opus 4.5
 
 ### Debug Log References
 
+없음 (첫 시도에 성공)
+
 ### Completion Notes List
+
+- add_rect_internal: 내부 함수 구현 (NaN/Infinity 검증, 크기 보정)
+- add_rect: wasm_bindgen export 함수 구현
+- 단위 테스트 9개 추가: 기본 생성, 음수 크기 보정, 0 크기 보정, 작은 음수 클램프, 음수 좌표, name 중복, NaN 에러, Infinity 에러
+- 전체 단위 테스트 40개 통과 (기존 31개 + 신규 9개)
+- WASM 경계 검증: Node.js에서 add_rect 호출 테스트 (기본 생성, 음수 크기 보정, 중복 에러 처리) 통과
+
+### Change Log
+
+- 2025-12-22: Story 1.5 Rect 도형 생성 기능 구현 완료
+- 2025-12-22: 코드 리뷰 피드백 반영 (File List 보완, WASM 경계 검증, origin 문서 명확화)
 
 ### File List
 
-- cad-engine/src/primitives/rect.rs (선택적)
-- cad-engine/src/scene/mod.rs (수정 - add_rect 추가)
+- cad-engine/src/scene/mod.rs (수정 - add_rect_internal, add_rect, 테스트 추가)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle: done, 1-5-rect: review)
+- docs/sprint-artifacts/1-5-rect.md (수정 - 태스크 체크, Dev Agent Record 업데이트)

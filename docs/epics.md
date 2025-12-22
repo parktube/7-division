@@ -285,9 +285,10 @@ So that **도형들을 하나의 씬에서 관리하고 추적할 수 있다**.
 **And** 빈 entities 배열이 초기화된다
 
 **Given** Scene 인스턴스가 존재
-**When** Entity를 추가하는 함수 호출
-**Then** 고유한 ID(문자열)가 반환된다
+**When** Entity를 추가하는 함수 호출 (name 파라미터 필수)
+**Then** name(문자열)이 반환된다
 **And** Entity가 Scene의 entities에 추가된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 **Given** wasm-bindgen 제약
 **When** 클래스를 정의할 때
@@ -312,19 +313,25 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 **Acceptance Criteria:**
 
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_line(Float64Array([x1, y1, x2, y2]))` 호출
+**When** `scene.add_line("spine", Float64Array([x1, y1, x2, y2]))` 호출
 **Then** Line 타입의 Entity가 생성된다
 **And** geometry에 `{ points: [[x1, y1], [x2, y2]] }` 형태로 저장된다
-**And** 고유한 ID가 반환된다
+**And** name ("spine")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 **Given** 4개 이상의 좌표가 주어진 경우 (폴리라인)
-**When** `scene.add_line(Float64Array([x1, y1, x2, y2, x3, y3, x4, y4]))` 호출
+**When** `scene.add_line("left_arm", Float64Array([x1, y1, x2, y2, x3, y3, x4, y4]))` 호출
 **Then** 연결된 선분들이 하나의 Entity로 생성된다
 **And** geometry.points에 4개 점이 순서대로 저장된다
 
 **Given** 홀수 개의 좌표가 주어진 경우
 **When** add_line 호출
 **Then** 마지막 좌표가 무시되고 정상 생성된다 (관대한 입력 보정)
+
+**Given** 유효 좌표에 NaN 또는 Infinity 값이 포함된 경우
+**When** add_line 호출
+**Then** 에러가 반환된다: `[add_line] invalid_input: NaN or Infinity not allowed`
+**And** (홀수 좌표 trim 후 유효 좌표에서만 검증)
 
 **Technical Notes:**
 - Float64Array 입력 처리 (NFR12)
@@ -343,22 +350,28 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 **Acceptance Criteria:**
 
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_circle(x, y, radius)` 호출
+**When** `scene.add_circle("head", x, y, radius)` 호출
 **Then** Circle 타입의 Entity가 생성된다
 **And** geometry에 `{ center: [x, y], radius: radius }` 형태로 저장된다
-**And** 고유한 ID가 반환된다
+**And** name ("head")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 **Given** radius가 0 이하인 경우
 **When** add_circle 호출
-**Then** abs()로 양수 변환되어 정상 생성된다 (관대한 입력 보정)
+**Then** abs().max(0.001)로 양수 변환되어 정상 생성된다 (0일 경우 최소값 0.001 적용, 관대한 입력 보정)
 
 **Given** 좌표가 음수인 경우
 **When** add_circle 호출
 **Then** 정상적으로 생성된다 (음수 좌표 허용)
 
+**Given** x, y, 또는 radius에 NaN/Infinity 값이 포함된 경우
+**When** add_circle 호출
+**Then** 에러가 반환된다: `[add_circle] invalid_input: NaN or Infinity not allowed`
+
 **Technical Notes:**
 - 시맨틱 명확한 함수명: `add_circle` (NFR9)
 - f64 타입 사용
+- NaN/Infinity 입력 시 에러 반환 (유효하지 않은 geometry 방지)
 
 **Requirements Fulfilled:** FR3
 
@@ -373,14 +386,15 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 **Acceptance Criteria:**
 
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_rect(x, y, width, height)` 호출
+**When** `scene.add_rect("body", x, y, width, height)` 호출
 **Then** Rect 타입의 Entity가 생성된다
 **And** geometry에 `{ origin: [x, y], width: width, height: height }` 형태로 저장된다
-**And** 고유한 ID가 반환된다
+**And** name ("body")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 **Given** width 또는 height가 0 이하인 경우
 **When** add_rect 호출
-**Then** abs()로 양수 변환되어 정상 생성된다 (관대한 입력 보정)
+**Then** abs().max(0.001)로 양수 변환되어 정상 생성된다 (0일 경우 최소값 0.001 적용, 관대한 입력 보정)
 
 **Given** Y-up 좌표계에서 origin이 좌하단인 경우
 **When** add_rect(0, 0, 100, 50) 호출
@@ -406,13 +420,15 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시 등을 표현할 수 
 **Acceptance Criteria:**
 
 **Given** Scene 인스턴스가 존재
-**When** `scene.add_arc(cx, cy, radius, start_angle, end_angle)` 호출
+**When** `scene.add_arc("elbow_joint", cx, cy, radius, start_angle, end_angle)` 호출
 **Then** Arc 타입의 Entity가 생성된다
 **And** geometry에 center, radius, start_angle, end_angle이 저장된다
+**And** name ("elbow_joint")이 반환된다
+**And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 **Given** radius가 0 이하인 경우
 **When** add_arc 호출
-**Then** abs()로 양수 변환되어 정상 생성된다 (관대한 입력 보정)
+**Then** abs().max(0.001)로 양수 변환되어 정상 생성된다 (0일 경우 최소값 0.001 적용, 관대한 입력 보정)
 
 **Given** Scene 인스턴스가 존재
 **When** `scene.draw_arc(cx, cy, radius, start_angle, end_angle, style_json)` 호출
@@ -479,7 +495,7 @@ So that **"빨간 테두리의 파란 원" 같은 요청을 한 번의 호출로
 **Then** 기본 스타일로 대체되어 생성된다 (관대한 입력 보정)
 
 **Given** 기존 add_* 함수 사용 시
-**When** add_circle(x, y, radius) 호출
+**When** add_circle(name, x, y, radius) 호출
 **Then** 기본 스타일로 생성된다 (하위 호환)
 
 **Technical Notes:**
