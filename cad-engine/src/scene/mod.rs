@@ -132,6 +132,56 @@ impl Scene {
             },
         )
     }
+
+    /// 내부용 Rect 생성 함수 (테스트용)
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "torso", "background") - Scene 내 unique
+    /// * `x` - 원점 x 좌표 (Y-up 중심 좌표계)
+    /// * `y` - 원점 y 좌표 (Y-up 중심 좌표계)
+    /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
+    /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
+    ///
+    /// # Errors
+    /// * NaN/Infinity 입력 시 에러 반환
+    fn add_rect_internal(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<String, SceneError> {
+        // NaN/Infinity 검증 (유효하지 않은 geometry 방지)
+        if !x.is_finite() || !y.is_finite() || !width.is_finite() || !height.is_finite() {
+            return Err(SceneError::InvalidInput(
+                "[add_rect] invalid_input: NaN or Infinity not allowed".to_string(),
+            ));
+        }
+
+        // 관대한 입력 보정: 음수/0은 abs().max(0.001)로 변환 (AC2)
+        let width = if width <= 0.0 {
+            width.abs().max(0.001)
+        } else {
+            width
+        };
+        let height = if height <= 0.0 {
+            height.abs().max(0.001)
+        } else {
+            height
+        };
+
+        self.add_entity_internal(
+            "add_rect",
+            name,
+            EntityType::Rect,
+            Geometry::Rect {
+                origin: [x, y],
+                width,
+                height,
+            },
+        )
+    }
 }
 
 #[wasm_bindgen]
@@ -194,6 +244,36 @@ impl Scene {
         radius: f64,
     ) -> Result<String, JsValue> {
         self.add_circle_internal(name, x, y, radius)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 사각형(Rect) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "torso", "background") - Scene 내 unique
+    /// * `x` - 원점 x 좌표 (Y-up 중심 좌표계)
+    /// * `y` - 원점 y 좌표 (Y-up 중심 좌표계)
+    /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
+    /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * x, y, width, height 중 NaN 또는 Infinity 입력 시 에러
+    ///
+    /// # 입력 보정 (AC2)
+    /// 음수/0 크기는 abs().max(0.001)로 양수 변환
+    pub fn add_rect(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<String, JsValue> {
+        self.add_rect_internal(name, x, y, width, height)
             .map_err(|err| JsValue::from_str(&err.to_string()))
     }
 }
@@ -517,5 +597,178 @@ mod tests {
             .add_circle_internal("invalid", 0.0, 0.0, f64::INFINITY)
             .expect_err("Infinity radius should error");
         assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+    }
+
+    // === add_rect 테스트 (Story 1.5) ===
+
+    #[test]
+    fn test_add_rect_basic() {
+        // AC1: 기본 사각형 생성
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_rect_internal("torso", -5.0, 50.0, 10.0, 40.0)
+            .expect("add_rect should succeed");
+
+        assert_eq!(name, "torso");
+        assert_eq!(scene.entity_count(), 1);
+
+        let entity = scene.find_by_name("torso").unwrap();
+        assert_eq!(entity.metadata.name, "torso");
+        assert!(matches!(entity.entity_type, EntityType::Rect));
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Rect { origin, width, height }
+            if origin == &[-5.0, 50.0] && *width == 10.0 && *height == 40.0
+        ));
+    }
+
+    #[test]
+    fn test_add_rect_negative_width_corrected() {
+        // AC2: 음수 너비 → abs()로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_rect_internal("box", 0.0, 0.0, -100.0, 50.0)
+            .expect("negative width should be corrected");
+
+        assert_eq!(name, "box");
+
+        let entity = scene.find_by_name("box").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Rect { width, .. } if *width == 100.0
+        ));
+    }
+
+    #[test]
+    fn test_add_rect_negative_height_corrected() {
+        // AC2: 음수 높이 → abs()로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_rect_internal("panel", 0.0, 0.0, 100.0, -50.0)
+            .expect("negative height should be corrected");
+
+        assert_eq!(name, "panel");
+
+        let entity = scene.find_by_name("panel").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Rect { height, .. } if *height == 50.0
+        ));
+    }
+
+    #[test]
+    fn test_add_rect_zero_size_corrected() {
+        // AC2: 0 크기 → 0.001로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_rect_internal("point", 0.0, 0.0, 0.0, 0.0)
+            .expect("zero size should be corrected to minimum");
+
+        assert_eq!(name, "point");
+
+        let entity = scene.find_by_name("point").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Rect { width, height, .. } if *width == 0.001 && *height == 0.001
+        ));
+    }
+
+    #[test]
+    fn test_add_rect_tiny_negative_size_clamped() {
+        // AC2: 아주 작은 음수 크기 → abs() 후 max(0.001)로 클램프
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_rect_internal("tiny", 0.0, 0.0, -0.0001, -0.0002)
+            .expect("tiny negative size should be clamped to minimum");
+
+        assert_eq!(name, "tiny");
+
+        let entity = scene.find_by_name("tiny").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Rect { width, height, .. } if *width == 0.001 && *height == 0.001
+        ));
+    }
+
+    #[test]
+    fn test_add_rect_negative_coordinates() {
+        // AC3: 음수 좌표 허용 (Y-up 중심 좌표계)
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_rect_internal("off_canvas", -100.0, -50.0, 25.0, 30.0)
+            .expect("negative coordinates should be allowed");
+
+        assert_eq!(name, "off_canvas");
+
+        let entity = scene.find_by_name("off_canvas").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Rect { origin, .. } if origin == &[-100.0, -50.0]
+        ));
+    }
+
+    #[test]
+    fn test_add_rect_duplicate_name_error() {
+        // name 중복 시 에러
+        let mut scene = Scene::new("test");
+        scene
+            .add_rect_internal("torso", 0.0, 50.0, 10.0, 40.0)
+            .expect("first add should succeed");
+
+        let err = scene
+            .add_rect_internal("torso", 100.0, 100.0, 20.0, 20.0)
+            .expect_err("duplicate name should error");
+
+        assert_eq!(err.to_string(), "[add_rect] duplicate_name: Entity 'torso' already exists");
+    }
+
+    #[test]
+    fn test_add_rect_nan_error() {
+        // NaN 입력 시 에러
+        let mut scene = Scene::new("test");
+        let err = scene
+            .add_rect_internal("invalid", f64::NAN, 0.0, 10.0, 10.0)
+            .expect_err("NaN x should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_rect_internal("invalid", 0.0, f64::NAN, 10.0, 10.0)
+            .expect_err("NaN y should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_rect_internal("invalid", 0.0, 0.0, f64::NAN, 10.0)
+            .expect_err("NaN width should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_rect_internal("invalid", 0.0, 0.0, 10.0, f64::NAN)
+            .expect_err("NaN height should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+    }
+
+    #[test]
+    fn test_add_rect_infinity_error() {
+        // Infinity 입력 시 에러
+        let mut scene = Scene::new("test");
+        let err = scene
+            .add_rect_internal("invalid", f64::INFINITY, 0.0, 10.0, 10.0)
+            .expect_err("Infinity x should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_rect_internal("invalid", 0.0, f64::NEG_INFINITY, 10.0, 10.0)
+            .expect_err("NEG_INFINITY y should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_rect_internal("invalid", 0.0, 0.0, f64::INFINITY, 10.0)
+            .expect_err("Infinity width should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_rect_internal("invalid", 0.0, 0.0, 10.0, f64::NEG_INFINITY)
+            .expect_err("NEG_INFINITY height should error");
+        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
     }
 }

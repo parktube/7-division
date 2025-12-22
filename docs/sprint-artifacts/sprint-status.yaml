@@ -31,12 +31,12 @@ development_status:
         priority: P0
         depends_on: [1-2-scene-class]
       1-4-circle:
-        status: in-progress
+        status: done
         title: "Circle 도구"
         priority: P0
         depends_on: [1-2-scene-class]
       1-5-rect:
-        status: ready-for-dev
+        status: review
         title: "Rect 도구"
         priority: P0
         depends_on: [1-2-scene-class]
