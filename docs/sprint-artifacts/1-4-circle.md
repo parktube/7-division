@@ -37,8 +37,10 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 ### AC5: NaN/Infinity 입력 검증
 **Given** x, y, 또는 radius에 NaN/Infinity 값이 포함된 경우
 **When** add_circle 호출
-**Then** 에러가 반환된다: `[add_circle] invalid_input: NaN or Infinity not allowed`
+**Then** 에러가 발생한다: `[add_circle] invalid_input: NaN or Infinity not allowed`
+**And** JS 호출 시 예외로 throw됨 (wasm-bindgen `Result<_, JsValue>` → throw)
 **And** (정책: 유효하지 않은 geometry 생성 방지, docs/architecture.md#Error Handling Policy)
+**And** (테스트: `_internal` 함수 테스트로 에러 메시지 검증, wrapper는 위임만 수행)
 
 ## Tasks / Subtasks
 
@@ -96,6 +98,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] File List가 브랜치 범위로만 명시되어 스토리 범위가 모호 → Story 1.4 커밋 범위 `b6ab06d^..HEAD`로 명시 `docs/sprint-artifacts/1-4-circle.md:255`
 - [x] [AI-Review][Medium] AC5 에러 메시지(공개 add_circle) wrapper 테스트 → internal 위임만 수행하므로 internal 테스트로 충분 `cad-engine/src/scene/mod.rs:189`
 - [x] [AI-Review][Low] add_line NaN/Infinity 에러 포맷을 add_line_internal에서 직접 검증하는 테스트 없음 → `[add_line] invalid_input: ...` 테스트 추가 `cad-engine/src/scene/mod.rs:328` `cad-engine/src/primitives/line.rs:36`
+- [x] [AI-Review][Medium] AC5는 공개 API 동작(에러 메시지) 요구인데 테스트는 internal만 검증 → AC5에 "_internal 테스트로 충분, wrapper는 위임만 수행" 명시 `docs/sprint-artifacts/1-4-circle.md:43`
+- [x] [AI-Review][Medium] AC5의 "에러 반환" 표현이 JS 호출 시 실제 동작(throw)과 불일치 가능 → "에러가 발생한다" + "JS 호출 시 예외로 throw됨" 명시 `docs/sprint-artifacts/1-4-circle.md:40`
+- [x] [AI-Review][Low] File List의 line.rs 설명에 테스트 개수(5개)가 실제(10개)와 불일치 → 테스트 10개로 갱신 `docs/sprint-artifacts/1-4-circle.md:269`
 
 ## Dev Notes
 
@@ -261,7 +266,7 @@ $ wasm-pack build --target nodejs --features dev
 > Story 1.4 범위: `b6ab06d^..HEAD` (첫 커밋: feat: Story 1-4 Circle 도형 생성 기능 구현)
 
 - cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증, add_entity 제거)
-- cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 순서 변경, trim 후 검증, 테스트 5개)
+- cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 순서 변경, trim 후 검증, 테스트 10개)
 - docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영, Dev Notes/Debug Log 갱신)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle 상태 변경)
 - docs/architecture.md (수정 - Error Handling Policy 입력 보정 규칙: Line/Circle NaN/Infinity 명시)
@@ -280,3 +285,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Addressed 8th review findings - 3 items resolved (Task4 AC5 매핑, 커밋목록 67a3acc 추가, epics.md 설명 수정)
 - 2025-12-22: Addressed 9th review findings - 3 items resolved (File List 브랜치 범위 고정, add_line NaN/Infinity 에러 포맷 테스트 2개 추가, Debug Log 30개)
 - 2025-12-22: Addressed 10th review findings - 3 items resolved (Review Follow-ups 중복/상충 이슈 정리, Status in-progress 확정)
+- 2025-12-22: Addressed 11th review findings - 3 items resolved (AC5 throw 동작 명시, wasm-bindgen 테스트 결론 명시, line.rs 테스트 10개로 갱신)
