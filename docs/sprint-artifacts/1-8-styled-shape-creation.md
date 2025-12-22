@@ -77,7 +77,7 @@ So that **"빨간 테두리의 파란 원을 그려줘" 같은 요청을 한 번
 
 ### Review Follow-ups (AI) - 2025-12-22
 
-- [x] [AI-Review][HIGH] draw_circle, draw_line에서 검증 로직이 *_internal과 중복됨. DRY 원칙 위반. [mod.rs:460-563] → **Accepted**: draw_* 함수는 스타일 파싱 포함으로 _internal 재사용이 복잡함. 현재 구조 유지.
+- [x] [AI-Review][HIGH] draw_circle, draw_line에서 검증 로직이 `*_internal`과 중복됨. DRY 원칙 위반. [mod.rs:460-563] → **Accepted**: `draw_*` 함수는 스타일 파싱 포함으로 `_internal` 재사용이 복잡함. 현재 구조 유지.
 - [ ] [AI-Review][LOW] WASM 경계 테스트가 `node -e` 명령으로 수동 실행됨. `tests/wasm_boundary.js` 파일로 자동화 권장.
 
 ## Dev Notes

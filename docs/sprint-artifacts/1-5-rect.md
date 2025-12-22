@@ -184,10 +184,12 @@ cad-engine/src/
 
 - **단위 테스트**: `_internal` 함수로 핵심 로직 검증 (NaN/Infinity, 크기 보정, 중복 체크)
 - **WASM 경계 테스트**: Node.js에서 빌드된 WASM 모듈 직접 호출하여 검증
+
   ```bash
   wasm-pack build --target nodejs
   node -e "const w = require('./pkg'); const s = new w.Scene('t'); console.log(s.add_rect('r', 0, 0, 10, 10));"
   ```
+
 - 이 패턴은 `add_line`, `add_circle`과 동일함
 
 ### Project Structure Notes
