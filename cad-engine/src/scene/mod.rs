@@ -430,6 +430,24 @@ mod tests {
     }
 
     #[test]
+    fn test_add_circle_tiny_negative_radius_clamped() {
+        // AC2: 아주 작은 음수 반지름 → abs() 후 max(0.001)로 클램프
+        // -0.0001 → abs() → 0.0001 → max(0.001) → 0.001
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_circle_internal("tiny", 0.0, 0.0, -0.0001)
+            .expect("tiny negative radius should be clamped to minimum");
+
+        assert_eq!(name, "tiny");
+
+        let entity = scene.find_by_name("tiny").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Circle { radius, .. } if *radius == 0.001
+        ));
+    }
+
+    #[test]
     fn test_add_circle_negative_coordinates() {
         // AC3: 음수 좌표 허용
         let mut scene = Scene::new("test");
