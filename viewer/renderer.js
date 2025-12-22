@@ -264,7 +264,18 @@ async function fetchScene() {
       state.lastSignature = signature;
       state.lastScene = scene;
 
-      renderScene(scene);
+      try {
+        renderScene(scene);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        console.warn('Failed to render scene:', message);
+        state.lastError = message;
+        lastError.textContent = message;
+        setStatus({ mode: 'error', message: `Render failed: ${message}` });
+        return;
+      }
+
       const count = Array.isArray(scene.entities) ? scene.entities.length : 0;
       setStatus({
         mode: 'live',

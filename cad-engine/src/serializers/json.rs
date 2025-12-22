@@ -11,6 +11,7 @@ struct SceneJson<'a> {
 
 pub fn serialize_scene(name: &str, entities: &[Entity]) -> String {
     let scene_json = SceneJson {
+        // AC3: omit the name for empty scenes to avoid implying content exists.
         name: if entities.is_empty() { None } else { Some(name) },
         entities,
     };
