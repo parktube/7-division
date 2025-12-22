@@ -88,6 +88,47 @@ impl Scene {
             Geometry::Line { points: point_pairs },
         )
     }
+
+    /// 내부용 Circle 생성 함수 (테스트용)
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "head", "joint_elbow") - Scene 내 unique
+    /// * `x` - 중심점 x 좌표
+    /// * `y` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    ///
+    /// # Errors
+    /// * NaN/Infinity 입력 시 에러 반환
+    fn add_circle_internal(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+    ) -> Result<String, SceneError> {
+        // NaN/Infinity 검증 (유효하지 않은 geometry 방지)
+        if !x.is_finite() || !y.is_finite() || !radius.is_finite() {
+            return Err(SceneError::InvalidInput(
+                "Invalid input: NaN or Infinity not allowed".to_string(),
+            ));
+        }
+
+        // 관대한 입력 보정: 음수/0 반지름은 abs().max(0.001)로 변환 (AC2)
+        let radius = if radius <= 0.0 {
+            radius.abs().max(0.001)
+        } else {
+            radius
+        };
+
+        self.add_entity_internal(
+            name,
+            EntityType::Circle,
+            Geometry::Circle {
+                center: [x, y],
+                radius,
+            },
+        )
+    }
 }
 
 #[wasm_bindgen]
@@ -133,6 +174,31 @@ impl Scene {
     /// 홀수 개 좌표가 주어지면 마지막 좌표를 무시하고 정상 처리
     pub fn add_line(&mut self, name: &str, points: Float64Array) -> Result<String, JsValue> {
         self.add_line_internal(name, points.to_vec())
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 원(Circle) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "head", "joint_elbow") - Scene 내 unique
+    /// * `x` - 중심점 x 좌표
+    /// * `y` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복
+    ///
+    /// # 입력 보정 (AC2)
+    /// 음수/0 반지름은 abs().max(0.001)로 양수 변환
+    pub fn add_circle(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+    ) -> Result<String, JsValue> {
+        self.add_circle_internal(name, x, y, radius)
             .map_err(|err| JsValue::from_str(&err.to_string()))
     }
 }
@@ -287,5 +353,129 @@ mod tests {
             .expect_err("duplicate name should error");
 
         assert_eq!(err.to_string(), "Entity 'spine' already exists");
+    }
+
+    // === add_circle 테스트 (Story 1.4) ===
+
+    #[test]
+    fn test_add_circle_basic() {
+        // AC1: 기본 원 생성
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_circle_internal("head", 0.0, 100.0, 10.0)
+            .expect("add_circle should succeed");
+
+        assert_eq!(name, "head");
+        assert_eq!(scene.entity_count(), 1);
+
+        let entity = scene.find_by_name("head").unwrap();
+        assert_eq!(entity.metadata.name, "head");
+        assert!(matches!(entity.entity_type, EntityType::Circle));
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Circle { center, radius }
+            if center == &[0.0, 100.0] && *radius == 10.0
+        ));
+    }
+
+    #[test]
+    fn test_add_circle_negative_radius_corrected() {
+        // AC2: 음수 반지름 → abs()로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_circle_internal("joint", 50.0, 50.0, -5.0)
+            .expect("negative radius should be corrected");
+
+        assert_eq!(name, "joint");
+
+        let entity = scene.find_by_name("joint").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Circle { radius, .. } if *radius == 5.0
+        ));
+    }
+
+    #[test]
+    fn test_add_circle_zero_radius_corrected() {
+        // AC2: 0 반지름 → 0.001로 보정
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_circle_internal("dot", 0.0, 0.0, 0.0)
+            .expect("zero radius should be corrected to minimum");
+
+        assert_eq!(name, "dot");
+
+        let entity = scene.find_by_name("dot").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Circle { radius, .. } if *radius == 0.001
+        ));
+    }
+
+    #[test]
+    fn test_add_circle_negative_coordinates() {
+        // AC3: 음수 좌표 허용
+        let mut scene = Scene::new("test");
+        let name = scene
+            .add_circle_internal("off_canvas", -100.0, -50.0, 25.0)
+            .expect("negative coordinates should be allowed");
+
+        assert_eq!(name, "off_canvas");
+
+        let entity = scene.find_by_name("off_canvas").unwrap();
+        assert!(matches!(
+            &entity.geometry,
+            Geometry::Circle { center, .. } if center == &[-100.0, -50.0]
+        ));
+    }
+
+    #[test]
+    fn test_add_circle_duplicate_name_error() {
+        // name 중복 시 에러
+        let mut scene = Scene::new("test");
+        scene
+            .add_circle_internal("head", 0.0, 100.0, 10.0)
+            .expect("first add should succeed");
+
+        let err = scene
+            .add_circle_internal("head", 50.0, 50.0, 5.0)
+            .expect_err("duplicate name should error");
+
+        assert_eq!(err.to_string(), "Entity 'head' already exists");
+    }
+
+    #[test]
+    fn test_add_circle_nan_error() {
+        // NaN 입력 시 에러
+        let mut scene = Scene::new("test");
+        let err = scene
+            .add_circle_internal("invalid", f64::NAN, 0.0, 10.0)
+            .expect_err("NaN x should error");
+        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_circle_internal("invalid", 0.0, f64::NAN, 10.0)
+            .expect_err("NaN y should error");
+        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_circle_internal("invalid", 0.0, 0.0, f64::NAN)
+            .expect_err("NaN radius should error");
+        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+    }
+
+    #[test]
+    fn test_add_circle_infinity_error() {
+        // Infinity 입력 시 에러
+        let mut scene = Scene::new("test");
+        let err = scene
+            .add_circle_internal("invalid", f64::INFINITY, 0.0, 10.0)
+            .expect_err("Infinity x should error");
+        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_circle_internal("invalid", 0.0, f64::NEG_INFINITY, 10.0)
+            .expect_err("NEG_INFINITY y should error");
+        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
     }
 }

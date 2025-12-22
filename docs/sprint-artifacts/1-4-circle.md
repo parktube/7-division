@@ -1,6 +1,6 @@
 # Story 1.4: Circle 도형 생성 기능
 
-Status: ready-for-dev
+Status: Ready for Review
 
 ## Story
 
@@ -21,7 +21,7 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 ### AC2: 음수 반지름 처리
 **Given** radius가 0 이하인 경우
 **When** add_circle 호출
-**Then** abs()로 양수 변환되어 정상 생성된다
+**Then** abs().max(0.001)로 양수 변환되어 정상 생성된다 (0일 경우 최소값 0.001 적용)
 **And** (정책: 관대한 입력 보정, docs/architecture.md#Error Handling Policy)
 
 ### AC3: 음수 좌표 허용
@@ -36,25 +36,33 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Circle 생성 함수 구현** (AC: #1, #4)
-  - [ ] 1.1: `add_circle(&mut self, name: &str, x: f64, y: f64, radius: f64) -> Result<String, JsValue>` 구현
-  - [ ] 1.2: name 중복 체크 (has_entity)
-  - [ ] 1.3: CircleGeometry 생성 (metadata.name = name)
-  - [ ] 1.4: Entity 추가 및 name 반환
+- [x] **Task 1: Circle 생성 함수 구현** (AC: #1, #4)
+  - [x] 1.1: `add_circle(&mut self, name: &str, x: f64, y: f64, radius: f64) -> Result<String, JsValue>` 구현
+  - [x] 1.2: name 중복 체크 (has_entity)
+  - [x] 1.3: CircleGeometry 생성 (metadata.name = name)
+  - [x] 1.4: Entity 추가 및 name 반환
 
-- [ ] **Task 2: 반지름 보정** (AC: #2)
-  - [ ] 2.1: radius <= 0 검증 로직 추가
-  - [ ] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
-  - [ ] 2.3: 보정 로직 문서화
+- [x] **Task 2: 반지름 보정** (AC: #2)
+  - [x] 2.1: radius <= 0 검증 로직 추가
+  - [x] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
+  - [x] 2.3: 보정 로직 문서화
 
-- [ ] **Task 3: Scene에 통합** (AC: #1, #3, #4)
-  - [ ] 3.1: Scene impl에 add_circle 메서드 추가
-  - [ ] 3.2: wasm_bindgen export 확인
+- [x] **Task 3: Scene에 통합** (AC: #1, #3, #4)
+  - [x] 3.1: Scene impl에 add_circle 메서드 추가
+  - [x] 3.2: wasm_bindgen export 확인
 
-- [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3)
-  - [ ] 4.1: 기본 원 생성 테스트
-  - [ ] 4.2: 음수 반지름 보정 테스트 (abs() 변환 확인)
-  - [ ] 4.3: 음수 좌표 허용 테스트
+- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3)
+  - [x] 4.1: 기본 원 생성 테스트
+  - [x] 4.2: 음수 반지름 보정 테스트 (abs() 변환 확인)
+  - [x] 4.3: 음수 좌표 허용 테스트
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][Medium] Dev Agent Record File List에 `docs/sprint-artifacts/1-4-circle.md` 변경을 추가하거나 변경 이력을 분리해 기록 정합성 유지 `docs/sprint-artifacts/1-4-circle.md:193`
+- [x] [AI-Review][Medium] Dev Agent Record File List에 `docs/sprint-artifacts/sprint-status.yaml` 변경을 추가해 실제 변경과 기록 일치 `docs/sprint-artifacts/1-4-circle.md:193`
+- [x] [AI-Review][Medium] AC2의 `abs()` 보정 서술과 구현(`abs().max(0.001)`) 불일치 → AC 문구/테스트/로직 중 하나로 기준 통일 `docs/sprint-artifacts/1-4-circle.md:21`
+- [x] [AI-Review][Medium] NaN/Infinity 입력(x/y/radius) 검증 부재로 잘못된 geometry 생성 가능 → 입력 유효성 체크 추가 `cad-engine/src/scene/mod.rs:106`
+- [x] [AI-Review][Low] Debug Log의 테스트/빌드 성공 주장에 근거(로그/커맨드) 없음 → 증빙 첨부 또는 가정 표기 `docs/sprint-artifacts/1-4-circle.md:182`
 
 ## Dev Notes
 
@@ -171,15 +179,55 @@ cad-engine/src/
 
 ### Context Reference
 
+- Story 1.3 (Line) 구현 패턴 참조: `_internal` 함수로 테스트, WASM export는 위임만
+
 ### Agent Model Used
 
 Claude Opus 4.5
 
 ### Debug Log References
 
+**테스트 검증 (2025-12-22):**
+```
+$ cd cad-engine && cargo test --features dev
+running 23 tests
+test scene::tests::test_add_circle_basic ... ok
+test scene::tests::test_add_circle_nan_error ... ok
+test scene::tests::test_add_circle_infinity_error ... ok
+test scene::tests::test_add_circle_negative_radius_corrected ... ok
+test scene::tests::test_add_circle_zero_radius_corrected ... ok
+test scene::tests::test_add_circle_negative_coordinates ... ok
+test scene::tests::test_add_circle_duplicate_name_error ... ok
+... (16 line/entity tests)
+test result: ok. 23 passed; 0 failed
+```
+
+**WASM 빌드 검증:**
+```
+$ wasm-pack build --target nodejs --features dev
+[INFO]: ✨ Done in 1.07s
+[INFO]: 📦 Your wasm pkg is ready to publish at .../cad-engine/pkg
+```
+
 ### Completion Notes List
+
+- `add_circle_internal`: 내부용 Circle 생성 함수 (테스트 가능)
+- `add_circle`: WASM export 함수 (internal 위임)
+- 음수/0 반지름 → `abs().max(0.001)` 보정 (AC2)
+- 음수 좌표 허용 (AC3)
+- Line 패턴 재사용: 별도 primitives/circle.rs 불필요 (파라미터가 단순)
+- ✅ Resolved review finding [Medium]: File List 정합성 - 누락 파일 추가
+- ✅ Resolved review finding [Medium]: AC2 스펙-구현 일치 - AC 문구 수정
+- ✅ Resolved review finding [Medium]: NaN/Infinity 검증 추가 - is_finite() 체크
+- ✅ Resolved review finding [Low]: Debug Log 근거 - 실행 로그 첨부
 
 ### File List
 
-- cad-engine/src/primitives/circle.rs (선택적)
-- cad-engine/src/scene/mod.rs (수정 - add_circle 추가)
+- cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal 추가)
+- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle 상태 변경)
+
+### Change Log
+
+- 2025-12-22: Story 1-4 Circle 도형 생성 기능 구현 완료
+- 2025-12-22: Addressed code review findings - 5 items resolved (4 Medium, 1 Low)
