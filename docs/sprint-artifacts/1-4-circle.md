@@ -63,6 +63,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] AC2의 `abs()` 보정 서술과 구현(`abs().max(0.001)`) 불일치 → AC 문구/테스트/로직 중 하나로 기준 통일 `docs/sprint-artifacts/1-4-circle.md:21`
 - [x] [AI-Review][Medium] NaN/Infinity 입력(x/y/radius) 검증 부재로 잘못된 geometry 생성 가능 → 입력 유효성 체크 추가 `cad-engine/src/scene/mod.rs:106`
 - [x] [AI-Review][Low] Debug Log의 테스트/빌드 성공 주장에 근거(로그/커맨드) 없음 → 증빙 첨부 또는 가정 표기 `docs/sprint-artifacts/1-4-circle.md:182`
+- [x] [AI-Review][Medium] Error Handling Policy의 음수 radius 보정 규칙이 `abs()`로 남아 있음 → `abs().max(0.001)` 또는 구현에 맞춰 일치시키기 `docs/architecture.md:613`
+- [x] [AI-Review][Medium] Epic의 Story 1.4 AC2가 `abs()` 보정만 명시 → 현재 구현/스토리(0.001 최소값)와 불일치 `docs/epics.md:354`
+- [x] [AI-Review][Low] Dev Notes 코드 주석이 "abs()로 변환"만 언급 → 0.001 최소값 보정도 명시 `docs/sprint-artifacts/1-4-circle.md:89`
 
 ## Dev Notes
 
@@ -83,7 +86,7 @@ impl Scene {
     /// * `name` - Entity 이름 (예: "head", "joint_elbow") - Scene 내 unique
     /// * `x` - 중심점 x 좌표
     /// * `y` - 중심점 y 좌표
-    /// * `radius` - 반지름 (음수/0 → abs()로 보정)
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
     ///
     /// # Returns
     /// * Ok(name) - 성공 시 name 반환
@@ -94,7 +97,7 @@ impl Scene {
             return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
         }
 
-        // 관대한 입력 보정: 음수/0은 abs()로 변환
+        // 관대한 입력 보정: 음수/0은 abs().max(0.001)로 변환
         let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
         let id = generate_id();  // 내부 ID (JSON export용)
@@ -223,11 +226,14 @@ $ wasm-pack build --target nodejs --features dev
 
 ### File List
 
-- cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal 추가)
-- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트)
+- cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증 추가)
+- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle 상태 변경)
+- docs/architecture.md (수정 - Error Handling Policy 입력 보정 규칙 정합성)
+- docs/epics.md (수정 - Story 1.4 AC2 정합성)
 
 ### Change Log
 
 - 2025-12-22: Story 1-4 Circle 도형 생성 기능 구현 완료
 - 2025-12-22: Addressed code review findings - 5 items resolved (4 Medium, 1 Low)
+- 2025-12-22: Addressed re-review findings - 3 items resolved (문서 정합성: architecture.md, epics.md, Dev Notes)
