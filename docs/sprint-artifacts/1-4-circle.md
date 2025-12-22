@@ -76,6 +76,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] line 좌표에 NaN/Infinity 검증이 없어 비정상 geometry 저장 가능 → add_line/parse_line_points 입력 유효성 검사 및 테스트 추가 `cad-engine/src/primitives/line.rs:14`
 - [x] [AI-Review][Medium] 공개 API `add_entity`가 문서/스토리에 없고 더미 Line을 생성 → 내부 전용으로 숨기거나 스펙에 명시 `cad-engine/src/scene/mod.rs:147`
 - [x] [AI-Review][Low] Dev Notes 코드 스니펫의 중복 에러 메시지가 최신 포맷과 불일치 → 예시 코드/설명 갱신 `docs/sprint-artifacts/1-4-circle.md:97`
+- [x] [AI-Review][Medium] 홀수 좌표 입력에서 마지막 값이 NaN/Infinity인 경우에도 즉시 에러 처리됨 → "마지막 좌표 무시" 정책과 충돌하므로 trim 후 검증 또는 마지막 값 제외 검증 필요 `cad-engine/src/primitives/line.rs:14` `docs/architecture.md:616`
+- [x] [AI-Review][Medium] Line NaN/Infinity 입력 에러 정책이 Architecture Error Handling Policy에 없음 → 정책 문서에 명시하거나 validation 완화 `docs/architecture.md:611` `cad-engine/src/primitives/line.rs:24`
+- [x] [AI-Review][Low] Debug Log 테스트 수(23개)가 현재 테스트 수와 불일치 → 최신 실행 로그로 갱신 또는 가정 표기 `docs/sprint-artifacts/1-4-circle.md:201` `cad-engine/src/primitives/line.rs:45`
 
 ## Dev Notes
 
@@ -201,7 +204,9 @@ Claude Opus 4.5
 **테스트 검증 (2025-12-22):**
 ```
 $ cd cad-engine && cargo test --features dev
-running 23 tests
+running 28 tests
+test primitives::line::tests::test_parse_odd_with_nan_last_drops_and_succeeds ... ok
+test primitives::line::tests::test_parse_odd_with_infinity_last_drops_and_succeeds ... ok
 test scene::tests::test_add_circle_basic ... ok
 test scene::tests::test_add_circle_nan_error ... ok
 test scene::tests::test_add_circle_infinity_error ... ok
@@ -209,8 +214,8 @@ test scene::tests::test_add_circle_negative_radius_corrected ... ok
 test scene::tests::test_add_circle_zero_radius_corrected ... ok
 test scene::tests::test_add_circle_negative_coordinates ... ok
 test scene::tests::test_add_circle_duplicate_name_error ... ok
-... (16 line/entity tests)
-test result: ok. 23 passed; 0 failed
+... (19 line/entity/greet tests)
+test result: ok. 28 passed; 0 failed
 ```
 
 **WASM 빌드 검증:**
@@ -235,10 +240,10 @@ $ wasm-pack build --target nodejs --features dev
 ### File List
 
 - cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증, add_entity 제거)
-- cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 추가, 테스트 3개 추가)
-- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영, Dev Notes 갱신)
+- cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 순서 변경, trim 후 검증, 테스트 5개)
+- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영, Dev Notes/Debug Log 갱신)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle 상태 변경)
-- docs/architecture.md (수정 - Error Handling Policy 입력 보정 규칙 정합성)
+- docs/architecture.md (수정 - Error Handling Policy 입력 보정 규칙: Line/Circle NaN/Infinity 명시)
 - docs/epics.md (수정 - Story 1.4 AC2 정합성)
 
 ### Change Log
@@ -249,3 +254,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Addressed 3rd review findings - 3 items resolved (epics.md Story 1.5/1.6 정합성, 에러 메시지 형식)
 - 2025-12-22: Addressed 4th review findings - 4 items resolved (에러 메시지 형식 통일, API 문서 보완, radius Infinity 테스트)
 - 2025-12-22: Addressed 5th review findings - 3 items resolved (Line NaN/Infinity 검증, add_entity 제거, Dev Notes 갱신)
+- 2025-12-22: Addressed 6th review findings - 3 items resolved (trim 후 검증 순서, Error Handling Policy 갱신, Debug Log 28개)

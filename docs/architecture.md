@@ -613,8 +613,10 @@ scene.translate(armId, pivot[0], pivot[1]);     // 원위치
 | **음수/0 radius** | `abs().max(0.001)` 변환 | `-10` → `10`, `0` → `0.001` |
 | **음수/0 width/height** | `abs().max(0.001)` 변환 | `-5` → `5`, `0` → `0.001` |
 | **0 이하 scale** | `abs().max(0.001)` | `0` → `0.001` |
-| **홀수 좌표 (Line)** | 마지막 좌표 무시 | `[0,0,1,1,2]` → `[0,0,1,1]` |
-| **좌표 2개 미만 (Line)** | 에러 반환 | `Err("최소 2개 좌표 필요")` |
+| **홀수 좌표 (Line)** | 마지막 좌표 무시 후 검증 | `[0,0,1,1,NaN]` → `[0,0,1,1]` (성공) |
+| **좌표 2개 미만 (Line)** | 에러 반환 | `Err("[add_line] invalid_input: ...")` |
+| **NaN/Infinity (Circle)** | 에러 반환 | `Err("[add_circle] invalid_input: NaN or Infinity not allowed")` |
+| **NaN/Infinity (Line)** | 에러 반환 (trim 후 유효좌표) | `Err("[add_line] invalid_input: NaN or Infinity not allowed")` |
 
 ### 에러 메시지 형식
 
