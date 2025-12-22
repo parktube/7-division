@@ -10,15 +10,15 @@ use crate::primitives::parse_line_points;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SceneError {
-    DuplicateEntityName(String),
+    DuplicateEntityName(String, String), // (fn_name, entity_name)
     InvalidInput(String),
 }
 
 impl fmt::Display for SceneError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SceneError::DuplicateEntityName(name) => {
-                write!(f, "Entity '{}' already exists", name)
+            SceneError::DuplicateEntityName(fn_name, name) => {
+                write!(f, "[{}] duplicate_name: Entity '{}' already exists", fn_name, name)
             }
             SceneError::InvalidInput(msg) => {
                 write!(f, "{}", msg)
@@ -52,12 +52,13 @@ impl Scene {
 
     fn add_entity_internal(
         &mut self,
+        fn_name: &str,
         name: &str,
         entity_type: EntityType,
         geometry: Geometry,
     ) -> Result<String, SceneError> {
         if self.has_entity(name) {
-            return Err(SceneError::DuplicateEntityName(name.to_string()));
+            return Err(SceneError::DuplicateEntityName(fn_name.to_string(), name.to_string()));
         }
 
         let entity = Entity {
@@ -80,9 +81,10 @@ impl Scene {
     /// Vec<f64> 좌표를 받아 Line Entity 생성
     fn add_line_internal(&mut self, name: &str, coords: Vec<f64>) -> Result<String, SceneError> {
         let point_pairs = parse_line_points(coords)
-            .map_err(SceneError::InvalidInput)?;
+            .map_err(|msg| SceneError::InvalidInput(format!("[add_line] invalid_input: {}", msg)))?;
 
         self.add_entity_internal(
+            "add_line",
             name,
             EntityType::Line,
             Geometry::Line { points: point_pairs },
@@ -121,6 +123,7 @@ impl Scene {
         };
 
         self.add_entity_internal(
+            "add_circle",
             name,
             EntityType::Circle,
             Geometry::Circle {
@@ -151,6 +154,7 @@ impl Scene {
 
     pub fn add_entity(&mut self, name: &str) -> Result<String, JsValue> {
         self.add_entity_internal(
+            "add_entity",
             name,
             EntityType::Line,
             Geometry::Line {
@@ -187,7 +191,10 @@ impl Scene {
     ///
     /// # Returns
     /// * Ok(name) - 성공 시 name 반환
-    /// * Err - name 중복
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * x, y, radius 중 NaN 또는 Infinity 입력 시 에러
     ///
     /// # 입력 보정 (AC2)
     /// 음수/0 반지름은 abs().max(0.001)로 양수 변환
@@ -224,7 +231,7 @@ mod tests {
     fn test_add_entity_returns_name() {
         let mut scene = Scene::new("test");
         let name = scene
-            .add_entity_internal("head", EntityType::Line, sample_geometry())
+            .add_entity_internal("add_entity", "head", EntityType::Line, sample_geometry())
             .expect("add_entity should succeed");
 
         assert_eq!(name, "head");
@@ -239,16 +246,16 @@ mod tests {
     fn test_add_entity_duplicate_name() {
         let mut scene = Scene::new("test");
         scene
-            .add_entity_internal("head", EntityType::Line, sample_geometry())
+            .add_entity_internal("add_entity", "head", EntityType::Line, sample_geometry())
             .expect("first add_entity should succeed");
 
         let err = scene
-            .add_entity_internal("head", EntityType::Line, sample_geometry())
+            .add_entity_internal("add_entity", "head", EntityType::Line, sample_geometry())
             .expect_err("duplicate name should error");
-        assert_eq!(err.to_string(), "Entity 'head' already exists");
+        assert_eq!(err.to_string(), "[add_entity] duplicate_name: Entity 'head' already exists");
         assert!(matches!(
             err,
-            SceneError::DuplicateEntityName(name) if name == "head"
+            SceneError::DuplicateEntityName(fn_name, name) if fn_name == "add_entity" && name == "head"
         ));
     }
 
@@ -337,7 +344,7 @@ mod tests {
             .add_line_internal("invalid", vec![0.0, 100.0])
             .expect_err("should error with < 2 points");
 
-        assert_eq!(err.to_string(), "At least 2 points required");
+        assert_eq!(err.to_string(), "[add_line] invalid_input: At least 2 points required");
     }
 
     #[test]
@@ -352,7 +359,7 @@ mod tests {
             .add_line_internal("spine", vec![10.0, 10.0, 20.0, 20.0])
             .expect_err("duplicate name should error");
 
-        assert_eq!(err.to_string(), "Entity 'spine' already exists");
+        assert_eq!(err.to_string(), "[add_line] duplicate_name: Entity 'spine' already exists");
     }
 
     // === add_circle 테스트 (Story 1.4) ===
@@ -441,7 +448,7 @@ mod tests {
             .add_circle_internal("head", 50.0, 50.0, 5.0)
             .expect_err("duplicate name should error");
 
-        assert_eq!(err.to_string(), "Entity 'head' already exists");
+        assert_eq!(err.to_string(), "[add_circle] duplicate_name: Entity 'head' already exists");
     }
 
     #[test]
@@ -476,6 +483,11 @@ mod tests {
         let err = scene
             .add_circle_internal("invalid", 0.0, f64::NEG_INFINITY, 10.0)
             .expect_err("NEG_INFINITY y should error");
+        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+
+        let err = scene
+            .add_circle_internal("invalid", 0.0, 0.0, f64::INFINITY)
+            .expect_err("Infinity radius should error");
         assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
     }
 }

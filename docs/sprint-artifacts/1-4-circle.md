@@ -69,6 +69,10 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] Error Handling Policy에서 width/height 보정 규칙이 `abs().max(0.001)`로 변경됐지만 Story 1.5는 `abs()`만 명시 → 스펙 불일치 해소 필요 `docs/architecture.md:614` `docs/epics.md:385`
 - [x] [AI-Review][Medium] Error Handling Policy에서 radius 보정이 `abs().max(0.001)`로 강화됐지만 Story 1.6(Arc)는 `abs()`만 명시 → 스펙 불일치 해소 필요 `docs/architecture.md:613` `docs/epics.md:419`
 - [x] [AI-Review][Medium] 에러 메시지 형식 규약(함수명 포함)과 실제 에러 메시지 불일치 → `add_circle` 입력 에러 메시지 포맷 정렬 필요 `docs/architecture.md:619` `cad-engine/src/scene/mod.rs:109`
+- [x] [AI-Review][Medium] Error Handling Policy의 에러 메시지 포맷([function] type: detail)이 name 중복 에러에 적용되지 않음 → add_* duplicate name 에러도 포맷 통일 또는 정책 업데이트 `docs/architecture.md:619` `cad-engine/src/scene/mod.rs:20` `cad-engine/src/scene/mod.rs:444`
+- [x] [AI-Review][Medium] add_line 잘못된 입력 에러가 포맷 규약과 불일치(현재 "At least 2 points required") → parse_line_points/add_line 에러 메시지 포맷 및 테스트 갱신 `docs/architecture.md:619` `cad-engine/src/scene/mod.rs:340`
+- [x] [AI-Review][Low] add_circle 공개 API 주석이 NaN/Infinity 에러 가능성을 언급하지 않음 → Returns/Errors 문서 갱신 `cad-engine/src/scene/mod.rs:188`
+- [x] [AI-Review][Low] NaN/Infinity 검증 테스트가 x/y만 커버, radius Infinity 케이스 누락 → 테스트 추가 `cad-engine/src/scene/mod.rs:467`
 
 ## Dev Notes
 
@@ -241,3 +245,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Addressed code review findings - 5 items resolved (4 Medium, 1 Low)
 - 2025-12-22: Addressed re-review findings - 3 items resolved (문서 정합성: architecture.md, epics.md, Dev Notes)
 - 2025-12-22: Addressed 3rd review findings - 3 items resolved (epics.md Story 1.5/1.6 정합성, 에러 메시지 형식)
+- 2025-12-22: Addressed 4th review findings - 4 items resolved (에러 메시지 형식 통일, API 문서 보완, radius Infinity 테스트)
