@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub use super::style::{FillStyle, LineCap, LineJoin, StrokeStyle, Style};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Entity {
     pub id: String,
@@ -52,22 +54,6 @@ impl Default for Transform {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Style {
-    pub stroke: Option<String>,
-    pub fill: Option<String>,
-    pub stroke_width: Option<f64>,
-}
-
-impl Default for Style {
-    fn default() -> Self {
-        Self {
-            stroke: Some("#000000".to_string()),
-            fill: None,
-            stroke_width: Some(1.0),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Metadata {

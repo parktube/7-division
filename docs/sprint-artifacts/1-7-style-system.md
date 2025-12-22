@@ -4,7 +4,7 @@
 > - 이유: 도면 출력(DXF, SVG, PDF)시 스타일 정보가 필요
 > - 3D 확장 시 Material Reference로 발전 가능
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -51,31 +51,31 @@ So that **"빨간 원", "파란 점선" 같은 스타일이 적용된 도형을 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: 타입 정의** (AC: #1, #2, #3)
-  - [ ] 1.1: LineCap enum 정의 (Butt, Round, Square)
-  - [ ] 1.2: LineJoin enum 정의 (Miter, Round, Bevel)
-  - [ ] 1.3: StrokeStyle 구조체 정의
-  - [ ] 1.4: FillStyle 구조체 정의
-  - [ ] 1.5: Style 구조체 정의
+- [x] **Task 1: 타입 정의** (AC: #1, #2, #3)
+  - [x] 1.1: LineCap enum 정의 (Butt, Round, Square)
+  - [x] 1.2: LineJoin enum 정의 (Miter, Round, Bevel)
+  - [x] 1.3: StrokeStyle 구조체 정의
+  - [x] 1.4: FillStyle 구조체 정의
+  - [x] 1.5: Style 구조체 정의
 
-- [ ] **Task 2: Default 구현** (AC: #4)
-  - [ ] 2.1: StrokeStyle::default() - width: 1.0, color: black
-  - [ ] 2.2: FillStyle::default() - color: black
-  - [ ] 2.3: Style::default() - stroke: Some(default), fill: None
+- [x] **Task 2: Default 구현** (AC: #4)
+  - [x] 2.1: StrokeStyle::default() - width: 1.0, color: black
+  - [x] 2.2: FillStyle::default() - color: black
+  - [x] 2.3: Style::default() - stroke: Some(default), fill: None
 
-- [ ] **Task 3: Serde 직렬화** (AC: #5)
-  - [ ] 3.1: 모든 타입에 Serialize, Deserialize derive
-  - [ ] 3.2: JSON 출력 테스트
+- [x] **Task 3: Serde 직렬화** (AC: #5)
+  - [x] 3.1: 모든 타입에 Serialize, Deserialize derive
+  - [x] 3.2: JSON 출력 테스트
 
-- [ ] **Task 4: Entity 통합** (AC: #5)
-  - [ ] 4.1: Entity 구조체의 style 필드 타입 확인/수정
-  - [ ] 4.2: 기존 Style::default() 호출 부분 확인
+- [x] **Task 4: Entity 통합** (AC: #5)
+  - [x] 4.1: Entity 구조체의 style 필드 타입 확인/수정
+  - [x] 4.2: 기존 Style::default() 호출 부분 확인
 
-- [ ] **Task 5: 테스트** (AC: #1-#5)
-  - [ ] 5.1: StrokeStyle 생성 테스트
-  - [ ] 5.2: FillStyle 생성 테스트
-  - [ ] 5.3: Style JSON 직렬화 테스트
-  - [ ] 5.4: Default 값 테스트
+- [x] **Task 5: 테스트** (AC: #1-#5)
+  - [x] 5.1: StrokeStyle 생성 테스트
+  - [x] 5.2: FillStyle 생성 테스트
+  - [x] 5.3: Style JSON 직렬화 테스트
+  - [x] 5.4: Default 값 테스트
 
 ## Dev Notes
 
@@ -211,8 +211,31 @@ cad-engine/src/
 
 Claude Opus 4.5
 
+### Context Reference
+
+- 기존 entity.rs의 단순 Style 구조를 새로운 style.rs 모듈로 교체
+- Story 1.6 Arc의 draw_arc 함수에서 Style JSON 파싱 패턴 활용
+
+### Completion Notes List
+
+- LineCap, LineJoin enum 정의 (각각 3가지 값)
+- StrokeStyle 구조체: width, color(RGBA), dash, cap, join
+- FillStyle 구조체: color(RGBA)
+- Style 구조체: stroke, fill (모두 Option)
+- 모든 타입에 Default trait 구현
+- 모든 타입에 Serialize, Deserialize derive
+- 단위 테스트 10개 추가 (style.rs)
+- 전체 테스트 60개 통과 (기존 50개 + 신규 10개)
+- WASM 빌드 성공, Node.js 경계 테스트 통과
+
+### Change Log
+
+- 2025-12-22: Story 1.7 Style 데이터 구조 정의 완료
+
 ### File List
 
-- cad-engine/src/scene/style.rs (신규)
-- cad-engine/src/scene/mod.rs (수정 - mod style 추가)
-- cad-engine/src/scene/entity.rs (수정 - Style import 확인)
+- cad-engine/src/scene/style.rs (신규 - LineCap, LineJoin, StrokeStyle, FillStyle, Style, 테스트 10개)
+- cad-engine/src/scene/mod.rs (수정 - pub mod style 추가)
+- cad-engine/src/scene/entity.rs (수정 - 기존 Style 제거, style.rs에서 pub use 추가)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-6-arc: done, 1-7-style-system: review)
+- docs/sprint-artifacts/1-7-style-system.md (수정 - 태스크 체크, Dev Agent Record 업데이트)

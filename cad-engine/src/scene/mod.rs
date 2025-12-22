@@ -4,6 +4,7 @@ use uuid::Uuid;
 use js_sys::Float64Array;
 use serde_json;
 
+pub mod style;
 pub mod entity;
 
 use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
