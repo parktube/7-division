@@ -1,6 +1,6 @@
 # Story 1.4: Circle 도형 생성 기능
 
-Status: Ready for Review
+Status: in-progress
 
 ## Story
 
@@ -73,6 +73,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] add_line 잘못된 입력 에러가 포맷 규약과 불일치(현재 "At least 2 points required") → parse_line_points/add_line 에러 메시지 포맷 및 테스트 갱신 `docs/architecture.md:619` `cad-engine/src/scene/mod.rs:340`
 - [x] [AI-Review][Low] add_circle 공개 API 주석이 NaN/Infinity 에러 가능성을 언급하지 않음 → Returns/Errors 문서 갱신 `cad-engine/src/scene/mod.rs:188`
 - [x] [AI-Review][Low] NaN/Infinity 검증 테스트가 x/y만 커버, radius Infinity 케이스 누락 → 테스트 추가 `cad-engine/src/scene/mod.rs:467`
+- [x] [AI-Review][Medium] line 좌표에 NaN/Infinity 검증이 없어 비정상 geometry 저장 가능 → add_line/parse_line_points 입력 유효성 검사 및 테스트 추가 `cad-engine/src/primitives/line.rs:14`
+- [x] [AI-Review][Medium] 공개 API `add_entity`가 문서/스토리에 없고 더미 Line을 생성 → 내부 전용으로 숨기거나 스펙에 명시 `cad-engine/src/scene/mod.rs:147`
+- [x] [AI-Review][Low] Dev Notes 코드 스니펫의 중복 에러 메시지가 최신 포맷과 불일치 → 예시 코드/설명 갱신 `docs/sprint-artifacts/1-4-circle.md:97`
 
 ## Dev Notes
 
@@ -97,35 +100,33 @@ impl Scene {
     ///
     /// # Returns
     /// * Ok(name) - 성공 시 name 반환
-    /// * Err - name 중복
+    ///
+    /// # Errors
+    /// * name 중복 시: `[add_circle] duplicate_name: Entity 'name' already exists`
+    /// * NaN/Infinity 입력 시: `[add_circle] invalid_input: NaN or Infinity not allowed`
     pub fn add_circle(&mut self, name: &str, x: f64, y: f64, radius: f64) -> Result<String, JsValue> {
-        // name 중복 체크
-        if self.has_entity(name) {
-            return Err(JsValue::from_str(&format!("Entity '{}' already exists", name)));
+        self.add_circle_internal(name, x, y, radius)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+}
+
+// 내부 구현 (테스트용)
+impl Scene {
+    fn add_circle_internal(&mut self, name: &str, x: f64, y: f64, radius: f64) -> Result<String, SceneError> {
+        // NaN/Infinity 검증
+        if !x.is_finite() || !y.is_finite() || !radius.is_finite() {
+            return Err(SceneError::InvalidInput(
+                "[add_circle] invalid_input: NaN or Infinity not allowed".to_string(),
+            ));
         }
 
         // 관대한 입력 보정: 음수/0은 abs().max(0.001)로 변환
         let radius = if radius <= 0.0 { radius.abs().max(0.001) } else { radius };
 
-        let id = generate_id();  // 내부 ID (JSON export용)
-        let entity = Entity {
-            id,
-            entity_type: EntityType::Circle,
-            geometry: Geometry::Circle {
-                center: [x, y],
-                radius,
-            },
-            transform: Transform::default(),
-            style: Style::default(),
-            metadata: Metadata {
-                name: name.to_string(),
-                layer: None,
-                locked: false,
-            },
-        };
-
-        self.entities.push(entity);
-        Ok(name.to_string())
+        self.add_entity_internal("add_circle", name, EntityType::Circle, Geometry::Circle {
+            center: [x, y],
+            radius,
+        })
     }
 }
 ```
@@ -233,8 +234,9 @@ $ wasm-pack build --target nodejs --features dev
 
 ### File List
 
-- cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증 추가)
-- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영)
+- cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증, add_entity 제거)
+- cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 추가, 테스트 3개 추가)
+- docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영, Dev Notes 갱신)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle 상태 변경)
 - docs/architecture.md (수정 - Error Handling Policy 입력 보정 규칙 정합성)
 - docs/epics.md (수정 - Story 1.4 AC2 정합성)
@@ -246,3 +248,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Addressed re-review findings - 3 items resolved (문서 정합성: architecture.md, epics.md, Dev Notes)
 - 2025-12-22: Addressed 3rd review findings - 3 items resolved (epics.md Story 1.5/1.6 정합성, 에러 메시지 형식)
 - 2025-12-22: Addressed 4th review findings - 4 items resolved (에러 메시지 형식 통일, API 문서 보완, radius Infinity 테스트)
+- 2025-12-22: Addressed 5th review findings - 3 items resolved (Line NaN/Infinity 검증, add_entity 제거, Dev Notes 갱신)

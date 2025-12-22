@@ -9,15 +9,21 @@
 ///
 /// # Returns
 /// * Ok(Vec<[f64; 2]>) - 성공 시 점 배열
-/// * Err(String) - 최소 4개 값(2점) 미만일 경우 에러
+/// * Err(String) - 최소 4개 값(2점) 미만이거나 NaN/Infinity 포함 시 에러
 ///
 /// # 검증 순서
 /// 1. 최소 4개 값(2점) 필요 - 미달 시 즉시 에러
-/// 2. 홀수 개일 경우 마지막 값 무시 (AC3: 관대한 입력 보정)
+/// 2. NaN/Infinity 포함 여부 검증 - 유효하지 않은 값 있으면 에러
+/// 3. 홀수 개일 경우 마지막 값 무시 (AC3: 관대한 입력 보정)
 pub fn parse_line_points(coords: Vec<f64>) -> Result<Vec<[f64; 2]>, String> {
     // 빈 입력 또는 너무 적은 좌표 조기 리턴
     if coords.len() < 4 {
         return Err("At least 2 points required".to_string());
+    }
+
+    // NaN/Infinity 검증 (유효하지 않은 geometry 방지)
+    if coords.iter().any(|v| !v.is_finite()) {
+        return Err("NaN or Infinity not allowed".to_string());
     }
 
     // 홀수일 경우 마지막 좌표 무시 (AC3: 관대한 입력 보정)
@@ -81,5 +87,32 @@ mod tests {
         let result = parse_line_points(coords);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "At least 2 points required");
+    }
+
+    #[test]
+    fn test_parse_nan_error() {
+        // NaN 포함 시 에러
+        let coords = vec![0.0, f64::NAN, 0.0, 50.0];
+        let result = parse_line_points(coords);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "NaN or Infinity not allowed");
+    }
+
+    #[test]
+    fn test_parse_infinity_error() {
+        // Infinity 포함 시 에러
+        let coords = vec![0.0, 100.0, f64::INFINITY, 50.0];
+        let result = parse_line_points(coords);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "NaN or Infinity not allowed");
+    }
+
+    #[test]
+    fn test_parse_negative_infinity_error() {
+        // -Infinity 포함 시 에러
+        let coords = vec![f64::NEG_INFINITY, 100.0, 0.0, 50.0];
+        let result = parse_line_points(coords);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "NaN or Infinity not allowed");
     }
 }

@@ -152,18 +152,6 @@ impl Scene {
         self.entities.len()
     }
 
-    pub fn add_entity(&mut self, name: &str) -> Result<String, JsValue> {
-        self.add_entity_internal(
-            "add_entity",
-            name,
-            EntityType::Line,
-            Geometry::Line {
-                points: vec![[0.0, 0.0], [0.0, 0.0]],
-            },
-        )
-        .map_err(|err| JsValue::from_str(&err.to_string()))
-    }
-
     /// 선분(Line) 도형을 생성합니다.
     ///
     /// # Arguments
