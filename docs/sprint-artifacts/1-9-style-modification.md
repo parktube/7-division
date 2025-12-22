@@ -1,6 +1,6 @@
 # Story 1.9: 스타일 수정 Action 함수
 
-Status: review
+Status: done
 
 ## Story
 
@@ -72,6 +72,10 @@ So that **"이 원을 빨간색으로 바꿔줘" 같은 수정 요청을 처리�
   - [x] 5.4: remove_stroke 테스트
   - [x] 5.5: remove_fill 테스트
   - [x] 5.6: name 미발견 테스트
+
+### Review Follow-ups (AI) - 2025-12-22
+
+- [ ] [AI-Review][LOW] find_by_name_mut 헬퍼 메서드가 직접 테스트되지 않음. set_*/remove_* 함수에서 간접 테스트됨. [mod.rs:52-56]
 
 ## Dev Notes
 

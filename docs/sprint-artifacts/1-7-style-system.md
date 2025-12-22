@@ -4,7 +4,7 @@
 > - 이유: 도면 출력(DXF, SVG, PDF)시 스타일 정보가 필요
 > - 3D 확장 시 Material Reference로 발전 가능
 
-Status: review
+Status: done
 
 ## Story
 
@@ -76,6 +76,10 @@ So that **"빨간 원", "파란 점선" 같은 스타일이 적용된 도형을 
   - [x] 5.2: FillStyle 생성 테스트
   - [x] 5.3: Style JSON 직렬화 테스트
   - [x] 5.4: Default 값 테스트
+
+### Review Follow-ups (AI) - 2025-12-22
+
+- [ ] [AI-Review][LOW] StrokeStyle, FillStyle, Style에 PartialEq derive 누락. 테스트 시 직접 비교 불가. [style.rs:32,54,68]
 
 ## Dev Notes
 

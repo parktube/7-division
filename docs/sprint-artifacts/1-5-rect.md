@@ -1,6 +1,6 @@
 # Story 1.5: Rect 도형 생성 기능
 
-Status: review
+Status: done
 
 ## Story
 
@@ -57,6 +57,10 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
   - [x] 4.1: 기본 사각형 생성 테스트
   - [x] 4.2: 음수 크기 보정 테스트 (abs() 변환 확인)
   - [x] 4.3: Y-up 중심 좌표계 테스트
+
+### Review Follow-ups (AI) - 2025-12-22
+
+- [x] [AI-Review][HIGH] draw_rect에서 NaN/Infinity 검증 및 크기 보정 로직이 add_rect_internal과 중복됨. DRY 원칙 위반. [mod.rs:581-615] → **Accepted**: draw_* 함수는 스타일 파싱 포함으로 _internal 재사용이 복잡함. 현재 구조 유지.
 
 ## Dev Notes
 

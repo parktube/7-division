@@ -4,7 +4,7 @@
 > Style 시스템(1.7~1.9)보다 먼저 정의되어야 합니다.
 > PRD에 `arc(radius, startAngle, endAngle)`로 명시됨.
 
-Status: review
+Status: done
 
 ## Story
 
@@ -74,6 +74,11 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시, 부채꼴 등을 표
   - [x] 4.4: 음수 radius 보정 테스트
   - [x] 4.5: 360도 이상 테스트
   - [x] 4.6: draw_arc WASM export 확인
+
+### Review Follow-ups (AI) - 2025-12-22
+
+- [x] [AI-Review][HIGH] draw_arc에서 NaN/Infinity 검증 및 반지름 보정 로직이 add_arc_internal과 중복됨. DRY 원칙 위반. [mod.rs:387-418] → **Accepted**: draw_* 함수는 스타일 파싱 포함으로 _internal 재사용이 복잡함. 현재 구조 유지.
+- [x] [AI-Review][MEDIUM] Dependencies 섹션에 "Story 1.6 (Style 시스템)"이라고 되어 있으나, 이 스토리가 1.6임. "Story 1.7 (Style 시스템)"으로 수정 필요. [1-6-arc.md:319] → **Fixed**
 
 ## Dev Notes
 
@@ -316,7 +321,7 @@ cad-engine/src/
 ### Dependencies
 
 - Story 1.2 (Scene 클래스 및 Entity 구조)
-- Story 1.6 (Style 시스템) - draw_arc용
+- Story 1.7 (Style 시스템) - draw_arc용
 
 ## References
 
