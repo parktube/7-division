@@ -1,6 +1,6 @@
 # Story 1.8: 도형 생성 시 Style 적용
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -48,32 +48,32 @@ So that **"빨간 테두리의 파란 원을 그려줘" 같은 요청을 한 번
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: draw_circle 구현** (AC: #1, #4, #6)
-  - [ ] 1.1: `draw_circle(name: &str, x, y, radius, style_json: &str)` 시그니처
-  - [ ] 1.2: name 중복 체크 (has_entity)
-  - [ ] 1.3: style_json 파싱 로직 (실패 시 기본값)
-  - [ ] 1.4: Entity 생성 (metadata.name = name) 및 name 반환
+- [x] **Task 1: draw_circle 구현** (AC: #1, #4, #6)
+  - [x] 1.1: `draw_circle(name: &str, x, y, radius, style_json: &str)` 시그니처
+  - [x] 1.2: name 중복 체크 (has_entity)
+  - [x] 1.3: style_json 파싱 로직 (실패 시 기본값)
+  - [x] 1.4: Entity 생성 (metadata.name = name) 및 name 반환
 
-- [ ] **Task 2: draw_line 구현** (AC: #2, #4, #6)
-  - [ ] 2.1: `draw_line(name: &str, points: Float64Array, style_json: &str)` 시그니처
-  - [ ] 2.2: name 중복 체크 및 style_json 파싱
-  - [ ] 2.3: Entity 생성 및 name 반환
+- [x] **Task 2: draw_line 구현** (AC: #2, #4, #6)
+  - [x] 2.1: `draw_line(name: &str, points: Float64Array, style_json: &str)` 시그니처
+  - [x] 2.2: name 중복 체크 및 style_json 파싱
+  - [x] 2.3: Entity 생성 및 name 반환
 
-- [ ] **Task 3: draw_rect 구현** (AC: #3, #4, #6)
-  - [ ] 3.1: `draw_rect(name: &str, x, y, w, h, style_json: &str)` 시그니처
-  - [ ] 3.2: name 중복 체크 및 style_json 파싱
-  - [ ] 3.3: Entity 생성 및 name 반환
+- [x] **Task 3: draw_rect 구현** (AC: #3, #4, #6)
+  - [x] 3.1: `draw_rect(name: &str, x, y, w, h, style_json: &str)` 시그니처
+  - [x] 3.2: name 중복 체크 및 style_json 파싱
+  - [x] 3.3: Entity 생성 및 name 반환
 
-- [ ] **Task 4: 기존 함수 유지** (AC: #5)
-  - [ ] 4.1: add_circle, add_line, add_rect는 그대로 유지
-  - [ ] 4.2: 내부적으로 Style::default() 사용 확인
+- [x] **Task 4: 기존 함수 유지** (AC: #5)
+  - [x] 4.1: add_circle, add_line, add_rect는 그대로 유지
+  - [x] 4.2: 내부적으로 Style::default() 사용 확인
 
-- [ ] **Task 5: 테스트** (AC: #1-#6)
-  - [ ] 5.1: draw_circle with full style
-  - [ ] 5.2: draw_circle with stroke only
-  - [ ] 5.3: draw_circle with fill only
-  - [ ] 5.4: draw_circle with invalid JSON (fallback)
-  - [ ] 5.5: add_circle 기존 동작 유지 확인
+- [x] **Task 5: 테스트** (AC: #1-#6)
+  - [x] 5.1: draw_circle with full style
+  - [x] 5.2: draw_circle with stroke only
+  - [x] 5.3: draw_circle with fill only
+  - [x] 5.4: draw_circle with invalid JSON (fallback)
+  - [x] 5.5: add_circle 기존 동작 유지 확인
 
 ## Dev Notes
 
@@ -210,6 +210,26 @@ cad-engine/src/
 
 Claude Opus 4.5
 
+### Context Reference
+
+- Story 1.6 Arc의 draw_arc 패턴을 Circle, Line, Rect에 확장 적용
+- 기존 add_* 함수는 그대로 유지하여 하위 호환성 보장
+
+### Completion Notes List
+
+- draw_circle: NaN/Infinity 검증, 반지름 보정, 스타일 파싱 (실패 시 기본값)
+- draw_line: 좌표 파싱 (parse_line_points 재사용), 스타일 파싱
+- draw_rect: NaN/Infinity 검증, 크기 보정, 스타일 파싱
+- WASM 경계 테스트 통과: full style, stroke only, fill only, invalid JSON fallback
+- 기존 add_* 함수 동작 유지 확인
+- 전체 테스트 60개 통과
+
+### Change Log
+
+- 2025-12-22: Story 1.8 도형 생성 시 Style 적용 완료
+
 ### File List
 
-- cad-engine/src/scene/mod.rs (수정 - draw_* 함수 추가)
+- cad-engine/src/scene/mod.rs (수정 - draw_circle, draw_line, draw_rect 추가)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-7-style-system: done, 1-8-styled-shape-creation: review)
+- docs/sprint-artifacts/1-8-styled-shape-creation.md (수정 - 태스크 체크, Dev Agent Record 업데이트)

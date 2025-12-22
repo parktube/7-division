@@ -434,6 +434,202 @@ impl Scene {
         self.entities.push(entity);
         Ok(name.to_string())
     }
+
+    /// 스타일이 적용된 원(Circle)을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "head") - Scene 내 unique
+    /// * `x` - 중심점 x 좌표
+    /// * `y` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    pub fn draw_circle(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_circle] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // NaN/Infinity 검증
+        if !x.is_finite() || !y.is_finite() || !radius.is_finite() {
+            return Err(JsValue::from_str(
+                "[draw_circle] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 관대한 입력 보정
+        let radius = if radius <= 0.0 {
+            radius.abs().max(0.001)
+        } else {
+            radius
+        };
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json)
+            .unwrap_or_else(|_| Style::default());
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Circle,
+            geometry: Geometry::Circle {
+                center: [x, y],
+                radius,
+            },
+            transform: Transform::default(),
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+        };
+
+        self.entities.push(entity);
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 선분(Line)을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "spine") - Scene 내 unique
+    /// * `points` - [x1, y1, x2, y2, ...] 형태의 Float64Array
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 좌표에 NaN/Infinity 포함 시 에러
+    /// * 최소 2점 미만 시 에러
+    pub fn draw_line(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_line] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // 좌표 파싱
+        let point_pairs = parse_line_points(points.to_vec())
+            .map_err(|msg| JsValue::from_str(&format!("[draw_line] invalid_input: {}", msg)))?;
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json)
+            .unwrap_or_else(|_| Style::default());
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Line,
+            geometry: Geometry::Line { points: point_pairs },
+            transform: Transform::default(),
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+        };
+
+        self.entities.push(entity);
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 사각형(Rect)을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "torso") - Scene 내 unique
+    /// * `x` - 원점 x 좌표
+    /// * `y` - 원점 y 좌표
+    /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
+    /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    pub fn draw_rect(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_rect] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // NaN/Infinity 검증
+        if !x.is_finite() || !y.is_finite() || !width.is_finite() || !height.is_finite() {
+            return Err(JsValue::from_str(
+                "[draw_rect] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 관대한 입력 보정
+        let width = if width <= 0.0 {
+            width.abs().max(0.001)
+        } else {
+            width
+        };
+        let height = if height <= 0.0 {
+            height.abs().max(0.001)
+        } else {
+            height
+        };
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json)
+            .unwrap_or_else(|_| Style::default());
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Rect,
+            geometry: Geometry::Rect {
+                origin: [x, y],
+                width,
+                height,
+            },
+            transform: Transform::default(),
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+        };
+
+        self.entities.push(entity);
+        Ok(name.to_string())
+    }
 }
 
 #[cfg(test)]
