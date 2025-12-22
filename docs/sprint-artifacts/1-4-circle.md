@@ -57,10 +57,11 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
   - [x] 3.1: Scene impl에 add_circle 메서드 추가
   - [x] 3.2: wasm_bindgen export 확인
 
-- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3)
+- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3, #5)
   - [x] 4.1: 기본 원 생성 테스트
   - [x] 4.2: 음수 반지름 보정 테스트 (abs() 변환 확인)
   - [x] 4.3: 음수 좌표 허용 테스트
+  - [x] 4.4: NaN/Infinity 입력 에러 테스트
 
 ### Review Follow-ups (AI)
 
@@ -88,6 +89,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][High] Dev Agent Record File List에 기재된 변경(6개 파일)이 현재 git 변경 내역과 불일치 → 실제 변경(커밋/브랜치 기준)과 File List 정합성 확보 `docs/sprint-artifacts/1-4-circle.md:240`
 - [x] [AI-Review][Medium] Story 1.4 AC에 NaN/Infinity 입력 에러 정책이 명시되지 않음 → AC에 입력 유효성 규칙 추가 또는 정책 롤백 결정 `docs/sprint-artifacts/1-4-circle.md:13` `docs/architecture.md:618`
 - [x] [AI-Review][Medium] Line NaN/Infinity 입력 에러 정책이 Architecture에 추가됐지만 Epic Story 1.3 AC에 반영되지 않음 → Epic AC 업데이트 또는 정책 롤백 결정 `docs/architecture.md:619` `docs/epics.md:307`
+- [x] [AI-Review][Medium] Task 4 테스트 항목이 AC5(NaN/Infinity 입력 검증)와 매핑되지 않음 → 테스트 작업/AC 매핑 갱신 `docs/sprint-artifacts/1-4-circle.md:60` `docs/sprint-artifacts/1-4-circle.md:37`
+- [x] [AI-Review][Medium] Dev Agent Record File List의 커밋 참조에 최신 수정 커밋(67a3acc) 누락 → File List 기준 커밋 목록 최신화 `docs/sprint-artifacts/1-4-circle.md:251`
+- [x] [AI-Review][Medium] File List의 `docs/epics.md` 변경 설명이 실제 변경 범위(Story 1.3/1.4 AC 추가)와 불일치 → 변경 설명 수정 `docs/sprint-artifacts/1-4-circle.md:258` `docs/epics.md:307`
 
 ## Dev Notes
 
@@ -248,14 +252,14 @@ $ wasm-pack build --target nodejs --features dev
 
 ### File List
 
-> Commits: b6ab06d, 666d0d7, a029e84, d2539e4, 89f3792, eca891a
+> Commits: b6ab06d, 666d0d7, a029e84, d2539e4, 89f3792, eca891a, 67a3acc
 
 - cad-engine/src/scene/mod.rs (수정 - add_circle, add_circle_internal, NaN/Infinity 검증, add_entity 제거)
 - cad-engine/src/primitives/line.rs (수정 - NaN/Infinity 검증 순서 변경, trim 후 검증, 테스트 5개)
 - docs/sprint-artifacts/1-4-circle.md (수정 - 상태 업데이트, 리뷰 피드백 반영, Dev Notes/Debug Log 갱신)
 - docs/sprint-artifacts/sprint-status.yaml (수정 - 1-4-circle 상태 변경)
 - docs/architecture.md (수정 - Error Handling Policy 입력 보정 규칙: Line/Circle NaN/Infinity 명시)
-- docs/epics.md (수정 - Story 1.4/1.5/1.6 AC 정합성)
+- docs/epics.md (수정 - Story 1.3/1.4 AC에 NaN/Infinity 정책 추가, Story 1.5/1.6 AC 정합성)
 
 ### Change Log
 
@@ -267,3 +271,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Addressed 5th review findings - 3 items resolved (Line NaN/Infinity 검증, add_entity 제거, Dev Notes 갱신)
 - 2025-12-22: Addressed 6th review findings - 3 items resolved (trim 후 검증 순서, Error Handling Policy 갱신, Debug Log 28개)
 - 2025-12-22: Addressed 7th review findings - 3 items resolved (File List 커밋참조, Story AC5 추가, Epic AC 정합성)
+- 2025-12-22: Addressed 8th review findings - 3 items resolved (Task4 AC5 매핑, 커밋목록 67a3acc 추가, epics.md 설명 수정)
