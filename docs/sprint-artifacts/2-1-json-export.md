@@ -222,10 +222,10 @@ cad-engine/src/
 
 ## References
 
-- [Source: docs/architecture.md#State Management - Phase 1]
-- [Source: docs/architecture.md#API Design - export_json]
-- [Source: docs/prd.md#Data Model - Scene 구조]
-- [Source: docs/epics.md#Story 2.1]
+- [Source: docs/architecture.md#State Management - Phase 1](../architecture.md#state-management)
+- [Source: docs/architecture.md#API Design - export_json](../architecture.md#api-design)
+- [Source: docs/prd.md#Data Model - Scene 구조](../prd.md#data-model)
+- [Source: docs/epics.md#Story 2.1](../epics.md#story-21-json-export-%EA%B8%B0%EB%8A%A5-%EA%B5%AC%ED%98%84)
 
 ## Dev Agent Record
 

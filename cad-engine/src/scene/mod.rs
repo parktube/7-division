@@ -832,6 +832,7 @@ mod tests {
         let json = scene.export_json();
         let value: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
 
+        assert!(value.get("name").is_none());
         let entities = value
             .get("entities")
             .and_then(|v| v.as_array())

@@ -73,8 +73,10 @@ function toCssColor(color, fallback) {
     return fallback;
   }
   const [r, g, b, a] = color.map((value, index) => {
-    const num = Number.isFinite(value) ? value : index === 3 ? 1 : 0;
-    return clamp(num, 0, 1);
+    if (!Number.isFinite(value)) {
+      return index === 3 ? 1 : 0;
+    }
+    return clamp(value, 0, 1);
   });
   const alpha = Math.round(a * 1000) / 1000;
   return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
@@ -151,14 +153,24 @@ function renderLine(geometry, style) {
   if (!Array.isArray(points) || points.length < 2) {
     return;
   }
+  const validPoints = points.filter(
+    (point) =>
+      Array.isArray(point) &&
+      point.length >= 2 &&
+      Number.isFinite(point[0]) &&
+      Number.isFinite(point[1]),
+  );
+  if (validPoints.length < 2) {
+    return;
+  }
   const stroke = resolveStroke(style);
   if (!stroke) {
     return;
   }
   ctx.beginPath();
-  ctx.moveTo(points[0][0], points[0][1]);
-  for (let i = 1; i < points.length; i += 1) {
-    ctx.lineTo(points[i][0], points[i][1]);
+  ctx.moveTo(validPoints[0][0], validPoints[0][1]);
+  for (let i = 1; i < validPoints.length; i += 1) {
+    ctx.lineTo(validPoints[i][0], validPoints[i][1]);
   }
   applyStroke(stroke);
 }

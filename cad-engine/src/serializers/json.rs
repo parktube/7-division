@@ -16,5 +16,8 @@ pub fn serialize_scene(name: &str, entities: &[Entity]) -> String {
     };
 
     serde_json::to_string_pretty(&scene_json)
-        .unwrap_or_else(|_| r#"{"entities": []}"#.to_string())
+        .unwrap_or_else(|err| {
+            eprintln!("Warning: Scene serialization failed for '{}': {}", name, err);
+            r#"{"entities": []}"#.to_string()
+        })
 }
