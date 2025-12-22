@@ -328,6 +328,11 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 **When** add_line 호출
 **Then** 마지막 좌표가 무시되고 정상 생성된다 (관대한 입력 보정)
 
+**Given** 유효 좌표에 NaN 또는 Infinity 값이 포함된 경우
+**When** add_line 호출
+**Then** 에러가 반환된다: `[add_line] invalid_input: NaN or Infinity not allowed`
+**And** (홀수 좌표 trim 후 유효 좌표에서만 검증)
+
 **Technical Notes:**
 - Float64Array 입력 처리 (NFR12)
 - 시맨틱 명확한 함수명: `add_line` (NFR9)
@@ -359,9 +364,14 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 **When** add_circle 호출
 **Then** 정상적으로 생성된다 (음수 좌표 허용)
 
+**Given** x, y, 또는 radius에 NaN/Infinity 값이 포함된 경우
+**When** add_circle 호출
+**Then** 에러가 반환된다: `[add_circle] invalid_input: NaN or Infinity not allowed`
+
 **Technical Notes:**
 - 시맨틱 명확한 함수명: `add_circle` (NFR9)
 - f64 타입 사용
+- NaN/Infinity 입력 시 에러 반환 (유효하지 않은 geometry 방지)
 
 **Requirements Fulfilled:** FR3
 
