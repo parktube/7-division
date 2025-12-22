@@ -1,6 +1,6 @@
 # Story 1.3: Line 도형 생성 기능
 
-Status: Ready for Review
+Status: done
 
 ## Story
 

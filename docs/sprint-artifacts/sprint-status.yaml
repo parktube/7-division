@@ -26,7 +26,7 @@ development_status:
         priority: P0
         depends_on: [1-1-wasm-project-init]
       1-3-line:
-        status: review
+        status: done
         title: "Line 도구"
         priority: P0
         depends_on: [1-2-scene-class]
