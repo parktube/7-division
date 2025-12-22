@@ -357,5 +357,5 @@ Claude Opus 4.5
 
 - cad-engine/src/scene/entity.rs (수정 - Geometry::Arc, EntityType::Arc)
 - cad-engine/src/scene/mod.rs (수정 - add_arc_internal, add_arc, draw_arc, 테스트 10개)
-- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-5-rect: done, 1-6-arc: review)
+- docs/sprint-artifacts/sprint-status.yaml (수정 - 1-5-rect: done, 1-6-arc: done)
 - docs/sprint-artifacts/1-6-arc.md (수정 - 태스크 체크, Dev Agent Record 업데이트)
