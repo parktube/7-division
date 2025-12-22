@@ -1,6 +1,6 @@
 # Story 2.3: Line, Circle, Rect 렌더링 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -41,28 +41,28 @@ So that **AI가 만든 스켈레톤이 올바르게 표현되었는지 검증할
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: 도형 렌더링 함수 분리** (AC: #1, #2, #3)
-  - [ ] 1.1: renderLine(ctx, entity) 함수 구현
-  - [ ] 1.2: renderCircle(ctx, entity) 함수 구현
-  - [ ] 1.3: renderRect(ctx, entity) 함수 구현
+- [x] **Task 1: 도형 렌더링 함수 분리** (AC: #1, #2, #3)
+  - [x] 1.1: renderLine(ctx, entity) 함수 구현
+  - [x] 1.2: renderCircle(ctx, entity) 함수 구현
+  - [x] 1.3: renderRect(ctx, entity) 함수 구현
 
-- [ ] **Task 2: 렌더링 분기 로직** (AC: #4)
-  - [ ] 2.1: entity.entity_type 기반 switch 문 구현
-  - [ ] 2.2: 알 수 없는 타입 처리 (무시 또는 경고)
+- [x] **Task 2: 렌더링 분기 로직** (AC: #4)
+  - [x] 2.1: entity.entity_type 기반 switch 문 구현
+  - [x] 2.2: 알 수 없는 타입 처리 (무시 또는 경고)
 
-- [ ] **Task 3: 스타일 적용** (AC: #1, #2, #3)
-  - [ ] 3.1: 기본 스타일 설정 (stroke: black, lineWidth: 1)
-  - [ ] 3.2: entity.style 값 적용 (있으면)
+- [x] **Task 3: 스타일 적용** (AC: #1, #2, #3)
+  - [x] 3.1: 기본 스타일 설정 (stroke: black, lineWidth: 1)
+  - [x] 3.2: entity.style 값 적용 (있으면)
 
-- [ ] **Task 4: 좌표 변환** (AC: #5)
-  - [ ] 4.1: Canvas 중앙 기준 좌표계 설정 (선택적)
-  - [ ] 4.2: 또는 좌상단 기준 유지
+- [x] **Task 4: 좌표 변환** (AC: #5)
+  - [x] 4.1: Canvas 중앙 기준 좌표계 설정 (선택적)
+  - [x] 4.2: 또는 좌상단 기준 유지
 
-- [ ] **Task 5: 테스트** (AC: #1, #2, #3, #4, #5)
-  - [ ] 5.1: 단일 Line 렌더링 테스트
-  - [ ] 5.2: 단일 Circle 렌더링 테스트
-  - [ ] 5.3: 단일 Rect 렌더링 테스트
-  - [ ] 5.4: 스켈레톤 복합 렌더링 테스트
+- [x] **Task 5: 테스트** (AC: #1, #2, #3, #4, #5)
+  - [x] 5.1: 단일 Line 렌더링 테스트
+  - [x] 5.2: 단일 Circle 렌더링 테스트
+  - [x] 5.3: 단일 Rect 렌더링 테스트
+  - [x] 5.4: 스켈레톤 복합 렌더링 테스트
 
 ## Dev Notes
 
@@ -91,9 +91,20 @@ function render(scene) {
 }
 
 function renderEntity(ctx, entity) {
-    // 기본 스타일
-    ctx.strokeStyle = entity.style?.stroke || '#000000';
-    ctx.lineWidth = entity.style?.stroke_width || 1;
+    const stroke = entity.style?.stroke;
+    if (stroke) {
+        ctx.strokeStyle = rgba(stroke.color); // [r,g,b,a] -> CSS rgba
+        ctx.lineWidth = stroke.width ?? 1;
+        ctx.setLineDash(stroke.dash ?? []);
+        ctx.lineCap = stroke.cap?.toLowerCase?.() ?? 'butt';
+        ctx.lineJoin = stroke.join?.toLowerCase?.() ?? 'miter';
+    } else {
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([]);
+        ctx.lineCap = 'butt';
+        ctx.lineJoin = 'miter';
+    }
 
     switch (entity.entity_type) {
         case 'Line':
@@ -246,14 +257,24 @@ viewer/
 
 ### Context Reference
 
+- Canvas 중앙 기준 좌표계로 변환 후 도형 렌더링
+- Style 시스템(stroke/fill)의 RGBA 값을 Canvas 스타일로 적용
+
 ### Agent Model Used
 
-Claude Opus 4.5
+Codex (GPT-5)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- Line/Circle/Rect 렌더 함수 분리 및 스타일 적용
+- 엔티티 타입 스위치 및 알 수 없는 타입 경고 처리
+- 중앙 원점 + y축 반전 좌표계 적용
+
+### Change Log
+
+- 2025-12-22: Story 2.3 기본 도형 렌더링 구현 완료
 ### File List
 
 - viewer/renderer.js (수정 - 렌더링 로직 추가)

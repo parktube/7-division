@@ -64,9 +64,178 @@ function resizeCanvas() {
   }
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function toCssColor(color, fallback) {
+  if (!Array.isArray(color) || color.length < 4) {
+    return fallback;
+  }
+  const [r, g, b, a] = color.map((value, index) => {
+    const num = Number.isFinite(value) ? value : index === 3 ? 1 : 0;
+    return clamp(num, 0, 1);
+  });
+  const alpha = Math.round(a * 1000) / 1000;
+  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(
+    b * 255,
+  )}, ${alpha})`;
+}
+
+function mapLineCap(cap) {
+  switch (cap) {
+    case 'Round':
+      return 'round';
+    case 'Square':
+      return 'square';
+    default:
+      return 'butt';
+  }
+}
+
+function mapLineJoin(join) {
+  switch (join) {
+    case 'Round':
+      return 'round';
+    case 'Bevel':
+      return 'bevel';
+    default:
+      return 'miter';
+  }
+}
+
+function sanitizeDash(dash) {
+  if (!Array.isArray(dash)) {
+    return [];
+  }
+  return dash.filter((value) => Number.isFinite(value) && value >= 0);
+}
+
+function resolveStroke(style) {
+  if (!style) {
+    return {
+      width: 1,
+      color: [0, 0, 0, 1],
+      dash: null,
+      cap: 'Butt',
+      join: 'Miter',
+    };
+  }
+  return style.stroke ?? null;
+}
+
+function applyStroke(stroke) {
+  if (!stroke) {
+    return false;
+  }
+  ctx.lineWidth = Number.isFinite(stroke.width) ? stroke.width : 1;
+  ctx.strokeStyle = toCssColor(stroke.color, 'rgba(0, 0, 0, 1)');
+  ctx.setLineDash(sanitizeDash(stroke.dash));
+  ctx.lineCap = mapLineCap(stroke.cap);
+  ctx.lineJoin = mapLineJoin(stroke.join);
+  ctx.stroke();
+  return true;
+}
+
+function applyFill(fill) {
+  if (!fill) {
+    return false;
+  }
+  ctx.fillStyle = toCssColor(fill.color, 'rgba(0, 0, 0, 1)');
+  ctx.fill();
+  return true;
+}
+
+function renderLine(geometry, style) {
+  const points = geometry?.Line?.points;
+  if (!Array.isArray(points) || points.length < 2) {
+    return;
+  }
+  const stroke = resolveStroke(style);
+  if (!stroke) {
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i += 1) {
+    ctx.lineTo(points[i][0], points[i][1]);
+  }
+  applyStroke(stroke);
+}
+
+function renderCircle(geometry, style) {
+  const circle = geometry?.Circle;
+  if (!circle) {
+    return;
+  }
+  const { center, radius } = circle;
+  if (!Array.isArray(center) || center.length < 2 || !Number.isFinite(radius)) {
+    return;
+  }
+  ctx.beginPath();
+  ctx.arc(center[0], center[1], radius, 0, Math.PI * 2);
+  applyFill(style?.fill);
+  applyStroke(resolveStroke(style));
+}
+
+function renderRect(geometry, style) {
+  const rect = geometry?.Rect;
+  if (!rect) {
+    return;
+  }
+  const { origin, width, height } = rect;
+  if (
+    !Array.isArray(origin) ||
+    origin.length < 2 ||
+    !Number.isFinite(width) ||
+    !Number.isFinite(height)
+  ) {
+    return;
+  }
+  ctx.beginPath();
+  ctx.rect(origin[0], origin[1], width, height);
+  applyFill(style?.fill);
+  applyStroke(resolveStroke(style));
+}
+
+function renderEntity(entity) {
+  if (!entity || !entity.entity_type) {
+    return;
+  }
+  ctx.save();
+
+  switch (entity.entity_type) {
+    case 'Line':
+      renderLine(entity.geometry, entity.style);
+      break;
+    case 'Circle':
+      renderCircle(entity.geometry, entity.style);
+      break;
+    case 'Rect':
+      renderRect(entity.geometry, entity.style);
+      break;
+    default:
+      console.warn('Unknown entity type:', entity.entity_type);
+  }
+
+  ctx.restore();
+}
+
 function renderScene(scene) {
   ctx.clearRect(0, 0, state.viewport.width, state.viewport.height);
-  // Shape rendering is added in Story 2.3.
+  if (!scene || !Array.isArray(scene.entities)) {
+    return;
+  }
+
+  ctx.save();
+  ctx.translate(state.viewport.width / 2, state.viewport.height / 2);
+  ctx.scale(1, -1);
+
+  for (const entity of scene.entities) {
+    renderEntity(entity);
+  }
+
+  ctx.restore();
 }
 
 async function fetchScene() {
