@@ -205,16 +205,20 @@ function renderRect(geometry, style) {
     return;
   }
   const { origin, width, height } = rect;
+  if (!Array.isArray(origin) || origin.length < 2) {
+    return;
+  }
+  const [x, y] = origin;
   if (
-    !Array.isArray(origin) ||
-    origin.length < 2 ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
     !Number.isFinite(width) ||
     !Number.isFinite(height)
   ) {
     return;
   }
   ctx.beginPath();
-  ctx.rect(origin[0], origin[1], width, height);
+  ctx.rect(x, y, width, height);
   applyFill(style?.fill);
   applyStroke(resolveStroke(style));
 }
