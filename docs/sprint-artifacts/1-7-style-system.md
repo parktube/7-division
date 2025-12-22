@@ -79,7 +79,7 @@ So that **"빨간 원", "파란 점선" 같은 스타일이 적용된 도형을 
 
 ### Review Follow-ups (AI) - 2025-12-22
 
-- [ ] [AI-Review][LOW] StrokeStyle, FillStyle, Style에 PartialEq derive 누락. 테스트 시 직접 비교 불가. [style.rs:32,54,68]
+- [x] [AI-Review][LOW] StrokeStyle, FillStyle, Style에 PartialEq derive 누락. 테스트 시 직접 비교 불가. [style.rs:32,54,68] → **Fixed** (commit 35db41f)
 
 ## Dev Notes
 
