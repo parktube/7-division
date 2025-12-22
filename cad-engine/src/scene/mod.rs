@@ -109,7 +109,7 @@ impl Scene {
         // NaN/Infinity 검증 (유효하지 않은 geometry 방지)
         if !x.is_finite() || !y.is_finite() || !radius.is_finite() {
             return Err(SceneError::InvalidInput(
-                "Invalid input: NaN or Infinity not allowed".to_string(),
+                "[add_circle] invalid_input: NaN or Infinity not allowed".to_string(),
             ));
         }
 
@@ -451,17 +451,17 @@ mod tests {
         let err = scene
             .add_circle_internal("invalid", f64::NAN, 0.0, 10.0)
             .expect_err("NaN x should error");
-        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
 
         let err = scene
             .add_circle_internal("invalid", 0.0, f64::NAN, 10.0)
             .expect_err("NaN y should error");
-        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
 
         let err = scene
             .add_circle_internal("invalid", 0.0, 0.0, f64::NAN)
             .expect_err("NaN radius should error");
-        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
     }
 
     #[test]
@@ -471,11 +471,11 @@ mod tests {
         let err = scene
             .add_circle_internal("invalid", f64::INFINITY, 0.0, 10.0)
             .expect_err("Infinity x should error");
-        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
 
         let err = scene
             .add_circle_internal("invalid", 0.0, f64::NEG_INFINITY, 10.0)
             .expect_err("NEG_INFINITY y should error");
-        assert_eq!(err.to_string(), "Invalid input: NaN or Infinity not allowed");
+        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
     }
 }

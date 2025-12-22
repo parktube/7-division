@@ -66,6 +66,9 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 - [x] [AI-Review][Medium] Error Handling Policy의 음수 radius 보정 규칙이 `abs()`로 남아 있음 → `abs().max(0.001)` 또는 구현에 맞춰 일치시키기 `docs/architecture.md:613`
 - [x] [AI-Review][Medium] Epic의 Story 1.4 AC2가 `abs()` 보정만 명시 → 현재 구현/스토리(0.001 최소값)와 불일치 `docs/epics.md:354`
 - [x] [AI-Review][Low] Dev Notes 코드 주석이 "abs()로 변환"만 언급 → 0.001 최소값 보정도 명시 `docs/sprint-artifacts/1-4-circle.md:89`
+- [x] [AI-Review][Medium] Error Handling Policy에서 width/height 보정 규칙이 `abs().max(0.001)`로 변경됐지만 Story 1.5는 `abs()`만 명시 → 스펙 불일치 해소 필요 `docs/architecture.md:614` `docs/epics.md:385`
+- [x] [AI-Review][Medium] Error Handling Policy에서 radius 보정이 `abs().max(0.001)`로 강화됐지만 Story 1.6(Arc)는 `abs()`만 명시 → 스펙 불일치 해소 필요 `docs/architecture.md:613` `docs/epics.md:419`
+- [x] [AI-Review][Medium] 에러 메시지 형식 규약(함수명 포함)과 실제 에러 메시지 불일치 → `add_circle` 입력 에러 메시지 포맷 정렬 필요 `docs/architecture.md:619` `cad-engine/src/scene/mod.rs:109`
 
 ## Dev Notes
 
@@ -237,3 +240,4 @@ $ wasm-pack build --target nodejs --features dev
 - 2025-12-22: Story 1-4 Circle 도형 생성 기능 구현 완료
 - 2025-12-22: Addressed code review findings - 5 items resolved (4 Medium, 1 Low)
 - 2025-12-22: Addressed re-review findings - 3 items resolved (문서 정합성: architecture.md, epics.md, Dev Notes)
+- 2025-12-22: Addressed 3rd review findings - 3 items resolved (epics.md Story 1.5/1.6 정합성, 에러 메시지 형식)

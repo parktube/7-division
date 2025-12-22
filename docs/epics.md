@@ -384,7 +384,7 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 
 **Given** width 또는 height가 0 이하인 경우
 **When** add_rect 호출
-**Then** abs()로 양수 변환되어 정상 생성된다 (관대한 입력 보정)
+**Then** abs().max(0.001)로 양수 변환되어 정상 생성된다 (0일 경우 최소값 0.001 적용, 관대한 입력 보정)
 
 **Given** Y-up 좌표계에서 origin이 좌하단인 경우
 **When** add_rect(0, 0, 100, 50) 호출
@@ -418,7 +418,7 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시 등을 표현할 수 
 
 **Given** radius가 0 이하인 경우
 **When** add_arc 호출
-**Then** abs()로 양수 변환되어 정상 생성된다 (관대한 입력 보정)
+**Then** abs().max(0.001)로 양수 변환되어 정상 생성된다 (0일 경우 최소값 0.001 적용, 관대한 입력 보정)
 
 **Given** Scene 인스턴스가 존재
 **When** `scene.draw_arc(cx, cy, radius, start_angle, end_angle, style_json)` 호출
