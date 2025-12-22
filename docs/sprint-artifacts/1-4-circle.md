@@ -1,6 +1,6 @@
 # Story 1.4: Circle 도형 생성 기능
 
-Status: in-progress
+Status: done
 
 ## Story
 
