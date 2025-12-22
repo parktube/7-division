@@ -260,6 +260,12 @@ impl Scene {
         self.entities.len()
     }
 
+    /// Scene을 JSON으로 내보냅니다.
+    pub fn export_json(&self) -> Result<String, JsValue> {
+        serde_json::to_string_pretty(&self.entities)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
     /// 선분(Line) 도형을 생성합니다.
     ///
     /// # Arguments

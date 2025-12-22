@@ -30,6 +30,7 @@ impl Default for LineJoin {
 
 /// 선(stroke) 스타일
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct StrokeStyle {
     pub width: f64,
     pub color: [f64; 4],  // RGBA, 0.0-1.0
@@ -52,6 +53,7 @@ impl Default for StrokeStyle {
 
 /// 면(fill) 스타일
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct FillStyle {
     pub color: [f64; 4],  // RGBA, 0.0-1.0
 }
@@ -66,6 +68,7 @@ impl Default for FillStyle {
 
 /// Entity 스타일 (stroke + fill)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Style {
     pub stroke: Option<StrokeStyle>,
     pub fill: Option<FillStyle>,
