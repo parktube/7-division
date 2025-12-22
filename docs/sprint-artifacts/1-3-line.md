@@ -19,6 +19,7 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 **And** (AX 원칙: AI는 UUID보다 의미있는 이름을 더 잘 이해함)
 
 ### AC2: 폴리라인 (3점 이상 연결)
+
 **Given** 6개 이상의 값이 주어진 경우 (3점 이상의 폴리라인)
 **When** `scene.add_line("left_arm", Float64Array([x1, y1, x2, y2, x3, y3]))` 호출
 **Then** 연결된 선분들이 하나의 Entity로 생성된다
