@@ -63,21 +63,21 @@ development_status:
 
   # Epic 2: 결과 확인 - 사용자가 AI의 작업 결과를 실시간으로 확인할 수 있다
   epic-2:
-    status: backlog
+    status: done
     title: "결과 확인"
     stories:
       2-1-json-export:
-        status: ready-for-dev
+        status: done
         title: "JSON Export"
         priority: P0
         depends_on: [1-2-scene-class]
       2-2-canvas-2d-viewer:
-        status: ready-for-dev
+        status: done
         title: "Canvas 2D Viewer"
         priority: P0
         depends_on: [2-1-json-export]  # scene.json 필요
       2-3-rendering:
-        status: ready-for-dev
+        status: done
         title: "도형 렌더링"
         priority: P0
         depends_on: [2-1-json-export, 2-2-canvas-2d-viewer]

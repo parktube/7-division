@@ -1,6 +1,6 @@
 # Story 2.1: JSON Export 기능 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -30,30 +30,30 @@ So that **뷰어가 파일을 읽어 렌더링할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: serializers 모듈 생성** (AC: #1)
-  - [ ] 1.1: `serializers/` 디렉토리 생성
-  - [ ] 1.2: `serializers/mod.rs` 파일 생성
-  - [ ] 1.3: `serializers/json.rs` 파일 생성
+- [x] **Task 1: serializers 모듈 생성** (AC: #1)
+  - [x] 1.1: `serializers/` 디렉토리 생성
+  - [x] 1.2: `serializers/mod.rs` 파일 생성
+  - [x] 1.3: `serializers/json.rs` 파일 생성
 
-- [ ] **Task 2: JSON Export 함수 구현** (AC: #1, #3)
-  - [ ] 2.1: `export_json(&self) -> String` 메서드 구현
-  - [ ] 2.2: serde_json::to_string_pretty() 사용
-  - [ ] 2.3: 빈 Scene 처리 확인
+- [x] **Task 2: JSON Export 함수 구현** (AC: #1, #3)
+  - [x] 2.1: `export_json(&self) -> String` 메서드 구현
+  - [x] 2.2: serde_json::to_string_pretty() 사용
+  - [x] 2.3: 빈 Scene 처리 확인
 
-- [ ] **Task 3: Scene JSON 구조 정의** (AC: #1)
-  - [ ] 3.1: SceneJson 구조체 정의 (name, entities 포함)
-  - [ ] 3.2: Entity의 serde Serialize 검증
-  - [ ] 3.3: 출력 JSON 포맷 문서화
+- [x] **Task 3: Scene JSON 구조 정의** (AC: #1)
+  - [x] 3.1: SceneJson 구조체 정의 (name, entities 포함)
+  - [x] 3.2: Entity의 serde Serialize 검증
+  - [x] 3.3: 출력 JSON 포맷 문서화
 
-- [ ] **Task 4: Scene에 통합** (AC: #1, #2)
-  - [ ] 4.1: Scene impl에 export_json 메서드 추가
-  - [ ] 4.2: wasm_bindgen export 확인
+- [x] **Task 4: Scene에 통합** (AC: #1, #2)
+  - [x] 4.1: Scene impl에 export_json 메서드 추가
+  - [x] 4.2: wasm_bindgen export 확인
 
-- [ ] **Task 5: 테스트 작성** (AC: #1, #2, #3)
-  - [ ] 5.1: 단일 Entity JSON 출력 테스트
-  - [ ] 5.2: 여러 Entity JSON 출력 테스트
-  - [ ] 5.3: 빈 Scene JSON 출력 테스트
-  - [ ] 5.4: JSON 유효성 검증 테스트
+- [x] **Task 5: 테스트 작성** (AC: #1, #2, #3)
+  - [x] 5.1: 단일 Entity JSON 출력 테스트
+  - [x] 5.2: 여러 Entity JSON 출력 테스트
+  - [x] 5.3: 빈 Scene JSON 출력 테스트
+  - [x] 5.4: JSON 유효성 검증 테스트
 
 ## Dev Notes
 
@@ -110,12 +110,17 @@ impl Scene {
         "scale": [1, 1]
       },
       "style": {
-        "stroke": "#000000",
-        "fill": null,
-        "stroke_width": 1
+        "stroke": {
+          "width": 1.0,
+          "color": [0.0, 0.0, 0.0, 1.0],
+          "dash": null,
+          "cap": "Butt",
+          "join": "Miter"
+        },
+        "fill": null
       },
       "metadata": {
-        "name": null,
+        "name": "head",
         "layer": null,
         "locked": false
       }
@@ -133,8 +138,21 @@ impl Scene {
         "rotate": 0,
         "scale": [1, 1]
       },
-      "style": {},
-      "metadata": {}
+      "style": {
+        "stroke": {
+          "width": 1.0,
+          "color": [0.0, 0.0, 0.0, 1.0],
+          "dash": null,
+          "cap": "Butt",
+          "join": "Miter"
+        },
+        "fill": null
+      },
+      "metadata": {
+        "name": "spine",
+        "layer": null,
+        "locked": false
+      }
     }
   ]
 }
@@ -204,22 +222,33 @@ cad-engine/src/
 
 ## References
 
-- [Source: docs/architecture.md#State Management - Phase 1]
-- [Source: docs/architecture.md#API Design - export_json]
-- [Source: docs/prd.md#Data Model - Scene 구조]
-- [Source: docs/epics.md#Story 2.1]
+- [Source: docs/architecture.md#State Management - Phase 1](../architecture.md#state-management)
+- [Source: docs/architecture.md#API Design - export_json](../architecture.md#api-design)
+- [Source: docs/prd.md#Data Model - Scene 구조](../prd.md#data-model)
+- [Source: docs/epics.md#Story 2.1](../epics.md#story-21-json-export-%EA%B8%B0%EB%8A%A5-%EA%B5%AC%ED%98%84)
 
 ## Dev Agent Record
 
 ### Context Reference
 
+- SceneJson 래퍼로 `name`과 `entities`를 직렬화
+- 빈 Scene은 `entities: []`만 포함하도록 처리
+
 ### Agent Model Used
 
-Claude Opus 4.5
+Codex (GPT-5)
 
 ### Debug Log References
 
 ### Completion Notes List
+
+- serializers/json.rs 추가 및 SceneJson 정의
+- Scene::export_json이 String 반환 및 pretty JSON 출력
+- 빈 Scene/다중 Entity JSON 테스트 추가
+
+### Change Log
+
+- 2025-12-22: Story 2.1 JSON export 구현 완료
 
 ### File List
 

@@ -1,6 +1,6 @@
 # Story 2.2: Canvas 2D 뷰어 기초 및 Polling 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -36,30 +36,30 @@ So that **AI가 도형을 생성할 때마다 실시간으로 결과를 확인�
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: viewer 디렉토리 구조 생성** (AC: #1)
-  - [ ] 1.1: `viewer/` 디렉토리 생성
-  - [ ] 1.2: `viewer/index.html` 파일 생성
-  - [ ] 1.3: `viewer/renderer.js` 파일 생성
+- [x] **Task 1: viewer 디렉토리 구조 생성** (AC: #1)
+  - [x] 1.1: `viewer/` 디렉토리 생성
+  - [x] 1.2: `viewer/index.html` 파일 생성
+  - [x] 1.3: `viewer/renderer.js` 파일 생성
 
-- [ ] **Task 2: HTML 및 Canvas 설정** (AC: #1)
-  - [ ] 2.1: 기본 HTML 구조 작성
-  - [ ] 2.2: Canvas 요소 추가 (적절한 크기)
-  - [ ] 2.3: renderer.js 스크립트 로드
+- [x] **Task 2: HTML 및 Canvas 설정** (AC: #1)
+  - [x] 2.1: 기본 HTML 구조 작성
+  - [x] 2.2: Canvas 요소 추가 (적절한 크기)
+  - [x] 2.3: renderer.js 스크립트 로드
 
-- [ ] **Task 3: Polling 로직 구현** (AC: #1, #2, #3)
-  - [ ] 3.1: setInterval(fetch, 500) 패턴 구현
-  - [ ] 3.2: scene.json fetch 및 파싱
-  - [ ] 3.3: fetch 실패 시 에러 로깅 및 재시도
+- [x] **Task 3: Polling 로직 구현** (AC: #1, #2, #3)
+  - [x] 3.1: setInterval(fetch, 500) 패턴 구현
+  - [x] 3.2: scene.json fetch 및 파싱
+  - [x] 3.3: fetch 실패 시 에러 로깅 및 재시도
 
-- [ ] **Task 4: 기본 렌더링 준비** (AC: #2)
-  - [ ] 4.1: Canvas 2D context 획득
-  - [ ] 4.2: clearRect로 캔버스 초기화
-  - [ ] 4.3: scene 데이터 수신 시 render 함수 호출 (실제 렌더링은 Story 2.3)
+- [x] **Task 4: 기본 렌더링 준비** (AC: #2)
+  - [x] 4.1: Canvas 2D context 획득
+  - [x] 4.2: clearRect로 캔버스 초기화
+  - [x] 4.3: scene 데이터 수신 시 render 함수 호출 (실제 렌더링은 Story 2.3)
 
-- [ ] **Task 5: 테스트** (AC: #1, #3, #4)
-  - [ ] 5.1: 정적 서버로 뷰어 실행 테스트
-  - [ ] 5.2: scene.json 변경 시 갱신 확인
-  - [ ] 5.3: 파일 없을 때 에러 처리 확인
+- [x] **Task 5: 테스트** (AC: #1, #3, #4)
+  - [x] 5.1: 정적 서버로 뷰어 실행 테스트
+  - [x] 5.2: scene.json 변경 시 갱신 확인
+  - [x] 5.3: 파일 없을 때 에러 처리 확인
 
 ## Dev Notes
 
@@ -218,14 +218,24 @@ viewer/
 
 ### Context Reference
 
+- 500ms polling으로 scene.json 변경 감지
+- 상태/에러 UI 갱신 및 캔버스 리사이즈 대응
+
 ### Agent Model Used
 
-Claude Opus 4.5
+Codex (GPT-5)
 
 ### Debug Log References
 
 ### Completion Notes List
 
+- viewer/index.html UI 구성 및 스타일링
+- renderer.js에서 polling, 상태 표시, 리사이즈 처리 구현
+- fetch 실패 시 콘솔 에러 출력 및 polling 지속 확인
+
+### Change Log
+
+- 2025-12-22: Story 2.2 Canvas 뷰어 및 polling 구현 완료
 ### File List
 
 - viewer/index.html (신규)
