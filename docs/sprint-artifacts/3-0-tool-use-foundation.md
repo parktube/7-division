@@ -12,7 +12,7 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 
 ### 현재 문제
 
-```
+```text
 1. Claude가 "원을 그려줘" 요청 받음
 2. Claude가 JavaScript 스크립트 작성
 3. 스크립트가 WASM 함수 호출
@@ -28,7 +28,7 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 
 ### 목표 상태
 
-```
+```text
 1. LLM이 "원을 그려줘" 요청 받음
 2. LLM이 tool_use 블록 생성: { name: "draw_circle", input: {...} }
 3. 에이전트 런타임이 WASM 함수 직접 호출
@@ -45,12 +45,14 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 ## Acceptance Criteria
 
 ### AC1: Canonical 도구 스키마 정의
+
 **Given** CAD 도구가 정의된 상태
 **When** 도구 스키마를 조회
 **Then** 각 도구의 name, description, parameters가 **내부 표준 포맷**으로 반환된다
 **And** 이 포맷은 특정 LLM 벤더에 종속되지 않는다
 
 ### AC2: WASM Executor 래핑
+
 **Given** tool_use 입력이 주어진 경우 (예: points: [0, 0, 100, 100])
 **When** WASM Executor가 실행
 **Then** 입력이 WASM 형식으로 자동 변환된다 (Float64Array)
@@ -59,6 +61,7 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 **And** 결과가 내부 ToolResult 포맷으로 반환된다
 
 ### AC3: Provider-Agnostic 에이전트 런타임
+
 **Given** LLMProvider 인터페이스를 구현한 adapter가 주입된 경우
 **When** 에이전트 런타임이 동작
 **Then** provider에 맞는 tool schema 포맷으로 변환하여 전달한다
@@ -66,6 +69,7 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 **And** 결과를 provider 포맷의 tool_result로 변환하여 반환한다
 
 ### AC4: Progressive Exposure API (런타임 내부 Pre-filter)
+
 **Given** 런타임이 LLM에 도구를 전달하기 전
 **When** getToolsForDomains(domains) 호출로 필요한 도메인만 선택
 **Then** 선택된 도메인의 도구만 LLM에 노출된다
@@ -76,6 +80,7 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 > 런타임은 canonical 스키마를 provider adapter로 변환하여 LLM에 전달합니다.
 
 ### AC5: LLM Provider Adapter
+
 **Given** Anthropic adapter가 구현된 상태
 **When** 다른 LLM (OpenAI 등)을 사용하려는 경우
 **Then** 해당 LLM용 adapter만 추가하면 동일한 executor 재사용 가능
@@ -83,57 +88,57 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: cad-tools 디렉토리 구조 생성** (AC: #1)
-  - [ ] 1.1: `cad-tools/` 디렉토리 생성
-  - [ ] 1.2: `package.json` 생성 (TypeScript + Vitest)
-  - [ ] 1.3: `tsconfig.json` 설정
+- [x] **Task 1: cad-tools 디렉토리 구조 생성** (AC: #1)
+  - [x] 1.1: `cad-tools/` 디렉토리 생성
+  - [x] 1.2: `package.json` 생성 (TypeScript + Vitest)
+  - [x] 1.3: `tsconfig.json` 설정
 
-- [ ] **Task 2: Canonical 도구 스키마 정의** (AC: #1)
-  - [ ] 2.1: `schema.ts` - 내부 표준 ToolSchema 타입 정의
-  - [ ] 2.2: primitives 도메인: draw_circle, draw_line, draw_rect, draw_arc
-  - [ ] 2.3: style 도메인: set_stroke, set_fill, remove_stroke, remove_fill
-  - [ ] 2.4: export 도메인: export_json
+- [x] **Task 2: Canonical 도구 스키마 정의** (AC: #1)
+  - [x] 2.1: `schema.ts` - 내부 표준 ToolSchema 타입 정의
+  - [x] 2.2: primitives 도메인: draw_circle, draw_line, draw_rect, draw_arc
+  - [x] 2.3: style 도메인: set_stroke, set_fill, remove_stroke, remove_fill
+  - [x] 2.4: export 도메인: export_json
   > **Note**: transforms (translate, rotate, scale, delete), export_svg는 Story 3.1~3.6 완료 후 추가
 
-- [ ] **Task 3: Progressive Exposure API 구현** (AC: #4)
-  - [ ] 3.1: `discovery.ts` 파일 생성
-  - [ ] 3.2: listDomains() - 도메인 목록 반환
-  - [ ] 3.3: listTools(domain) - 도메인별 도구 이름 목록
-  - [ ] 3.4: getTool(name) - 특정 도구의 canonical 스키마 반환
-  - [ ] 3.5: getToolsForDomains(domains) - 런타임용 도구 배열 반환
+- [x] **Task 3: Progressive Exposure API 구현** (AC: #4)
+  - [x] 3.1: `discovery.ts` 파일 생성
+  - [x] 3.2: listDomains() - 도메인 목록 반환
+  - [x] 3.3: listTools(domain) - 도메인별 도구 이름 목록
+  - [x] 3.4: getTool(name) - 특정 도구의 canonical 스키마 반환
+  - [x] 3.5: getToolsForDomains(domains) - 런타임용 도구 배열 반환
 
-- [ ] **Task 4: WASM Executor 구현** (AC: #2)
-  - [ ] 4.1: `executor.ts` 파일 생성
-  - [ ] 4.2: CADExecutor 클래스 (LLM 무관, WASM만 래핑)
-  - [ ] 4.3: 입력 변환 로직 (배열 → Float64Array, 기본값 처리)
-  - [ ] 4.4: 내부 ToolResult 포맷 정의
+- [x] **Task 4: WASM Executor 구현** (AC: #2)
+  - [x] 4.1: `executor.ts` 파일 생성
+  - [x] 4.2: CADExecutor 클래스 (LLM 무관, WASM만 래핑)
+  - [x] 4.3: 입력 변환 로직 (배열 → Float64Array, 기본값 처리)
+  - [x] 4.4: 내부 ToolResult 포맷 정의
 
-- [ ] **Task 5: LLM Provider Adapter 구현** (AC: #5)
-  - [ ] 5.1: `providers/types.ts` - LLMProvider 인터페이스 정의
-  - [ ] 5.2: `providers/anthropic.ts` - Anthropic adapter 구현
-  - [ ] 5.3: convertToolSchema(): canonical → Anthropic tool format
-  - [ ] 5.4: parseResponse(): Anthropic response → internal ToolCall[]
-  - [ ] 5.5: extractText(): 응답에서 텍스트 추출
-  - [ ] 5.6: buildUserMessage() / buildToolResultMessage(): 메시지 생성
-  - [ ] 5.7: responseToMessage(): 히스토리 저장용 변환
+- [x] **Task 5: LLM Provider Adapter 구현** (AC: #5)
+  - [x] 5.1: `providers/types.ts` - LLMProvider 인터페이스 정의
+  - [x] 5.2: `providers/anthropic.ts` - Anthropic adapter 구현
+  - [x] 5.3: convertToolSchema(): canonical → Anthropic tool format
+  - [x] 5.4: parseResponse(): Anthropic response → internal ToolCall[]
+  - [x] 5.5: extractText(): 응답에서 텍스트 추출
+  - [x] 5.6: buildUserMessage() / buildToolResultMessage(): 메시지 생성
+  - [x] 5.7: responseToMessage(): 히스토리 저장용 변환
 
-- [ ] **Task 6: Provider-Agnostic 런타임 구현** (AC: #3, #4)
-  - [ ] 6.1: `runtime.ts` - LLMProvider 주입 받는 runAgentLoop()
-  - [ ] 6.2: Progressive Exposure로 도메인별 도구 선택
-  - [ ] 6.3: 다중 tool_use 올바르게 처리
+- [x] **Task 6: Provider-Agnostic 런타임 구현** (AC: #3, #4)
+  - [x] 6.1: `runtime.ts` - LLMProvider 주입 받는 runAgentLoop()
+  - [x] 6.2: Progressive Exposure로 도메인별 도구 선택
+  - [x] 6.3: 다중 tool_use 올바르게 처리
 
-- [ ] **Task 7: 통합 테스트 (Vitest)** (AC: #1~#5)
-  - [ ] 7.1: schema.test.ts - canonical 스키마 테스트
-  - [ ] 7.2: discovery.test.ts - Progressive Exposure API 테스트
-  - [ ] 7.3: executor.test.ts - WASM 입력 변환 테스트
-  - [ ] 7.4: providers/anthropic.test.ts - adapter 변환 테스트
-  - [ ] 7.5: runtime.test.ts - 모의 provider로 E2E 테스트
+- [x] **Task 7: 통합 테스트 (Vitest)** (AC: #1~#5)
+  - [x] 7.1: schema.test.ts - canonical 스키마 테스트
+  - [x] 7.2: discovery.test.ts - Progressive Exposure API 테스트
+  - [x] 7.3: executor.test.ts - WASM 입력 변환 테스트
+  - [x] 7.4: providers/anthropic.test.ts - adapter 변환 테스트
+  - [x] 7.5: runtime.test.ts - 모의 provider로 E2E 테스트
 
 ## Dev Notes
 
 ### Architecture Overview
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                     LLM-Agnostic Foundation                          │
 ├─────────────────────────────────────────────────────────────────────┤
@@ -634,7 +639,7 @@ const result2 = await runAgentLoop(
 
 ### 디렉토리 구조
 
-```
+```text
 cad-tools/
 ├── package.json
 ├── tsconfig.json
@@ -660,7 +665,7 @@ cad-tools/
 
 ### 아키텍처 경계
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                    cad-tools (Node.js)                          │
 │                                                                 │
@@ -706,7 +711,7 @@ cad-tools/
 > **원칙**: 새 WASM 함수를 구현하는 스토리가 **직접 Tool을 등록**합니다.
 > Story 3.0은 Foundation만 제공하고, 개별 도구 등록은 각 스토리에서 수행합니다.
 
-```
+```text
 Story 3.1 (Translate) → schema.ts에 translate 추가, executor.ts에 case 추가
 Story 3.2 (Rotate)    → schema.ts에 rotate 추가, executor.ts에 case 추가
 Story 3.3 (Scale)     → schema.ts에 scale 추가, executor.ts에 case 추가

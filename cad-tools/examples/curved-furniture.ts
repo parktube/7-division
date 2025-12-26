@@ -3,6 +3,11 @@
  */
 import { CADExecutor } from '../src/executor.js';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const executor = CADExecutor.create('curved-furniture');
 
@@ -87,7 +92,12 @@ executor.exec('draw_arc', {
 console.log(`Created ${executor.getEntityCount()} entities`);
 
 const json = executor.exportScene();
-fs.writeFileSync('../viewer/scene.json', json);
-console.log('Saved to viewer/scene.json');
+const outputPath = path.resolve(__dirname, '../../viewer/scene.json');
+try {
+  fs.writeFileSync(outputPath, json);
+  console.log(`Saved to ${outputPath}`);
+} catch (err) {
+  console.error('Failed to save scene:', err);
+}
 
 executor.free();

@@ -5,6 +5,11 @@
  */
 import { CADExecutor } from '../src/executor.js';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const executor = CADExecutor.create('my-room');
 
@@ -95,7 +100,12 @@ console.log('Entities: outer_wall, partition_wall, door_opening, door_swing, win
 
 // JSON 저장
 const json = executor.exportScene();
-fs.writeFileSync('../viewer/scene.json', json);
-console.log('Saved to viewer/scene.json');
+const outputPath = path.resolve(__dirname, '../../viewer/scene.json');
+try {
+  fs.writeFileSync(outputPath, json);
+  console.log(`Saved to ${outputPath}`);
+} catch (err) {
+  console.error('Failed to save scene:', err);
+}
 
 executor.free();
