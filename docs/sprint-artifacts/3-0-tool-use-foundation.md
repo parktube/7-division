@@ -562,13 +562,13 @@ export class CADExecutor {
         // === style ===
         case 'set_stroke':
           return {
-            success: this.scene.set_stroke(input.name as string, input.stroke_json as string),
+            success: this.scene.set_stroke(input.name as string, this.toJson(input.stroke)),
             entity: input.name as string
           };
 
         case 'set_fill':
           return {
-            success: this.scene.set_fill(input.name as string, input.fill_json as string),
+            success: this.scene.set_fill(input.name as string, this.toJson(input.fill)),
             entity: input.name as string
           };
 
