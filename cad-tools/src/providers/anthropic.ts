@@ -30,6 +30,10 @@ export class AnthropicProvider implements LLMProvider {
 
   /**
    * Canonical → Anthropic tool format
+   *
+   * Note: We use `as unknown as` for properties because Anthropic SDK's InputSchema
+   * type doesn't include 'items' for array schemas. This is a known SDK limitation.
+   * Runtime works correctly as the API accepts full JSON Schema.
    */
   convertToolSchema(tool: ToolSchema): Anthropic.Tool {
     return {
@@ -37,7 +41,7 @@ export class AnthropicProvider implements LLMProvider {
       description: tool.description,
       input_schema: {
         type: tool.parameters.type,
-        properties: tool.parameters.properties as Record<string, Anthropic.Tool.InputSchema>,
+        properties: tool.parameters.properties as unknown as Record<string, Anthropic.Tool.InputSchema>,
         required: tool.parameters.required,
       },
     };
