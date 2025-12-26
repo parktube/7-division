@@ -7,14 +7,21 @@ import type { LLMProvider, ToolCall } from './types.js';
 import type { ToolSchema } from '../schema.js';
 import type { ToolResult } from '../executor.js';
 
+export interface AnthropicProviderOptions {
+  apiKey?: string;
+  model?: string;
+}
+
+const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
   private client: Anthropic;
   private model: string;
 
-  constructor(apiKey?: string, model = 'claude-sonnet-4-20250514') {
-    this.client = new Anthropic({ apiKey });
-    this.model = model;
+  constructor(options: AnthropicProviderOptions = {}) {
+    this.client = new Anthropic({ apiKey: options.apiKey });
+    this.model = options.model || DEFAULT_MODEL;
   }
 
   /**

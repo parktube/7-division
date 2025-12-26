@@ -12,10 +12,10 @@ export { listDomains, listTools, getTool, getToolsForDomains, getAllTools } from
 export { CADExecutor, type ToolResult } from './executor.js';
 
 // Runtime
-export { runAgentLoop, type AgentOptions } from './runtime.js';
+export { runAgentLoop, DEFAULT_DOMAINS, DEFAULT_MAX_ITERATIONS, type AgentOptions } from './runtime.js';
 
 // Provider types
 export type { LLMProvider, ToolCall } from './providers/types.js';
 
 // Providers
-export { AnthropicProvider } from './providers/anthropic.js';
+export { AnthropicProvider, type AnthropicProviderOptions } from './providers/anthropic.js';

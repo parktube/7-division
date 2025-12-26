@@ -574,7 +574,7 @@ export const CAD_TOOLS = {
         x: { type: "number", description: "중심 x 좌표" },
         y: { type: "number", description: "중심 y 좌표" },
         radius: { type: "number", description: "반지름 (양수)" },
-        style_json: { type: "string", description: "스타일 JSON (선택)" }
+        style: { type: "object", description: "스타일 객체 (선택)" }
       },
       required: ["name", "x", "y", "radius"]
     }

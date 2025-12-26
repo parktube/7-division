@@ -12,8 +12,8 @@ export interface AgentOptions {
   maxIterations?: number;
 }
 
-const DEFAULT_DOMAINS: DomainName[] = ['primitives', 'style', 'export'];
-const DEFAULT_MAX_ITERATIONS = 10;
+export const DEFAULT_DOMAINS: DomainName[] = ['primitives', 'style', 'export'];
+export const DEFAULT_MAX_ITERATIONS = 10;
 
 /**
  * Provider-agnostic 에이전트 루프 실행

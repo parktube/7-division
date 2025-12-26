@@ -51,6 +51,26 @@ export class CADExecutor {
   }
 
   /**
+   * 입력값 타입 검증 (LLM 출력이 스키마를 준수하는지 확인)
+   */
+  private validateInput(
+    input: Record<string, unknown>,
+    schema: Record<string, 'string' | 'number' | 'array'>
+  ): string | null {
+    for (const [key, expectedType] of Object.entries(schema)) {
+      const value = input[key];
+      if (expectedType === 'array') {
+        if (!Array.isArray(value)) {
+          return `Expected array for '${key}', got ${typeof value}`;
+        }
+      } else if (typeof value !== expectedType) {
+        return `Expected ${expectedType} for '${key}', got ${typeof value}`;
+      }
+    }
+    return null;
+  }
+
+  /**
    * 도구 실행
    */
   exec(toolName: string, input: Record<string, unknown>): ToolResult {
@@ -101,6 +121,9 @@ export class CADExecutor {
   // === Primitive implementations ===
 
   private drawLine(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', points: 'array' });
+    if (error) return { success: false, error: `draw_line: ${error}` };
+
     const name = input.name as string;
     const points = new Float64Array(input.points as number[]);
     const styleJson = this.toJson(input.style);  // 객체 → JSON 문자열
@@ -110,6 +133,9 @@ export class CADExecutor {
   }
 
   private drawCircle(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', x: 'number', y: 'number', radius: 'number' });
+    if (error) return { success: false, error: `draw_circle: ${error}` };
+
     const name = input.name as string;
     const x = input.x as number;
     const y = input.y as number;
@@ -121,6 +147,9 @@ export class CADExecutor {
   }
 
   private drawRect(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', x: 'number', y: 'number', width: 'number', height: 'number' });
+    if (error) return { success: false, error: `draw_rect: ${error}` };
+
     const name = input.name as string;
     const x = input.x as number;
     const y = input.y as number;
@@ -133,6 +162,9 @@ export class CADExecutor {
   }
 
   private drawArc(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', cx: 'number', cy: 'number', radius: 'number', start_angle: 'number', end_angle: 'number' });
+    if (error) return { success: false, error: `draw_arc: ${error}` };
+
     const name = input.name as string;
     const cx = input.cx as number;
     const cy = input.cy as number;
@@ -148,6 +180,9 @@ export class CADExecutor {
   // === Style implementations ===
 
   private setStroke(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `set_stroke: ${error}` };
+
     const name = input.name as string;
     const strokeJson = this.toJson(input.stroke);  // 객체 → JSON 문자열
 
@@ -156,6 +191,9 @@ export class CADExecutor {
   }
 
   private setFill(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `set_fill: ${error}` };
+
     const name = input.name as string;
     const fillJson = this.toJson(input.fill);  // 객체 → JSON 문자열
 
@@ -164,6 +202,9 @@ export class CADExecutor {
   }
 
   private removeStroke(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `remove_stroke: ${error}` };
+
     const name = input.name as string;
 
     const result = this.scene.remove_stroke(name);
@@ -171,6 +212,9 @@ export class CADExecutor {
   }
 
   private removeFill(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `remove_fill: ${error}` };
+
     const name = input.name as string;
 
     const result = this.scene.remove_fill(name);
