@@ -548,7 +548,7 @@ listTools("primitives")
 
 // 3. 특정 도구 스키마 조회 (~100 토큰)
 getTool("draw_circle")
-// → { name, description, input_schema: { x, y, radius, style_json? } }
+// → { name, description, input_schema: { x, y, radius, style? } }
 
 // 4. 도구 실행
 exec("draw_circle", { name: "head", x: 0, y: 100, radius: 20 })
@@ -599,20 +599,20 @@ export class CADExecutor {
   exec(toolName: string, input: Record<string, any>): ToolResult {
     switch (toolName) {
       case "draw_circle":
-        // 입력 변환 자동화
+        // 입력 변환 자동화: style 객체 → JSON 문자열
         const result = this.scene.draw_circle(
           input.name,
           input.x,
           input.y,
           input.radius,
-          input.style_json || '{}'
+          this.toJson(input.style)
         );
         return { success: true, entity: result, type: "circle" };
 
       case "draw_line":
         // 배열 → Float64Array 자동 변환
         const points = new Float64Array(input.points);
-        const lineResult = this.scene.draw_line(input.name, points, input.style_json || '{}');
+        const lineResult = this.scene.draw_line(input.name, points, this.toJson(input.style));
         return { success: true, entity: lineResult, type: "line" };
 
       // ... 기타 도구
