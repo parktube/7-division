@@ -287,8 +287,8 @@ export const CAD_TOOLS = {
 
 ## References
 
-- [AX Design Guide - LLM 주체성](docs/ax-design-guide.md)
-- [Story 3.0 - Tool Use Foundation](docs/sprint-artifacts/3-0-tool-use-foundation.md)
+- [AX Design Guide - LLM 주체성](../ax-design-guide.md)
+- [Story 3.0 - Tool Use Foundation](./3-0-tool-use-foundation.md)
 
 ## Dev Agent Record
 

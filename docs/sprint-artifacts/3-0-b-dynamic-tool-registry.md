@@ -342,8 +342,8 @@ executor.exec('register_tool', {
 
 ## References
 
-- [AX Design Guide - 도구 탐색](docs/ax-design-guide.md)
-- [Story 3.0 - Tool Use Foundation](docs/sprint-artifacts/3-0-tool-use-foundation.md)
+- [AX Design Guide - 도구 탐색](../ax-design-guide.md)
+- [Story 3.0 - Tool Use Foundation](./3-0-tool-use-foundation.md)
 
 ## Dev Agent Record
 

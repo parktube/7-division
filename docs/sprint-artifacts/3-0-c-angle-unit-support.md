@@ -320,8 +320,8 @@ executor.exec('rotate', {
 
 ## References
 
-- [AX Design Guide](docs/ax-design-guide.md)
-- [Story 3.0 - Tool Use Foundation](docs/sprint-artifacts/3-0-tool-use-foundation.md)
+- [AX Design Guide](../ax-design-guide.md)
+- [Story 3.0 - Tool Use Foundation](./3-0-tool-use-foundation.md)
 
 ## Dev Agent Record
 
