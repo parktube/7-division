@@ -734,6 +734,9 @@ Story 3.6 (SVG Export) → schema.ts에 export_svg 추가, executor.ts에 case �
 cd cad-engine
 wasm-pack build --target nodejs --dev
 
+# 프로덕션 빌드 (CI/release):
+# wasm-pack build --target nodejs --release
+
 # 패키지 확인
 ls pkg/cad_engine.js pkg/cad_engine.d.ts
 ```
