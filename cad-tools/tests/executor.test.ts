@@ -178,6 +178,42 @@ describe('CADExecutor', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('Unknown tool');
     });
+
+    it('should reject draw_line with string array elements', () => {
+      const result = executor.exec('draw_line', {
+        name: 'bad-line',
+        points: ['0', '0', '100', '100'],  // strings instead of numbers
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Expected number at points[0]');
+    });
+
+    it('should reject draw_line with nested array elements', () => {
+      const result = executor.exec('draw_line', {
+        name: 'bad-line',
+        points: [[0, 0], [100, 100]],  // nested arrays
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Expected number at points[0]');
+    });
+
+    it('should reject draw_line with non-finite numbers', () => {
+      const result = executor.exec('draw_line', {
+        name: 'bad-line',
+        points: [0, 0, NaN, 100],  // NaN is not finite
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Expected number at points[2]');
+    });
+
+    it('should reject draw_line with Infinity', () => {
+      const result = executor.exec('draw_line', {
+        name: 'bad-line',
+        points: [0, 0, Infinity, 100],
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Expected number at points[2]');
+    });
   });
 
   describe('exportScene', () => {

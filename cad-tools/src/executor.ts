@@ -55,13 +55,19 @@ export class CADExecutor {
    */
   private validateInput(
     input: Record<string, unknown>,
-    schema: Record<string, 'string' | 'number' | 'array'>
+    schema: Record<string, 'string' | 'number' | 'number[]'>
   ): string | null {
     for (const [key, expectedType] of Object.entries(schema)) {
       const value = input[key];
-      if (expectedType === 'array') {
+      if (expectedType === 'number[]') {
+        // Array of numbers validation (for points arrays)
         if (!Array.isArray(value)) {
-          return `Expected array for '${key}', got ${typeof value}`;
+          return `Expected number[] for '${key}', got ${typeof value}`;
+        }
+        for (let i = 0; i < value.length; i++) {
+          if (typeof value[i] !== 'number' || !Number.isFinite(value[i])) {
+            return `Expected number at ${key}[${i}], got ${typeof value[i]} (${value[i]})`;
+          }
         }
       } else if (typeof value !== expectedType) {
         return `Expected ${expectedType} for '${key}', got ${typeof value}`;
@@ -121,7 +127,7 @@ export class CADExecutor {
   // === Primitive implementations ===
 
   private drawLine(input: Record<string, unknown>): ToolResult {
-    const error = this.validateInput(input, { name: 'string', points: 'array' });
+    const error = this.validateInput(input, { name: 'string', points: 'number[]' });
     if (error) return { success: false, error: `draw_line: ${error}` };
 
     const name = input.name as string;
