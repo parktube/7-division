@@ -232,6 +232,9 @@ export class CADExecutor {
    * Scene JSON 내보내기 (편의 메서드)
    */
   exportScene(): string {
+    if (!this.initialized) {
+      throw new Error('Executor not initialized or already freed');
+    }
     return this.scene.export_json();
   }
 
@@ -239,6 +242,9 @@ export class CADExecutor {
    * Scene 이름 반환
    */
   getSceneName(): string {
+    if (!this.initialized) {
+      throw new Error('Executor not initialized or already freed');
+    }
     return this.scene.get_name();
   }
 
@@ -246,6 +252,9 @@ export class CADExecutor {
    * 엔티티 수 반환
    */
   getEntityCount(): number {
+    if (!this.initialized) {
+      throw new Error('Executor not initialized or already freed');
+    }
     return this.scene.entity_count();
   }
 

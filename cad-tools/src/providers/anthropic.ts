@@ -10,18 +10,22 @@ import type { ToolResult } from '../executor.js';
 export interface AnthropicProviderOptions {
   apiKey?: string;
   model?: string;
+  maxTokens?: number;
 }
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
+const DEFAULT_MAX_TOKENS = 4096;
 
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
   private client: Anthropic;
   private model: string;
+  private maxTokens: number;
 
   constructor(options: AnthropicProviderOptions = {}) {
     this.client = new Anthropic({ apiKey: options.apiKey });
     this.model = options.model || DEFAULT_MODEL;
+    this.maxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
   }
 
   /**
@@ -94,7 +98,7 @@ export class AnthropicProvider implements LLMProvider {
   ): Promise<Anthropic.Message> {
     return this.client.messages.create({
       model: this.model,
-      max_tokens: 4096,
+      max_tokens: this.maxTokens,
       messages,
       tools,
     });
