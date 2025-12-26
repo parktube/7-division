@@ -48,6 +48,12 @@ So that **"팔을 위로 들어" 같은 포즈 변경 요청을 처리할 수 �
   - [ ] 4.3: 누적 rotate 테스트
   - [ ] 4.4: 360도 이상 테스트
 
+- [ ] **Task 5: Tool Use 등록** (AC: #1)
+  - [ ] 5.1: `cad-tools/src/schema.ts` - rotate 스키마 추가
+  - [ ] 5.2: `cad-tools/src/executor.ts` - rotate case 추가
+  - [ ] 5.3: DOMAINS.transforms에 "rotate" 추가
+  - [ ] 5.4: `cad-tools/tests/executor.test.ts` - rotate 테스트 추가
+
 ## Dev Notes
 
 ### Architecture Patterns
@@ -123,6 +129,7 @@ cad-engine/src/
 
 - Story 1.2 (Scene 클래스 및 Entity 구조)
 - Story 3.1 (Translate) - 동일 구조
+- **Story 3.0 (Tool Use Foundation)** - Tool 등록용
 
 ## References
 

@@ -54,6 +54,12 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
   - [ ] 4.4: 0 이하 scale 보정 테스트 (abs() 변환 확인)
   - [ ] 4.5: 누적 scale 테스트
 
+- [ ] **Task 5: Tool Use 등록** (AC: #1)
+  - [ ] 5.1: `cad-tools/src/schema.ts` - scale 스키마 추가
+  - [ ] 5.2: `cad-tools/src/executor.ts` - scale case 추가
+  - [ ] 5.3: DOMAINS.transforms에 "scale" 추가
+  - [ ] 5.4: `cad-tools/tests/executor.test.ts` - scale 테스트 추가
+
 ## Dev Notes
 
 ### Architecture Patterns
@@ -133,6 +139,7 @@ cad-engine/src/
 
 - Story 1.2 (Scene 클래스 및 Entity 구조)
 - Story 3.1 (Translate) - 동일 구조
+- **Story 3.0 (Tool Use Foundation)** - Tool 등록용
 
 ## References
 

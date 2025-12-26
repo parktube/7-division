@@ -71,6 +71,12 @@ So that **최종 결과물을 벡터 이미지로 저장하고 공유할 수 있
   - [ ] 5.3: Transform 적용 SVG 테스트
   - [ ] 5.4: 브라우저에서 SVG 열기 확인
 
+- [ ] **Task 6: Tool Use 등록** (AC: #1)
+  - [ ] 6.1: `cad-tools/src/schema.ts` - export_svg 스키마 추가
+  - [ ] 6.2: `cad-tools/src/executor.ts` - export_svg case 추가
+  - [ ] 6.3: DOMAINS.export에 "export_svg" 추가
+  - [ ] 6.4: `cad-tools/tests/executor.test.ts` - export_svg 테스트 추가
+
 ## Dev Notes
 
 ### Architecture Patterns
@@ -254,6 +260,7 @@ cad-engine/src/
 - Story 1.2 (Scene 클래스 및 Entity 구조)
 - Story 2.1 (JSON Export) - 동일 패턴
 - Story 3.1-3.3 (Transform) - transform 속성 사용
+- **Story 3.0 (Tool Use Foundation)** - Tool 등록용
 
 ## References
 

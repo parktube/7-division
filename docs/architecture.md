@@ -496,6 +496,196 @@ fs.writeFileSync('output.svg', svg);
 
 ---
 
+## Tool Use Foundation (에이전트 런타임)
+
+> **Story 3.0** - Claude가 CAD 도구를 tool_use 스키마로 직접 호출할 수 있는 에이전트 런타임
+> Epic 3의 전제조건으로, 스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 있게 함
+
+### 현재 문제점
+
+```
+현재 (스크립트 기반):
+1. Claude가 "원을 그려줘" 요청 받음
+2. Claude가 JavaScript 스크립트 작성
+3. 스크립트가 WASM 함수 호출
+4. 결과를 Claude가 다시 해석
+
+문제:
+- 스크립트 작성/실행/파싱 오버헤드
+- Float64Array, JSON.stringify 등 보일러플레이트
+- 에러 발생 시 디버깅 어려움
+- 도구를 "자기 몸처럼" 사용하지 못함
+```
+
+### 목표 아키텍처
+
+```
+목표 (tool_use 기반):
+1. Claude가 "원을 그려줘" 요청 받음
+2. Claude가 tool_use 블록 생성: { name: "draw_circle", input: {...} }
+3. 에이전트 런타임이 WASM 함수 직접 호출
+4. 결과를 tool_result로 Claude에게 반환
+
+장점:
+- 스크립트 없이 직접 도구 호출
+- 입력 변환 자동화 (배열 → Float64Array)
+- 구조화된 결과 반환
+- Claude가 도구를 "자기 몸처럼" 사용
+```
+
+### Progressive Exposure 패턴
+
+LLM 컨텍스트 효율성을 위한 점진적 도구 노출:
+
+```typescript
+// 1. 도메인 조회 (~20 토큰)
+listDomains()
+// → ["primitives", "transforms", "style", "export"]
+
+// 2. 도메인 내 도구 조회 (~50 토큰)
+listTools("primitives")
+// → ["draw_line", "draw_circle", "draw_rect", "draw_arc"]
+
+// 3. 특정 도구 스키마 조회 (~100 토큰)
+getTool("draw_circle")
+// → { name, description, input_schema: { x, y, radius, style? } }
+
+// 4. 도구 실행
+exec("draw_circle", { name: "head", x: 0, y: 100, radius: 20 })
+// → { success: true, entity: "head", type: "circle" }
+```
+
+**컨텍스트 비용 비교**:
+- 전체 .d.ts 파일: ~2000+ 토큰
+- Progressive Exposure: ~110 토큰 (필요한 도구만)
+
+### 도구 스키마 정의
+
+```typescript
+// cad-tools/schema.ts
+export const CAD_TOOLS = {
+  draw_circle: {
+    name: "draw_circle",
+    description: "원을 그립니다. 머리, 관절, 버튼 등에 사용",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "엔티티 이름 (예: 'head', 'joint_1')" },
+        x: { type: "number", description: "중심 x 좌표" },
+        y: { type: "number", description: "중심 y 좌표" },
+        radius: { type: "number", description: "반지름 (양수)" },
+        style: { type: "object", description: "스타일 객체 (선택)" }
+      },
+      required: ["name", "x", "y", "radius"]
+    }
+  },
+  // ... draw_line, draw_rect, draw_arc, translate, rotate, scale, delete
+};
+```
+
+### WASM Executor 래퍼
+
+```typescript
+// cad-tools/executor.ts
+import { Scene } from '../cad-engine/pkg/cad_engine.js';
+
+export class CADExecutor {
+  private scene: Scene;
+
+  constructor(sceneName: string) {
+    this.scene = new Scene(sceneName);
+  }
+
+  exec(toolName: string, input: Record<string, any>): ToolResult {
+    switch (toolName) {
+      case "draw_circle":
+        // 입력 변환 자동화: style 객체 → JSON 문자열
+        const result = this.scene.draw_circle(
+          input.name,
+          input.x,
+          input.y,
+          input.radius,
+          this.toJson(input.style)
+        );
+        return { success: true, entity: result, type: "circle" };
+
+      case "draw_line":
+        // 배열 → Float64Array 자동 변환
+        const points = new Float64Array(input.points);
+        const lineResult = this.scene.draw_line(input.name, points, this.toJson(input.style));
+        return { success: true, entity: lineResult, type: "line" };
+
+      // ... 기타 도구
+    }
+  }
+
+  exportScene(): string {
+    return this.scene.export_json();
+  }
+}
+```
+
+### 에이전트 런타임 (MVP ~50줄)
+
+```typescript
+// cad-tools/runtime.ts
+export async function runAgentLoop(
+  client: Anthropic,
+  executor: CADExecutor,
+  userMessage: string
+): Promise<string> {
+  const messages = [{ role: "user", content: userMessage }];
+
+  while (true) {
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      tools: Object.values(CAD_TOOLS),
+      messages
+    });
+
+    // 텍스트 응답이면 종료
+    if (response.stop_reason === "end_turn") {
+      return response.content.find(b => b.type === "text")?.text || "";
+    }
+
+    // tool_use 처리
+    for (const block of response.content) {
+      if (block.type === "tool_use") {
+        const result = executor.exec(block.name, block.input);
+        messages.push(
+          { role: "assistant", content: response.content },
+          { role: "user", content: [{ type: "tool_result", tool_use_id: block.id, content: JSON.stringify(result) }] }
+        );
+      }
+    }
+  }
+}
+```
+
+### 3가지 WASM 접근 경로
+
+| 경로 | 사용자 | 런타임 | 특징 |
+|------|--------|--------|------|
+| **1. CLI LLM** | Claude Code, Cursor | 내장 | 도구 직접 호출 |
+| **2. BYOK** | 사용자 API 키 | 우리가 제공 | 에이전트 런타임 포함 |
+| **3. SaaS** | 우리 API | 우리가 제공 | 전체 호스팅 |
+
+경로 1에서도 tool_use 스키마와 동일한 인터페이스로 도구 사용 가능.
+
+### 구현 옵션
+
+| 옵션 | 장점 | 단점 |
+|------|------|------|
+| **TypeScript 직접 구현** | 빠른 개발, 유연함 | 직접 구현 필요 |
+| **Claude Agent SDK** | Anthropic 공식 지원 | SDK 학습 곡선 |
+| **LangChain** | 풍부한 생태계 | 무거움, 추상화 많음 |
+
+> **결정**: Phase 1에서는 TypeScript 직접 구현 (MVP ~50줄)
+> 복잡해지면 Claude Agent SDK로 마이그레이션 고려
+
+---
+
 ## Type System (2D/3D 확장 대비)
 
 ```rust

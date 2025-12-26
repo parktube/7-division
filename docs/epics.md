@@ -669,6 +669,41 @@ So that **AI가 만든 스켈레톤이 올바르게 표현되었는지 검증할
 
 ---
 
+## Story 3.0: Tool Use Foundation (에이전트 런타임)
+
+As a **AI 에이전트 (Claude Code)**,
+I want **CAD 도구를 tool_use 스키마로 직접 호출할 수 있도록**,
+So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Claude Code가 "원을 그려줘"라고 요청받은 경우
+**When** 에이전트 런타임이 동작
+**Then** draw_circle 도구가 tool_use 형식으로 호출된다
+**And** 결과가 JSON/텍스트로 Claude에게 피드백된다
+
+**Given** CAD 도구가 정의된 상태
+**When** 도구 스키마를 조회
+**Then** 각 도구의 name, description, input_schema가 반환된다
+**And** LLM이 도구를 이해하고 선택할 수 있다
+
+**Given** 도구 호출 결과가 반환된 경우
+**When** 에이전트 런타임이 결과를 처리
+**Then** 성공/실패 여부와 생성된 entity 정보가 Claude에게 전달된다
+**And** Claude가 다음 행동을 결정할 수 있다
+
+**Technical Notes:**
+- Progressive Exposure 패턴: listDomains → listTools → getTool → exec
+- tool_use 스키마 정의 (name, description, input_schema)
+- WASM 함수 래핑 (Float64Array 변환, JSON.stringify 자동화)
+- 에이전트 루프: LLM 호출 → tool_use 감지 → 실행 → 결과 반환 → 반복
+
+**Requirements Fulfilled:** FR15, NFR8, NFR9
+
+**Details:** [docs/sprint-artifacts/3-0-tool-use-foundation.md](./sprint-artifacts/3-0-tool-use-foundation.md)
+
+---
+
 ## Story 3.1: Translate 변환 구현
 
 As a **AI 에이전트 (Claude Code)**,
@@ -883,10 +918,10 @@ So that **최종 결과물을 벡터 이미지로 저장하고 공유할 수 있
 
 | Epic | 스토리 수 | FRs Covered |
 |------|----------|-------------|
-| Epic 1: CAD 엔진 기초 | 5 | FR1, FR2, FR3, FR4, FR14 |
+| Epic 1: CAD 엔진 기초 | 9 | FR1, FR2, FR3, FR4, FR14, FR17, FR18, FR19, FR20 |
 | Epic 2: Canvas 2D 뷰어 | 3 | FR9, FR11, FR12, FR16 |
-| Epic 3: 변환과 Export | 6 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 |
-| **Total** | **14** | **16 FRs (100%)** |
+| Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 |
+| **Total** | **19** | **16 FRs (100%)** |
 
 ## FR Coverage 검증
 

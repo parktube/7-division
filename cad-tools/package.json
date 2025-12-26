@@ -1,0 +1,40 @@
+{
+  "name": "cad-tools",
+  "version": "0.1.0",
+  "description": "LLM-agnostic CAD tool definitions and executor",
+  "license": "MIT",
+  "author": "parktube",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parktube/7-division.git",
+    "directory": "cad-tools"
+  },
+  "keywords": [
+    "cad",
+    "llm",
+    "ai",
+    "wasm",
+    "tool-use",
+    "anthropic"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

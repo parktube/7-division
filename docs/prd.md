@@ -169,6 +169,30 @@ Rust CAD 엔진
 - Phase 3: DXF export (2D 업계 표준)
 - Phase 4+: STL (필수), STEP (옵션) - 3D 확장 시
 
+### Tool Use Foundation (에이전트 런타임)
+
+> **Story 3.0** - Claude가 CAD 도구를 tool_use 스키마로 직접 호출할 수 있는 기반
+> Epic 3 (도형 편집)의 전제조건
+
+**현재 문제**: Claude가 스크립트를 작성해서 WASM을 호출
+**목표 상태**: Claude가 tool_use로 도구를 직접 호출 (자기 몸처럼)
+
+```
+현재: Claude → 스크립트 작성 → WASM 호출
+목표: Claude → tool_use 블록 → 에이전트 런타임 → WASM 호출
+```
+
+**핵심 컴포넌트**:
+- **도구 스키마**: 각 CAD 도구의 name, description, input_schema 정의
+- **WASM Executor**: 입력 변환 자동화 (배열 → Float64Array)
+- **에이전트 런타임**: LLM 호출 → tool_use 감지 → 실행 → 결과 반환 루프
+
+**Progressive Exposure 패턴**:
+- `listDomains()` → `listTools(domain)` → `getTool(name)` → `exec(name, input)`
+- LLM 컨텍스트 효율성: 전체 API ~2000토큰 → 필요한 것만 ~110토큰
+
+> 상세: [Architecture - Tool Use Foundation](./architecture.md#tool-use-foundation-에이전트-런타임)
+
 ---
 
 ## Success Criteria
@@ -209,10 +233,11 @@ Rust CAD 엔진
 
 **목표**: 기초 도형 도구만으로 AI가 복잡한 형상을 만들 수 있는지 검증
 
-- 기초 도형: `line`, `circle`, `rect`
+- 기초 도형: `line`, `circle`, `rect`, `arc`
+- 스타일: `stroke`, `fill` 적용
 - 변환: `translate`, `rotate`, `scale`, `delete`
 - 출력: scene.json + SVG export
-- Claude Code 직접 실행
+- **Tool Use Foundation**: Claude가 도구를 직접 호출할 수 있는 에이전트 런타임
 - **Canvas 2D 뷰어** (polling 방식) - 가장 단순하게 시작
 
 **검증 시나리오**: "사람 스켈레톤을 그려줘"
@@ -429,12 +454,16 @@ Entity
 
 ### 필수 완료 조건
 
-- [ ] Rust CAD 엔진 WASM 빌드 성공
-- [ ] 기초 도형 3종: `line`, `circle`, `rect`
+- [x] Rust CAD 엔진 WASM 빌드 성공
+- [x] 기초 도형 4종: `line`, `circle`, `rect`, `arc`
+- [x] 스타일 시스템: `stroke`, `fill` 적용
 - [ ] 변환 4종: `translate`, `rotate`, `scale`, `delete`
-- [ ] scene.json 출력 정상 동작
-- [ ] Claude Code에서 WASM 직접 호출 성공
-- [ ] Canvas 2D 뷰어에서 scene.json 렌더링 (polling)
+- [x] scene.json 출력 정상 동작
+- [x] Canvas 2D 뷰어에서 scene.json 렌더링 (polling)
+- [ ] **Tool Use Foundation**: Claude가 tool_use로 도구 직접 호출
+  - [ ] 도구 스키마 정의 (name, description, input_schema)
+  - [ ] WASM Executor 래퍼 (입력 변환 자동화)
+  - [ ] 에이전트 런타임 (tool_use 루프)
 
 ### 검증 시나리오 통과
 
