@@ -3,7 +3,29 @@ import { AnthropicProvider } from '../../src/providers/anthropic.js';
 import { CAD_TOOLS } from '../../src/schema.js';
 
 describe('AnthropicProvider', () => {
-  const provider = new AnthropicProvider('fake-key');
+  const provider = new AnthropicProvider({ apiKey: 'fake-key' });
+
+  describe('constructor', () => {
+    it('should use default maxTokens when not provided', () => {
+      const p = new AnthropicProvider({ apiKey: 'key' });
+      expect(p).toBeDefined();
+    });
+
+    it('should accept custom maxTokens', () => {
+      const p = new AnthropicProvider({ apiKey: 'key', maxTokens: 2048 });
+      expect(p).toBeDefined();
+    });
+
+    it('should throw on invalid maxTokens (too low)', () => {
+      expect(() => new AnthropicProvider({ apiKey: 'key', maxTokens: 0 }))
+        .toThrow('maxTokens must be between');
+    });
+
+    it('should throw on invalid maxTokens (too high)', () => {
+      expect(() => new AnthropicProvider({ apiKey: 'key', maxTokens: 10000 }))
+        .toThrow('maxTokens must be between');
+    });
+  });
 
   describe('convertToolSchema', () => {
     it('should convert canonical schema to Anthropic format', () => {
@@ -101,6 +123,14 @@ describe('AnthropicProvider', () => {
       expect(msg.content[0].type).toBe('tool_result');
       expect(msg.content[0].tool_use_id).toBe('call_1');
       expect(msg.content[1].tool_use_id).toBe('call_2');
+    });
+
+    it('should throw on array length mismatch', () => {
+      const results = [{ success: true, entity: 'wall', type: 'rect' }];
+      const callIds = ['call_1', 'call_2'];
+
+      expect(() => provider.buildToolResultMessage(results, callIds))
+        .toThrow('results and callIds must have same length');
     });
   });
 

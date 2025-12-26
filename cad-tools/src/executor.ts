@@ -7,7 +7,7 @@
  */
 
 // @ts-expect-error - WASM module type
-import { Scene, init } from '../../cad-engine/pkg/cad_engine.js';
+import { Scene } from '../../cad-engine/pkg/cad_engine.js';
 
 /**
  * 도구 실행 결과 (내부 표준)
@@ -22,6 +22,18 @@ export interface ToolResult {
 
 /**
  * CAD Executor - WASM Scene 래퍼
+ *
+ * WASM Scene 인스턴스를 관리하며, 사용 후 반드시 free()를 호출하여
+ * 리소스를 해제해야 합니다. 미해제 시 메모리 누수가 발생할 수 있습니다.
+ *
+ * @example
+ * const executor = CADExecutor.create('myScene');
+ * try {
+ *   executor.exec('draw_circle', { name: 'c1', x: 0, y: 0, radius: 50 });
+ *   const json = executor.exportScene();
+ * } finally {
+ *   executor.free(); // 항상 리소스 해제 필요
+ * }
  */
 export class CADExecutor {
   private scene: Scene;
@@ -34,9 +46,10 @@ export class CADExecutor {
 
   /**
    * Executor 생성
+   *
+   * Note: WASM init()은 #[wasm_bindgen(start)]로 모듈 로드 시 자동 실행됨
    */
   static create(sceneName: string): CADExecutor {
-    init();
     return new CADExecutor(new Scene(sceneName));
   }
 
@@ -167,6 +180,11 @@ export class CADExecutor {
     return { success: true, entity: result, type: 'rect' };
   }
 
+  /**
+   * 호(arc)를 그립니다.
+   * @param input.start_angle - 시작 각도 (라디안 단위)
+   * @param input.end_angle - 끝 각도 (라디안 단위)
+   */
   private drawArc(input: Record<string, unknown>): ToolResult {
     const error = this.validateInput(input, { name: 'string', cx: 'number', cy: 'number', radius: 'number', start_angle: 'number', end_angle: 'number' });
     if (error) return { success: false, error: `draw_arc: ${error}` };

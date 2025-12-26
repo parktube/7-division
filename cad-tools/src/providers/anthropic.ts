@@ -15,6 +15,8 @@ export interface AnthropicProviderOptions {
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const DEFAULT_MAX_TOKENS = 4096;
+const MIN_MAX_TOKENS = 1;
+const MAX_MAX_TOKENS = 8192;
 
 export class AnthropicProvider implements LLMProvider {
   readonly name = 'anthropic';
@@ -25,7 +27,13 @@ export class AnthropicProvider implements LLMProvider {
   constructor(options: AnthropicProviderOptions = {}) {
     this.client = new Anthropic({ apiKey: options.apiKey });
     this.model = options.model || DEFAULT_MODEL;
-    this.maxTokens = options.maxTokens || DEFAULT_MAX_TOKENS;
+
+    // Validate maxTokens
+    const tokens = options.maxTokens ?? DEFAULT_MAX_TOKENS;
+    if (tokens < MIN_MAX_TOKENS || tokens > MAX_MAX_TOKENS) {
+      throw new Error(`maxTokens must be between ${MIN_MAX_TOKENS} and ${MAX_MAX_TOKENS}, got ${tokens}`);
+    }
+    this.maxTokens = tokens;
   }
 
   /**
@@ -79,8 +87,12 @@ export class AnthropicProvider implements LLMProvider {
 
   /**
    * Tool results 메시지 생성
+   * @throws Error if results and callIds arrays have different lengths
    */
   buildToolResultMessage(results: ToolResult[], callIds: string[]): Anthropic.MessageParam {
+    if (results.length !== callIds.length) {
+      throw new Error(`results and callIds must have same length: ${results.length} vs ${callIds.length}`);
+    }
     const content: Anthropic.ToolResultBlockParam[] = results.map((result, i) => ({
       type: 'tool_result',
       tool_use_id: callIds[i],
