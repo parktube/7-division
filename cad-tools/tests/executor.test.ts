@@ -223,4 +223,34 @@ describe('CADExecutor', () => {
       expect(json).toContain('dot');
     });
   });
+
+  describe('resource management - after free()', () => {
+    it('should return error when exec called after free', () => {
+      executor.free();
+      const result = executor.exec('draw_circle', { name: 'c', x: 0, y: 0, radius: 5 });
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not initialized');
+    });
+
+    it('should throw when exportScene called after free', () => {
+      executor.free();
+      expect(() => executor.exportScene()).toThrow('not initialized or already freed');
+    });
+
+    it('should throw when getSceneName called after free', () => {
+      executor.free();
+      expect(() => executor.getSceneName()).toThrow('not initialized or already freed');
+    });
+
+    it('should throw when getEntityCount called after free', () => {
+      executor.free();
+      expect(() => executor.getEntityCount()).toThrow('not initialized or already freed');
+    });
+
+    it('should handle double free gracefully', () => {
+      executor.free();
+      // Second free should not throw
+      expect(() => executor.free()).not.toThrow();
+    });
+  });
 });

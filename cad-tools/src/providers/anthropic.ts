@@ -108,15 +108,49 @@ export class AnthropicProvider implements LLMProvider {
     return { role: 'assistant', content: response.content };
   }
 
+  /**
+   * LLM에 메시지 전송
+   *
+   * @throws Error - API 호출 실패 시 (rate limit, auth, network 등)
+   */
   async sendMessage(
     messages: Anthropic.MessageParam[],
     tools: Anthropic.Tool[]
   ): Promise<Anthropic.Message> {
-    return this.client.messages.create({
-      model: this.model,
-      max_tokens: this.maxTokens,
-      messages,
-      tools,
-    });
+    try {
+      return await this.client.messages.create({
+        model: this.model,
+        max_tokens: this.maxTokens,
+        messages,
+        tools,
+      });
+    } catch (error) {
+      // Rate limit 에러 처리
+      if (error instanceof Anthropic.RateLimitError) {
+        const retryAfter = error.headers?.get?.('retry-after');
+        console.error('[AnthropicProvider.sendMessage] Rate limit exceeded', {
+          model: this.model,
+          retryAfter,
+        });
+        throw new Error('Anthropic rate limit exceeded. Please wait before retrying.');
+      }
+
+      // 인증 에러 처리
+      if (error instanceof Anthropic.AuthenticationError) {
+        console.error('[AnthropicProvider.sendMessage] Authentication failed');
+        throw new Error('Anthropic API authentication failed. Check your API key.');
+      }
+
+      // 기타 API 에러 로깅
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[AnthropicProvider.sendMessage] API call failed', {
+        model: this.model,
+        maxTokens: this.maxTokens,
+        messageCount: messages.length,
+        toolCount: tools.length,
+        error: errorMessage,
+      });
+      throw error;
+    }
   }
 }

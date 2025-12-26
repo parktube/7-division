@@ -6,7 +6,7 @@
  * 핵심: LLM은 객체로 style 전달, Executor가 WASM용 JSON 문자열로 변환
  */
 
-// @ts-expect-error - WASM module type
+// @ts-ignore - WASM module lacks type declarations
 import { Scene } from '../../cad-engine/pkg/cad_engine.js';
 
 /**
@@ -133,7 +133,12 @@ export class CADExecutor {
           return { success: false, error: `Unknown tool: ${toolName}` };
       }
     } catch (e) {
-      return { success: false, error: String(e) };
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      console.error(`[CADExecutor.exec] Tool execution failed: ${toolName}`, {
+        input: JSON.stringify(input),
+        error: errorMessage,
+      });
+      return { success: false, error: `${toolName}: ${errorMessage}` };
     }
   }
 

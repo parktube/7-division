@@ -17,6 +17,8 @@ export const DEFAULT_MAX_ITERATIONS = 10;
 
 /**
  * Provider-agnostic 에이전트 루프 실행
+ *
+ * @throws Error - API 호출 실패, 최대 반복 횟수 초과 시
  */
 export async function runAgentLoop(
   provider: LLMProvider,
@@ -42,7 +44,17 @@ export async function runAgentLoop(
     iterations++;
 
     // 4. Provider로 메시지 전송
-    const response = await provider.sendMessage(messages, providerTools);
+    let response: unknown;
+    try {
+      response = await provider.sendMessage(messages, providerTools);
+    } catch (apiError) {
+      const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
+      console.error(`[runAgentLoop] LLM API call failed on iteration ${iterations}`, {
+        provider: provider.name,
+        error: errorMessage,
+      });
+      throw new Error(`LLM API call failed: ${errorMessage}`);
+    }
 
     // 5. 응답 파싱
     const [toolCalls, isComplete] = provider.parseResponse(response);
