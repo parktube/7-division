@@ -50,6 +50,12 @@ So that **"오른쪽 팔을 없애줘" 같은 요청을 처리할 수 있다**.
   - [ ] 4.3: 잘못된 name 삭제 테스트
   - [ ] 4.4: export_json에서 삭제 확인 테스트
 
+- [ ] **Task 5: Tool Use 등록** (AC: #1)
+  - [ ] 5.1: `cad-tools/src/schema.ts` - delete 스키마 추가
+  - [ ] 5.2: `cad-tools/src/executor.ts` - delete case 추가
+  - [ ] 5.3: DOMAINS.transforms에 "delete" 추가
+  - [ ] 5.4: `cad-tools/tests/executor.test.ts` - delete 테스트 추가
+
 ## Dev Notes
 
 ### Architecture Patterns
@@ -118,6 +124,7 @@ cad-engine/src/
 ### Dependencies
 
 - Story 1.2 (Scene 클래스 및 Entity 구조)
+- **Story 3.0 (Tool Use Foundation)** - Tool 등록용
 
 ## References
 

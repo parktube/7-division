@@ -55,6 +55,12 @@ So that **"왼쪽 팔을 더 왼쪽으로" 같은 수정 요청을 처리할 수
   - [ ] 5.3: 잘못된 ID 테스트
   - [ ] 5.4: export_json에 translate 포함 확인
 
+- [ ] **Task 6: Tool Use 등록** (AC: #1)
+  - [ ] 6.1: `cad-tools/src/schema.ts` - translate 스키마 추가
+  - [ ] 6.2: `cad-tools/src/executor.ts` - translate case 추가
+  - [ ] 6.3: DOMAINS.transforms에 "translate" 추가
+  - [ ] 6.4: `cad-tools/tests/executor.test.ts` - translate 테스트 추가
+
 ## Dev Notes
 
 ### Architecture Patterns
@@ -153,6 +159,7 @@ cad-engine/src/
 
 - Story 1.2 (Scene 클래스 및 Entity 구조)
 - Story 1.3 (Line 도형) - 테스트용
+- **Story 3.0 (Tool Use Foundation)** - Tool 등록용
 
 ## References
 
