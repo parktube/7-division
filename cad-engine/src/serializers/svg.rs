@@ -54,12 +54,23 @@ fn arc_to_svg_path(
     let end_x = center[0] + radius * end_angle.cos();
     let end_y = center[1] + radius * end_angle.sin();
 
+    // Normalize angle difference to handle wrap-around (e.g., 350° → 10°)
+    // This ensures correct large_arc_flag when angles cross the 0°/360° boundary
+    let mut angle_diff = end_angle - start_angle;
+    // Normalize to (-2π, 2π) first, then to [0, 2π)
+    while angle_diff < 0.0 {
+        angle_diff += 2.0 * std::f64::consts::PI;
+    }
+    while angle_diff >= 2.0 * std::f64::consts::PI {
+        angle_diff -= 2.0 * std::f64::consts::PI;
+    }
+
     // Determine if arc is larger than 180 degrees
-    let angle_diff = (end_angle - start_angle).abs();
     let large_arc_flag = if angle_diff > std::f64::consts::PI { 1 } else { 0 };
 
-    // Sweep direction: 1 for counterclockwise (positive angle direction)
-    let sweep_flag = if end_angle > start_angle { 1 } else { 0 };
+    // Sweep direction: 1 for counterclockwise (positive angle direction in our coordinate system)
+    // After normalization, angle_diff > 0 means counterclockwise sweep
+    let sweep_flag = if angle_diff > 0.0 && angle_diff <= std::f64::consts::PI { 1 } else { 0 };
 
     format!(
         r#"    <path d="M {},{} A {},{} 0 {} {} {},{}" {}{}/>"#,
