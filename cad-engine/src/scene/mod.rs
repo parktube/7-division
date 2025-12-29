@@ -878,6 +878,10 @@ impl Scene {
             None => return Ok(false),
         };
 
+        // 관대한 입력 보정: 0 이하는 abs().max(0.001)로 변환
+        let sx = if sx <= 0.0 { sx.abs().max(0.001) } else { sx };
+        let sy = if sy <= 0.0 { sy.abs().max(0.001) } else { sy };
+
         // 기존 값에 곱셈 누적
         entity.transform.scale[0] *= sx;
         entity.transform.scale[1] *= sy;

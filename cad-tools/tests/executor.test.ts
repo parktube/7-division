@@ -415,6 +415,29 @@ describe('CADExecutor', () => {
       expect(result.error).toContain('Entity not found');
     });
 
+    it('should correct zero scale to minimum value', () => {
+      const result = executor.exec('scale', { name: 'box', sx: 0, sy: 0 });
+
+      expect(result.success).toBe(true);
+
+      // Verify scale is corrected to 0.001 (not 0)
+      const json = JSON.parse(executor.exportScene());
+      const entity = json.entities.find((e: { metadata: { name: string } }) => e.metadata.name === 'box');
+      expect(entity.transform.scale[0]).toBeCloseTo(0.001);
+      expect(entity.transform.scale[1]).toBeCloseTo(0.001);
+    });
+
+    it('should correct negative scale to absolute value', () => {
+      const result = executor.exec('scale', { name: 'box', sx: -2, sy: -0.5 });
+
+      expect(result.success).toBe(true);
+
+      // Verify scale uses absolute values
+      const json = JSON.parse(executor.exportScene());
+      const entity = json.entities.find((e: { metadata: { name: string } }) => e.metadata.name === 'box');
+      expect(entity.transform.scale).toEqual([2, 0.5]);
+    });
+
     it('should delete entity', () => {
       expect(executor.getEntityCount()).toBe(1);
 

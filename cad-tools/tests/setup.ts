@@ -1,18 +1,8 @@
 /**
  * Vitest Setup - WASM 모듈 초기화
+ * Node.js target으로 빌드된 WASM은 require 시 자동 초기화됨
  */
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
 
 // @ts-ignore - WASM module lacks type declarations
-import initSync from '../../cad-engine/pkg/cad_engine.js';
-
-// __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// WASM 바이너리 로드 및 초기화
-const wasmPath = resolve(__dirname, '../../cad-engine/pkg/cad_engine_bg.wasm');
-const wasmBytes = readFileSync(wasmPath);
-initSync(wasmBytes);
+// Node.js target WASM: 모듈 로드 시 __wbindgen_start() 자동 호출
+import '../../cad-engine/pkg/cad_engine.js';
