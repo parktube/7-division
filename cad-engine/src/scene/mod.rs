@@ -38,6 +38,8 @@ impl std::error::Error for SceneError {}
 pub struct Scene {
     name: String,
     entities: Vec<Entity>,
+    /// 마지막 실행된 작업 (LLM 작업 추적용)
+    last_operation: Option<String>,
 }
 
 fn generate_id() -> String {
@@ -251,6 +253,7 @@ impl Scene {
         Scene {
             name: name.to_string(),
             entities: Vec::new(),
+            last_operation: None,
         }
     }
 
@@ -264,7 +267,7 @@ impl Scene {
 
     /// Scene을 JSON으로 내보냅니다.
     pub fn export_json(&self) -> String {
-        serialize_scene(&self.name, &self.entities)
+        serialize_scene(&self.name, &self.entities, self.last_operation.as_deref())
     }
 
     /// Scene을 SVG로 내보냅니다.
@@ -451,6 +454,7 @@ impl Scene {
         };
 
         self.entities.push(entity);
+        self.last_operation = Some(format!("draw_arc({})", name));
         Ok(name.to_string())
     }
 
@@ -519,6 +523,7 @@ impl Scene {
         };
 
         self.entities.push(entity);
+        self.last_operation = Some(format!("draw_circle({})", name));
         Ok(name.to_string())
     }
 
@@ -571,6 +576,7 @@ impl Scene {
         };
 
         self.entities.push(entity);
+        self.last_operation = Some(format!("draw_line({})", name));
         Ok(name.to_string())
     }
 
@@ -647,6 +653,7 @@ impl Scene {
         };
 
         self.entities.push(entity);
+        self.last_operation = Some(format!("draw_rect({})", name));
         Ok(name.to_string())
     }
 
@@ -838,6 +845,7 @@ impl Scene {
         entity.transform.translate[0] += dx;
         entity.transform.translate[1] += dy;
 
+        self.last_operation = Some(format!("translate({}, {}, {})", name, dx, dy));
         Ok(true)
     }
 
@@ -859,6 +867,9 @@ impl Scene {
         // 기존 값에 누적
         entity.transform.rotate += angle;
 
+        // 라디안을 도로 변환하여 표시
+        let degrees = angle * 180.0 / std::f64::consts::PI;
+        self.last_operation = Some(format!("rotate({}, {:.1}°)", name, degrees));
         Ok(true)
     }
 
@@ -886,6 +897,7 @@ impl Scene {
         entity.transform.scale[0] *= sx;
         entity.transform.scale[1] *= sy;
 
+        self.last_operation = Some(format!("scale({}, {}x, {}x)", name, sx, sy));
         Ok(true)
     }
 
@@ -903,6 +915,7 @@ impl Scene {
         match idx {
             Some(i) => {
                 self.entities.remove(i);
+                self.last_operation = Some(format!("delete({})", name));
                 Ok(true)
             }
             None => Ok(false),
@@ -980,10 +993,16 @@ impl Scene {
             None => serde_json::Value::Null,
         };
 
+        let last_op_json = match &self.last_operation {
+            Some(op) => serde_json::Value::String(op.clone()),
+            None => serde_json::Value::Null,
+        };
+
         serde_json::to_string(&serde_json::json!({
             "name": self.name,
             "entity_count": self.entities.len(),
-            "bounds": bounds_json
+            "bounds": bounds_json,
+            "last_operation": last_op_json
         }))
         .unwrap_or_else(|_| "{}".to_string())
     }

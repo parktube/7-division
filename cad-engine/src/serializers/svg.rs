@@ -16,19 +16,19 @@ fn entity_to_svg(entity: &Entity) -> String {
                 .collect::<Vec<_>>()
                 .join(" ");
             format!(
-                r#"    <polyline points="{}" fill="none" stroke="black" {}{}/>"#,
+                r#"    <polyline points="{}" {}{}/>"#,
                 points_str, style_attr, transform_attr
             ) + "\n"
         }
         Geometry::Circle { center, radius } => {
             format!(
-                r#"    <circle cx="{}" cy="{}" r="{}" fill="none" stroke="black" {}{}/>"#,
+                r#"    <circle cx="{}" cy="{}" r="{}" {}{}/>"#,
                 center[0], center[1], radius, style_attr, transform_attr
             ) + "\n"
         }
         Geometry::Rect { origin, width, height } => {
             format!(
-                r#"    <rect x="{}" y="{}" width="{}" height="{}" fill="none" stroke="black" {}{}/>"#,
+                r#"    <rect x="{}" y="{}" width="{}" height="{}" {}{}/>"#,
                 origin[0], origin[1], width, height, style_attr, transform_attr
             ) + "\n"
         }
@@ -62,7 +62,7 @@ fn arc_to_svg_path(
     let sweep_flag = if end_angle > start_angle { 1 } else { 0 };
 
     format!(
-        r#"    <path d="M {},{} A {},{} 0 {} {} {},{}" fill="none" stroke="black" {}{}/>"#,
+        r#"    <path d="M {},{} A {},{} 0 {} {} {},{}" {}{}/>"#,
         start_x, start_y,
         radius, radius,
         large_arc_flag, sweep_flag,
@@ -100,6 +100,7 @@ fn transform_to_svg(transform: &Transform) -> String {
 fn style_to_svg(style: &Style) -> String {
     let mut attrs = Vec::new();
 
+    // Stroke (default: black, width 1)
     if let Some(stroke) = &style.stroke {
         let [r, g, b, a] = stroke.color;
         let color = format!("rgba({},{},{},{})",
@@ -110,8 +111,12 @@ fn style_to_svg(style: &Style) -> String {
         );
         attrs.push(format!(r#"stroke="{}""#, color));
         attrs.push(format!(r#"stroke-width="{}""#, stroke.width));
+    } else {
+        attrs.push(r#"stroke="black""#.to_string());
+        attrs.push(r#"stroke-width="1""#.to_string());
     }
 
+    // Fill (default: none)
     if let Some(fill) = &style.fill {
         let [r, g, b, a] = fill.color;
         let color = format!("rgba({},{},{},{})",
@@ -121,13 +126,11 @@ fn style_to_svg(style: &Style) -> String {
             a
         );
         attrs.push(format!(r#"fill="{}""#, color));
+    } else {
+        attrs.push(r#"fill="none""#.to_string());
     }
 
-    if attrs.is_empty() {
-        String::new()
-    } else {
-        attrs.join(" ") + " "
-    }
+    attrs.join(" ") + " "
 }
 
 /// Scene을 SVG 문자열로 직렬화합니다.

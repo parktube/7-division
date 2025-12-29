@@ -8,7 +8,14 @@ const statusText = document.getElementById('status-text');
 const entityCount = document.getElementById('entity-count');
 const lastUpdated = document.getElementById('last-updated');
 const lastError = document.getElementById('last-error');
+const lastOperation = document.getElementById('last-operation');
 const overlay = document.getElementById('canvas-overlay');
+const sceneBounds = document.getElementById('scene-bounds');
+const entityList = document.getElementById('entity-list');
+const operationLog = document.getElementById('operation-log');
+
+// Operation history
+const operationHistory = [];
 
 const state = {
   lastSignature: null,
@@ -68,6 +75,51 @@ function resizeCanvas() {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function computeBounds(entities) {
+  if (!Array.isArray(entities) || entities.length === 0) {
+    return null;
+  }
+
+  let minX = Infinity, minY = Infinity;
+  let maxX = -Infinity, maxY = -Infinity;
+
+  for (const entity of entities) {
+    const geo = entity.geometry;
+    if (!geo) continue;
+
+    if (geo.Circle) {
+      const { center, radius } = geo.Circle;
+      minX = Math.min(minX, center[0] - radius);
+      minY = Math.min(minY, center[1] - radius);
+      maxX = Math.max(maxX, center[0] + radius);
+      maxY = Math.max(maxY, center[1] + radius);
+    } else if (geo.Rect) {
+      const { origin, width, height } = geo.Rect;
+      minX = Math.min(minX, origin[0]);
+      minY = Math.min(minY, origin[1]);
+      maxX = Math.max(maxX, origin[0] + width);
+      maxY = Math.max(maxY, origin[1] + height);
+    } else if (geo.Line) {
+      for (const pt of geo.Line.points) {
+        minX = Math.min(minX, pt[0]);
+        minY = Math.min(minY, pt[1]);
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      }
+    } else if (geo.Arc) {
+      const { center, radius } = geo.Arc;
+      minX = Math.min(minX, center[0] - radius);
+      minY = Math.min(minY, center[1] - radius);
+      maxX = Math.max(maxX, center[0] + radius);
+      maxY = Math.max(maxY, center[1] + radius);
+    }
+  }
+
+  if (!Number.isFinite(minX)) return null;
+
+  return { min: [minX, minY], max: [maxX, maxY] };
 }
 
 function toCssColor(color, fallback) {
@@ -361,6 +413,49 @@ async function fetchScene() {
       });
       lastUpdated.textContent = formatTime(new Date());
       lastError.textContent = 'None';
+      // LLM 작업 상태 표시
+      if (scene.last_operation) {
+        lastOperation.textContent = `🤖 ${scene.last_operation}`;
+
+        // Add to history if new
+        const lastInHistory = operationHistory[operationHistory.length - 1];
+        if (lastInHistory !== scene.last_operation) {
+          const timestamp = formatTime(new Date());
+          operationHistory.push(scene.last_operation);
+
+          // Update log display
+          if (operationLog) {
+            const logEntry = `<div style="margin-bottom: 4px;"><span style="color: var(--bg-muted);">${timestamp}</span> ${scene.last_operation}</div>`;
+            operationLog.innerHTML += logEntry;
+            operationLog.scrollTop = operationLog.scrollHeight;
+          }
+        }
+      } else {
+        lastOperation.textContent = '-';
+      }
+
+      // Bounds 표시
+      if (sceneBounds) {
+        const bounds = computeBounds(scene.entities);
+        if (bounds) {
+          sceneBounds.textContent = `[${bounds.min[0].toFixed(0)}, ${bounds.min[1].toFixed(0)}] → [${bounds.max[0].toFixed(0)}, ${bounds.max[1].toFixed(0)}]`;
+        } else {
+          sceneBounds.textContent = '-';
+        }
+      }
+
+      // Entity 목록 표시
+      if (entityList && Array.isArray(scene.entities)) {
+        const names = scene.entities
+          .map(e => {
+            const name = e.metadata?.name || e.id?.slice(0, 8) || '?';
+            const type = e.entity_type || '?';
+            return `<div><strong>${name}</strong> (${type})</div>`;
+          })
+          .join('');
+        entityList.innerHTML = names || '-';
+      }
+
       setOverlay(false);
     }
   } catch (error) {

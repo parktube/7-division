@@ -141,6 +141,18 @@ development_status:
         title: "SVG Export"
         priority: P2
         depends_on: [2-3-rendering, 3-0-tool-use-foundation]
+      3-7-cli-direct-integration:
+        status: done
+        title: "CLI Direct Integration"
+        priority: P0
+        depends_on: [3-0-tool-use-foundation]
+        description: "Claude Code가 Bash로 CAD 도구를 직접 호출하는 CLI"
+      3-8-ax-enhancements:
+        status: done
+        title: "AX Enhancements"
+        priority: P1
+        depends_on: [3-7-cli-direct-integration]
+        description: "ActionHints, Domain Descriptions, Operation Log"
 
 # Sprint Planning Notes
 notes:
@@ -152,3 +164,4 @@ notes:
   - "모든 스토리 상세 파일 생성 완료: 2025-12-17"
   - "스토리 재정렬: Arc를 Primitive 위치(1.6)로 이동, Style 시스템(1.7-1.9)은 후순위"
   - "2025-12-26: LLM 주체성 강화 스토리 추가 (3.0-a, 3.0-b, 3.0-c) - AX 원칙 기반"
+  - "2025-12-29: CLI Direct Integration (3-7), AX Enhancements (3-8) 추가. Group System은 Phase 2로 이동"

@@ -286,6 +286,7 @@
             <span id="entity-count">0 entities</span>
             <span id="last-updated">--:--</span>
           </div>
+          <div class="status-meta" id="last-operation" style="color: var(--accent-2); font-weight: 600;">-</div>
         </div>
       </div>
     </header>
@@ -298,20 +299,20 @@
       <aside class="panel">
         <h2>Scene Info</h2>
         <div class="panel-item">
-          <div class="label">Source</div>
-          <div class="value">viewer/<strong>scene.json</strong></div>
+          <div class="label">Bounds</div>
+          <div class="value" id="scene-bounds">-</div>
         </div>
         <div class="panel-item">
-          <div class="label">Polling</div>
-          <div class="value">Every 500ms</div>
+          <div class="label">Entities</div>
+          <div class="value" id="entity-list" style="font-size: 11px; max-height: 100px; overflow-y: auto;">-</div>
+        </div>
+        <div class="panel-item">
+          <div class="label">Operation Log</div>
+          <div class="value" id="operation-log" style="font-size: 10px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px; font-family: monospace;">-</div>
         </div>
         <div class="panel-item">
           <div class="label">Last Error</div>
           <div class="value" id="last-error">None</div>
-        </div>
-        <div class="panel-item">
-          <div class="label">Quick Start</div>
-          <div class="value">Run <strong>python -m http.server 8000</strong> inside viewer/</div>
         </div>
       </aside>
     </section>
