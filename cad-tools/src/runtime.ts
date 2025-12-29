@@ -12,7 +12,7 @@ export interface AgentOptions {
   maxIterations?: number;
 }
 
-export const DEFAULT_DOMAINS: DomainName[] = ['primitives', 'style', 'export'];
+export const DEFAULT_DOMAINS: DomainName[] = ['primitives', 'style', 'transforms', 'query', 'registry', 'export'];
 export const DEFAULT_MAX_ITERATIONS = 10;
 
 /**

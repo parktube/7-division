@@ -20,6 +20,26 @@ describe('schema', () => {
     it('should have export domain', () => {
       expect(DOMAINS.export).toContain('export_json');
     });
+
+    it('should have query domain', () => {
+      expect(DOMAINS.query).toContain('list_entities');
+      expect(DOMAINS.query).toContain('get_entity');
+      expect(DOMAINS.query).toContain('get_scene_info');
+    });
+
+    it('should have registry domain', () => {
+      expect(DOMAINS.registry).toContain('list_domains');
+      expect(DOMAINS.registry).toContain('list_tools');
+      expect(DOMAINS.registry).toContain('get_tool_schema');
+      expect(DOMAINS.registry).toContain('request_tool');
+    });
+
+    it('should have transforms domain', () => {
+      expect(DOMAINS.transforms).toContain('translate');
+      expect(DOMAINS.transforms).toContain('rotate');
+      expect(DOMAINS.transforms).toContain('scale');
+      expect(DOMAINS.transforms).toContain('delete');
+    });
   });
 
   describe('CAD_TOOLS', () => {
@@ -27,6 +47,9 @@ describe('schema', () => {
       const allDomainTools = [
         ...DOMAINS.primitives,
         ...DOMAINS.style,
+        ...DOMAINS.transforms,
+        ...DOMAINS.query,
+        ...DOMAINS.registry,
         ...DOMAINS.export,
       ];
 

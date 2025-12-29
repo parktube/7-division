@@ -225,11 +225,70 @@ function renderRect(geometry, style) {
   applyStroke(resolveStroke(style));
 }
 
+function renderArc(geometry, style) {
+  const arc = geometry?.Arc;
+  if (!arc) {
+    return;
+  }
+  const { center, radius, start_angle, end_angle } = arc;
+  if (!Array.isArray(center) || center.length < 2) {
+    return;
+  }
+  const [x, y] = center;
+  if (
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(radius) ||
+    !Number.isFinite(start_angle) ||
+    !Number.isFinite(end_angle) ||
+    radius < 0
+  ) {
+    return;
+  }
+  ctx.beginPath();
+  // Arc uses counterclockwise direction for positive angles
+  ctx.arc(x, y, radius, start_angle, end_angle, false);
+  applyFill(style?.fill);
+  applyStroke(resolveStroke(style));
+}
+
+function applyTransform(transform) {
+  if (!transform) {
+    return;
+  }
+
+  // Canvas transforms are applied in reverse order
+  // We want: scale -> rotate -> translate
+  // So we call: translate, rotate, scale
+  const { translate, rotate, scale } = transform;
+
+  if (Array.isArray(translate) && translate.length >= 2) {
+    const [dx, dy] = translate;
+    if (Number.isFinite(dx) && Number.isFinite(dy)) {
+      ctx.translate(dx, dy);
+    }
+  }
+
+  if (Number.isFinite(rotate) && rotate !== 0) {
+    ctx.rotate(rotate);
+  }
+
+  if (Array.isArray(scale) && scale.length >= 2) {
+    const [sx, sy] = scale;
+    if (Number.isFinite(sx) && Number.isFinite(sy)) {
+      ctx.scale(sx, sy);
+    }
+  }
+}
+
 function renderEntity(entity) {
   if (!entity || !entity.entity_type) {
     return;
   }
   ctx.save();
+
+  // Apply entity transform
+  applyTransform(entity.transform);
 
   switch (entity.entity_type) {
     case 'Line':
@@ -240,6 +299,9 @@ function renderEntity(entity) {
       break;
     case 'Rect':
       renderRect(entity.geometry, entity.style);
+      break;
+    case 'Arc':
+      renderArc(entity.geometry, entity.style);
       break;
     default:
       console.warn('Unknown entity type:', entity.entity_type);

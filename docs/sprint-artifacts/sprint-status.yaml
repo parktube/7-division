@@ -84,7 +84,7 @@ development_status:
 
   # Epic 3: 도형 편집 - AI가 기존 도형을 수정하여 사용자 피드백에 대응할 수 있다
   epic-3:
-    status: in-progress
+    status: done
     title: "도형 편집"
     stories:
       3-0-tool-use-foundation:
@@ -94,50 +94,50 @@ development_status:
         depends_on: [1-2-scene-class, 2-1-json-export]
         description: "Claude가 CAD 도구를 직접 호출할 수 있는 에이전트 런타임 구축"
       3-0-a-scene-query-tools:
-        status: ready-for-dev
+        status: done
         title: "Scene Query Tools"
         priority: P0
         depends_on: [3-0-tool-use-foundation]
         description: "LLM이 씬 상태를 조회할 수 있는 도구 (list_entities, get_entity, get_scene_info)"
       3-0-b-dynamic-tool-registry:
-        status: ready-for-dev
+        status: done
         title: "Dynamic Tool Registry"
         priority: P0
         depends_on: [3-0-tool-use-foundation]
         description: "도메인별 도구 목록 조회 및 새 도구 요청 기능"
       3-0-c-angle-unit-support:
-        status: ready-for-dev
+        status: done
         title: "Angle Unit Support"
         priority: P1
         depends_on: [3-0-tool-use-foundation]
         description: "degree 단위 각도 지원 (라디안 대신)"
       3-1-translate:
-        status: ready-for-dev
+        status: done
         title: "Translate 도구"
         priority: P1
         depends_on: [1-2-scene-class, 1-3-line, 3-0-tool-use-foundation]
       3-2-rotate:
-        status: ready-for-dev
+        status: done
         title: "Rotate 도구"
         priority: P1
         depends_on: [1-2-scene-class, 1-3-line, 3-0-tool-use-foundation]
       3-3-scale:
-        status: ready-for-dev
+        status: done
         title: "Scale 도구"
         priority: P1
         depends_on: [1-2-scene-class, 1-3-line, 3-0-tool-use-foundation]
       3-4-delete:
-        status: ready-for-dev
+        status: done
         title: "Delete 도구"
         priority: P1
         depends_on: [1-2-scene-class, 1-3-line, 3-0-tool-use-foundation]
       3-5-transform-rendering:
-        status: ready-for-dev
+        status: done
         title: "Transform 렌더링"
         priority: P1
         depends_on: [2-3-rendering, 3-1-translate]
       3-6-svg-export:
-        status: ready-for-dev
+        status: done
         title: "SVG Export"
         priority: P2
         depends_on: [2-3-rendering, 3-0-tool-use-foundation]

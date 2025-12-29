@@ -8,6 +8,8 @@
 
 // @ts-ignore - WASM module lacks type declarations
 import { Scene } from '../../cad-engine/pkg/cad_engine.js';
+import { ToolRegistry } from './tool-registry.js';
+import { normalizeAngle, type AngleUnit } from './angle-utils.js';
 
 /**
  * 도구 실행 결과 (내부 표준)
@@ -38,10 +40,12 @@ export interface ToolResult {
 export class CADExecutor {
   private scene: Scene;
   private initialized = false;
+  private registry: ToolRegistry;
 
   private constructor(scene: Scene) {
     this.scene = scene;
     this.initialized = true;
+    this.registry = ToolRegistry.getInstance();
   }
 
   /**
@@ -125,9 +129,48 @@ export class CADExecutor {
         case 'remove_fill':
           return this.removeFill(input);
 
+        // === query ===
+        case 'list_entities':
+          return this.listEntities();
+
+        case 'get_entity':
+          return this.getEntity(input);
+
+        case 'get_scene_info':
+          return this.getSceneInfo();
+
+        // === transforms ===
+        case 'translate':
+          return this.translateEntity(input);
+
+        case 'rotate':
+          return this.rotateEntity(input);
+
+        case 'scale':
+          return this.scaleEntity(input);
+
+        case 'delete':
+          return this.deleteEntity(input);
+
+        // === registry ===
+        case 'list_domains':
+          return this.listDomainsHandler();
+
+        case 'list_tools':
+          return this.listToolsHandler(input);
+
+        case 'get_tool_schema':
+          return this.getToolSchemaHandler(input);
+
+        case 'request_tool':
+          return this.requestToolHandler(input);
+
         // === export ===
         case 'export_json':
           return this.exportJson();
+
+        case 'export_svg':
+          return this.exportSvg();
 
         default:
           return { success: false, error: `Unknown tool: ${toolName}` };
@@ -187,8 +230,9 @@ export class CADExecutor {
 
   /**
    * 호(arc)를 그립니다.
-   * @param input.start_angle - 시작 각도 (라디안 단위)
-   * @param input.end_angle - 끝 각도 (라디안 단위)
+   * @param input.start_angle - 시작 각도
+   * @param input.end_angle - 끝 각도
+   * @param input.angle_unit - 각도 단위 ('degree' | 'radian', 기본값 'radian')
    */
   private drawArc(input: Record<string, unknown>): ToolResult {
     const error = this.validateInput(input, { name: 'string', cx: 'number', cy: 'number', radius: 'number', start_angle: 'number', end_angle: 'number' });
@@ -198,8 +242,9 @@ export class CADExecutor {
     const cx = input.cx as number;
     const cy = input.cy as number;
     const radius = input.radius as number;
-    const startAngle = input.start_angle as number;
-    const endAngle = input.end_angle as number;
+    const angleUnit = (input.angle_unit as AngleUnit) || 'radian';
+    const startAngle = normalizeAngle(input.start_angle as number, angleUnit);
+    const endAngle = normalizeAngle(input.end_angle as number, angleUnit);
     const styleJson = this.toJson(input.style);
 
     const result = this.scene.draw_arc(name, cx, cy, radius, startAngle, endAngle, styleJson);
@@ -250,11 +295,156 @@ export class CADExecutor {
     return { success: result, entity: name };
   }
 
+  // === Query implementations ===
+
+  private listEntities(): ToolResult {
+    const data = this.scene.list_entities();
+    return { success: true, type: 'list', data };
+  }
+
+  private getEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `get_entity: ${error}` };
+
+    const name = input.name as string;
+    const data = this.scene.get_entity(name);
+
+    if (data === undefined || data === null) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+
+    return { success: true, entity: name, type: 'entity', data };
+  }
+
+  private getSceneInfo(): ToolResult {
+    const data = this.scene.get_scene_info();
+    return { success: true, type: 'scene_info', data };
+  }
+
+  // === Transform implementations ===
+
+  private translateEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', dx: 'number', dy: 'number' });
+    if (error) return { success: false, error: `translate: ${error}` };
+
+    const name = input.name as string;
+    const dx = input.dx as number;
+    const dy = input.dy as number;
+
+    const result = this.scene.translate(name, dx, dy);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private rotateEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', angle: 'number' });
+    if (error) return { success: false, error: `rotate: ${error}` };
+
+    const name = input.name as string;
+    const angleUnit = (input.angle_unit as AngleUnit) || 'radian';
+    const angle = normalizeAngle(input.angle as number, angleUnit);
+
+    const result = this.scene.rotate(name, angle);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private scaleEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', sx: 'number', sy: 'number' });
+    if (error) return { success: false, error: `scale: ${error}` };
+
+    const name = input.name as string;
+    const sx = input.sx as number;
+    const sy = input.sy as number;
+
+    const result = this.scene.scale(name, sx, sy);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private deleteEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `delete: ${error}` };
+
+    const name = input.name as string;
+
+    const result = this.scene.delete(name);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  // === Registry implementations ===
+
+  private listDomainsHandler(): ToolResult {
+    const domains = this.registry.listDomains();
+    return { success: true, type: 'domains', data: JSON.stringify(domains) };
+  }
+
+  private listToolsHandler(input: Record<string, unknown>): ToolResult {
+    const domain = input.domain as string | undefined;
+    const result = this.registry.listTools(domain);
+    return { success: true, type: 'tools', data: JSON.stringify(result) };
+  }
+
+  private getToolSchemaHandler(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `get_tool_schema: ${error}` };
+
+    const name = input.name as string;
+    const schema = this.registry.getToolSchema(name);
+
+    if (!schema) {
+      const suggestions = this.registry.findSimilar(name);
+      return {
+        success: false,
+        error: `Tool '${name}' not found`,
+        data: JSON.stringify({ suggestions }),
+      };
+    }
+
+    return { success: true, type: 'schema', data: JSON.stringify(schema) };
+  }
+
+  private requestToolHandler(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', description: 'string', rationale: 'string' });
+    if (error) return { success: false, error: `request_tool: ${error}` };
+
+    const request = this.registry.requestTool({
+      name: input.name as string,
+      description: input.description as string,
+      rationale: input.rationale as string,
+      suggested_params: input.suggested_params as string[] | undefined,
+    });
+
+    return {
+      success: true,
+      type: 'request',
+      data: JSON.stringify({
+        request_id: request.id,
+        status: request.status,
+        message: '도구 요청이 등록되었습니다. 개발자 검토 후 추가됩니다.',
+      }),
+    };
+  }
+
   // === Export implementations ===
 
   private exportJson(): ToolResult {
     const json = this.scene.export_json();
     return { success: true, type: 'json', data: json };
+  }
+
+  private exportSvg(): ToolResult {
+    const svg = this.scene.export_svg();
+    return { success: true, type: 'svg', data: svg };
   }
 
   /**

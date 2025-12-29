@@ -11,6 +11,7 @@ use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
 use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 use crate::primitives::parse_line_points;
 use crate::serializers::json::serialize_scene;
+use crate::serializers::svg::serialize_scene_svg;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SceneError {
@@ -264,6 +265,11 @@ impl Scene {
     /// Scene을 JSON으로 내보냅니다.
     pub fn export_json(&self) -> String {
         serialize_scene(&self.name, &self.entities)
+    }
+
+    /// Scene을 SVG로 내보냅니다.
+    pub fn export_svg(&self) -> String {
+        serialize_scene_svg(&self.entities)
     }
 
     /// 선분(Line) 도형을 생성합니다.
@@ -806,6 +812,236 @@ impl Scene {
 
         entity.style.fill = None;
         Ok(true)
+    }
+
+    // ========================================
+    // Transform Functions (Story 3.1~3.4)
+    // ========================================
+
+    /// Entity를 지정된 거리만큼 이동합니다.
+    ///
+    /// # Arguments
+    /// * `name` - 대상 Entity의 이름 (예: "left_arm")
+    /// * `dx` - x축 이동 거리
+    /// * `dy` - y축 이동 거리
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    pub fn translate(&mut self, name: &str, dx: f64, dy: f64) -> Result<bool, JsValue> {
+        let entity = match self.find_by_name_mut(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // 기존 값에 누적
+        entity.transform.translate[0] += dx;
+        entity.transform.translate[1] += dy;
+
+        Ok(true)
+    }
+
+    /// Entity를 지정된 각도만큼 회전합니다.
+    ///
+    /// # Arguments
+    /// * `name` - 대상 Entity의 이름 (예: "left_arm")
+    /// * `angle` - 회전 각도 (라디안, 양수 = 반시계방향)
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    pub fn rotate(&mut self, name: &str, angle: f64) -> Result<bool, JsValue> {
+        let entity = match self.find_by_name_mut(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // 기존 값에 누적
+        entity.transform.rotate += angle;
+
+        Ok(true)
+    }
+
+    /// Entity를 지정된 배율로 크기를 변경합니다.
+    ///
+    /// # Arguments
+    /// * `name` - 대상 Entity의 이름 (예: "left_arm")
+    /// * `sx` - x축 스케일 배율
+    /// * `sy` - y축 스케일 배율
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    pub fn scale(&mut self, name: &str, sx: f64, sy: f64) -> Result<bool, JsValue> {
+        let entity = match self.find_by_name_mut(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // 기존 값에 곱셈 누적
+        entity.transform.scale[0] *= sx;
+        entity.transform.scale[1] *= sy;
+
+        Ok(true)
+    }
+
+    /// Entity를 삭제합니다.
+    ///
+    /// # Arguments
+    /// * `name` - 삭제할 Entity의 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 삭제 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    pub fn delete(&mut self, name: &str) -> Result<bool, JsValue> {
+        let idx = self.entities.iter().position(|e| e.metadata.name == name);
+
+        match idx {
+            Some(i) => {
+                self.entities.remove(i);
+                Ok(true)
+            }
+            None => Ok(false),
+        }
+    }
+
+    // ========================================
+    // Scene Query Functions (Story 3.0-a)
+    // ========================================
+
+    /// Scene 내 모든 Entity의 이름과 타입을 반환합니다.
+    ///
+    /// # Returns
+    /// JSON 배열: [{"name": "head", "type": "Circle"}, ...]
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let list = scene.list_entities();
+    /// // [{"name":"wall","type":"Rect"},{"name":"door","type":"Arc"}]
+    /// ```
+    pub fn list_entities(&self) -> String {
+        let list: Vec<serde_json::Value> = self
+            .entities
+            .iter()
+            .map(|e| {
+                serde_json::json!({
+                    "name": e.metadata.name,
+                    "type": format!("{:?}", e.entity_type)
+                })
+            })
+            .collect();
+
+        serde_json::to_string(&list).unwrap_or_else(|_| "[]".to_string())
+    }
+
+    /// 이름으로 Entity를 조회하여 전체 JSON을 반환합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    ///
+    /// # Returns
+    /// * Some(JSON) - Entity가 존재하면 전체 JSON 반환
+    /// * None - Entity가 없으면 None
+    ///
+    /// # Examples
+    /// ```ignore
+    /// if let Some(json) = scene.get_entity("head") {
+    ///     // {"id":"...","entity_type":"Circle",...}
+    /// }
+    /// ```
+    pub fn get_entity(&self, name: &str) -> Option<String> {
+        self.find_by_name(name)
+            .map(|entity| serde_json::to_string(entity).unwrap_or_else(|_| "{}".to_string()))
+    }
+
+    /// Scene의 전체 정보를 반환합니다.
+    ///
+    /// # Returns
+    /// JSON 객체: {"name": "scene-name", "entity_count": 5, "bounds": {"min": [x,y], "max": [x,y]}}
+    /// bounds가 null이면 Scene이 비어있음
+    ///
+    /// # Examples
+    /// ```ignore
+    /// let info = scene.get_scene_info();
+    /// // {"name":"my-scene","entity_count":2,"bounds":{"min":[0,0],"max":[100,100]}}
+    /// ```
+    pub fn get_scene_info(&self) -> String {
+        let bounds = self.calculate_bounds();
+
+        let bounds_json = match bounds {
+            Some((min, max)) => serde_json::json!({
+                "min": min,
+                "max": max
+            }),
+            None => serde_json::Value::Null,
+        };
+
+        serde_json::to_string(&serde_json::json!({
+            "name": self.name,
+            "entity_count": self.entities.len(),
+            "bounds": bounds_json
+        }))
+        .unwrap_or_else(|_| "{}".to_string())
+    }
+}
+
+impl Scene {
+    /// Scene의 전체 bounding box를 계산합니다.
+    ///
+    /// # Returns
+    /// * Some((min, max)) - Entity가 있으면 [min_x, min_y], [max_x, max_y]
+    /// * None - Scene이 비어있으면 None
+    fn calculate_bounds(&self) -> Option<([f64; 2], [f64; 2])> {
+        if self.entities.is_empty() {
+            return None;
+        }
+
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        for entity in &self.entities {
+            let (entity_min, entity_max) = Self::geometry_bounds(&entity.geometry);
+
+            min_x = min_x.min(entity_min[0]);
+            min_y = min_y.min(entity_min[1]);
+            max_x = max_x.max(entity_max[0]);
+            max_y = max_y.max(entity_max[1]);
+        }
+
+        Some(([min_x, min_y], [max_x, max_y]))
+    }
+
+    /// Geometry의 bounding box를 계산합니다.
+    fn geometry_bounds(geometry: &Geometry) -> ([f64; 2], [f64; 2]) {
+        match geometry {
+            Geometry::Line { points } => {
+                let mut min_x = f64::INFINITY;
+                let mut min_y = f64::INFINITY;
+                let mut max_x = f64::NEG_INFINITY;
+                let mut max_y = f64::NEG_INFINITY;
+
+                for point in points {
+                    min_x = min_x.min(point[0]);
+                    min_y = min_y.min(point[1]);
+                    max_x = max_x.max(point[0]);
+                    max_y = max_y.max(point[1]);
+                }
+
+                ([min_x, min_y], [max_x, max_y])
+            }
+            Geometry::Circle { center, radius } => {
+                ([center[0] - radius, center[1] - radius], [center[0] + radius, center[1] + radius])
+            }
+            Geometry::Rect { origin, width, height } => {
+                ([origin[0], origin[1]], [origin[0] + width, origin[1] + height])
+            }
+            Geometry::Arc { center, radius, .. } => {
+                // Arc는 보수적으로 전체 원의 bounding box 사용
+                ([center[0] - radius, center[1] - radius], [center[0] + radius, center[1] + radius])
+            }
+        }
     }
 }
 
