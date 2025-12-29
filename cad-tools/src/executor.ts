@@ -417,19 +417,33 @@ export class CADExecutor {
     const error = this.validateInput(input, { name: 'string', description: 'string', rationale: 'string' });
     if (error) return { success: false, error: `request_tool: ${error}` };
 
-    const request = this.registry.requestTool({
+    const result = this.registry.requestTool({
       name: input.name as string,
       description: input.description as string,
       rationale: input.rationale as string,
       suggested_params: input.suggested_params as string[] | undefined,
     });
 
+    // 중복 요청인 경우
+    if ('status' in result && result.status === 'already_requested') {
+      return {
+        success: true,
+        type: 'request',
+        data: JSON.stringify({
+          request_id: result.existing.id,
+          status: 'already_requested',
+          message: '이미 동일한 도구 요청이 대기 중입니다.',
+        }),
+      };
+    }
+
+    // 새 요청 생성
     return {
       success: true,
       type: 'request',
       data: JSON.stringify({
-        request_id: request.id,
-        status: request.status,
+        request_id: result.id,
+        status: result.status,
         message: '도구 요청이 등록되었습니다. 개발자 검토 후 추가됩니다.',
       }),
     };

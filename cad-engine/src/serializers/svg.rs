@@ -103,11 +103,12 @@ fn style_to_svg(style: &Style) -> String {
     // Stroke (default: black, width 1)
     if let Some(stroke) = &style.stroke {
         let [r, g, b, a] = stroke.color;
+        // Clamp color values to prevent overflow (0.0 ~ 1.0 -> 0 ~ 255)
         let color = format!("rgba({},{},{},{})",
-            (r * 255.0) as u8,
-            (g * 255.0) as u8,
-            (b * 255.0) as u8,
-            a
+            (r.clamp(0.0, 1.0) * 255.0) as u8,
+            (g.clamp(0.0, 1.0) * 255.0) as u8,
+            (b.clamp(0.0, 1.0) * 255.0) as u8,
+            a.clamp(0.0, 1.0)
         );
         attrs.push(format!(r#"stroke="{}""#, color));
         attrs.push(format!(r#"stroke-width="{}""#, stroke.width));
@@ -119,11 +120,12 @@ fn style_to_svg(style: &Style) -> String {
     // Fill (default: none)
     if let Some(fill) = &style.fill {
         let [r, g, b, a] = fill.color;
+        // Clamp color values to prevent overflow (0.0 ~ 1.0 -> 0 ~ 255)
         let color = format!("rgba({},{},{},{})",
-            (r * 255.0) as u8,
-            (g * 255.0) as u8,
-            (b * 255.0) as u8,
-            a
+            (r.clamp(0.0, 1.0) * 255.0) as u8,
+            (g.clamp(0.0, 1.0) * 255.0) as u8,
+            (b.clamp(0.0, 1.0) * 255.0) as u8,
+            a.clamp(0.0, 1.0)
         );
         attrs.push(format!(r#"fill="{}""#, color));
     } else {

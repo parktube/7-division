@@ -114,6 +114,9 @@ export class ToolRegistry {
 
   /**
    * 유사 도구 이름 검색 (prefix/contains 매칭)
+   * - prefix: 검색어 앞 4글자로 시작하는 도구
+   * - contains: 검색어를 포함하는 도구
+   * - reverse: 도구 이름이 검색어에 포함되는 경우
    */
   findSimilar(name: string): string[] {
     const allTools = Object.keys(CAD_TOOLS);
@@ -125,20 +128,34 @@ export class ToolRegistry {
       return (
         toolLower.startsWith(prefix) ||
         toolLower.includes(searchTerm) ||
-        searchTerm.includes(toolLower.slice(0, -1))
+        searchTerm.includes(toolLower)
       );
     });
   }
 
   /**
    * 도구 요청 추가
+   * - 동일한 이름의 queued 요청이 이미 있으면 기존 요청 반환
    */
   requestTool(request: {
     name: string;
     description: string;
     rationale: string;
     suggested_params?: string[];
-  }): ToolRequest {
+  }): ToolRequest | { status: 'already_requested'; existing: ToolRequest } {
+    // 입력 검증
+    if (!request.name || !request.description || !request.rationale) {
+      throw new Error('name, description, rationale are required');
+    }
+
+    // 중복 요청 확인 (동일 이름의 queued 상태 요청)
+    const existingRequest = this.requests.find(
+      (r) => r.name === request.name && r.status === 'queued'
+    );
+    if (existingRequest) {
+      return { status: 'already_requested', existing: existingRequest };
+    }
+
     const newRequest: ToolRequest = {
       id: `req_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       name: request.name,
@@ -167,6 +184,7 @@ export class ToolRegistry {
 
   /**
    * 요청 파일 로드
+   * Note: readFileSync is acceptable for CLI tools (non-server context)
    */
   private loadRequests(): void {
     try {
@@ -174,8 +192,9 @@ export class ToolRegistry {
         const data = fs.readFileSync(this.requestsFilePath, 'utf-8');
         this.requests = JSON.parse(data);
       }
-    } catch {
+    } catch (error) {
       // 파일이 없거나 파싱 실패 시 빈 배열로 시작
+      console.error(`[ToolRegistry] Failed to load requests: ${error}`);
       this.requests = [];
     }
   }
@@ -185,9 +204,10 @@ export class ToolRegistry {
    */
   private saveRequests(): void {
     try {
-      fs.writeFileSync(this.requestsFilePath, JSON.stringify(this.requests, null, 2));
-    } catch {
-      // 저장 실패 시 무시 (로그는 선택적)
+      fs.writeFileSync(this.requestsFilePath, JSON.stringify(this.requests, null, 2) + '\n');
+    } catch (error) {
+      // 저장 실패 시 에러 로그
+      console.error(`[ToolRegistry] Failed to save requests: ${error}`);
     }
   }
 }

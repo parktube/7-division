@@ -27,6 +27,19 @@ const state = {
 
 let pollTimer = null;
 
+/**
+ * HTML 특수문자 이스케이프 (XSS 방지)
+ */
+function escapeHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function formatTime(date) {
   return date.toLocaleTimeString('en-US', {
     hour12: false,
@@ -423,9 +436,9 @@ async function fetchScene() {
           const timestamp = formatTime(new Date());
           operationHistory.push(scene.last_operation);
 
-          // Update log display
+          // Update log display (escaped to prevent XSS)
           if (operationLog) {
-            const logEntry = `<div style="margin-bottom: 4px;"><span style="color: var(--bg-muted);">${timestamp}</span> ${scene.last_operation}</div>`;
+            const logEntry = `<div style="margin-bottom: 4px;"><span style="color: var(--bg-muted);">${escapeHtml(timestamp)}</span> ${escapeHtml(scene.last_operation)}</div>`;
             operationLog.innerHTML += logEntry;
             operationLog.scrollTop = operationLog.scrollHeight;
           }
@@ -444,12 +457,12 @@ async function fetchScene() {
         }
       }
 
-      // Entity 목록 표시
+      // Entity 목록 표시 (escaped to prevent XSS)
       if (entityList && Array.isArray(scene.entities)) {
         const names = scene.entities
           .map(e => {
-            const name = e.metadata?.name || e.id?.slice(0, 8) || '?';
-            const type = e.entity_type || '?';
+            const name = escapeHtml(e.metadata?.name || e.id?.slice(0, 8) || '?');
+            const type = escapeHtml(e.entity_type || '?');
             return `<div><strong>${name}</strong> (${type})</div>`;
           })
           .join('');
