@@ -14,7 +14,8 @@ const sceneBounds = document.getElementById('scene-bounds');
 const entityList = document.getElementById('entity-list');
 const operationLog = document.getElementById('operation-log');
 
-// Operation history
+// Operation history (limited to prevent memory growth)
+const MAX_OPERATION_HISTORY = 100;
 const operationHistory = [];
 
 const state = {
@@ -430,11 +431,20 @@ async function fetchScene() {
       if (scene.last_operation) {
         lastOperation.textContent = `🤖 ${scene.last_operation}`;
 
-        // Add to history if new
+        // Add to history if new (with size limit to prevent memory growth)
         const lastInHistory = operationHistory[operationHistory.length - 1];
         if (lastInHistory !== scene.last_operation) {
           const timestamp = formatTime(new Date());
           operationHistory.push(scene.last_operation);
+
+          // Limit history size
+          if (operationHistory.length > MAX_OPERATION_HISTORY) {
+            operationHistory.shift();
+            // Remove oldest entry from DOM
+            if (operationLog && operationLog.firstChild) {
+              operationLog.removeChild(operationLog.firstChild);
+            }
+          }
 
           // Update log display (escaped to prevent XSS)
           if (operationLog) {

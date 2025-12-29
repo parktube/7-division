@@ -26,12 +26,25 @@ interface SceneState {
   entities: string[];
 }
 
+/** Entity from scene.json for replay */
+interface SceneEntity {
+  entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc';
+  geometry: {
+    Circle?: { center: [number, number]; radius: number };
+    Rect?: { origin: [number, number]; width: number; height: number };
+    Line?: { points: [number, number][] };
+    Arc?: { center: [number, number]; radius: number; start_angle: number; end_angle: number };
+  };
+  style?: unknown;
+  metadata?: { name?: string };
+}
+
 function loadState(): SceneState {
   if (existsSync(STATE_FILE)) {
     try {
       return JSON.parse(readFileSync(STATE_FILE, 'utf-8'));
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Failed to load state file:', err instanceof Error ? err.message : err);
     }
   }
   return { sceneName: 'cad-scene', entities: [] };
@@ -389,7 +402,7 @@ async function main(): Promise<void> {
 /**
  * Replay entity from saved scene
  */
-function replayEntity(executor: CADExecutor, entity: any): void {
+function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
   const { entity_type, geometry, style, metadata } = entity;
   const name = metadata?.name;
 
@@ -446,8 +459,9 @@ function replayEntity(executor: CADExecutor, entity: any): void {
         }
         break;
     }
-  } catch {
-    // Skip invalid entities
+  } catch (err) {
+    // Log but continue - don't fail entire replay for one bad entity
+    console.error('Failed to replay entity:', entity.metadata?.name, err instanceof Error ? err.message : err);
   }
 }
 

@@ -59,7 +59,7 @@ So that **추가 LLM API 호출 없이 CAD 도형을 그리고 수정할 수 있
 
 ### Architecture
 
-```
+```text
 Claude Code (LLM)
     ↓ Bash tool
 cad-cli.ts

@@ -61,7 +61,7 @@ So that **다음에 무엇을 해야 할지 더 나은 결정을 내릴 수 있�
 
 ### Domain Descriptions Format (AX Pattern)
 
-```
+```text
 📦 PRIMITIVES - 기본 도형 그리기
 
 📋 ACTIONS
