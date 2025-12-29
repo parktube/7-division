@@ -135,26 +135,26 @@ executor.exec('get_entity', { name: 'arc1' })
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: 타입 정의** (AC: #1, #2)
-  - [ ] 1.1: AngleUnit 타입 정의 ('degree' | 'radian')
-  - [ ] 1.2: Schema에 angle_unit 프로퍼티 추가 (draw_arc)
-  - [ ] 1.3: 향후 회전 도구에도 적용 가능하도록 설계
+- [x] **Task 1: 타입 정의** (AC: #1, #2)
+  - [x] 1.1: AngleUnit 타입 정의 (angle-utils.ts:6)
+  - [x] 1.2: Schema에 angle_unit 프로퍼티 추가 (schema.ts:126-127)
+  - [x] 1.3: 회전 도구에도 적용 (schema.ts:249-250, executor.ts:346-347)
 
-- [ ] **Task 2: 변환 유틸리티** (AC: #1, #2)
-  - [ ] 2.1: degToRad 함수 구현
-  - [ ] 2.2: radToDeg 함수 (역변환, 조회 시 필요)
-  - [ ] 2.3: normalizeAngle 함수 (단위 정규화)
+- [x] **Task 2: 변환 유틸리티** (AC: #1, #2)
+  - [x] 2.1: degToRad 함수 구현 (angle-utils.ts:11-13)
+  - [x] 2.2: radToDeg 함수 (angle-utils.ts:18-20)
+  - [x] 2.3: normalizeAngle 함수 (angle-utils.ts:28-33)
 
-- [ ] **Task 3: Executor 수정** (AC: #1, #2, #3)
-  - [ ] 3.1: draw_arc 핸들러에서 angle_unit 처리
-  - [ ] 3.2: 기본값 'radian' 유지 (하위 호환)
-  - [ ] 3.3: angle_unit='degree' 시 라디안 변환 후 WASM 호출
+- [x] **Task 3: Executor 수정** (AC: #1, #2, #3)
+  - [x] 3.1: draw_arc 핸들러에서 angle_unit 처리 (executor.ts:245-247)
+  - [x] 3.2: 기본값 'radian' 유지 (angle-utils.ts:30)
+  - [x] 3.3: angle_unit='degree' 시 라디안 변환 (executor.ts:246-247)
 
-- [ ] **Task 4: 테스트** (AC: #1~#5)
-  - [ ] 4.1: degree 입력 테스트 (angle_unit: 'degree')
-  - [ ] 4.2: radian 명시 테스트 (angle_unit: 'radian')
-  - [ ] 4.3: 기본값 테스트 (생략 시 radian)
-  - [ ] 4.4: 하위 호환성 테스트 (기존 코드 그대로 작동)
+- [x] **Task 4: 테스트** (AC: #1~#5)
+  - [x] 4.1: degree 입력 테스트 (angle-utils.test.ts, executor.test.ts:80-98)
+  - [x] 4.2: radian 명시 테스트 (executor.test.ts:100-116)
+  - [x] 4.3: 기본값 테스트 (angle-utils.test.ts)
+  - [x] 4.4: 하위 호환성 테스트 (executor.test.ts:65-78)
 
 - [ ] **Task 5: 예제에 degree 사용 예시 추가** (선택)
   - [ ] 5.1: 새 예제에서 angle_unit: 'degree' 사용 시연
