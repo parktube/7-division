@@ -1,6 +1,6 @@
 # Story 3.6: SVG Export 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

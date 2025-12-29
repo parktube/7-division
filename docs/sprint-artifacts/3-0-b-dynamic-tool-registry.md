@@ -1,6 +1,6 @@
 # Story 3.0-b: Dynamic Tool Registry (도구 동적 등록)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

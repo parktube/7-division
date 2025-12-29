@@ -1,6 +1,6 @@
 # Story 3.0-c: Angle Unit Support (각도 단위 지원)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

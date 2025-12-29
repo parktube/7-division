@@ -1,6 +1,6 @@
 # Story 3.2: Rotate 변환 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

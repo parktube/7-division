@@ -1,6 +1,6 @@
 # Story 3.4: Delete 기능 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

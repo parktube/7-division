@@ -1,6 +1,6 @@
 # Story 3.1: Translate 변환 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 

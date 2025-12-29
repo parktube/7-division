@@ -1,6 +1,6 @@
 # Story 3.3: Scale 변환 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
