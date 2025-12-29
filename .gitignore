@@ -56,3 +56,12 @@ cad-engine/*.svg
 
 # Claude Code
 CLAUDE.md
+
+# ===================
+# Test/Dev scripts (may reference API keys)
+# ===================
+cad-tools/*.ts
+!cad-tools/cad-cli.ts
+cad-tools/.cad-state.json
+viewer/scene.svg
+viewer/test-*.html
