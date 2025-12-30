@@ -1,6 +1,6 @@
 # Story 4.3: Group 자식 관리
 
-Status: backlog
+Status: drafted
 
 ## Story
 

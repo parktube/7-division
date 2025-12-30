@@ -1,6 +1,6 @@
 # Story 6.4: 채팅 UI 구현
 
-Status: backlog
+Status: drafted
 
 ## Story
 

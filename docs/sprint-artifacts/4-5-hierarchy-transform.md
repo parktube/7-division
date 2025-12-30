@@ -1,6 +1,6 @@
 # Story 4.5: 계층적 변환 구현
 
-Status: backlog
+Status: drafted
 
 ## Story
 
@@ -128,9 +128,17 @@ so that **어깨를 회전하면 팔 전체가 함께 회전한다**.
    5. Parent 변환과 합성
    ```
 
-2. **TRS 단순 합성 (MVP)**:
+2. **TRS 단순 합성 (MVP)** - ⚠️ 참고용 의사코드, 실제 렌더링은 Canvas 변환 스택 사용:
+
+   > **MVP 제약 사항**: 이 단순 합성은 부모가 회전하거나 비균등 스케일인 경우
+   > 자식의 translate 방향이 부정확해집니다. MVP에서는 **Canvas 2D 변환 스택**으로
+   > 정확한 계층적 변환을 처리합니다 (아래 참조).
+
    ```rust
+   // ⚠️ MVP에서는 사용하지 않음 - 정확한 변환은 Canvas 스택으로 처리
+   // Post-MVP에서 행렬 기반 변환 도입 시 참고
    fn compose_transforms(parent: &Transform, child: &Transform) -> Transform {
+       // 주의: 이 방식은 부모 회전 시 자식 위치가 부정확함
        Transform {
            translate: [
                parent.translate[0] + child.translate[0],
@@ -141,13 +149,13 @@ so that **어깨를 회전하면 팔 전체가 함께 회전한다**.
                parent.scale[0] * child.scale[0],
                parent.scale[1] * child.scale[1],
            ],
-           pivot: child.pivot, // 로컬 pivot 유지
+           pivot: child.pivot,
        }
    }
    ```
 
-   **한계점**: 부모가 회전/스케일되면 자식의 translate 방향도 회전해야 하지만,
-   MVP에서는 이 복잡도를 렌더러에서 Canvas 변환 스택으로 처리
+   **MVP 권장 방식**: Canvas 2D 변환 스택 사용 (아래 3번 참조)
+   **Post-MVP 권장**: 3x3 행렬 곱셈으로 정확한 변환 합성
 
 3. **Canvas 2D 렌더링 접근**:
    ```javascript

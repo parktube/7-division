@@ -1,6 +1,6 @@
 # Story 6.1: Electron 프로젝트 셋업
 
-Status: backlog
+Status: drafted
 
 ## Story
 

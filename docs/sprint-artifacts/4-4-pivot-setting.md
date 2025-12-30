@@ -1,6 +1,6 @@
 # Story 4.4: Pivot 설정 기능
 
-Status: backlog
+Status: drafted
 
 ## Story
 

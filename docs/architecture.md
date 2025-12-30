@@ -1265,7 +1265,11 @@ cad.remove_from_group(group_id: string, entity_id: string) -> boolean
 **Consequences**:
 - 그룹 중첩 지원 (팔 그룹 안에 upper_arm, lower_arm 그룹)
 - 렌더링 시 계층 순회 필요
-- 삭제 시 자식 처리 정책 필요 (함께 삭제 vs 독립화)
+
+**그룹 삭제 정책 (MVP)**:
+- `delete(group_id)` 호출 시: **자식들도 함께 삭제** (Cascade Delete)
+- 자식만 독립시키려면: 먼저 `ungroup(group_id)` → 그 후 `delete(group_id)`
+- 이유: 직관적 동작 + 구현 단순성. Post-MVP에서 옵션 추가 고려
 
 ---
 
@@ -1291,14 +1295,19 @@ cad.set_pivot(entity_id: string, px: number, py: number) -> boolean
 cad.rotate(entity_id: string, angle: number) -> boolean
 ```
 
-**렌더링 변환 순서**:
+**렌더링 변환 순서** (SRT: Scale → Rotate → Translate):
+
+> ⚠️ Scale은 Rotate/Translate 이전에 적용해야 의도한 결과를 얻습니다.
+
 ```
 1. translate(-pivot.x, -pivot.y)  // 피봇을 원점으로
-2. rotate(angle)                   // 원점 기준 회전
-3. translate(pivot.x, pivot.y)     // 피봇 위치 복원
-4. translate(dx, dy)               // 이동
-5. scale(sx, sy)                   // 스케일
+2. scale(sx, sy)                   // 스케일 (원점 기준)
+3. rotate(angle)                   // 회전 (원점 기준)
+4. translate(pivot.x, pivot.y)     // 피봇 위치 복원
+5. translate(dx, dy)               // 최종 이동
 ```
+
+행렬 곱셈 순서: `M = T(dx,dy) * T(pivot) * R(angle) * S(sx,sy) * T(-pivot)`
 
 ---
 
@@ -1476,6 +1485,12 @@ electron-app/
 - 구조적 정확성 (JSON) + 직관적 이해 (PNG) 결합
 - "이거 더 길게" 같은 요청에 "이거"를 시각적으로 이해
 
+**PNG 생성 최적화 전략**:
+- 매 턴마다 PNG 생성은 비용/지연 증가 → 조건부 생성
+- **MVP 전략**: Scene 변경 시에만 PNG 갱신 (dirty flag)
+- **대안**: LLM이 명시적으로 요청 시에만 생성 (`get_scene_preview`)
+- 캐싱: 동일 Scene 상태면 캐시된 PNG 재사용
+
 ---
 
 ### ADR-MVP-008: Dual-Architecture Strategy
@@ -1520,12 +1535,12 @@ electron-app/
 **Decision**: `CADExecutor` 인터페이스로 두 모드 통합
 
 ```typescript
-// 공통 인터페이스
+// 공통 인터페이스 (모든 메서드 비동기 - FileBasedExecutor의 파일 I/O 고려)
 interface CADExecutor {
     execute(cmd: string, params: object): Promise<ExecuteResult>;
-    getScene(): SceneData;
-    getSelection(): string[];
-    setSelection(ids: string[]): void;
+    getScene(): Promise<SceneData>;       // 비동기: 파일 읽기 또는 메모리
+    getSelection(): Promise<string[]>;    // 비동기: 파일 읽기 또는 메모리
+    setSelection(ids: string[]): Promise<void>;
 }
 
 // Mode A: File 기반 (CLI + Browser)
@@ -1534,15 +1549,20 @@ class FileBasedExecutor implements CADExecutor {
         // cad-cli.ts 호출 (child_process 또는 직접 import)
         // scene.json 자동 저장
     }
-    getScene() {
-        return JSON.parse(fs.readFileSync('scene.json'));
+    async getScene(): Promise<SceneData> {
+        const data = await fs.promises.readFile('scene.json', 'utf-8');
+        return JSON.parse(data);
     }
-    getSelection() {
-        return JSON.parse(fs.readFileSync('selection.json')).selected_ids;
+    async getSelection(): Promise<string[]> {
+        const data = await fs.promises.readFile('selection.json', 'utf-8');
+        return JSON.parse(data).selected_ids;
+    }
+    async setSelection(ids: string[]): Promise<void> {
+        await fs.promises.writeFile('selection.json', JSON.stringify({ selected_ids: ids }));
     }
 }
 
-// Mode B: Memory 기반 (Electron App)
+// Mode B: Memory 기반 (Electron App) - 동기 연산이지만 인터페이스 호환을 위해 Promise 반환
 class DirectExecutor implements CADExecutor {
     private scene: WasmScene;
     private selectedIds: string[] = [];
@@ -1551,11 +1571,14 @@ class DirectExecutor implements CADExecutor {
         // WASM 직접 호출
         this.scene[cmd](params);
     }
-    getScene() {
+    async getScene(): Promise<SceneData> {
         return JSON.parse(this.scene.export_json());
     }
-    getSelection() {
+    async getSelection(): Promise<string[]> {
         return this.selectedIds;  // 메모리에서 직접
+    }
+    async setSelection(ids: string[]): Promise<void> {
+        this.selectedIds = ids;
     }
 }
 ```

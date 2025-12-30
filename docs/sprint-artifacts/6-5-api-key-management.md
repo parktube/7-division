@@ -106,11 +106,24 @@ so that **매번 API 키를 입력하지 않아도 된다**.
 ### Technical Requirements
 
 1. **electron-store 사용 (암호화)**:
+
+   > ⚠️ **보안 주의**: `encryptionKey`를 하드코딩하면 안 됩니다.
+   > 머신별 고유 키 생성 또는 OS 키체인에서 마스터 키를 가져와야 합니다.
+
    ```typescript
    import Store from 'electron-store';
+   import { machineIdSync } from 'node-machine-id';
+   import crypto from 'crypto';
+
+   // 머신별 고유 암호화 키 생성 (하드코딩 금지!)
+   function getEncryptionKey(): string {
+       const machineId = machineIdSync();
+       // 머신 ID를 해시하여 암호화 키로 사용
+       return crypto.createHash('sha256').update(machineId).digest('hex').slice(0, 32);
+   }
 
    const store = new Store({
-       encryptionKey: 'your-encryption-key',  // 또는 머신별 키 생성
+       encryptionKey: getEncryptionKey(),
        schema: {
            apiKey: {
                type: 'string',
@@ -130,6 +143,8 @@ so that **매번 API 키를 입력하지 않아도 된다**.
        store.delete('apiKey');
    }
    ```
+
+   **추가 의존성**: `npm install node-machine-id`
 
 2. **keytar 사용 (OS 키체인) - 더 안전**:
    ```typescript
