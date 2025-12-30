@@ -369,6 +369,9 @@ function renderEntity(entity) {
     case 'Arc':
       renderArc(entity.geometry, entity.style);
       break;
+    case 'Group':
+      // Group은 자체 geometry가 없음 (자식들이 개별 렌더링)
+      break;
     default:
       console.warn('Unknown entity type:', entity.entity_type);
   }
