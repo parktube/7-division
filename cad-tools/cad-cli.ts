@@ -185,7 +185,8 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 
 💡 EXAMPLES
 - create_group '{"name":"left_arm","children":["upper_arm","lower_arm","hand"]}'
-- create_group '{"name":"skeleton","children":["head","torso","left_arm","right_arm"]}'`
+- create_group '{"name":"skeleton","children":["head","torso","left_arm","right_arm"]}'
+- ungroup '{"name":"left_arm"}' → 그룹 해제, 자식들은 독립 엔티티로`
 };
 
 function showDomains(): void {
@@ -230,6 +231,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   export_json: ['export_svg로 SVG도 내보내기'],
   export_svg: ['작업 완료!'],
   create_group: ['translate로 그룹 전체 이동', 'rotate로 그룹 전체 회전', 'list_entities로 확인'],
+  ungroup: ['list_entities로 해제 결과 확인', 'create_group으로 다시 그룹화'],
 };
 
 function getActionHints(command: string): string[] {
@@ -296,6 +298,7 @@ Commands (transforms):
 
 Commands (group):
   create_group  {"name":"...", "children":["entity1","entity2",...]}
+  ungroup       {"name":"..."} - 그룹 해제 (자식들은 독립 엔티티로)
 
 Commands (query):
   list_entities

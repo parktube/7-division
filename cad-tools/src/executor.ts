@@ -156,6 +156,9 @@ export class CADExecutor {
         case 'create_group':
           return this.createGroup(input);
 
+        case 'ungroup':
+          return this.ungroupEntity(input);
+
         // === registry ===
         case 'list_domains':
           return this.listDomainsHandler();
@@ -397,6 +400,19 @@ export class CADExecutor {
 
     const result = this.scene.create_group(name, childrenJson);
     return { success: true, entity: result, type: 'group' };
+  }
+
+  private ungroupEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `ungroup: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.ungroup(name);
+
+    if (!result) {
+      return { success: false, error: `Group not found: ${name}` };
+    }
+    return { success: true, entity: name };
   }
 
   // === Registry implementations ===

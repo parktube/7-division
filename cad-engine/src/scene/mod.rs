@@ -17,6 +17,7 @@ use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 enum SceneError {
     DuplicateEntityName(String, String), // (fn_name, entity_name)
     InvalidInput(String),
+    NotAGroup(String), // entity_name
 }
 
 impl fmt::Display for SceneError {
@@ -31,6 +32,9 @@ impl fmt::Display for SceneError {
             }
             SceneError::InvalidInput(msg) => {
                 write!(f, "{}", msg)
+            }
+            SceneError::NotAGroup(name) => {
+                write!(f, "[ungroup] not_a_group: Entity '{}' is not a Group", name)
             }
         }
     }
@@ -1061,6 +1065,57 @@ impl Scene {
         let children_names: Vec<String> = serde_json::from_str(children_json).unwrap_or_default();
 
         self.create_group_internal(name, children_names)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 내부용 그룹 해제 함수 (테스트용)
+    ///
+    /// # Returns
+    /// * Ok(true) - 그룹 해제 성공
+    /// * Ok(false) - name이 존재하지 않음
+    /// * Err - name이 Group 타입이 아님
+    fn ungroup_internal(&mut self, name: &str) -> Result<bool, SceneError> {
+        // Entity 존재 여부 확인
+        let entity = match self.find_by_name(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // Group 타입 확인
+        if !matches!(entity.entity_type, EntityType::Group) {
+            return Err(SceneError::NotAGroup(name.to_string()));
+        }
+
+        // children 목록 복사 (borrow 문제 회피)
+        let children = entity.children.clone();
+
+        // 각 자식의 parent_id를 None으로 설정
+        for child_name in &children {
+            if let Some(child) = self.find_by_name_mut(child_name) {
+                child.parent_id = None;
+            }
+        }
+
+        // 그룹 Entity 삭제
+        self.entities.retain(|e| e.metadata.name != name);
+
+        self.last_operation = Some(format!("ungroup({})", name));
+        Ok(true)
+    }
+
+    /// 그룹을 해제하여 자식들을 독립 엔티티로 만듭니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `name` - 해제할 그룹 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 그룹 해제 성공
+    /// * Ok(false) - name이 존재하지 않음
+    ///
+    /// # Errors
+    /// * name이 Group 타입이 아니면 에러
+    pub fn ungroup(&mut self, name: &str) -> Result<bool, JsValue> {
+        self.ungroup_internal(name)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -2252,5 +2307,157 @@ mod tests {
             })
             .expect("head should exist");
         assert_eq!(head.get("parent_id").unwrap().as_str(), Some("skeleton"));
+    }
+
+    // === ungroup 테스트 (Story 4.2) ===
+
+    #[test]
+    fn test_ungroup_basic() {
+        // AC1: 기본 그룹 해제
+        let mut scene = Scene::new("test");
+        scene
+            .add_circle_internal("upper_arm", 0.0, 0.0, 10.0)
+            .unwrap();
+        scene
+            .add_circle_internal("lower_arm", 0.0, -30.0, 10.0)
+            .unwrap();
+        scene.add_circle_internal("hand", 0.0, -60.0, 5.0).unwrap();
+        scene
+            .create_group_internal(
+                "left_arm",
+                vec![
+                    "upper_arm".to_string(),
+                    "lower_arm".to_string(),
+                    "hand".to_string(),
+                ],
+            )
+            .unwrap();
+
+        // 그룹 해제
+        let result = scene.ungroup_internal("left_arm");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // 그룹이 삭제됨
+        assert!(scene.find_by_name("left_arm").is_none());
+
+        // 자식들은 여전히 존재하고 parent_id가 None
+        let upper_arm = scene.find_by_name("upper_arm").unwrap();
+        assert_eq!(upper_arm.parent_id, None);
+
+        let lower_arm = scene.find_by_name("lower_arm").unwrap();
+        assert_eq!(lower_arm.parent_id, None);
+
+        let hand = scene.find_by_name("hand").unwrap();
+        assert_eq!(hand.parent_id, None);
+    }
+
+    #[test]
+    fn test_ungroup_not_found() {
+        // AC2: 존재하지 않는 그룹 ID
+        let mut scene = Scene::new("test");
+
+        let result = scene.ungroup_internal("nonexistent");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_ungroup_not_a_group() {
+        // AC3: 그룹이 아닌 Entity에 호출
+        let mut scene = Scene::new("test");
+        scene
+            .add_line_internal("my_line", vec![0.0, 0.0, 100.0, 100.0])
+            .unwrap();
+
+        let result = scene.ungroup_internal("my_line");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, SceneError::NotAGroup(..)));
+        assert_eq!(
+            err.to_string(),
+            "[ungroup] not_a_group: Entity 'my_line' is not a Group"
+        );
+    }
+
+    #[test]
+    fn test_ungroup_nested() {
+        // AC4: 중첩 그룹 해제 (부모 그룹만 해제)
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("elbow", 0.0, 0.0, 5.0).unwrap();
+        scene.add_circle_internal("wrist", 0.0, -20.0, 5.0).unwrap();
+        scene
+            .create_group_internal("forearm", vec!["elbow".to_string(), "wrist".to_string()])
+            .unwrap();
+
+        scene
+            .add_circle_internal("shoulder", 0.0, 30.0, 10.0)
+            .unwrap();
+        scene
+            .create_group_internal("arm", vec!["shoulder".to_string(), "forearm".to_string()])
+            .unwrap();
+
+        // arm 그룹만 해제
+        let result = scene.ungroup_internal("arm");
+        assert!(result.is_ok());
+
+        // arm 그룹은 삭제됨
+        assert!(scene.find_by_name("arm").is_none());
+
+        // forearm 그룹은 독립 엔티티로 유지 (parent_id = None)
+        let forearm = scene.find_by_name("forearm").unwrap();
+        assert_eq!(forearm.parent_id, None);
+        // forearm의 자식들은 여전히 forearm에 속함
+        assert_eq!(forearm.children.len(), 2);
+        assert!(forearm.children.contains(&"elbow".to_string()));
+
+        // elbow는 여전히 forearm에 속함
+        let elbow = scene.find_by_name("elbow").unwrap();
+        assert_eq!(elbow.parent_id, Some("forearm".to_string()));
+    }
+
+    #[test]
+    fn test_ungroup_empty_group() {
+        // AC5: 빈 그룹 해제
+        let mut scene = Scene::new("test");
+        scene.create_group_internal("empty_group", vec![]).unwrap();
+
+        let result = scene.ungroup_internal("empty_group");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // 빈 그룹이 삭제됨
+        assert!(scene.find_by_name("empty_group").is_none());
+    }
+
+    #[test]
+    fn test_ungroup_json_serialization() {
+        // AC7: export_json 반영
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("head", 0.0, 100.0, 10.0).unwrap();
+        scene
+            .create_group_internal("skeleton", vec!["head".to_string()])
+            .unwrap();
+
+        // 그룹 해제
+        scene.ungroup_internal("skeleton").unwrap();
+
+        let json = scene.export_json();
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+
+        let entities = value.get("entities").unwrap().as_array().unwrap();
+        // 그룹이 삭제되어 1개만 남음
+        assert_eq!(entities.len(), 1);
+
+        // head만 존재하고 parent_id가 null
+        let head = &entities[0];
+        assert_eq!(
+            head.get("metadata")
+                .and_then(|m| m.get("name"))
+                .and_then(|n| n.as_str()),
+            Some("head")
+        );
+        // parent_id가 None이면 JSON에서 생략됨 (skip_serializing_if)
+        assert!(head.get("parent_id").is_none() || head.get("parent_id").unwrap().is_null());
     }
 }
