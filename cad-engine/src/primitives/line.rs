@@ -23,7 +23,7 @@ pub fn parse_line_points(coords: Vec<f64>) -> Result<Vec<[f64; 2]>, String> {
 
     // 홀수일 경우 마지막 좌표 무시 (AC3: 관대한 입력 보정)
     // 먼저 trim하여 유효한 좌표만 남김
-    let valid_len = if coords.len() % 2 != 0 {
+    let valid_len = if !coords.len().is_multiple_of(2) {
         coords.len().saturating_sub(1)
     } else {
         coords.len()
