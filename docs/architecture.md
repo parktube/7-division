@@ -5,12 +5,12 @@
 
 ---
 
-## Tech Stack (Phase 1 확정)
+## Tech Stack (MVP 확정)
 
-> **최종 업데이트: 2025-12-17** - Phase 1 기준 기술 스택 확정
-> Phase 2 이후 마이그레이션은 별도 검토
+> **최종 업데이트: 2025-12-30** - MVP 기준 기술 스택 확정
+> Post-MVP: wgpu 마이그레이션 (Three.js 건너뜀), MAMA Integration, ActionHints 확장
 
-### Phase 1 Tech Stack Summary
+### MVP Tech Stack Summary
 
 | 컴포넌트 | 기술 | 버전 | 비고 |
 |---------|------|------|------|
@@ -18,9 +18,21 @@
 | **WASM 빌드** | wasm-pack | 0.13.1 | [drager fork](https://github.com/drager/wasm-pack) |
 | **WASM 바인딩** | wasm-bindgen | 0.2.92 | 버전 고정 |
 | **런타임** | Node.js | 22.x LTS | Maintenance LTS |
-| **뷰어** | HTML Canvas 2D | - | 가장 단순 |
-| **빌드 도구** | 없음 (정적 서버) | - | Phase 1 단순화 |
+| **뷰어** | HTML Canvas 2D | - | Selection UI 포함 |
+| **데스크톱** | Electron | 33.x | WASM + Viewer (Claude Code 통합) |
+| **빌드 도구** | Vite | 6.x | Electron 번들링 |
 | **테스트** | Vitest | 3.x | 또는 Jest |
+
+### MVP 기능 범위
+
+| 기능 | 설명 |
+|------|------|
+| **기초 도형** | line, circle, rect, arc + style |
+| **변환** | translate, rotate, scale, delete |
+| **그룹화** | create_group, ungroup, add/remove |
+| **피봇** | set_pivot, hierarchy transform |
+| **Selection UI** | 클릭 선택, 선택 상태 표시 |
+| **Electron 앱** | WASM + Viewer + Claude Code 통합 |
 
 ---
 
@@ -95,15 +107,11 @@
 
 > **결정**: Canvas 2D - Phase 1 단순화
 
-#### Phase 2+ 뷰어: Three.js (참고)
+#### Post-MVP 뷰어: wgpu (참고)
 
-| 옵션 | 버전 | 장점 | 단점 |
-|------|------|------|------|
-| A | r175 | 안정성 검증됨 | 몇 달 전 버전 |
-| B | r182 | **현재 최신** (2025-12-11 릴리즈) | 최신이라 이슈 가능성 |
-
-> Phase 2 착수 시 결정 (Phase 1에서는 불필요)
-> 참고: [Three.js Releases](https://github.com/mrdoob/three.js/releases)
+> Three.js 건너뛰고 wgpu로 직행 결정 (2025-12-30)
+> Canvas 2D → wgpu 마이그레이션으로 3D 확장 및 성능 최적화
+> 참고: [wgpu Releases](https://github.com/gfx-rs/wgpu/releases)
 
 #### 빌드 도구 (Vite)
 
@@ -185,11 +193,11 @@
                                      ▼
 ┌─────────────────────────────────────────────────────────┐
 │                    Browser Viewer                        │
-│          (Phase 1: Canvas 2D / Phase 2+: Three.js)      │
+│          (MVP: Canvas 2D / Post-MVP: wgpu)              │
 ├─────────────────────────────────────────────────────────┤
 │    ┌─────────────┐     ┌─────────────────────────┐     │
 │    │   Renderer  │     │   Selection UI          │     │
-│    │   (2D)      │     │   (Phase 3)             │     │
+│    │   (2D)      │     │   (MVP)                 │     │
 │    └─────────────┘     └─────────────────────────┘     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -293,9 +301,9 @@ viewer/  (planned)
 
 ---
 
-## Data Flow
+## Data Flow (MVP)
 
-### Phase 1: 말하기만 (최소 검증)
+### Step 1: 말하기 - 스켈레톤 생성
 
 ```
 1. User → Claude Code: "사람 스켈레톤을 그려줘"
@@ -305,24 +313,25 @@ viewer/  (planned)
 5. Browser → User: Canvas 2D 렌더링
 ```
 
-### Phase 2: 도메인 확장 (여전히 말하기만)
+### Step 2: 말하기 - 포즈 변경 (Group + Pivot)
 
 ```
 1. User → Claude Code: "팔을 구부린 포즈로 바꿔줘"
-2. Claude Code: 그룹화된 엔티티 인식, 관절 기준 계산
+2. Claude Code: 그룹화된 엔티티 인식, Pivot 기준 계산
 3. Claude Code → WASM: cad.rotate(), cad.translate() 조합
 4. WASM → File: scene.json 업데이트
-5. Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
+5. Browser: Canvas 2D 렌더링 갱신
 ```
 
-### Phase 3: 가리키기 + 말하기
+### Step 3: 가리키기 + 말하기 (Selection UI)
 
 ```
 1. User → Browser: [클릭] 객체 선택
-2. Browser → Claude Code: { id: "left_arm", bounds: {...} }
+2. Browser → File: selection.json 저장
 3. User → Claude Code: "이거 더 길게"
-4. Claude Code → WASM: cad.scale("left_arm", 1.2)
-5. WASM → File → Browser: 업데이트
+4. Claude Code: selection.json 읽기 → 대상 파악
+5. Claude Code → WASM: cad.scale("left_arm", 1.2)
+6. WASM → File → Browser: 업데이트
 ```
 
 ---
@@ -349,11 +358,13 @@ viewer/  (planned)
 ```
 
 **원칙**:
+
 - **작업 중**: WASM 메모리에서 빠르게 처리
 - **저장 시점**: `export_json()` 명시적 호출 (또는 자동 저장 with throttle)
 - **세션 종료**: 메모리 소실 → 파일로 복원 가능
 
 **장점**:
+
 - 파일 I/O 최소화 → 속도 향상
 - 중간 상태는 메모리에만 존재 → 깔끔
 - Phase 1 scope에 적합한 단순함
@@ -384,6 +395,7 @@ viewer/  (planned)
 | **Export** | DXF, SVG, STL | 외부 호환 |
 
 **왜 분리하는가?**
+
 - JSON은 CAD에 최적이 아님 (부동소수점 정밀도, 크기)
 - LLM은 텍스트 기반 포맷이 유리
 - 저장용과 뷰어용의 요구사항이 다름
@@ -556,6 +568,7 @@ exec("draw_circle", { name: "head", x: 0, y: 100, radius: 20 })
 ```
 
 **컨텍스트 비용 비교**:
+
 - 전체 .d.ts 파일: ~2000+ 토큰
 - Progressive Exposure: ~110 토큰 (필요한 도구만)
 
@@ -840,19 +853,17 @@ if (!moved) console.log(`${id} not found, skipped translate`);
 
 > **리서치 기반 (2025-12-16)**: Phase별 점진적 복잡도 증가 전략
 >
-> **Phase 1: HTML Canvas 2D (JS)** - 개념 검증에 집중, 구현 부담 최소화
-> **Phase 2: Three.js** - 3D 준비, 마이그레이션 비용 감수
-> **Phase 3+: wgpu 검토** - 성능 필요 시 도입
+> **MVP: HTML Canvas 2D (JS)** - 개념 검증에 집중, 구현 부담 최소화
+> **Post-MVP: wgpu** - 3D 확장, 성능 최적화 (Three.js 건너뜀)
 
-#### Phase별 렌더러 전략
+#### 렌더러 전략 (MVP vs Post-MVP)
 
-| Phase | 렌더러 | 이유 | 트레이드오프 |
-|-------|--------|------|-------------|
-| **Phase 1** | HTML Canvas 2D | 가장 단순, 빠른 검증 | 3D 미지원 |
-| **Phase 2** | Three.js | 3D 준비, 성숙한 생태계 | JSON 변환 오버헤드 |
-| **Phase 3+** | wgpu (검토) | 성능 최적화 필요 시 | 구현 비용 높음 |
+| 단계 | 렌더러 | 이유 | 트레이드오프 |
+|------|--------|------|-------------|
+| **MVP** | HTML Canvas 2D | 가장 단순, 빠른 검증 | 3D 미지원 |
+| **Post-MVP** | wgpu | 3D 확장, 성능 최적화, 단일 WASM | 구현 비용 높음 |
 
-#### Phase 1: HTML Canvas 2D (권장)
+#### MVP: HTML Canvas 2D (현재)
 
 ```
 ┌──────────────┐    JSON     ┌──────────────┐
@@ -866,6 +877,7 @@ if (!moved) console.log(`${id} not found, skipped translate`);
 ```
 
 **구현 예시 (Phase 1)**:
+
 ```javascript
 // viewer/src/renderer.js
 const canvas = document.getElementById('canvas');
@@ -898,19 +910,9 @@ function render(scene) {
 }
 ```
 
-#### Phase 2+: Three.js
+#### Post-MVP: wgpu
 
-```
-┌──────────────┐    JSON     ┌──────────────┐
-│ CAD Engine   │ ──────────▶ │  Three.js    │
-│ (Rust/WASM)  │   파일 I/O   │  (JS)        │
-└──────────────┘             └──────────────┘
-     ✓ 3D 준비 완료
-     ✓ 풍부한 생태계
-     ⚠️ 두 개의 런타임
-```
-
-#### Phase 3+: wgpu (옵션)
+> Three.js 건너뛰고 wgpu로 직행 (2025-12-30 결정)
 
 성능 병목이 발생하거나 대규모 모델 처리가 필요할 때 검토:
 
@@ -982,6 +984,7 @@ function render(scene) {
 | **4+** | NURBS/Spline | - | ⚠️ 제한적 |
 
 **C++ CGAL 대비 부족한 영역** (Phase 4+ 해당):
+
 - 3D Boolean operations
 - NURBS/B-Spline 곡면
 - 고급 Mesh processing
@@ -994,11 +997,13 @@ function render(scene) {
 > **출처**: [The state of realtime graphics in Rust (Feb 2025)](https://valerioviperino.me/the-state-of-realtime-graphics-in-rust-feb-2025/)
 
 **현황**:
+
 - wgpu v22가 첫 "v1" 릴리스 (2024-07)
 - v24.0.1 (2025-01) 현재도 "moving fast and breaking things" 단계
 - 다수 프레임워크 (ggez, nannou, comfy) 유지보수 중단 또는 지연
 
 **완화 전략**:
+
 1. **버전 고정**: `wgpu = "=24.0"` 으로 특정 버전 고정
 2. **추상화 레이어**: CADRenderer trait로 wgpu 직접 의존성 격리
 3. **의존성 최소화**: wgpu 핵심 기능만 사용, 고수준 래퍼 피함
@@ -1034,6 +1039,7 @@ glyphon = "0.9"     # 안정적
 #### 마이그레이션 비용 허용
 
 Phase 1 → Phase 2 마이그레이션:
+
 - Canvas 2D → Three.js로 렌더러 교체
 - scene.json 포맷은 동일 유지
 - CAD 엔진 변경 없음
@@ -1044,6 +1050,7 @@ Phase 1 → Phase 2 마이그레이션:
 #### wgpu 도입 시점 (Phase 3+)
 
 wgpu를 검토해야 하는 신호:
+
 - Three.js에서 렌더링 병목 발생
 - 대규모 모델 (수만 개 도형) 처리 필요
 - CAD 엔진과 렌더러 간 JSON 변환 오버헤드 문제
@@ -1157,57 +1164,539 @@ cd viewer && npm run dev
 
 ---
 
-## Future Extensions
+## MVP Technical Risks & Considerations
 
-### Phase 2: 도메인 확장 (그룹화, ActionHints)
+> **2025-12-30 추가**: Epic 4, 5, 6 구현 전 기술적 검토 사항
 
-> Phase 1 도구에 그룹화, 레이어, ActionHints 추가.
-> 여전히 "말하기만" 인터페이스 유지.
+### 리스크 요약
 
-**추가 API**:
-```typescript
-// 그룹화
-cad.create_group(name: string, entity_ids: string[]) -> string
-cad.ungroup(group_id: string)
+| Epic | 구현 난이도 | 리스크 수준 | 핵심 고려사항 |
+|------|------------|------------|--------------|
+| Epic 4 (Group & Pivot) | 보통 | 🟡 낮음 | Transform 구조를 행렬 기반으로 확장 검토 |
+| Epic 5 (Selection UI) | 보통 | 🟡 중간 | selection.json 외에 빠른 피드백을 위한 UI 즉시 반영 로직 필요 |
+| Epic 6 (Electron 앱) | 중간 | 🟢 낮음 | Claude Code 통합으로 범위 축소 |
 
-// 레이어
-cad.create_layer(name: string) -> string
-cad.set_layer(entity_id: string, layer_id: string)
+### Epic 4: Transform Matrix 검토
 
-// ActionHints (응답에 포함)
-interface ActionHints {
-    recommended: { action: string, reason: string }[];
-    warnings?: string[];
+**현재 구조** (`cad-engine/src/scene/entity.rs`):
+
+```rust
+pub struct Transform {
+    pub translate: [f64; 2],
+    pub rotate: f64,
+    pub scale: [f64; 2],
 }
 ```
 
-### Phase 3: Selection UI
+**문제점**: 계층적 변환 시 부모의 회전+스케일이 자식에게 전파될 때 변환 순서가 복잡해짐
 
-> **역방향 통신 필요**: "브라우저 선택 → Claude Code" 방향은 파일 polling만으로 불가능합니다.
-> Phase 3에서는 다음 중 하나가 필요합니다:
-> - 로컬 서버 + WebSocket
-> - 이벤트 파일 큐 (브라우저가 파일에 쓰고, Claude Code가 읽음)
-> - Vite HMR WebSocket 활용
+**권장 방안**:
 
-```typescript
-interface SelectionEvent {
-    id: string;
-    type: "line" | "circle" | "rect" | ...;
-    bounds: { x, y, width, height };
-    screenPosition: { x, y };
+- **Option A**: 현재 TRS 구조 유지, 렌더러에서 월드 변환 계산 시 순서 고려 (MVP 권장)
+- **Option B**: Matrix3x3 도입으로 변환 합성 단순화 (Post-MVP)
+
+### Epic 5: 폴링 지연 완화
+
+**문제점**: 클릭 후 Claude 인지까지 최대 500ms 지연
+
+**완화 방안**:
+
+1. UI에서 즉시 하이라이트 표시 (사용자 피드백 즉시)
+2. Claude가 selection.json 폴링으로 비동기 인지
+3. 필요 시 폴링 간격 단축 (250ms) 검토
+
+### Epic 6: Claude Code 통합 아키텍처
+
+> **2025-12-30 업데이트**: PR #12 논의 결과, 자체 채팅 UI 대신 Claude Code 통합 방향으로 결정.
+
+**결정**: 자체 채팅 UI/API 연동 대신 **Claude Code를 AI 인터페이스로 사용**
+
+```
+┌─ Claude Code (터미널) ──────────────────────────────────┐
+│                                                          │
+│  사용자 입력 → Claude LLM → Bash 도구 호출               │
+│                    ↓                                     │
+│              cad-cli.ts 실행                             │
+│                    ↓                                     │
+│              WASM 엔진 (Node.js)                         │
+│                    ↓                                     │
+│              scene.json 저장                             │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+           │ File System
+           ▼
+┌─ Browser Viewer ────────────────────────────────────────┐
+│                                                          │
+│  500ms polling → scene.json 로드 → Canvas 렌더링        │
+│                                                          │
+└──────────────────────────────────────────────────────────┘
+```
+
+**이유**:
+
+- Claude Code가 API 키, 스트리밍, 도구 실행 등 모든 복잡한 로직 처리
+- CLAUDE.md에 cad-cli.ts 사용법 문서화로 즉시 사용 가능
+- 개발 비용 대폭 절감 (채팅 UI, API 연동 구현 불필요)
+
+**삭제된 범위**:
+
+- ~~채팅 UI 컴포넌트~~
+- ~~Claude API 직접 호출~~
+- ~~API 키 관리 (electron-store/keytar)~~
+
+**참조**: [PR #12 parktube 코멘트](https://github.com/parktube/7-division/pull/12)
+
+---
+
+## MVP Architecture Decisions
+
+> **2025-12-30 업데이트**: 완전한 AI-Native CAD 경험을 위한 MVP. 그룹화, 피봇, Selection UI, Electron 앱 포함.
+> Post-MVP: wgpu 마이그레이션, MAMA Integration, ActionHints 확장
+
+### ADR-MVP-001: Group System 설계
+
+**Context**: 스켈레톤 포즈 변경을 위해 팔/다리 등을 그룹으로 관리해야 함
+
+**Decision**: Entity 타입에 Group 추가, parent_id 필드로 계층 구조 표현
+
+```rust
+// Entity 확장
+pub enum EntityType {
+    Line, Circle, Rect, Arc,
+    Group,  // 자식 엔티티를 포함하는 그룹
 }
 
-// Raycasting으로 객체 선택
-onClick(event) {
-    const intersects = raycaster.intersectObjects(scene.children);
-    if (intersects.length > 0) {
-        const selected = intersects[0].object;
-        emitSelectionEvent(selected);
+pub struct Entity {
+    pub id: String,
+    pub name: String,
+    pub entity_type: EntityType,
+    pub parent_id: Option<String>,  // 소속 그룹 ID
+    pub children: Vec<String>,       // Group인 경우 자식 ID 목록
+    // ...
+}
+```
+
+**API**:
+
+```typescript
+cad.create_group(name: string, children: string[]) -> string
+cad.ungroup(group_id: string) -> boolean
+cad.add_to_group(group_id: string, entity_id: string) -> boolean
+cad.remove_from_group(group_id: string, entity_id: string) -> boolean
+```
+
+**Consequences**:
+
+- 그룹 중첩 지원 (팔 그룹 안에 upper_arm, lower_arm 그룹)
+- 렌더링 시 계층 순회 필요
+
+**그룹 삭제 정책 (MVP)**:
+
+- `delete(group_id)` 호출 시: **자식들도 함께 삭제** (Cascade Delete)
+- 자식만 독립시키려면: 먼저 `ungroup(group_id)` → 그 후 `delete(group_id)`
+- 이유: 직관적 동작 + 구현 단순성. Post-MVP에서 옵션 추가 고려
+
+---
+
+### ADR-MVP-002: Pivot System 설계
+
+**Context**: 팔꿈치를 구부리려면 lower_arm이 elbow 위치를 기준으로 회전해야 함
+
+**Decision**: Entity에 pivot 필드 추가, rotate 시 pivot 기준 회전
+
+```rust
+pub struct Transform {
+    pub translate: [f64; 2],
+    pub rotate: f64,
+    pub scale: [f64; 2],
+    pub pivot: [f64; 2],  // 회전 중심점 (기본값: [0, 0] = 엔티티 로컬 원점)
+}
+```
+
+**API**:
+
+```typescript
+cad.set_pivot(entity_id: string, px: number, py: number) -> boolean
+// rotate는 기존 API 유지, 내부적으로 pivot 적용
+cad.rotate(entity_id: string, angle: number) -> boolean
+```
+
+**렌더링 변환 순서** (SRT: Scale → Rotate → Translate):
+
+> ⚠️ Scale은 Rotate/Translate 이전에 적용해야 의도한 결과를 얻습니다.
+
+```
+1. translate(-pivot.x, -pivot.y)  // 피봇을 원점으로
+2. scale(sx, sy)                   // 스케일 (원점 기준)
+3. rotate(angle)                   // 회전 (원점 기준)
+4. translate(pivot.x, pivot.y)     // 피봇 위치 복원
+5. translate(dx, dy)               // 최종 이동
+```
+
+행렬 곱셈 순서: `M = T(dx,dy) * T(pivot) * R(angle) * S(sx,sy) * T(-pivot)`
+
+---
+
+### ADR-MVP-003: Hierarchy Transform 설계
+
+**Context**: 부모 그룹을 이동하면 자식들도 함께 이동해야 함
+
+**Decision**: 렌더링/Export 시 부모 → 자식 순으로 변환 행렬 누적
+
+```typescript
+// 렌더링 시 변환 계산
+function getWorldTransform(entity: Entity, scene: Scene): Matrix {
+    if (entity.parent_id) {
+        const parent = scene.entities.get(entity.parent_id);
+        return multiply(getWorldTransform(parent), entity.transform);
+    }
+    return entity.transform;
+}
+```
+
+**Consequences**:
+
+- WASM에서 로컬 변환만 저장, 월드 변환은 렌더러/Export 시 계산
+- 성능: 변환 행렬 캐싱 고려 (MVP에서는 매 프레임 계산)
+
+---
+
+### ADR-MVP-004: Selection UI 설계
+
+**Context**: "이거 더 길게" 같은 요청을 위해 도형 선택 필요
+
+**Decision**: Canvas 클릭 → Hit Test → 선택 상태 저장 → 파일로 AI에 전달
+
+```typescript
+// Selection 상태 (viewer가 관리)
+interface SelectionState {
+    selected_ids: string[];
+    last_selected: string | null;
+}
+
+// viewer/selection.json에 저장 (AI가 polling)
+{
+    "selected_ids": ["left_arm"],
+    "last_selected": "left_arm",
+    "timestamp": 1735500000000
+}
+```
+
+**Hit Test 방식**:
+
+- Canvas 2D: 바운딩 박스 검사 (MVP, 충분)
+- Post-MVP wgpu: Raycasting
+
+**선택 표시**:
+
+- 선택된 도형에 하이라이트 색상 오버레이
+- 바운딩 박스 점선 표시
+
+---
+
+### ADR-MVP-005: Electron 앱 구조 (Claude Code 통합)
+
+> **2025-12-30 업데이트**: PR #12 논의 결과, 자체 채팅 UI 대신 Claude Code 통합으로 결정. 범위 대폭 축소.
+
+**Context**: 독립 실행 가능한 데스크톱 앱 필요. 채팅 UI는 Claude Code에 위임.
+
+**Decision**: Electron 앱은 **Viewer + WASM 엔진만** 포함. AI 인터페이스는 Claude Code 사용.
+
+```
+electron-app/
+├── main/
+│   └── index.ts          # 앱 진입점 (창 생성만)
+├── renderer/
+│   ├── index.html
+│   ├── app.ts            # 진입점
+│   ├── cad-engine.ts     # WASM 엔진 로드 및 실행
+│   └── viewer/           # Canvas 2D 뷰어 + Selection UI
+└── package.json
+```
+
+**삭제된 컴포넌트**:
+
+- ~~claude-client.ts~~ → Claude Code가 처리
+- ~~chat/~~ → Claude Code가 처리
+
+**아키텍처 흐름**:
+
+```
+┌─ Claude Code (터미널) ───────────────────┐
+│  사용자 ↔ Claude LLM ↔ cad-cli.ts        │
+│                ↓                          │
+│          scene.json 저장                  │
+└───────────────────────────────────────────┘
+                │ File System
+                ▼
+┌─ Electron App (Viewer Only) ─────────────┐
+│  polling → scene.json → Canvas 렌더링    │
+│  Selection → selection.json 저장         │
+└───────────────────────────────────────────┘
+```
+
+**Electron 앱 역할 (축소됨)**:
+
+- Canvas 2D 뷰어 (scene.json polling)
+- Selection UI (selection.json 저장)
+- Export 다이얼로그
+
+**Claude Code 역할**:
+
+- AI 대화 인터페이스
+- cad-cli.ts 호출
+- API 키 관리
+
+**빌드**:
+
+- electron-builder로 Windows/Mac/Linux 패키징
+- 앱 크기 감소 (채팅 UI 제거됨)
+
+---
+
+### ADR-MVP-006: JSON의 목적 - LLM Scene Understanding
+
+**Context**: JSON 포맷이 왜 필요한가? 저장용? 조작용? 이해용?
+
+**Decision**: JSON은 **LLM이 Scene을 이해하기 위한 Read-Only 포맷**. 조작은 Tool Call로.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  JSON의 역할: LLM Scene Understanding                        │
+│                                                              │
+│  ❌ 저장 포맷 아님 (프로젝트 저장은 별도 고려)              │
+│  ❌ 조작 대상 아님 (JSON 직접 수정 X)                        │
+│  ✅ LLM이 현재 Scene 상태를 이해하기 위한 포맷              │
+│                                                              │
+│  LLM → "현재 씬에 뭐가 있지?" → JSON 읽기                   │
+│  LLM → "head를 옮겨야겠다" → Tool Call (translate)          │
+│                                                              │
+│  JSON은 읽기만, 수정은 항상 도구를 통해                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Consequences**:
+
+- Scene 구조 단순화 가능 (LLM 이해 최적화)
+- 필요시 상위 레벨 요약 JSON 제공 가능
+- 자체 저장 포맷 불필요 → Export만 (SVG, PNG, DXF)
+
+---
+
+### ADR-MVP-007: LLM Scene 이해 방식 - JSON + PNG
+
+**Context**: LLM이 Scene을 어떻게 이해하는 것이 최적인가?
+
+**Decision**: **JSON (구조적 정보) + PNG (시각적 정보)** 병행 제공
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LLM Scene 이해 최적화                                       │
+│                                                              │
+│  1. 복잡한 SVG/포맷 → LLM 이해 어려움 (부분적 사실)         │
+│  2. 단순화된 JSON → LLM 빠른 구조 파악 (사실)               │
+│  3. Vision 모델 → PNG 시각 정보 인식 가능 (사실)            │
+│  4. JSON + PNG → 구조 + 시각 = 최적 이해 (사실)             │
+│                                                              │
+│  ┌─────────────────────────────────────────┐                │
+│  │  JSON (구조)          │  PNG (시각)     │                │
+│  │  - entity 이름        │  - 실제 모습    │                │
+│  │  - 좌표, 크기         │  - 색상, 배치   │                │
+│  │  - 계층 구조          │  - 전체 느낌    │                │
+│  │  - 스타일 속성        │                 │                │
+│  └─────────────────────────────────────────┘                │
+│                                                              │
+│  LLM: "head가 (0, 100)에 있고 빨간색이네" (JSON)            │
+│  LLM: "전체적으로 사람 형태고 팔이 왼쪽으로 치우쳤네" (PNG) │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**구현**:
+
+- `get_scene_info` → JSON 반환 (구조적 정보)
+- `export_png` → PNG 반환 (시각적 정보)
+- Claude Code에서 둘 다 제공 가능
+
+**Consequences**:
+
+- Vision 모델 활용 극대화
+- 구조적 정확성 (JSON) + 직관적 이해 (PNG) 결합
+- "이거 더 길게" 같은 요청에 "이거"를 시각적으로 이해
+
+**PNG 생성 최적화 전략**:
+
+- 매 턴마다 PNG 생성은 비용/지연 증가 → 조건부 생성
+- **MVP 전략**: Scene 변경 시에만 PNG 갱신 (dirty flag)
+- **대안**: LLM이 명시적으로 요청 시에만 생성 (`get_scene_preview`)
+- 캐싱: 동일 Scene 상태면 캐시된 PNG 재사용
+
+---
+
+### ADR-MVP-008: Dual-Architecture Strategy
+
+**Context**: 프로젝트는 두 가지 운영 모드가 필요. 개발 단계(CLI)와 제품 단계(Electron App).
+
+**Decision**: Mode A (File Polling)와 Mode B (Client-Direct)를 **모두 지원**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Mode A: CLI Development (cad-cli + Browser)                        │
+│                                                                     │
+│  Claude Code CLI → cad-cli.ts → WASM → scene.json                  │
+│                                              ↓                      │
+│                                    Browser Viewer (fetch polling)   │
+│                                                                     │
+│  용도: 개발/디버깅, Claude Code 환경                                │
+│  통신: File System (scene.json, selection.json)                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  Mode B: Electron App (Client-Direct)                               │
+│                                                                     │
+│  Chat UI → Claude API → tool_use → WASM → Memory → Canvas          │
+│                                                                     │
+│  용도: 최종 사용자 경험                                             │
+│  통신: Direct Function Call (메모리 직접 접근)                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Consequences**:
+
+- 두 모드 공존: CLI 개발 편의성 + App 사용자 경험
+- Epic 4, 5 스토리는 Mode A 기준 → Epic 6 구현 시 Mode B 최적화 필요
+- Adapter 패턴으로 코드 재사용 극대화
+
+---
+
+### ADR-MVP-009: CADExecutor Adapter Pattern
+
+**Context**: Mode A(File)와 Mode B(Memory) 간 데이터 흐름이 다름. 코드 재사용을 위해 추상화 필요.
+
+**Decision**: `CADExecutor` 인터페이스로 두 모드 통합
+
+```typescript
+// 공통 인터페이스 (모든 메서드 비동기 - FileBasedExecutor의 파일 I/O 고려)
+interface CADExecutor {
+    execute(cmd: string, params: object): Promise<ExecuteResult>;
+    getScene(): Promise<SceneData>;       // 비동기: 파일 읽기 또는 메모리
+    getSelection(): Promise<string[]>;    // 비동기: 파일 읽기 또는 메모리
+    setSelection(ids: string[]): Promise<void>;
+}
+
+// Mode A: File 기반 (CLI + Browser)
+class FileBasedExecutor implements CADExecutor {
+    async execute(cmd, params) {
+        // cad-cli.ts 호출 (child_process 또는 직접 import)
+        // scene.json 자동 저장
+    }
+    async getScene(): Promise<SceneData> {
+        const data = await fs.promises.readFile('scene.json', 'utf-8');
+        return JSON.parse(data);
+    }
+    async getSelection(): Promise<string[]> {
+        const data = await fs.promises.readFile('selection.json', 'utf-8');
+        return JSON.parse(data).selected_ids;
+    }
+    async setSelection(ids: string[]): Promise<void> {
+        await fs.promises.writeFile('selection.json', JSON.stringify({ selected_ids: ids }));
+    }
+}
+
+// Mode B: Memory 기반 (Electron App) - 동기 연산이지만 인터페이스 호환을 위해 Promise 반환
+class DirectExecutor implements CADExecutor {
+    private scene: WasmScene;
+    private selectedIds: string[] = [];
+
+    async execute(cmd, params) {
+        // WASM 직접 호출
+        this.scene[cmd](params);
+    }
+    async getScene(): Promise<SceneData> {
+        return JSON.parse(this.scene.export_json());
+    }
+    async getSelection(): Promise<string[]> {
+        return this.selectedIds;  // 메모리에서 직접
+    }
+    async setSelection(ids: string[]): Promise<void> {
+        this.selectedIds = ids;
     }
 }
 ```
 
-### Phase 4: Gateway + Chat UI
+**사용처**:
+
+- Chat UI: `executor.execute('draw_circle', {...})`
+- Selection: `executor.getSelection()` → Claude API 요청에 포함
+- Viewer: `executor.getScene()` → Canvas 렌더링
+
+**Consequences**:
+
+- 비즈니스 로직(Chat, Selection 처리)은 Executor 타입과 무관
+- Mode 전환 시 Executor만 교체
+- 테스트 용이 (Mock Executor 가능)
+
+---
+
+### ADR-MVP-010: CI/CD 전략
+
+**Context**: Electron 앱 빌드를 시작하면서 자동화된 빌드/배포 파이프라인이 필요.
+
+**Decision**: GitHub Actions 기반 CI/CD 파이프라인 구축
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  CI Pipeline (Pull Request)                                         │
+│                                                                     │
+│  1. Lint & Type Check                                               │
+│     └── ESLint, TypeScript                                          │
+│                                                                     │
+│  2. Unit Tests                                                      │
+│     └── Vitest (TypeScript), cargo test (Rust)                      │
+│                                                                     │
+│  3. WASM Build                                                      │
+│     └── wasm-pack build --target nodejs --release                   │
+│                                                                     │
+│  4. Integration Test                                                │
+│     └── cad-cli 명령어 테스트                                        │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  CD Pipeline (Release Tag)                                          │
+│                                                                     │
+│  1. Electron Build (Matrix)                                         │
+│     ├── Windows: electron-builder --win                             │
+│     ├── macOS: electron-builder --mac                               │
+│     └── Linux: electron-builder --linux                             │
+│                                                                     │
+│  2. Artifact Upload                                                 │
+│     └── GitHub Releases에 자동 업로드                                │
+│                                                                     │
+│  3. (Optional) Auto-Update                                          │
+│     └── electron-updater 연동                                       │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**워크플로우 파일 구조**:
+
+```
+.github/
+└── workflows/
+    ├── ci.yml           # PR 시 테스트/빌드 검증
+    └── release.yml      # 태그 푸시 시 Electron 빌드 + Release
+```
+
+**Consequences**:
+
+- PR마다 자동 테스트로 품질 보장
+- 태그 기반 릴리즈로 버전 관리 명확화
+- 크로스 플랫폼 빌드 자동화 (Win/Mac/Linux)
+- MVP에서는 코드 서명 생략 (설치 시 경고 허용)
+
+---
+
+## Post-MVP Extensions
+
+### Gateway + Chat UI
 
 ```
 User (Browser)
@@ -1219,7 +1708,7 @@ Claude Code CLI
 CAD Engine
 ```
 
-### Phase 4: MCP Wrapper
+### MCP Wrapper
 
 ```typescript
 // 기존 WASM 엔진을 MCP로 래핑
@@ -1317,18 +1806,21 @@ const server = new MCPServer({
 ### 참고 사례
 
 #### Figma (Electron + WebGL)
+
 - **프레임워크**: Electron + BrowserView
 - **렌더링**: WebGL 기반 캔버스
 - **특징**: 웹/데스크톱 동일 코드베이스
 - [Figma BrowserView](https://www.figma.com/blog/introducing-browserview-for-electron/)
 
 #### Jan AI (Tauri - 참고만)
+
 - **프레임워크**: Tauri (Rust + WebView)
 - **특징**: LLM 채팅 앱 (WebGL 없음)
 - **교훈**: WebGL 없는 앱에서만 Tauri 유효
 - [GitHub - Jan AI](https://github.com/janhq/jan)
 
 #### Cursor (피해야 할 패턴)
+
 - **문제점**: 서버 의존적 - 모든 요청이 Cursor 서버 경유
 - **오프라인**: 불가능
 - [Cursor 아키텍처 분석](https://www.tensorzero.com/blog/reverse-engineering-cursors-llm-client/)
@@ -1645,6 +2137,7 @@ cargo build --target wasm64-unknown-unknown
 | Phase 4+ | **높음** | SpineLift 사례로 볼 때 조기 도달 가능 |
 
 **전략**:
+
 1. Phase 3부터 메모리 사용량 모니터링
 2. 2GB 도달 시 Memory64 전환 준비 시작
 3. 성능 저하(10~100%) 감수 vs 기능 제한 트레이드오프 검토
@@ -1843,6 +2336,7 @@ test('select and scale entity', async ({ page }) => {
 ### 실행 경로 비교
 
 **SpineLift (4계층)**
+
 ```
 Claude → MCP Server → WebSocket → Browser → WASM (C++)
         ~~~~~~~~~~~   ~~~~~~~~~~   ~~~~~~~   ~~~~~~~~
@@ -1850,6 +2344,7 @@ Claude → MCP Server → WebSocket → Browser → WASM (C++)
 ```
 
 **AI-Native CAD (1계층)**
+
 ```
 Claude Code → WASM (Rust/Node.js) → File → Browser (뷰어)
              ~~~~~~~~~~~~~~~~~~~~
@@ -1871,6 +2366,7 @@ Claude Code → WASM (Rust/Node.js) → File → Browser (뷰어)
 ### 프론트엔드 구조 비교
 
 **SpineLift** (복잡한 애플리케이션)
+
 ```
 frontend/src/
 ├── components/        # React UI 컴포넌트
@@ -1883,6 +2379,7 @@ frontend/src/
 ```
 
 **AI-Native CAD** (단순한 뷰어)
+
 ```
 viewer/src/
 ├── main.ts            # 엔트리포인트

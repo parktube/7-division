@@ -6,6 +6,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { LLMProvider, ToolCall } from './types.js';
 import type { ToolSchema } from '../schema.js';
 import type { ToolResult } from '../executor.js';
+import { logger } from '../logger.js';
 
 export interface AnthropicProviderOptions {
   apiKey?: string;
@@ -128,7 +129,7 @@ export class AnthropicProvider implements LLMProvider {
       // Rate limit 에러 처리
       if (error instanceof Anthropic.RateLimitError) {
         const retryAfter = error.headers?.get?.('retry-after');
-        console.error('[AnthropicProvider.sendMessage] Rate limit exceeded', {
+        logger.error('[AnthropicProvider.sendMessage] Rate limit exceeded', {
           model: this.model,
           retryAfter,
         });
@@ -137,13 +138,13 @@ export class AnthropicProvider implements LLMProvider {
 
       // 인증 에러 처리
       if (error instanceof Anthropic.AuthenticationError) {
-        console.error('[AnthropicProvider.sendMessage] Authentication failed');
+        logger.error('[AnthropicProvider.sendMessage] Authentication failed');
         throw new Error('Anthropic API authentication failed. Check your API key.');
       }
 
       // 기타 API 에러 로깅
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[AnthropicProvider.sendMessage] API call failed', {
+      logger.error('[AnthropicProvider.sendMessage] API call failed', {
         model: this.model,
         maxTokens: this.maxTokens,
         messageCount: messages.length,

@@ -135,39 +135,40 @@ Claude Code CLI (Node.js)
     ↓ WASM 직접 로드 & 실행
 Rust CAD 엔진
     ↓ scene.json 출력
-브라우저 뷰어 (Phase 1: Canvas 2D / Phase 2+: Three.js)
+브라우저 뷰어 (MVP: Canvas 2D / Post-MVP: wgpu)
 ```
 
-### 뷰어 전략 (점진적 도입)
+### 뷰어 전략
 
-> Phase별 점진적 복잡도 증가 - 빠른 검증 우선
-> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택-phase별-점진적-도입))
+> MVP/Post-MVP 기준으로 명확히 구분
+> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택))
 
-| Phase | 렌더러 | 이유 |
-|-------|--------|------|
-| **Phase 1** | HTML Canvas 2D | 가장 단순, 빠른 검증 |
-| **Phase 2** | Three.js | 3D 준비, 마이그레이션 비용 감수 |
-| **Phase 3+** | wgpu (검토) | 성능 필요 시 도입 |
+| 단계 | 렌더러 | 이유 |
+|------|--------|------|
+| **MVP** | HTML Canvas 2D | 가장 단순, 빠른 검증 |
+| **Post-MVP** | wgpu | 3D 확장, 성능 최적화 (Three.js 건너뜀) |
 
-- **Phase 1**: Canvas 2D로 2D 도형 렌더링 (line, circle, rect)
-- **Phase 2**: Three.js로 마이그레이션 (3D 준비)
-- **Phase 3+**: 성능 병목 시 wgpu 검토
+- **MVP**: Canvas 2D로 2D 도형 렌더링 (line, circle, rect, arc)
+- **Post-MVP**: wgpu로 마이그레이션 (3D 확장, 성능 최적화)
 
 ### CAD 엔진 (Rust → WASM)
 
 **Primitives** (JSCAD 참조):
+
 - `circle(radius)` / `ellipse(rx, ry)`
 - `rectangle(width, height)` / `square(size)`
 - `line(points)` / `polygon(points)`
 - `arc(radius, startAngle, endAngle)`
 
 **Transforms**:
+
 - `translate(x, y)` / `rotate(angle)` / `scale(sx, sy)`
 
 **Output**:
-- Phase 1: scene.json (Three.js 렌더링용) + SVG export
-- Phase 3: DXF export (2D 업계 표준)
-- Phase 4+: STL (필수), STEP (옵션) - 3D 확장 시
+
+- MVP: scene.json (Canvas 2D 뷰어용) + SVG export
+- Post-MVP: DXF export (2D 업계 표준)
+- Post-MVP (3D): STL (필수), STEP (옵션) - 3D 확장 시
 
 ### Tool Use Foundation (에이전트 런타임)
 
@@ -183,11 +184,13 @@ Rust CAD 엔진
 ```
 
 **핵심 컴포넌트**:
+
 - **도구 스키마**: 각 CAD 도구의 name, description, input_schema 정의
 - **WASM Executor**: 입력 변환 자동화 (배열 → Float64Array)
 - **에이전트 런타임**: LLM 호출 → tool_use 감지 → 실행 → 결과 반환 루프
 
 **Progressive Exposure 패턴**:
+
 - `listDomains()` → `listTools(domain)` → `getTool(name)` → `exec(name, input)`
 - LLM 컨텍스트 효율성: 전체 API ~2000토큰 → 필요한 것만 ~110토큰
 
@@ -208,65 +211,127 @@ Rust CAD 엔진
 | **처음 의도보다 나은 결과** | AI 제안으로 개선된 비율 |
 
 **Aha! Moment**:
+
 - Phase 1: "말했더니 진짜 그려졌다"
 - Phase 2+: "AI 덕분에 더 좋은 디자인이 됐다"
 - Ultimate: "나도 이제 CAD 개념을 알게 됐다"
 
 ### Business Success
 
-- Phase 1: 기술 검증 (스켈레톤 테스트 통과)
-- Phase 2: 도메인 확장 검증 (그룹화, ActionHints)
-- Phase 3: 사용자 검증 (Selection UI, 실제 사용 케이스)
-- Phase 4: 시장 검증
+- **MVP**: 기술 검증 + 도메인 확장 + 사용자 검증 (스켈레톤 → 포즈 변경 → Selection)
+- **Post-MVP**: 시장 검증, 3D 확장
 
 ### Technical Success
 
 - WASM 엔진 직접 실행 성공
 - SVG 출력 정상 동작
 - Claude Code에서 도구 호출 원활
+- **Electron 앱 빌드 및 배포 성공**
+
+---
+
+## Functional Requirements
+
+> **2025-12-30 업데이트**: MVP 범위에 맞춰 FR21~FR30 추가
+
+### 기초 도형 및 스타일 (FR1~FR20) ✅
+
+*기존 Phase 1 요구사항 - 완료됨. 상세는 [epics.md](./epics.md) 참조*
+
+### 그룹화 및 피봇 (FR21~FR25)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR21 | Group 생성 | `create_group(name, children[])`으로 여러 도형을 그룹화할 수 있어야 한다 |
+| FR22 | Group 해제 | `ungroup(group_id)`으로 그룹을 해제하고 자식들을 독립 엔티티로 만들 수 있어야 한다 |
+| FR23 | Group 자식 관리 | `add_to_group(group_id, entity_id)`, `remove_from_group(group_id, entity_id)`로 그룹 구성원을 관리할 수 있어야 한다 |
+| FR24 | Pivot 설정 | `set_pivot(entity_id, px, py)`로 도형/그룹의 회전 중심점을 설정할 수 있어야 한다 |
+| FR25 | 계층적 변환 | 부모 그룹의 translate/rotate/scale이 모든 자식 엔티티에 전파되어야 한다 |
+
+### Selection UI (FR26~FR28)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR26 | 도형 선택 | Canvas 클릭으로 해당 위치의 도형을 선택할 수 있어야 한다 |
+| FR27 | 선택 상태 표시 | 선택된 도형은 시각적으로 구분되어야 한다 (하이라이트, 바운딩 박스 등) |
+| FR28 | 선택 정보 전달 | 선택된 도형의 정보(id, type, geometry)를 AI에게 전달할 수 있어야 한다 |
+
+### Electron 앱 (FR29)
+
+> **2025-12-30 업데이트**: PR #12 논의 결과, 자체 채팅 UI 대신 Claude Code 통합으로 결정. FR30 삭제.
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR29 | 통합 앱 | WASM CAD 엔진 + Canvas 2D Viewer가 Electron 앱으로 통합되어야 한다. AI 인터페이스는 Claude Code 사용. |
+| ~~FR30~~ | ~~API 키 입력~~ | ~~삭제됨 - Claude Code가 API 키 관리~~ |
+
+## Non-Functional Requirements (MVP 추가)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| NFR14 | 그룹 중첩 | 그룹 안에 그룹을 포함할 수 있어야 한다 (최대 깊이 제한 가능) |
+| NFR15 | 선택 반응 속도 | 클릭 후 선택 피드백이 100ms 이내에 표시되어야 한다 |
+| NFR16 | 앱 시작 시간 | Electron 앱이 5초 이내에 시작되어야 한다 |
+| NFR17 | 오프라인 동작 | API 키 없이도 CAD 기능(도형 생성/편집)은 동작해야 한다 |
 
 ---
 
 ## Product Scope
 
-### Phase 1: 최소 검증 — "사람 스켈레톤을 그려줘"
+### MVP: 완전한 AI-Native CAD 경험
 
-**목표**: 기초 도형 도구만으로 AI가 복잡한 형상을 만들 수 있는지 검증
+> **2025-12-30 업데이트**: Phase 1~3을 MVP로 통합. "말하기 + 가리키기"로 캐릭터 리깅까지 가능한 완전한 경험 제공.
+
+**목표**: AI와 대화하며 복잡한 형상을 만들고, 포즈를 변경할 수 있는 완전한 경험 검증
+
+#### 기초 도형 및 스타일 ✅
 
 - 기초 도형: `line`, `circle`, `rect`, `arc`
 - 스타일: `stroke`, `fill` 적용
 - 변환: `translate`, `rotate`, `scale`, `delete`
 - 출력: scene.json + SVG export
-- **Tool Use Foundation**: Claude가 도구를 직접 호출할 수 있는 에이전트 런타임
-- **Canvas 2D 뷰어** (polling 방식) - 가장 단순하게 시작
 
-**검증 시나리오**: "사람 스켈레톤을 그려줘"
+#### 그룹화 및 피봇
 
-### Phase 2: 도메인 확장
+- **Group System**: `create_group`, `ungroup`, `add_to_group`, `remove_from_group`
+- **Pivot**: `set_pivot` - 각 도형/그룹의 회전 중심점 설정
+- **Hierarchy Transform**: 부모 변환이 자식에 전파
 
-**목표**: AI가 더 복잡한 구조를 다룰 수 있는지 검증
+#### Selection UI
 
-- Phase 1 도구 + 그룹화, 레이어
-- 더 복잡한 요청: "팔을 구부린 포즈로", "걷는 자세로"
-- ActionHints 동작 확인
-- 검증 UI 프로토타입
-- **Three.js로 뷰어 마이그레이션** (3D 준비)
+- 클릭으로 객체 선택
+- 선택 상태 시각적 표시
+- 선택된 객체 정보를 AI에 전달
 
-### Phase 3: Selection UI + 실사용 테스트
+#### Electron 앱
 
-**목표**: "가리키기 + 말하기" 인터랙션 검증
+> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소
 
-- Selection UI (클릭으로 객체 선택)
-- 실제 작업 시도 (캐릭터 리깅용 스켈레톤 등)
-- DXF 출력
-- 인간-AI 협업 플로우 검증
+- WASM + Canvas 2D Viewer 통합
+- ~~채팅 UI~~ → Claude Code 사용
+- ~~API 키 입력~~ → Claude Code가 관리
+- 오프라인 우선 (CAD 기능은 API 없이 동작)
 
-### Phase 4+: Vision
+**검증 시나리오**:
 
-- Gateway + 채팅 UI
-- MCP 래퍼
-- 로컬 LLM 지원
-- 3D 확장
+1. "사람 스켈레톤을 그려줘"
+2. "팔을 구부린 포즈로 바꿔줘"
+3. [왼팔 클릭] + "이거 더 길게"
+
+### Post-MVP: 확장 기능
+
+> MVP 완성 후 필요에 따라 추가
+
+| 항목 | 설명 |
+|------|------|
+| **ActionHints 확장** | DesignHints 포함한 완전한 협업 경험 |
+| **Three.js 뷰어** | 3D 준비를 위한 렌더러 마이그레이션 |
+| **Layer System** | 레이어별 도형 관리 |
+| **DXF 출력** | 2D 업계 표준 포맷 |
+| **Gateway + 채팅 UI** | 별도 서비스로 분리 |
+| **MCP 래퍼** | 외부 시스템 연동 |
+| **3D 확장** | STEP/STL 출력, 3D 뷰어 |
+| **wgpu** | 고성능 렌더링 (필요 시) |
 
 ---
 
@@ -312,9 +377,9 @@ Rust CAD 엔진
 
 ---
 
-## User Journey
+## User Journey (MVP)
 
-### Phase 1: 말하기만 (최소 검증)
+### Step 1: 말하기 - 스켈레톤 생성
 
 ```
 사용자: "사람 스켈레톤을 그려줘"
@@ -328,21 +393,19 @@ Claude Code: WASM 엔진 호출 → scene.json 생성
 Claude Code: translate/scale 적용 → scene.json 업데이트
 ```
 
-### Phase 2: 도메인 확장 (Three.js 도입)
+### Step 2: 말하기 - 포즈 변경 (Group + Pivot)
 
 ```
 사용자: "팔을 구부린 포즈로 바꿔줘"
     ↓
-Claude Code: 그룹화된 엔티티 인식 → 관절 기준 회전 계산
+Claude Code: 그룹화된 엔티티 인식 → 관절(Pivot) 기준 회전 계산
     ↓
 WASM: rotate + translate 조합 적용 → scene.json 업데이트
     ↓
-브라우저: Three.js 렌더링 갱신 (3D 준비 완료)
-    ↓
-Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
+브라우저: Canvas 2D 렌더링 갱신
 ```
 
-### Phase 3: 가리키기 + 말하기
+### Step 3: 가리키기 + 말하기 (Selection UI)
 
 ```
 사용자: [왼팔 클릭] + "이거 더 길게"
@@ -351,10 +414,10 @@ Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
     ↓
 Claude Code: 선택된 객체 scale 적용 → scene.json 업데이트
     ↓
-브라우저: Three.js 렌더링 갱신
+브라우저: Canvas 2D 렌더링 갱신
 ```
 
-### Interaction Pattern (Phase 3+)
+### Interaction Pattern (MVP)
 
 | 허용 | 불허 |
 |------|------|
@@ -414,14 +477,13 @@ Entity
 | 리스크 | 영향 | 완화 전략 |
 |--------|------|-----------|
 | AI가 의도를 잘못 해석 | 높음 | 반복 수정으로 보완, 명확한 피드백 루프 |
-| WASM 성능 부족 | 중간 | Phase 1은 간단한 도형만, 복잡도 점진적 증가 |
-| Three.js 2D 표현 한계 | 낮음 | SVG fallback 옵션 유지 |
+| WASM 성능 부족 | 중간 | MVP는 간단한 도형만, 복잡도 점진적 증가 |
 | 3D 확장 시 API 재설계 | 중간 | Point 타입을 처음부터 확장 가능하게 설계 |
 | **wasm-bindgen API 설계** | 높음 | 클래스 래퍼 방식 사용, struct 왕복 피함 |
 | **UUID/getrandom 호환성** | 중간 | `js_sys::Math::random()` 또는 `uuid` js feature |
-| **Phase 3 역방향 통신** | 중간 | WebSocket 또는 이벤트 파일 큐 필요 (Selection UI용) |
-| **DXF/STEP 복잡도 과소평가** | 중간 | Phase 3 이후로 미룸, "쉽다" 전제 금지 |
-| **Electron 앱 크기** | 낮음 | ~100MB 허용 (WebGL 성능 우선), Figma도 동일 전략 |
+| **Selection 역방향 통신** | 중간 | selection.json 파일로 해결 (MVP) |
+| **DXF/STEP 복잡도 과소평가** | 중간 | Post-MVP로 미룸, "쉽다" 전제 금지 |
+| **Electron 앱 크기** | 낮음 | ~100MB 허용, Figma도 동일 전략 |
 | **rustwasm 조직 sunset** | 중간 | wasm-bindgen 새 조직 이전 완료, wasm-pack은 직접 빌드 대안 준비 |
 | **WASM 브라우저 호환성** | 낮음 | IE 미지원 (영향 없음), 92/100 호환성 점수, 83% 사용자 커버 |
 
@@ -434,38 +496,64 @@ Entity
 
 ---
 
-## Out of Scope (Phase 1)
+## Out of Scope (MVP)
+
+> **2025-12-30 업데이트**: MVP 완성 후 필요에 따라 추가
 
 | 항목 | 이유 | 예정 |
 |------|------|------|
-| 그룹화/레이어 | Phase 1은 기초 도형만 | Phase 2 |
-| ActionHints | 도메인 확장 단계에서 | Phase 2 |
-| Selection UI | "가리키기" 인터랙션 | Phase 3 |
-| DXF/DWG 출력 | SVG로 검증 후 | Phase 3 |
-| 3D 기능 | 2D 먼저 검증 | Phase 4+ |
-| 채팅 UI | Claude Code로 충분 | Phase 4+ |
-| MCP 래퍼 | Direct-First 검증 후 | Phase 4+ |
-| 실시간 협업 | 단일 사용자 먼저 | Phase 4+ |
-| Undo/Redo UI | 엔진만 구현 | Phase 2-3 |
+| **wgpu 마이그레이션** | Canvas 2D로 MVP 검증 후 | Post-MVP |
+| **MAMA Integration** | MVP 기능 우선. MAMA(Memory-Augmented Meta Agent)는 LLM의 의사결정 기록 및 컨텍스트 유지 도구로, CAD 프로젝트 히스토리 추적에 활용 예정 | Post-MVP |
+| **ActionHints 확장** | 기본 힌트는 구현됨, 확장은 후순위 | Post-MVP |
+| Layer System | 그룹화로 대부분 해결 | Post-MVP |
+| DXF/DWG 출력 | SVG로 충분 | Post-MVP |
+| 3D 기능 | 2D 먼저 검증 | Post-MVP |
+| MCP 래퍼 | Direct-First 검증 후 | Post-MVP |
+| 실시간 협업 | 단일 사용자 먼저 | Post-MVP |
 
 ---
 
-## Definition of Done (Phase 1)
+## Definition of Done (MVP)
 
-### 필수 완료 조건
+> **2025-12-30 업데이트**: 완전한 AI-Native CAD 경험을 위한 MVP 기준
+
+### 기초 도형 및 스타일 ✅
 
 - [x] Rust CAD 엔진 WASM 빌드 성공
 - [x] 기초 도형 4종: `line`, `circle`, `rect`, `arc`
 - [x] 스타일 시스템: `stroke`, `fill` 적용
-- [ ] 변환 4종: `translate`, `rotate`, `scale`, `delete`
+- [x] 변환 4종: `translate`, `rotate`, `scale`, `delete`
 - [x] scene.json 출력 정상 동작
+- [x] SVG export 정상 동작
 - [x] Canvas 2D 뷰어에서 scene.json 렌더링 (polling)
-- [ ] **Tool Use Foundation**: Claude가 tool_use로 도구 직접 호출
-  - [ ] 도구 스키마 정의 (name, description, input_schema)
-  - [ ] WASM Executor 래퍼 (입력 변환 자동화)
-  - [ ] 에이전트 런타임 (tool_use 루프)
+- [x] **Tool Use Foundation**: Claude가 CLI로 도구 직접 호출
+
+### 그룹화 및 피봇
+
+- [ ] **Group System**: 그룹 생성/해제, 자식 추가/제거
+- [ ] **Pivot**: 도형/그룹의 회전 중심점 설정
+- [ ] **Hierarchy Transform**: 부모 변환이 자식에 전파
+
+### Selection UI
+
+- [ ] 클릭으로 객체 선택
+- [ ] 선택 상태 시각적 표시 (하이라이트)
+- [ ] 선택된 객체 정보를 AI에 전달
+
+### Electron 앱
+
+> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소 (Story 6-4, 6-5 제거)
+
+- [ ] Electron 프로젝트 구조
+- [ ] WASM 엔진 통합
+- [ ] Canvas 2D Viewer 이식
+- [ ] ~~채팅 UI~~ → Claude Code 사용 (CLAUDE.md 문서화 완료)
+- [ ] ~~API 키 입력~~ → Claude Code가 관리
+- [ ] Windows/Mac/Linux 빌드
 
 ### 검증 시나리오 통과
+
+**시나리오 1: 스켈레톤 생성**
 
 ```
 입력: "사람 스켈레톤을 그려줘"
@@ -477,12 +565,22 @@ Entity
 - 적절한 비율과 위치
 ```
 
-### 수정 요청 테스트
+**시나리오 2: 포즈 변경**
 
 ```
-입력: "왼쪽 팔을 더 길게 해줘"
-기대 결과: 해당 entity의 scale 또는 points 수정
+입력: "팔을 구부린 포즈로 바꿔줘"
+기대 결과:
+- 팔 그룹의 피봇 기준 회전
+- 자연스러운 관절 표현
+```
+
+**시나리오 3: Selection + 수정**
+
+```
+입력: [왼팔 클릭] + "이거 더 길게"
+기대 결과:
+- 선택된 객체 인식
+- 해당 entity의 scale 수정
 ```
 
 ---
-

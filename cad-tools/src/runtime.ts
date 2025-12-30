@@ -6,6 +6,7 @@ import type { LLMProvider } from './providers/types.js';
 import type { DomainName, ToolSchema } from './schema.js';
 import { getToolsForDomains } from './discovery.js';
 import { CADExecutor, type ToolResult } from './executor.js';
+import { logger } from './logger.js';
 
 export interface AgentOptions {
   domains?: DomainName[];
@@ -49,7 +50,7 @@ export async function runAgentLoop(
       response = await provider.sendMessage(messages, providerTools);
     } catch (apiError) {
       const errorMessage = apiError instanceof Error ? apiError.message : String(apiError);
-      console.error(`[runAgentLoop] LLM API call failed on iteration ${iterations}`, {
+      logger.error(`[runAgentLoop] LLM API call failed on iteration ${iterations}`, {
         provider: provider.name,
         error: errorMessage,
       });

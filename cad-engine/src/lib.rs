@@ -1,8 +1,8 @@
 use wasm_bindgen::prelude::*;
 
 pub mod primitives;
-pub mod serializers;
 pub mod scene;
+pub mod serializers;
 
 pub use scene::Scene;
 

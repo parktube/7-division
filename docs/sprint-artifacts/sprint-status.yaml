@@ -154,6 +154,114 @@ development_status:
         depends_on: [3-7-cli-direct-integration]
         description: "ActionHints, Domain Descriptions, Operation Log"
 
+  # Epic 4: 그룹화 및 피봇 - 도형들을 그룹화하고 피봇을 설정하여 포즈를 변경할 수 있다
+  epic-4:
+    status: in-progress
+    title: "그룹화 및 피봇"
+    stories:
+      4-1-group-creation:
+        status: ready-for-dev
+        title: "Group 생성 기능"
+        priority: P0
+        depends_on: [1-2-scene-class]
+        description: "여러 도형을 그룹으로 묶을 수 있다"
+      4-2-group-ungroup:
+        status: drafted
+        title: "Group 해제 기능"
+        priority: P0
+        depends_on: [4-1-group-creation]
+        description: "그룹을 해제하여 자식들을 독립 엔티티로 만들 수 있다"
+      4-3-group-child-management:
+        status: drafted
+        title: "Group 자식 관리"
+        priority: P0
+        depends_on: [4-1-group-creation]
+        description: "그룹에 자식을 추가하거나 제거할 수 있다"
+      4-4-pivot-setting:
+        status: drafted
+        title: "Pivot 설정 기능"
+        priority: P0
+        depends_on: [4-1-group-creation]
+        description: "도형/그룹의 회전 중심점을 설정할 수 있다"
+      4-5-hierarchy-transform:
+        status: drafted
+        title: "계층적 변환 구현"
+        priority: P0
+        depends_on: [4-1-group-creation, 3-1-translate]
+        description: "부모 그룹의 변환이 자식들에게 전파된다"
+      4-6-group-rendering:
+        status: drafted
+        title: "그룹화된 도형 렌더링"
+        priority: P0
+        depends_on: [4-5-hierarchy-transform, 2-3-rendering]
+        description: "그룹화된 도형들이 올바르게 렌더링된다"
+
+  # Epic 5: Selection UI - 사용자가 클릭으로 도형을 선택하고 AI가 인식할 수 있다
+  epic-5:
+    status: backlog
+    title: "Selection UI"
+    stories:
+      5-1-click-selection:
+        status: drafted
+        title: "도형 클릭 선택"
+        priority: P0
+        depends_on: [2-2-canvas-2d-viewer]
+        description: "Canvas에서 도형을 클릭하여 선택할 수 있다"
+      5-2-selection-highlight:
+        status: drafted
+        title: "선택 상태 시각적 표시"
+        priority: P0
+        depends_on: [5-1-click-selection]
+        description: "선택된 도형이 시각적으로 구분된다"
+      5-3-selection-info-to-ai:
+        status: drafted
+        title: "선택 정보 AI 전달"
+        priority: P0
+        depends_on: [5-1-click-selection]
+        description: "사용자가 선택한 도형 정보를 AI가 받을 수 있다"
+
+  # Epic 6: Electron 통합 - WASM CAD 엔진 + 뷰어 + 채팅 UI를 단일 앱으로 패키징
+  epic-6:
+    status: backlog
+    title: "Electron 통합"
+    stories:
+      6-1-electron-project-setup:
+        status: drafted
+        title: "Electron 프로젝트 셋업"
+        priority: P0
+        depends_on: []
+        description: "Electron + Vite 프로젝트 구성"
+      6-2-wasm-engine-integration:
+        status: drafted
+        title: "WASM 엔진 통합"
+        priority: P0
+        depends_on: [6-1-electron-project-setup]
+        description: "WASM CAD 엔진을 Electron에서 로드"
+      6-3-viewer-port:
+        status: drafted
+        title: "Canvas 2D Viewer 이식"
+        priority: P0
+        depends_on: [6-2-wasm-engine-integration]
+        description: "기존 viewer를 Electron Renderer에 이식"
+      6-4-chat-ui:
+        status: drafted
+        title: "채팅 UI 구현"
+        priority: P0
+        depends_on: [6-3-viewer-port]
+        description: "앱 내에서 AI와 대화할 수 있다"
+      6-5-api-key-management:
+        status: drafted
+        title: "API 키 입력 및 관리"
+        priority: P0
+        depends_on: [6-4-chat-ui]
+        description: "사용자 API 키 입력 및 안전한 저장"
+      6-6-app-build:
+        status: drafted
+        title: "앱 빌드 및 패키징"
+        priority: P0
+        depends_on: [6-5-api-key-management]
+        description: "Windows/Mac/Linux용 앱 빌드"
+
 # Sprint Planning Notes
 notes:
   - "Phase 1 목표: 기초 도형(line, circle, rect, arc) + Style 시스템 + 검증 UI + 기본 편집"
@@ -165,3 +273,5 @@ notes:
   - "스토리 재정렬: Arc를 Primitive 위치(1.6)로 이동, Style 시스템(1.7-1.9)은 후순위"
   - "2025-12-26: LLM 주체성 강화 스토리 추가 (3.0-a, 3.0-b, 3.0-c) - AX 원칙 기반"
   - "2025-12-29: CLI Direct Integration (3-7), AX Enhancements (3-8) 추가. Group System은 Phase 2로 이동"
+  - "2025-12-30: MVP 범위 확장 - Epic 4 (Group & Pivot), Epic 5 (Selection UI), Epic 6 (Electron 앱) 추가"
+  - "MVP 목표: 완전한 AI-Native CAD 경험 - 그룹화, 피봇, 선택, 독립 앱"

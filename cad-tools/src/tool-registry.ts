@@ -6,6 +6,7 @@
 import { DOMAINS, DOMAIN_METADATA, CAD_TOOLS, type DomainName, type ToolSchema } from './schema.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from './logger.js';
 
 /**
  * 도메인 정보 (LLM 응답용)
@@ -194,7 +195,7 @@ export class ToolRegistry {
       }
     } catch (error) {
       // 파일이 없거나 파싱 실패 시 빈 배열로 시작
-      console.error(`[ToolRegistry] Failed to load requests: ${error}`);
+      logger.warn(`[ToolRegistry] Failed to load requests: ${error}`);
       this.requests = [];
     }
   }
@@ -207,7 +208,7 @@ export class ToolRegistry {
       fs.writeFileSync(this.requestsFilePath, JSON.stringify(this.requests, null, 2) + '\n');
     } catch (error) {
       // 저장 실패 시 에러 로그
-      console.error(`[ToolRegistry] Failed to save requests: ${error}`);
+      logger.error(`[ToolRegistry] Failed to save requests: ${error}`);
     }
   }
 }

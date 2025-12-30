@@ -6,10 +6,10 @@
  * 핵심: LLM은 객체로 style 전달, Executor가 WASM용 JSON 문자열로 변환
  */
 
-// @ts-ignore - WASM module lacks type declarations
 import { Scene } from '../../cad-engine/pkg/cad_engine.js';
 import { ToolRegistry } from './tool-registry.js';
 import { normalizeAngle, type AngleUnit } from './angle-utils.js';
+import { logger } from './logger.js';
 
 /**
  * 도구 실행 결과 (내부 표준)
@@ -177,7 +177,7 @@ export class CADExecutor {
       }
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      console.error(`[CADExecutor.exec] Tool execution failed: ${toolName}`, {
+      logger.error(`[CADExecutor.exec] Tool execution failed: ${toolName}`, {
         input: JSON.stringify(input),
         error: errorMessage,
       });
