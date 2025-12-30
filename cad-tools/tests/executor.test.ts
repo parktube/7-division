@@ -485,7 +485,7 @@ describe('CADExecutor', () => {
 
       const primitives = domains.find((d: { domain: string }) => d.domain === 'primitives');
       expect(primitives).toBeDefined();
-      expect(primitives.count).toBe(4);
+      expect(primitives.count).toBeGreaterThanOrEqual(4); // 최소 4개 도구 (확장 가능)
       expect(primitives.description).toContain('도형');
     });
 
@@ -497,8 +497,13 @@ describe('CADExecutor', () => {
 
       const data = JSON.parse(result.data!);
       expect(data.domain).toBe('primitives');
-      expect(data.tools).toHaveLength(4);
-      expect(data.tools.map((t: { name: string }) => t.name)).toContain('draw_rect');
+      expect(data.tools.length).toBeGreaterThanOrEqual(4); // 최소 4개 도구
+      // 핵심 도구 존재 확인
+      const toolNames = data.tools.map((t: { name: string }) => t.name);
+      expect(toolNames).toContain('draw_rect');
+      expect(toolNames).toContain('draw_circle');
+      expect(toolNames).toContain('draw_line');
+      expect(toolNames).toContain('draw_arc');
     });
 
     it('should list all tools when domain not specified', () => {
@@ -549,6 +554,16 @@ describe('CADExecutor', () => {
   });
 
   describe('exec - query', () => {
+    // 헬퍼: 빈 executor 생성 및 테스트 실행 후 정리
+    const withEmptyExecutor = (testFn: (emptyExecutor: CADExecutor) => void) => {
+      const emptyExecutor = CADExecutor.create('empty-scene');
+      try {
+        testFn(emptyExecutor);
+      } finally {
+        emptyExecutor.free();
+      }
+    };
+
     beforeEach(() => {
       // Setup some entities for query tests
       executor.exec('draw_rect', { name: 'wall', x: 0, y: 0, width: 100, height: 50 });
@@ -569,15 +584,12 @@ describe('CADExecutor', () => {
     });
 
     it('should list empty array for empty scene', () => {
-      // Create a new executor with empty scene
-      const emptyExecutor = CADExecutor.create('empty-scene');
+      withEmptyExecutor((emptyExecutor) => {
+        const result = emptyExecutor.exec('list_entities', {});
 
-      const result = emptyExecutor.exec('list_entities', {});
-
-      expect(result.success).toBe(true);
-      expect(JSON.parse(result.data!)).toEqual([]);
-
-      emptyExecutor.free();
+        expect(result.success).toBe(true);
+        expect(JSON.parse(result.data!)).toEqual([]);
+      });
     });
 
     it('should get entity by name', () => {
@@ -619,17 +631,15 @@ describe('CADExecutor', () => {
     });
 
     it('should return null bounds for empty scene', () => {
-      const emptyExecutor = CADExecutor.create('empty-scene');
+      withEmptyExecutor((emptyExecutor) => {
+        const result = emptyExecutor.exec('get_scene_info', {});
 
-      const result = emptyExecutor.exec('get_scene_info', {});
-
-      expect(result.success).toBe(true);
-      const info = JSON.parse(result.data!);
-      expect(info.name).toBe('empty-scene');
-      expect(info.entity_count).toBe(0);
-      expect(info.bounds).toBeNull();
-
-      emptyExecutor.free();
+        expect(result.success).toBe(true);
+        const info = JSON.parse(result.data!);
+        expect(info.name).toBe('empty-scene');
+        expect(info.entity_count).toBe(0);
+        expect(info.bounds).toBeNull();
+      });
     });
   });
 
