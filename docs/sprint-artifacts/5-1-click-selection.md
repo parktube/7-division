@@ -215,6 +215,7 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
        };
        // 2. rotate 역변환 (pivot 기준)
        // 3. scale 역변환
+       // Note: 부모 계층이 있으면 Task 4.5 참고하여 부모 역변환 먼저 적용
        return local;
    }
    ```

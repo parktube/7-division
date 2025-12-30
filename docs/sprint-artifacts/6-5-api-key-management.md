@@ -1,6 +1,6 @@
 # Story 6.5: API 키 입력 및 관리
 
-Status: backlog
+Status: drafted
 
 ## Story
 

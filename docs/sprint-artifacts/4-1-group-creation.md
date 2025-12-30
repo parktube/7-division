@@ -64,6 +64,9 @@ so that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 
     - [ ] 2.6.1: 자식 Entity가 EntityType::Group인지 확인
     - [ ] 2.6.2: 기존 그룹의 parent_id를 새 그룹으로 업데이트
     - [ ] 2.6.3: 기존 그룹의 children은 유지 (계층 구조 보존)
+      - 예: forearm이 원래 elbow, wrist를 자식으로 가진 경우
+      - forearm이 left_arm의 자식이 되어도 elbow, wrist는 여전히 forearm의 자식
+      - 이유: 자식의 자식도 함께 이동하는 계층 구조 유지
   - [ ] 2.7: Scene.entities에 그룹 추가
 
 - [ ] **Task 3: Geometry 확장** (AC: 1)
