@@ -135,23 +135,21 @@ Claude Code CLI (Node.js)
     ↓ WASM 직접 로드 & 실행
 Rust CAD 엔진
     ↓ scene.json 출력
-브라우저 뷰어 (Phase 1: Canvas 2D / Phase 2+: Three.js)
+브라우저 뷰어 (MVP: Canvas 2D / Post-MVP: wgpu)
 ```
 
-### 뷰어 전략 (점진적 도입)
+### 뷰어 전략
 
-> Phase별 점진적 복잡도 증가 - 빠른 검증 우선
-> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택-phase별-점진적-도입))
+> MVP/Post-MVP 기준으로 명확히 구분
+> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택))
 
-| Phase | 렌더러 | 이유 |
-|-------|--------|------|
-| **Phase 1** | HTML Canvas 2D | 가장 단순, 빠른 검증 |
-| **Phase 2** | Three.js | 3D 준비, 마이그레이션 비용 감수 |
-| **Phase 3+** | wgpu (검토) | 성능 필요 시 도입 |
+| 단계 | 렌더러 | 이유 |
+|------|--------|------|
+| **MVP** | HTML Canvas 2D | 가장 단순, 빠른 검증 |
+| **Post-MVP** | wgpu | 3D 확장, 성능 최적화 (Three.js 건너뜀) |
 
-- **Phase 1**: Canvas 2D로 2D 도형 렌더링 (line, circle, rect)
-- **Phase 2**: Three.js로 마이그레이션 (3D 준비)
-- **Phase 3+**: 성능 병목 시 wgpu 검토
+- **MVP**: Canvas 2D로 2D 도형 렌더링 (line, circle, rect, arc)
+- **Post-MVP**: wgpu로 마이그레이션 (3D 확장, 성능 최적화)
 
 ### CAD 엔진 (Rust → WASM)
 
@@ -165,9 +163,9 @@ Rust CAD 엔진
 - `translate(x, y)` / `rotate(angle)` / `scale(sx, sy)`
 
 **Output**:
-- Phase 1: scene.json (Three.js 렌더링용) + SVG export
-- Phase 3: DXF export (2D 업계 표준)
-- Phase 4+: STL (필수), STEP (옵션) - 3D 확장 시
+- MVP: scene.json (Canvas 2D 뷰어용) + SVG export
+- Post-MVP: DXF export (2D 업계 표준)
+- Post-MVP (3D): STL (필수), STEP (옵션) - 3D 확장 시
 
 ### Tool Use Foundation (에이전트 런타임)
 
@@ -363,9 +361,9 @@ Rust CAD 엔진
 
 ---
 
-## User Journey
+## User Journey (MVP)
 
-### Phase 1: 말하기만 (최소 검증)
+### Step 1: 말하기 - 스켈레톤 생성
 
 ```
 사용자: "사람 스켈레톤을 그려줘"
@@ -379,21 +377,19 @@ Claude Code: WASM 엔진 호출 → scene.json 생성
 Claude Code: translate/scale 적용 → scene.json 업데이트
 ```
 
-### Phase 2: 도메인 확장 (Three.js 도입)
+### Step 2: 말하기 - 포즈 변경 (Group + Pivot)
 
 ```
 사용자: "팔을 구부린 포즈로 바꿔줘"
     ↓
-Claude Code: 그룹화된 엔티티 인식 → 관절 기준 회전 계산
+Claude Code: 그룹화된 엔티티 인식 → 관절(Pivot) 기준 회전 계산
     ↓
 WASM: rotate + translate 조합 적용 → scene.json 업데이트
     ↓
-브라우저: Three.js 렌더링 갱신 (3D 준비 완료)
-    ↓
-Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
+브라우저: Canvas 2D 렌더링 갱신
 ```
 
-### Phase 3: 가리키기 + 말하기
+### Step 3: 가리키기 + 말하기 (Selection UI)
 
 ```
 사용자: [왼팔 클릭] + "이거 더 길게"
@@ -402,10 +398,10 @@ Claude Code: ActionHints 반환 → "다리도 구부릴까요?"
     ↓
 Claude Code: 선택된 객체 scale 적용 → scene.json 업데이트
     ↓
-브라우저: Three.js 렌더링 갱신
+브라우저: Canvas 2D 렌더링 갱신
 ```
 
-### Interaction Pattern (Phase 3+)
+### Interaction Pattern (MVP)
 
 | 허용 | 불허 |
 |------|------|
@@ -465,14 +461,13 @@ Entity
 | 리스크 | 영향 | 완화 전략 |
 |--------|------|-----------|
 | AI가 의도를 잘못 해석 | 높음 | 반복 수정으로 보완, 명확한 피드백 루프 |
-| WASM 성능 부족 | 중간 | Phase 1은 간단한 도형만, 복잡도 점진적 증가 |
-| Three.js 2D 표현 한계 | 낮음 | SVG fallback 옵션 유지 |
+| WASM 성능 부족 | 중간 | MVP는 간단한 도형만, 복잡도 점진적 증가 |
 | 3D 확장 시 API 재설계 | 중간 | Point 타입을 처음부터 확장 가능하게 설계 |
 | **wasm-bindgen API 설계** | 높음 | 클래스 래퍼 방식 사용, struct 왕복 피함 |
 | **UUID/getrandom 호환성** | 중간 | `js_sys::Math::random()` 또는 `uuid` js feature |
-| **Phase 3 역방향 통신** | 중간 | WebSocket 또는 이벤트 파일 큐 필요 (Selection UI용) |
-| **DXF/STEP 복잡도 과소평가** | 중간 | Phase 3 이후로 미룸, "쉽다" 전제 금지 |
-| **Electron 앱 크기** | 낮음 | ~100MB 허용 (WebGL 성능 우선), Figma도 동일 전략 |
+| **Selection 역방향 통신** | 중간 | selection.json 파일로 해결 (MVP) |
+| **DXF/STEP 복잡도 과소평가** | 중간 | Post-MVP로 미룸, "쉽다" 전제 금지 |
+| **Electron 앱 크기** | 낮음 | ~100MB 허용, Figma도 동일 전략 |
 | **rustwasm 조직 sunset** | 중간 | wasm-bindgen 새 조직 이전 완료, wasm-pack은 직접 빌드 대안 준비 |
 | **WASM 브라우저 호환성** | 낮음 | IE 미지원 (영향 없음), 92/100 호환성 점수, 83% 사용자 커버 |
 
@@ -491,20 +486,20 @@ Entity
 
 | 항목 | 이유 | 예정 |
 |------|------|------|
-| ActionHints 확장 | 기본 힌트는 구현됨, 확장은 후순위 | Post-MVP |
-| Three.js 뷰어 | Canvas 2D로 충분, 3D 필요 시 | Post-MVP |
+| **wgpu 마이그레이션** | Canvas 2D로 MVP 검증 후 | Post-MVP |
+| **MAMA Integration** | MVP 기능 우선 | Post-MVP |
+| **ActionHints 확장** | 기본 힌트는 구현됨, 확장은 후순위 | Post-MVP |
 | Layer System | 그룹화로 대부분 해결 | Post-MVP |
 | DXF/DWG 출력 | SVG로 충분 | Post-MVP |
 | 3D 기능 | 2D 먼저 검증 | Post-MVP |
 | MCP 래퍼 | Direct-First 검증 후 | Post-MVP |
 | 실시간 협업 | 단일 사용자 먼저 | Post-MVP |
-| wgpu | Canvas 2D 성능으로 충분 | Post-MVP |
 
 ---
 
 ## Definition of Done (MVP)
 
-> **2025-12-30 업데이트**: Phase 1~3 통합 MVP 기준
+> **2025-12-30 업데이트**: 완전한 AI-Native CAD 경험을 위한 MVP 기준
 
 ### 기초 도형 및 스타일 ✅
 
