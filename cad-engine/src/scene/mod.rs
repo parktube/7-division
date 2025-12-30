@@ -17,7 +17,7 @@ use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 enum SceneError {
     DuplicateEntityName(String, String), // (fn_name, entity_name)
     InvalidInput(String),
-    NotAGroup(String), // entity_name
+    NotAGroup(String, String), // (fn_name, entity_name)
 }
 
 impl fmt::Display for SceneError {
@@ -33,8 +33,12 @@ impl fmt::Display for SceneError {
             SceneError::InvalidInput(msg) => {
                 write!(f, "{}", msg)
             }
-            SceneError::NotAGroup(name) => {
-                write!(f, "[ungroup] not_a_group: Entity '{}' is not a Group", name)
+            SceneError::NotAGroup(fn_name, name) => {
+                write!(
+                    f,
+                    "[{}] not_a_group: Entity '{}' is not a Group",
+                    fn_name, name
+                )
             }
         }
     }
@@ -1083,7 +1087,10 @@ impl Scene {
 
         // Group 타입 확인
         if !matches!(entity.entity_type, EntityType::Group) {
-            return Err(SceneError::NotAGroup(name.to_string()));
+            return Err(SceneError::NotAGroup(
+                "ungroup".to_string(),
+                name.to_string(),
+            ));
         }
 
         // children 목록 복사 (borrow 문제 회피)
@@ -1116,6 +1123,157 @@ impl Scene {
     /// * name이 Group 타입이 아니면 에러
     pub fn ungroup(&mut self, name: &str) -> Result<bool, JsValue> {
         self.ungroup_internal(name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 내부용 그룹에 자식 추가 함수 (테스트용)
+    ///
+    /// # Returns
+    /// * Ok(true) - 추가 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음
+    /// * Err - group_name이 Group 타입이 아님
+    fn add_to_group_internal(
+        &mut self,
+        group_name: &str,
+        entity_name: &str,
+    ) -> Result<bool, SceneError> {
+        // 그룹 존재 여부 확인
+        let group = match self.find_by_name(group_name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // Group 타입 확인
+        if !matches!(group.entity_type, EntityType::Group) {
+            return Err(SceneError::NotAGroup(
+                "add_to_group".to_string(),
+                group_name.to_string(),
+            ));
+        }
+
+        // 추가할 Entity 존재 여부 확인
+        if !self.has_entity(entity_name) {
+            return Ok(false);
+        }
+
+        // 자식의 기존 부모에서 제거
+        let old_parent = self
+            .find_by_name(entity_name)
+            .and_then(|e| e.parent_id.clone());
+
+        if let Some(old_parent_name) = old_parent {
+            if let Some(old_parent_entity) = self.find_by_name_mut(&old_parent_name) {
+                old_parent_entity.children.retain(|c| c != entity_name);
+            }
+        }
+
+        // 자식의 parent_id를 새 그룹으로 설정
+        if let Some(child) = self.find_by_name_mut(entity_name) {
+            child.parent_id = Some(group_name.to_string());
+        }
+
+        // 그룹의 children에 추가
+        if let Some(group) = self.find_by_name_mut(group_name) {
+            if !group.children.contains(&entity_name.to_string()) {
+                group.children.push(entity_name.to_string());
+            }
+        }
+
+        self.last_operation = Some(format!("add_to_group({}, {})", group_name, entity_name));
+        Ok(true)
+    }
+
+    /// 그룹에 Entity를 추가합니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `group_name` - 그룹 이름
+    /// * `entity_name` - 추가할 Entity 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 추가 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음
+    ///
+    /// # Errors
+    /// * group_name이 Group 타입이 아니면 에러
+    ///
+    /// # Notes
+    /// 이미 다른 그룹에 속한 Entity는 기존 그룹에서 제거 후 추가됩니다.
+    pub fn add_to_group(&mut self, group_name: &str, entity_name: &str) -> Result<bool, JsValue> {
+        self.add_to_group_internal(group_name, entity_name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 내부용 그룹에서 자식 제거 함수 (테스트용)
+    ///
+    /// # Returns
+    /// * Ok(true) - 제거 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음, 또는 entity가 해당 그룹의 자식이 아님
+    /// * Err - group_name이 Group 타입이 아님
+    fn remove_from_group_internal(
+        &mut self,
+        group_name: &str,
+        entity_name: &str,
+    ) -> Result<bool, SceneError> {
+        // 그룹 존재 여부 확인
+        let group = match self.find_by_name(group_name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // Group 타입 확인
+        if !matches!(group.entity_type, EntityType::Group) {
+            return Err(SceneError::NotAGroup(
+                "remove_from_group".to_string(),
+                group_name.to_string(),
+            ));
+        }
+
+        // Entity 존재 여부 확인
+        let entity = match self.find_by_name(entity_name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        // 해당 그룹의 자식인지 확인
+        if entity.parent_id.as_deref() != Some(group_name) {
+            return Ok(false);
+        }
+
+        // Entity의 parent_id 해제
+        if let Some(child) = self.find_by_name_mut(entity_name) {
+            child.parent_id = None;
+        }
+
+        // 그룹의 children에서 제거
+        if let Some(group) = self.find_by_name_mut(group_name) {
+            group.children.retain(|c| c != entity_name);
+        }
+
+        self.last_operation = Some(format!(
+            "remove_from_group({}, {})",
+            group_name, entity_name
+        ));
+        Ok(true)
+    }
+
+    /// 그룹에서 Entity를 제거합니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `group_name` - 그룹 이름
+    /// * `entity_name` - 제거할 Entity 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 제거 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음, 또는 해당 그룹의 자식이 아님
+    ///
+    /// # Errors
+    /// * group_name이 Group 타입이 아니면 에러
+    pub fn remove_from_group(
+        &mut self,
+        group_name: &str,
+        entity_name: &str,
+    ) -> Result<bool, JsValue> {
+        self.remove_from_group_internal(group_name, entity_name)
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -2459,5 +2617,206 @@ mod tests {
         );
         // parent_id가 None이면 JSON에서 생략됨 (skip_serializing_if)
         assert!(head.get("parent_id").is_none() || head.get("parent_id").unwrap().is_null());
+    }
+
+    // ========================================
+    // Story 4-3: add_to_group / remove_from_group Tests
+    // ========================================
+
+    #[test]
+    fn test_add_to_group_basic() {
+        // AC1: 그룹에 자식 추가
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 50.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("group", vec!["c1".to_string()])
+            .unwrap();
+
+        let result = scene.add_to_group_internal("group", "c2");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // c2가 group의 자식으로 추가됨
+        let c2 = scene.find_by_name("c2").unwrap();
+        assert_eq!(c2.parent_id, Some("group".to_string()));
+
+        let group = scene.find_by_name("group").unwrap();
+        assert!(group.children.contains(&"c2".to_string()));
+        assert_eq!(group.children.len(), 2); // c1 + c2
+    }
+
+    #[test]
+    fn test_add_to_group_not_found() {
+        // AC2: 그룹 또는 엔티티가 없으면 false
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.create_group_internal("group", vec![]).unwrap();
+
+        // 존재하지 않는 그룹
+        let result = scene.add_to_group_internal("nonexistent", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+
+        // 존재하지 않는 엔티티
+        let result = scene.add_to_group_internal("group", "nonexistent");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_add_to_group_not_a_group() {
+        // AC3: Group 아닌 엔티티에 추가 시도하면 에러
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 50.0, 0.0, 10.0).unwrap();
+
+        let result = scene.add_to_group_internal("c1", "c2");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            err,
+            SceneError::NotAGroup("add_to_group".to_string(), "c1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_move_between_groups() {
+        // AC4: 이미 다른 그룹에 속한 엔티티는 기존 그룹에서 제거 후 추가
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("group_a", vec!["c1".to_string()])
+            .unwrap();
+        scene.create_group_internal("group_b", vec![]).unwrap();
+
+        // c1을 group_b로 이동
+        let result = scene.add_to_group_internal("group_b", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // c1이 group_b의 자식이 됨
+        let c1 = scene.find_by_name("c1").unwrap();
+        assert_eq!(c1.parent_id, Some("group_b".to_string()));
+
+        // group_a에서는 제거됨
+        let group_a = scene.find_by_name("group_a").unwrap();
+        assert!(!group_a.children.contains(&"c1".to_string()));
+
+        // group_b에 추가됨
+        let group_b = scene.find_by_name("group_b").unwrap();
+        assert!(group_b.children.contains(&"c1".to_string()));
+    }
+
+    #[test]
+    fn test_add_to_group_duplicate() {
+        // 이미 해당 그룹에 있는 엔티티를 다시 추가해도 중복 안 됨
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("group", vec!["c1".to_string()])
+            .unwrap();
+
+        // 같은 그룹에 다시 추가
+        let result = scene.add_to_group_internal("group", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // children에 중복 없음
+        let group = scene.find_by_name("group").unwrap();
+        assert_eq!(group.children.len(), 1);
+    }
+
+    #[test]
+    fn test_remove_from_group_basic() {
+        // AC1: 그룹에서 자식 제거
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 50.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("group", vec!["c1".to_string(), "c2".to_string()])
+            .unwrap();
+
+        let result = scene.remove_from_group_internal("group", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        // c1의 parent_id가 None
+        let c1 = scene.find_by_name("c1").unwrap();
+        assert_eq!(c1.parent_id, None);
+
+        // group의 children에서 제거됨
+        let group = scene.find_by_name("group").unwrap();
+        assert!(!group.children.contains(&"c1".to_string()));
+        assert_eq!(group.children.len(), 1); // c2만 남음
+    }
+
+    #[test]
+    fn test_remove_from_group_not_found() {
+        // AC2: 그룹 또는 엔티티가 없으면 false
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("group", vec!["c1".to_string()])
+            .unwrap();
+
+        // 존재하지 않는 그룹
+        let result = scene.remove_from_group_internal("nonexistent", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+
+        // 존재하지 않는 엔티티
+        let result = scene.remove_from_group_internal("group", "nonexistent");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_remove_from_group_not_a_group() {
+        // AC3: Group 아닌 엔티티에서 제거 시도하면 에러
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 50.0, 0.0, 10.0).unwrap();
+
+        let result = scene.remove_from_group_internal("c1", "c2");
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert_eq!(
+            err,
+            SceneError::NotAGroup("remove_from_group".to_string(), "c1".to_string())
+        );
+    }
+
+    #[test]
+    fn test_remove_from_group_not_a_child() {
+        // AC4: 해당 그룹의 자식이 아니면 false
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 50.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("group_a", vec!["c1".to_string()])
+            .unwrap();
+        scene.create_group_internal("group_b", vec![]).unwrap();
+
+        // c1은 group_a에 속해 있고, group_b에서 제거 시도
+        let result = scene.remove_from_group_internal("group_b", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+
+        // c1은 여전히 group_a에 속함
+        let c1 = scene.find_by_name("c1").unwrap();
+        assert_eq!(c1.parent_id, Some("group_a".to_string()));
+    }
+
+    #[test]
+    fn test_remove_from_group_independent_entity() {
+        // AC5: 독립 엔티티(parent_id = None)를 제거 시도하면 false
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.create_group_internal("group", vec![]).unwrap();
+
+        let result = scene.remove_from_group_internal("group", "c1");
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
     }
 }

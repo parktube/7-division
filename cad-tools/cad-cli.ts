@@ -182,11 +182,15 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 - 존재하지 않는 도형은 무시됨
 - 빈 children으로도 빈 그룹 생성 가능
 - 그룹도 다른 그룹의 자식이 될 수 있음 (중첩 그룹)
+- add_to_group: 기존 그룹에 엔티티 추가 (다른 그룹에서 자동 이동)
+- remove_from_group: 그룹에서 엔티티 제거 (독립 엔티티로)
 
 💡 EXAMPLES
 - create_group '{"name":"left_arm","children":["upper_arm","lower_arm","hand"]}'
 - create_group '{"name":"skeleton","children":["head","torso","left_arm","right_arm"]}'
-- ungroup '{"name":"left_arm"}' → 그룹 해제, 자식들은 독립 엔티티로`
+- ungroup '{"name":"left_arm"}' → 그룹 해제, 자식들은 독립 엔티티로
+- add_to_group '{"group_name":"left_arm","entity_name":"wrist"}' → 기존 그룹에 추가
+- remove_from_group '{"group_name":"left_arm","entity_name":"hand"}' → 그룹에서 제거`
 };
 
 function showDomains(): void {
@@ -232,6 +236,8 @@ const ACTION_HINTS: Record<string, string[]> = {
   export_svg: ['작업 완료!'],
   create_group: ['translate로 그룹 전체 이동', 'rotate로 그룹 전체 회전', 'list_entities로 확인'],
   ungroup: ['list_entities로 해제 결과 확인', 'create_group으로 다시 그룹화'],
+  add_to_group: ['get_entity로 추가 결과 확인', 'remove_from_group으로 제거'],
+  remove_from_group: ['list_entities로 결과 확인', 'add_to_group으로 다시 추가'],
 };
 
 function getActionHints(command: string): string[] {
@@ -297,8 +303,10 @@ Commands (transforms):
   delete        {"name":"..."}
 
 Commands (group):
-  create_group  {"name":"...", "children":["entity1","entity2",...]}
-  ungroup       {"name":"..."} - 그룹 해제 (자식들은 독립 엔티티로)
+  create_group       {"name":"...", "children":["entity1","entity2",...]}
+  ungroup            {"name":"..."} - 그룹 해제 (자식들은 독립 엔티티로)
+  add_to_group       {"group_name":"...", "entity_name":"..."} - 그룹에 엔티티 추가
+  remove_from_group  {"group_name":"...", "entity_name":"..."} - 그룹에서 엔티티 제거
 
 Commands (query):
   list_entities
