@@ -28,15 +28,17 @@ interface SceneState {
 
 /** Entity from scene.json for replay */
 interface SceneEntity {
-  entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc';
+  entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc' | 'Group';
   geometry: {
     Circle?: { center: [number, number]; radius: number };
     Rect?: { origin: [number, number]; width: number; height: number };
     Line?: { points: [number, number][] };
     Arc?: { center: [number, number]; radius: number; start_angle: number; end_angle: number };
+    Empty?: null;
   };
   style?: unknown;
   metadata?: { name?: string };
+  children?: string[];
 }
 
 function loadState(): SceneState {
@@ -162,7 +164,27 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 
 💡 TIPS
 - reset은 되돌릴 수 없음
-- status로 현재 엔티티 수 확인`
+- status로 현재 엔티티 수 확인`,
+
+  group: `🗂️ GROUP - 그룹화
+
+📋 ACTIONS
+- create_group [name, children]: 여러 도형을 그룹으로 묶기
+
+🎯 WORKFLOW
+1. primitives로 개별 도형 그리기 (예: upper_arm, lower_arm, hand)
+2. create_group으로 그룹 생성 (예: left_arm)
+3. 그룹 단위로 변환 적용
+
+💡 TIPS
+- children: 그룹에 포함할 도형 이름 배열
+- 존재하지 않는 도형은 무시됨
+- 빈 children으로도 빈 그룹 생성 가능
+- 그룹도 다른 그룹의 자식이 될 수 있음 (중첩 그룹)
+
+💡 EXAMPLES
+- create_group '{"name":"left_arm","children":["upper_arm","lower_arm","hand"]}'
+- create_group '{"name":"skeleton","children":["head","torso","left_arm","right_arm"]}'`
 };
 
 function showDomains(): void {
@@ -173,6 +195,7 @@ Available domains:
   primitives  - 기본 도형 (circle, rect, line, arc)
   style       - 색상/스타일 (fill, stroke)
   transforms  - 변환 (translate, rotate, scale, delete)
+  group       - 그룹화 (create_group)
   query       - 조회 (list_entities, get_entity, get_scene_info)
   export      - 내보내기 (json, svg)
   session     - 세션 관리 (reset, status)
@@ -205,6 +228,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   get_scene_info: ['export_svg로 내보내기', 'list_entities로 상세 목록'],
   export_json: ['export_svg로 SVG도 내보내기'],
   export_svg: ['작업 완료!'],
+  create_group: ['translate로 그룹 전체 이동', 'rotate로 그룹 전체 회전', 'list_entities로 확인'],
 };
 
 function getActionHints(command: string): string[] {
@@ -268,6 +292,9 @@ Commands (transforms):
   rotate        {"name":"...", "angle":45, "cx":0, "cy":0}
   scale         {"name":"...", "sx":2, "sy":2, "cx":0, "cy":0}
   delete        {"name":"..."}
+
+Commands (group):
+  create_group  {"name":"...", "children":["entity1","entity2",...]}
 
 Commands (query):
   list_entities
@@ -455,6 +482,16 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
             start_angle,
             end_angle,
             style,
+          });
+        }
+        break;
+
+      case 'Group':
+        // Group은 children을 통해 재생성
+        if (entity.children && entity.children.length > 0) {
+          executor.exec('create_group', {
+            name,
+            children: entity.children,
           });
         }
         break;

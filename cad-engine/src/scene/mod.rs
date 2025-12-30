@@ -91,6 +91,8 @@ impl Scene {
                 name: name.to_string(),
                 ..Default::default()
             },
+            parent_id: None,
+            children: Vec::new(),
         };
 
         self.entities.push(entity);
@@ -469,6 +471,8 @@ impl Scene {
                 name: name.to_string(),
                 ..Default::default()
             },
+            parent_id: None,
+            children: Vec::new(),
         };
 
         self.entities.push(entity);
@@ -537,6 +541,8 @@ impl Scene {
                 name: name.to_string(),
                 ..Default::default()
             },
+            parent_id: None,
+            children: Vec::new(),
         };
 
         self.entities.push(entity);
@@ -591,6 +597,8 @@ impl Scene {
                 name: name.to_string(),
                 ..Default::default()
             },
+            parent_id: None,
+            children: Vec::new(),
         };
 
         self.entities.push(entity);
@@ -667,6 +675,8 @@ impl Scene {
                 name: name.to_string(),
                 ..Default::default()
             },
+            parent_id: None,
+            children: Vec::new(),
         };
 
         self.entities.push(entity);
@@ -969,6 +979,92 @@ impl Scene {
     }
 
     // ========================================
+    // Group Functions (Story 4.1)
+    // ========================================
+
+    /// 내부용 그룹 생성 함수 (테스트용)
+    fn create_group_internal(
+        &mut self,
+        name: &str,
+        children_names: Vec<String>,
+    ) -> Result<String, SceneError> {
+        // name 중복 검사
+        if self.has_entity(name) {
+            return Err(SceneError::DuplicateEntityName(
+                "create_group".to_string(),
+                name.to_string(),
+            ));
+        }
+
+        // 존재하는 자식만 필터링
+        let valid_children: Vec<String> = children_names
+            .into_iter()
+            .filter(|child_name| self.has_entity(child_name))
+            .collect();
+
+        // 자식의 기존 부모에서 제거 + parent_id 설정
+        for child_name in &valid_children {
+            // 자식의 현재 parent_id 확인
+            let old_parent = self
+                .find_by_name(child_name)
+                .and_then(|e| e.parent_id.clone());
+
+            // 기존 부모가 있으면 그 부모의 children에서 제거
+            if let Some(old_parent_name) = old_parent {
+                if let Some(old_parent_entity) = self.find_by_name_mut(&old_parent_name) {
+                    old_parent_entity.children.retain(|c| c != child_name);
+                }
+            }
+
+            // 자식의 parent_id를 새 그룹으로 설정
+            if let Some(child_entity) = self.find_by_name_mut(child_name) {
+                child_entity.parent_id = Some(name.to_string());
+            }
+        }
+
+        // Group Entity 생성
+        let group_entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Group,
+            geometry: Geometry::Empty,
+            transform: Transform::default(),
+            style: Style::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+            parent_id: None,
+            children: valid_children,
+        };
+
+        self.entities.push(group_entity);
+        self.last_operation = Some(format!("create_group({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 여러 Entity를 그룹으로 묶습니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `name` - 그룹 이름 (예: "left_arm") - Scene 내 unique
+    /// * `children_json` - 자식 Entity 이름들의 JSON 배열 (예: '["upper_arm", "lower_arm"]')
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 그룹 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    ///
+    /// # 입력 보정 (AC2)
+    /// 존재하지 않는 자식 이름은 무시하고 정상 생성
+    pub fn create_group(&mut self, name: &str, children_json: &str) -> Result<String, JsValue> {
+        // children JSON 파싱
+        let children_names: Vec<String> = serde_json::from_str(children_json).unwrap_or_default();
+
+        self.create_group_internal(name, children_names)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    // ========================================
     // Scene Query Functions (Story 3.0-a)
     // ========================================
 
@@ -1118,6 +1214,10 @@ impl Scene {
                     [center[0] - radius, center[1] - radius],
                     [center[0] + radius, center[1] + radius],
                 )
+            }
+            Geometry::Empty => {
+                // Group은 자체 geometry가 없으므로 영점 반환 (자식 bounds는 별도 계산)
+                ([0.0, 0.0], [0.0, 0.0])
             }
         }
     }
@@ -1941,5 +2041,216 @@ mod tests {
             err.to_string(),
             "[add_arc] invalid_input: NaN or Infinity not allowed"
         );
+    }
+
+    // === create_group 테스트 (Story 4.1) ===
+
+    #[test]
+    fn test_create_group_basic() {
+        // AC1: 기본 그룹 생성
+        let mut scene = Scene::new("test");
+        scene
+            .add_circle_internal("upper_arm", 0.0, 0.0, 10.0)
+            .unwrap();
+        scene
+            .add_circle_internal("lower_arm", 0.0, -30.0, 10.0)
+            .unwrap();
+        scene.add_circle_internal("hand", 0.0, -60.0, 5.0).unwrap();
+
+        let result = scene.create_group_internal(
+            "left_arm",
+            vec![
+                "upper_arm".to_string(),
+                "lower_arm".to_string(),
+                "hand".to_string(),
+            ],
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "left_arm");
+
+        // 그룹 엔티티 확인
+        let group = scene.find_by_name("left_arm").unwrap();
+        assert!(matches!(group.entity_type, EntityType::Group));
+        assert!(matches!(group.geometry, Geometry::Empty));
+        assert_eq!(group.children.len(), 3);
+        assert!(group.children.contains(&"upper_arm".to_string()));
+        assert!(group.children.contains(&"lower_arm".to_string()));
+        assert!(group.children.contains(&"hand".to_string()));
+
+        // 자식들의 parent_id 확인
+        let upper_arm = scene.find_by_name("upper_arm").unwrap();
+        assert_eq!(upper_arm.parent_id, Some("left_arm".to_string()));
+
+        let lower_arm = scene.find_by_name("lower_arm").unwrap();
+        assert_eq!(lower_arm.parent_id, Some("left_arm".to_string()));
+
+        let hand = scene.find_by_name("hand").unwrap();
+        assert_eq!(hand.parent_id, Some("left_arm".to_string()));
+    }
+
+    #[test]
+    fn test_create_group_nonexistent_children() {
+        // AC2: 존재하지 않는 자식은 무시
+        let mut scene = Scene::new("test");
+        scene
+            .add_circle_internal("existing", 0.0, 0.0, 10.0)
+            .unwrap();
+
+        let result = scene.create_group_internal(
+            "my_group",
+            vec![
+                "existing".to_string(),
+                "nonexistent".to_string(),
+                "also_missing".to_string(),
+            ],
+        );
+        assert!(result.is_ok());
+
+        let group = scene.find_by_name("my_group").unwrap();
+        assert_eq!(group.children.len(), 1);
+        assert!(group.children.contains(&"existing".to_string()));
+    }
+
+    #[test]
+    fn test_create_group_empty_children() {
+        // AC3: 빈 children 배열
+        let mut scene = Scene::new("test");
+
+        let result = scene.create_group_internal("empty_group", vec![]);
+        assert!(result.is_ok());
+
+        let group = scene.find_by_name("empty_group").unwrap();
+        assert!(matches!(group.entity_type, EntityType::Group));
+        assert!(group.children.is_empty());
+    }
+
+    #[test]
+    fn test_create_group_duplicate_name_error() {
+        // AC4: 중복 name 에러
+        let mut scene = Scene::new("test");
+        scene
+            .add_circle_internal("left_arm", 0.0, 0.0, 10.0)
+            .unwrap();
+
+        let result = scene.create_group_internal("left_arm", vec![]);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, SceneError::DuplicateEntityName(..)));
+        assert_eq!(
+            err.to_string(),
+            "[create_group] duplicate_name: Entity 'left_arm' already exists"
+        );
+    }
+
+    #[test]
+    fn test_create_group_nested() {
+        // AC5: 그룹 중첩 지원
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("elbow", 0.0, 0.0, 5.0).unwrap();
+        scene.add_circle_internal("wrist", 0.0, -20.0, 5.0).unwrap();
+
+        // forearm 그룹 생성
+        scene
+            .create_group_internal("forearm", vec!["elbow".to_string(), "wrist".to_string()])
+            .unwrap();
+
+        // shoulder 추가
+        scene
+            .add_circle_internal("shoulder", 0.0, 30.0, 10.0)
+            .unwrap();
+
+        // left_arm 그룹에 shoulder와 forearm(그룹) 포함
+        let result = scene.create_group_internal(
+            "left_arm",
+            vec!["shoulder".to_string(), "forearm".to_string()],
+        );
+        assert!(result.is_ok());
+
+        let left_arm = scene.find_by_name("left_arm").unwrap();
+        assert_eq!(left_arm.children.len(), 2);
+        assert!(left_arm.children.contains(&"forearm".to_string()));
+
+        // forearm의 parent_id가 left_arm으로 변경됨
+        let forearm = scene.find_by_name("forearm").unwrap();
+        assert_eq!(forearm.parent_id, Some("left_arm".to_string()));
+
+        // forearm의 children은 유지
+        assert_eq!(forearm.children.len(), 2);
+        assert!(forearm.children.contains(&"elbow".to_string()));
+    }
+
+    #[test]
+    fn test_create_group_move_child_between_groups() {
+        // 자식이 다른 그룹으로 이동할 때 기존 부모에서 제거
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("item", 0.0, 0.0, 10.0).unwrap();
+
+        // group_a에 item 추가
+        scene
+            .create_group_internal("group_a", vec!["item".to_string()])
+            .unwrap();
+        let group_a = scene.find_by_name("group_a").unwrap();
+        assert!(group_a.children.contains(&"item".to_string()));
+
+        // group_b에 item 추가 (group_a에서 제거되어야 함)
+        scene
+            .create_group_internal("group_b", vec!["item".to_string()])
+            .unwrap();
+
+        // group_a의 children에서 item이 제거됨
+        let group_a = scene.find_by_name("group_a").unwrap();
+        assert!(!group_a.children.contains(&"item".to_string()));
+
+        // group_b의 children에 item 포함
+        let group_b = scene.find_by_name("group_b").unwrap();
+        assert!(group_b.children.contains(&"item".to_string()));
+
+        // item의 parent_id가 group_b로 변경됨
+        let item = scene.find_by_name("item").unwrap();
+        assert_eq!(item.parent_id, Some("group_b".to_string()));
+    }
+
+    #[test]
+    fn test_create_group_json_serialization() {
+        // AC6: export_json에 그룹 포함 확인
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("head", 0.0, 100.0, 10.0).unwrap();
+        scene
+            .create_group_internal("skeleton", vec!["head".to_string()])
+            .unwrap();
+
+        let json = scene.export_json();
+        let value: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+
+        let entities = value.get("entities").unwrap().as_array().unwrap();
+        assert_eq!(entities.len(), 2);
+
+        // Group 엔티티 확인
+        let skeleton = entities
+            .iter()
+            .find(|e| {
+                e.get("metadata")
+                    .and_then(|m| m.get("name"))
+                    .and_then(|n| n.as_str())
+                    == Some("skeleton")
+            })
+            .expect("skeleton should exist");
+
+        assert_eq!(skeleton.get("entity_type").unwrap().as_str(), Some("Group"));
+        let children = skeleton.get("children").unwrap().as_array().unwrap();
+        assert_eq!(children.len(), 1);
+        assert_eq!(children[0].as_str(), Some("head"));
+
+        // head의 parent_id 확인
+        let head = entities
+            .iter()
+            .find(|e| {
+                e.get("metadata")
+                    .and_then(|m| m.get("name"))
+                    .and_then(|n| n.as_str())
+                    == Some("head")
+            })
+            .expect("head should exist");
+        assert_eq!(head.get("parent_id").unwrap().as_str(), Some("skeleton"));
     }
 }

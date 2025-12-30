@@ -10,6 +10,12 @@ pub struct Entity {
     pub transform: Transform,
     pub style: Style,
     pub metadata: Metadata,
+    /// 부모 그룹의 name (None이면 최상위)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<String>,
+    /// 자식 Entity들의 name 목록 (Group만 사용)
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub children: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +24,7 @@ pub enum EntityType {
     Circle,
     Rect,
     Arc,
+    Group,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +47,8 @@ pub enum Geometry {
         start_angle: f64, // 라디안, 0 = 3시 방향
         end_angle: f64,   // 라디안, 양수 = 반시계방향 (CCW)
     },
+    /// Group용 빈 geometry (자체 도형 없음)
+    Empty,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

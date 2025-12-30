@@ -52,6 +52,10 @@ fn entity_to_svg(entity: &Entity) -> String {
                 &transform_attr,
             )
         }
+        Geometry::Empty => {
+            // Group은 자체 렌더링이 없음 (자식들이 개별 렌더링)
+            String::new()
+        }
     }
 }
 
@@ -210,6 +214,8 @@ mod tests {
             transform: Transform::default(),
             style: Style::default(),
             metadata: Metadata::default(),
+            parent_id: None,
+            children: Vec::new(),
         }
     }
 

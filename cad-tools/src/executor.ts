@@ -152,6 +152,10 @@ export class CADExecutor {
         case 'delete':
           return this.deleteEntity(input);
 
+        // === group ===
+        case 'create_group':
+          return this.createGroup(input);
+
         // === registry ===
         case 'list_domains':
           return this.listDomainsHandler();
@@ -379,6 +383,20 @@ export class CADExecutor {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name };
+  }
+
+  // === Group implementations ===
+
+  private createGroup(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `create_group: ${error}` };
+
+    const name = input.name as string;
+    const children = input.children as string[] || [];
+    const childrenJson = JSON.stringify(children);
+
+    const result = this.scene.create_group(name, childrenJson);
+    return { success: true, entity: result, type: 'group' };
   }
 
   // === Registry implementations ===
