@@ -986,6 +986,31 @@ impl Scene {
         }
     }
 
+    /// Entity의 회전/스케일 중심점(pivot)을 설정합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    /// * `px` - pivot x 좌표 (로컬 좌표계)
+    /// * `py` - pivot y 좌표 (로컬 좌표계)
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    ///
+    /// # Notes
+    /// pivot은 rotate/scale 변환의 중심점입니다.
+    /// 기본값 [0, 0]은 엔티티의 로컬 원점입니다.
+    pub fn set_pivot(&mut self, name: &str, px: f64, py: f64) -> Result<bool, JsValue> {
+        let entity = match self.find_by_name_mut(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        entity.transform.pivot = [px, py];
+        self.last_operation = Some(format!("set_pivot({}, [{}, {}])", name, px, py));
+        Ok(true)
+    }
+
     // ========================================
     // Group Functions (Story 4.1)
     // ========================================
@@ -2818,5 +2843,95 @@ mod tests {
         let result = scene.remove_from_group_internal("group", "c1");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), false);
+    }
+
+    // ========================================
+    // Story 4-4: set_pivot Tests
+    // ========================================
+
+    #[test]
+    fn test_set_pivot_basic() {
+        // AC1: set_pivot 호출 시 pivot 설정
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        let result = scene.set_pivot("c1", 5.0, 10.0);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        let entity = scene.find_by_name("c1").unwrap();
+        assert_eq!(entity.transform.pivot, [5.0, 10.0]);
+    }
+
+    #[test]
+    fn test_set_pivot_not_found() {
+        // AC2: Entity 미존재 시 false
+        let mut scene = Scene::new("test");
+
+        let result = scene.set_pivot("nonexistent", 5.0, 10.0);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), false);
+    }
+
+    #[test]
+    fn test_set_pivot_negative_values() {
+        // AC3: 음수 pivot 허용
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        let result = scene.set_pivot("c1", -5.0, -10.0);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        let entity = scene.find_by_name("c1").unwrap();
+        assert_eq!(entity.transform.pivot, [-5.0, -10.0]);
+    }
+
+    #[test]
+    fn test_set_pivot_zero() {
+        // AC4: pivot을 [0, 0]으로 재설정 가능
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.set_pivot("c1", 5.0, 10.0).unwrap();
+
+        let result = scene.set_pivot("c1", 0.0, 0.0);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), true);
+
+        let entity = scene.find_by_name("c1").unwrap();
+        assert_eq!(entity.transform.pivot, [0.0, 0.0]);
+    }
+
+    #[test]
+    fn test_set_pivot_json_serialization() {
+        // AC5: pivot이 [0, 0]이 아니면 JSON에 포함됨
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.set_pivot("c1", 5.0, 10.0).unwrap();
+
+        let json = scene.export_json();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let entities = value.get("entities").unwrap().as_array().unwrap();
+        let c1 = &entities[0];
+        let transform = c1.get("transform").unwrap();
+        let pivot = transform.get("pivot").unwrap().as_array().unwrap();
+        assert_eq!(pivot[0].as_f64(), Some(5.0));
+        assert_eq!(pivot[1].as_f64(), Some(10.0));
+    }
+
+    #[test]
+    fn test_set_pivot_json_skip_default() {
+        // AC6: pivot이 [0, 0]이면 JSON에서 생략됨 (skip_serializing_if)
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        // pivot은 기본값 [0, 0]
+
+        let json = scene.export_json();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let entities = value.get("entities").unwrap().as_array().unwrap();
+        let c1 = &entities[0];
+        let transform = c1.get("transform").unwrap();
+        // pivot 필드가 없거나 null
+        assert!(transform.get("pivot").is_none());
     }
 }

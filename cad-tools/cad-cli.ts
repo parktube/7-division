@@ -229,6 +229,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   rotate: ['get_entity로 결과 확인', 'scale로 추가 변환'],
   scale: ['get_entity로 결과 확인', 'translate로 추가 변환'],
   delete: ['list_entities로 남은 엔티티 확인'],
+  set_pivot: ['rotate로 pivot 기준 회전', 'get_entity로 결과 확인'],
   list_entities: ['get_entity로 상세 정보 확인', 'get_scene_info로 전체 현황'],
   get_entity: ['translate/rotate/scale로 변환', 'set_fill/set_stroke로 스타일링'],
   get_scene_info: ['export_svg로 내보내기', 'list_entities로 상세 목록'],
@@ -300,6 +301,7 @@ Commands (transforms):
   translate     {"name":"...", "dx":10, "dy":20}
   rotate        {"name":"...", "angle":45, "cx":0, "cy":0}
   scale         {"name":"...", "sx":2, "sy":2, "cx":0, "cy":0}
+  set_pivot     {"name":"...", "px":0, "py":50} - 회전/스케일 중심점 설정
   delete        {"name":"..."}
 
 Commands (group):

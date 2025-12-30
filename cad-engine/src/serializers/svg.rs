@@ -107,14 +107,24 @@ fn arc_to_svg_path(
 }
 
 /// Transform을 SVG transform 속성으로 변환합니다.
+/// pivot이 설정된 경우 rotate/scale의 중심점으로 사용됩니다.
 fn transform_to_svg(transform: &Transform) -> String {
     let mut parts = Vec::new();
+    let has_pivot = transform.pivot != [0.0, 0.0];
+    let [px, py] = transform.pivot;
 
+    // 1. Translation
     if transform.translate != [0.0, 0.0] {
         parts.push(format!(
             "translate({}, {})",
             transform.translate[0], transform.translate[1]
         ));
+    }
+
+    // 2. Pivot을 중심으로 한 rotate/scale
+    if has_pivot && (transform.rotate != 0.0 || transform.scale != [1.0, 1.0]) {
+        // translate to pivot
+        parts.push(format!("translate({}, {})", px, py));
     }
 
     if transform.rotate != 0.0 {
@@ -128,6 +138,11 @@ fn transform_to_svg(transform: &Transform) -> String {
             "scale({}, {})",
             transform.scale[0], transform.scale[1]
         ));
+    }
+
+    if has_pivot && (transform.rotate != 0.0 || transform.scale != [1.0, 1.0]) {
+        // translate back from pivot
+        parts.push(format!("translate({}, {})", -px, -py));
     }
 
     if parts.is_empty() {
@@ -261,6 +276,7 @@ mod tests {
             translate: [10.0, 20.0],
             rotate: std::f64::consts::FRAC_PI_2,
             scale: [2.0, 0.5],
+            pivot: [0.0, 0.0],
         };
         let svg = transform_to_svg(&transform);
         assert!(svg.contains("translate(10, 20)"));

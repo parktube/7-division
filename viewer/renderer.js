@@ -323,11 +323,11 @@ function applyTransform(transform) {
     return;
   }
 
-  // Canvas transforms are applied in reverse order
-  // We want: scale -> rotate -> translate
-  // So we call: translate, rotate, scale
-  const { translate, rotate, scale } = transform;
+  // Transform with pivot support
+  // Order: translate -> (translate to pivot -> rotate -> scale -> translate back from pivot)
+  const { translate, rotate, scale, pivot } = transform;
 
+  // 1. Apply translation
   if (Array.isArray(translate) && translate.length >= 2) {
     const [dx, dy] = translate;
     if (Number.isFinite(dx) && Number.isFinite(dy)) {
@@ -335,15 +335,32 @@ function applyTransform(transform) {
     }
   }
 
+  // 2. Get pivot point (default [0, 0])
+  const px = Array.isArray(pivot) && Number.isFinite(pivot[0]) ? pivot[0] : 0;
+  const py = Array.isArray(pivot) && Number.isFinite(pivot[1]) ? pivot[1] : 0;
+  const hasPivot = px !== 0 || py !== 0;
+
+  // 3. Translate to pivot for rotation/scale
+  if (hasPivot) {
+    ctx.translate(px, py);
+  }
+
+  // 4. Apply rotation
   if (Number.isFinite(rotate) && rotate !== 0) {
     ctx.rotate(rotate);
   }
 
+  // 5. Apply scale
   if (Array.isArray(scale) && scale.length >= 2) {
     const [sx, sy] = scale;
     if (Number.isFinite(sx) && Number.isFinite(sy)) {
       ctx.scale(sx, sy);
     }
+  }
+
+  // 6. Translate back from pivot
+  if (hasPivot) {
+    ctx.translate(-px, -py);
   }
 }
 

@@ -56,6 +56,14 @@ pub struct Transform {
     pub translate: [f64; 2],
     pub rotate: f64,
     pub scale: [f64; 2],
+    /// 회전/스케일 중심점 (로컬 좌표계). 기본값 [0, 0]
+    #[serde(default, skip_serializing_if = "is_zero_pivot")]
+    pub pivot: [f64; 2],
+}
+
+/// pivot이 기본값([0, 0])인지 확인하는 헬퍼
+fn is_zero_pivot(pivot: &[f64; 2]) -> bool {
+    pivot[0] == 0.0 && pivot[1] == 0.0
 }
 
 impl Default for Transform {
@@ -64,6 +72,7 @@ impl Default for Transform {
             translate: [0.0, 0.0],
             rotate: 0.0,
             scale: [1.0, 1.0],
+            pivot: [0.0, 0.0],
         }
     }
 }

@@ -152,6 +152,9 @@ export class CADExecutor {
         case 'delete':
           return this.deleteEntity(input);
 
+        case 'set_pivot':
+          return this.setPivot(input);
+
         // === group ===
         case 'create_group':
           return this.createGroup(input);
@@ -392,6 +395,21 @@ export class CADExecutor {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name };
+  }
+
+  private setPivot(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', px: 'number', py: 'number' });
+    if (error) return { success: false, error: `set_pivot: ${error}` };
+
+    const name = input.name as string;
+    const px = input.px as number;
+    const py = input.py as number;
+
+    const result = this.scene.set_pivot(name, px, py);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name, pivot: [px, py] };
   }
 
   // === Group implementations ===
