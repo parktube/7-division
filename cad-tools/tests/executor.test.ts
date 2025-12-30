@@ -1,15 +1,32 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { CADExecutor } from '../src/executor.js';
+import { ToolRegistry } from '../src/tool-registry.js';
 
 describe('CADExecutor', () => {
   let executor: CADExecutor;
+  let tempRequestsDir: string | null = null;
 
   beforeEach(() => {
+    // 테스트 격리: 임시 디렉토리에 빈 tool-requests.json 생성
+    tempRequestsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cad-tools-requests-'));
+    const requestsPath = path.join(tempRequestsDir, 'tool-requests.json');
+    fs.writeFileSync(requestsPath, '[]\n');
+    ToolRegistry.resetInstance();
+    ToolRegistry.getInstance(requestsPath);
+
     executor = CADExecutor.create('test-scene');
   });
 
   afterEach(() => {
     executor.free();
+    ToolRegistry.resetInstance();
+    if (tempRequestsDir) {
+      fs.rmSync(tempRequestsDir, { recursive: true, force: true });
+      tempRequestsDir = null;
+    }
   });
 
   describe('create', () => {

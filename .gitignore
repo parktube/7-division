@@ -63,11 +63,12 @@ CLAUDE.md
 # ===================
 # Test/Dev scripts (may reference API keys)
 # ===================
-# Ignore test scripts in cad-tools/ root (e.g., test-*.ts, demo-*.ts)
-# These may contain hardcoded API keys or test data
-# Exception: cad-cli.ts is the main CLI entry point
-cad-tools/*.ts
-!cad-tools/cad-cli.ts
+# Ignore test/dev scripts in cad-tools/ root (may contain API keys)
+# Use specific prefixes to avoid accidentally ignoring legitimate source files
+cad-tools/test-*.ts
+cad-tools/dev-*.ts
+cad-tools/scratch-*.ts
+cad-tools/demo-*.ts
 
 # CLI state file (regenerated per session)
 cad-tools/.cad-state.json
