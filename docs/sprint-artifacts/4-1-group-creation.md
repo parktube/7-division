@@ -54,13 +54,17 @@ so that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 
   - [ ] 1.4: Default 구현에서 parent_id=None, children=vec![] 설정
   - [ ] 1.5: Serde 직렬화 테스트 (JSON 출력 확인)
 
-- [ ] **Task 2: create_group 함수 구현** (AC: 1, 2, 3, 4)
+- [ ] **Task 2: create_group 함수 구현** (AC: 1, 2, 3, 4, 5)
   - [ ] 2.1: `create_group(name: &str, children: Vec<String>) -> Result<String, JsValue>` 시그니처
   - [ ] 2.2: name 중복 검사 (기존 has_entity 로직 재사용)
   - [ ] 2.3: children에서 존재하는 Entity만 필터링
   - [ ] 2.4: Group Entity 생성 (EntityType::Group, geometry는 Empty 또는 None)
   - [ ] 2.5: 각 자식의 parent_id를 그룹 ID로 설정
-  - [ ] 2.6: Scene.entities에 그룹 추가
+  - [ ] 2.6: 자식이 기존 그룹인 경우 처리 (AC5 그룹 중첩)
+    - [ ] 2.6.1: 자식 Entity가 EntityType::Group인지 확인
+    - [ ] 2.6.2: 기존 그룹의 parent_id를 새 그룹으로 업데이트
+    - [ ] 2.6.3: 기존 그룹의 children은 유지 (계층 구조 보존)
+  - [ ] 2.7: Scene.entities에 그룹 추가
 
 - [ ] **Task 3: Geometry 확장** (AC: 1)
   - [ ] 3.1: Geometry enum에 `Empty` 또는 `Group` variant 추가 (그룹은 geometry 없음)

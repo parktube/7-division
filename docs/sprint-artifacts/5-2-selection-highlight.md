@@ -85,6 +85,9 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
   - [ ] 3.3: ctx.setLineDash([5, 3]) 적용
   - [ ] 3.4: strokeRect로 바운딩 박스 그리기
   - [ ] 3.5: 도형 렌더링 후 하이라이트 렌더링 (위에 표시)
+  - [ ] 3.6: 선택 해제 시 하이라이트 제거 (AC2)
+    - [ ] 3.6.1: selection.json에서 selected_ids가 비어있으면 하이라이트 스킵
+    - [ ] 3.6.2: 매 렌더링 주기에 selection 상태 확인하여 동기화
 
 - [ ] **Task 4: 다중 선택 처리** (AC: 3)
   - [ ] 4.1: selection.json에서 selected_ids 배열 읽기

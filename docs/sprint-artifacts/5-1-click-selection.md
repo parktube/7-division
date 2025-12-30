@@ -102,6 +102,13 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
   - [ ] 4.1: 클릭 좌표를 엔티티 로컬 좌표로 변환
   - [ ] 4.2: 역변환 행렬 계산 (또는 단순 TRS 역변환)
   - [ ] 4.3: 계층 구조 고려 (월드 → 로컬)
+  - [ ] 4.4: 역변환 순서: 역translate → 역rotate(pivot 기준) → 역scale
+    - [ ] 4.4.1: `localX = (worldX - translate[0]) / scale[0]`
+    - [ ] 4.4.2: `localY = (worldY - translate[1]) / scale[1]`
+    - [ ] 4.4.3: 회전 적용: pivot 기준 -angle 회전
+  - [ ] 4.5: 그룹 계층 시 재귀적 역변환 적용 (부모부터 자식 순)
+  - [ ] 4.6: `toLocalCoords(worldClick, entity)` 함수 구현
+  - [ ] 4.7: 변환된 로컬 좌표로 hit test 수행
 
 - [ ] **Task 5: Z-order 기반 선택** (AC: 9)
   - [ ] 5.1: entities를 역순으로 순회 (나중 렌더링 = 위에 있음)

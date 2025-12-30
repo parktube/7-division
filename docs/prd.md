@@ -498,7 +498,7 @@ Entity
 | 항목 | 이유 | 예정 |
 |------|------|------|
 | **wgpu 마이그레이션** | Canvas 2D로 MVP 검증 후 | Post-MVP |
-| **MAMA Integration** | MVP 기능 우선 | Post-MVP |
+| **MAMA Integration** | MVP 기능 우선. MAMA(Memory-Augmented Meta Agent)는 LLM의 의사결정 기록 및 컨텍스트 유지 도구로, CAD 프로젝트 히스토리 추적에 활용 예정 | Post-MVP |
 | **ActionHints 확장** | 기본 힌트는 구현됨, 확장은 후순위 | Post-MVP |
 | Layer System | 그룹화로 대부분 해결 | Post-MVP |
 | DXF/DWG 출력 | SVG로 충분 | Post-MVP |

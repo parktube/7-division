@@ -61,10 +61,11 @@ so that **매번 API 키를 입력하지 않아도 된다**.
   - [ ] 1.4: 마스킹 표시 (sk-ant-...xxxx)
 
 - [ ] **Task 2: 키 저장소 구현** (AC: 2, 4, 7)
-  - [ ] 2.1: electron-store 또는 keytar 라이브러리 선택
-  - [ ] 2.2: key-store.ts 서비스 생성
-  - [ ] 2.3: save, load, delete 함수 구현
-  - [ ] 2.4: 암호화 처리
+  - [ ] 2.1: keytar (OS 키체인) 우선 구현 - 더 안전한 방식
+  - [ ] 2.2: keytar 사용 불가 시 electron-store (암호화) fallback
+  - [ ] 2.3: key-store.ts 서비스 생성 (추상화 레이어)
+  - [ ] 2.4: save, load, delete 함수 구현
+  - [ ] 2.5: 저장소 타입 자동 감지 및 선택 로직
 
 - [ ] **Task 3: 키 유효성 검증** (AC: 6)
   - [ ] 3.1: Claude API 간단한 호출 (모델 목록 등)

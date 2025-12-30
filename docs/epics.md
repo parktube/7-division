@@ -1490,15 +1490,15 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 
 ## Epic & Story 총괄
 
-| Epic | 스토리 수 | FRs Covered | 상태 |
-|------|----------|-------------|------|
-| Epic 1: CAD 엔진 기초 | 9 | FR1, FR2, FR3, FR4, FR14, FR17, FR18, FR19, FR20 | ✅ 완료 |
-| Epic 2: Canvas 2D 뷰어 | 3 | FR9, FR11, FR12, FR16 | ✅ 완료 |
-| Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 | ✅ 완료 |
-| Epic 4: 그룹화 및 피봇 | 6 | FR21, FR22, FR23, FR24, FR25 | ⬜ MVP |
-| Epic 5: Selection UI | 3 | FR26, FR27, FR28 | ⬜ MVP |
-| Epic 6: Electron 앱 | 6 | FR29, FR30 | ⬜ MVP |
-| **Total** | **34** | **30 FRs** | |
+| Epic | 스토리 수 | FRs Covered | 복잡도 | 상태 |
+|------|----------|-------------|--------|------|
+| Epic 1: CAD 엔진 기초 | 9 | FR1, FR2, FR3, FR4, FR14, FR17, FR18, FR19, FR20 | High | ✅ 완료 |
+| Epic 2: Canvas 2D 뷰어 | 3 | FR9, FR11, FR12, FR16 | Medium | ✅ 완료 |
+| Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 | Medium | ✅ 완료 |
+| Epic 4: 그룹화 및 피봇 | 6 | FR21, FR22, FR23, FR24, FR25 | High | ⬜ MVP |
+| Epic 5: Selection UI | 3 | FR26, FR27, FR28 | Medium | ⬜ MVP |
+| Epic 6: Electron 앱 | 6 | FR29, FR30 | High | ⬜ MVP |
+| **Total** | **34** | **30 FRs** | | |
 
 ## FR Coverage 검증
 

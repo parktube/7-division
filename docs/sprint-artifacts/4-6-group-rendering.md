@@ -59,8 +59,9 @@ so that **그룹 변환이 적용된 결과를 확인할 수 있다**.
 
 - [ ] **Task 1: Viewer 계층 구조 파싱** (AC: 8)
   - [ ] 1.1: scene.json 로드 후 parent_id, children 필드 파싱
-  - [ ] 1.2: root 레벨 Entity 식별 (parent_id가 null인 Entity)
-  - [ ] 1.3: Entity 조회 맵 구성 (id → Entity)
+  - [ ] 1.2: root 레벨 Entity 식별 (parent_id가 null 또는 undefined인 Entity)
+  - [ ] 1.3: Entity 조회 맵 구성 (`Map<string, Entity>` - id → Entity 매핑)
+  - [ ] 1.4: parent_id 유효성 검증 (존재하지 않는 parent 참조 시 root로 처리)
 
 - [ ] **Task 2: 재귀적 렌더링 함수** (AC: 1, 2, 3, 7)
   - [ ] 2.1: `renderEntity(entity, ctx)` 재귀 함수 구현

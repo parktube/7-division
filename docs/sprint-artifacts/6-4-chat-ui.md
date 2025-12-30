@@ -29,10 +29,11 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
    - And: 응답이 채팅에 표시된다
 
 4. **AC4: CAD 명령 자동 실행**
-   - Given: Claude 응답에 CAD 명령이 포함된 경우
-   - When: 응답 수신
-   - Then: CAD 명령이 자동으로 실행된다
-   - And: scene.json이 업데이트되어 Viewer에 반영된다
+   - Given: Claude 응답에 `tool_use` content block이 포함된 경우
+   - When: 응답 수신 및 tool_use 블록 파싱
+   - Then: tool_use의 name, input을 추출하여 WASM CAD 함수가 실행된다
+   - And: Canvas가 즉시 업데이트되어 결과가 반영된다
+   - Note: 텍스트 파싱이 아닌 Anthropic API의 tool_use 응답 형식 사용
 
 5. **AC5: 스트리밍 응답**
    - Given: Claude API 호출
