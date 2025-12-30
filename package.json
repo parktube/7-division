@@ -12,9 +12,24 @@
     "test:tools": "cd cad-tools && npm run test",
     "test:wasm": "npm run build:release && node test-wasm.mjs",
     "test:wasm:dev": "npm run build && node test-wasm.mjs",
-    "test:all": "npm run test && npm run test:tools"
+    "test:all": "npm run test && npm run test:tools",
+    "prepare": "husky",
+    "lint:rs": "cargo fmt --manifest-path cad-engine/Cargo.toml -- --check && cargo clippy --manifest-path cad-engine/Cargo.toml -- -D warnings",
+    "lint:ts": "cd cad-tools && npm run lint"
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11"
+  },
+  "lint-staged": {
+    "cad-engine/**/*.rs": [
+      "cargo fmt --manifest-path cad-engine/Cargo.toml --"
+    ],
+    "cad-tools/src/**/*.ts": [
+      "npx --prefix cad-tools eslint --fix"
+    ]
   }
 }

@@ -22,8 +22,13 @@ pub enum EntityType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Geometry {
-    Line { points: Vec<[f64; 2]> },
-    Circle { center: [f64; 2], radius: f64 },
+    Line {
+        points: Vec<[f64; 2]>,
+    },
+    Circle {
+        center: [f64; 2],
+        radius: f64,
+    },
     Rect {
         origin: [f64; 2],
         width: f64,
@@ -32,8 +37,8 @@ pub enum Geometry {
     Arc {
         center: [f64; 2],
         radius: f64,
-        start_angle: f64,  // 라디안, 0 = 3시 방향
-        end_angle: f64,    // 라디안, 양수 = 반시계방향 (CCW)
+        start_angle: f64, // 라디안, 0 = 3시 방향
+        end_angle: f64,   // 라디안, 양수 = 반시계방향 (CCW)
     },
 }
 
@@ -54,20 +59,9 @@ impl Default for Transform {
     }
 }
 
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Metadata {
     pub name: String,
     pub layer: Option<String>,
     pub locked: bool,
-}
-
-impl Default for Metadata {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            layer: None,
-            locked: false,
-        }
-    }
 }

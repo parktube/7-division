@@ -256,12 +256,14 @@ Rust CAD 엔진
 | FR27 | 선택 상태 표시 | 선택된 도형은 시각적으로 구분되어야 한다 (하이라이트, 바운딩 박스 등) |
 | FR28 | 선택 정보 전달 | 선택된 도형의 정보(id, type, geometry)를 AI에게 전달할 수 있어야 한다 |
 
-### Electron 앱 (FR29~FR30)
+### Electron 앱 (FR29)
+
+> **2025-12-30 업데이트**: PR #12 논의 결과, 자체 채팅 UI 대신 Claude Code 통합으로 결정. FR30 삭제.
 
 | ID | 요구사항 | 설명 |
 |----|---------|------|
-| FR29 | 통합 앱 | WASM CAD 엔진 + Canvas 2D Viewer + 채팅 UI가 단일 Electron 앱으로 통합되어야 한다 |
-| FR30 | API 키 입력 | 사용자가 자신의 Claude API 키를 입력하여 LLM과 대화할 수 있어야 한다 |
+| FR29 | 통합 앱 | WASM CAD 엔진 + Canvas 2D Viewer가 Electron 앱으로 통합되어야 한다. AI 인터페이스는 Claude Code 사용. |
+| ~~FR30~~ | ~~API 키 입력~~ | ~~삭제됨 - Claude Code가 API 키 관리~~ |
 
 ## Non-Functional Requirements (MVP 추가)
 
@@ -303,9 +305,12 @@ Rust CAD 엔진
 
 #### Electron 앱
 
-- WASM + Canvas 2D Viewer + 채팅 UI 통합
-- 사용자 API 키 입력 방식
-- 오프라인 우선 (로컬 LLM 지원 준비)
+> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소
+
+- WASM + Canvas 2D Viewer 통합
+- ~~채팅 UI~~ → Claude Code 사용
+- ~~API 키 입력~~ → Claude Code가 관리
+- 오프라인 우선 (CAD 기능은 API 없이 동작)
 
 **검증 시나리오**:
 
@@ -537,10 +542,13 @@ Entity
 
 ### Electron 앱
 
+> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소 (Story 6-4, 6-5 제거)
+
 - [ ] Electron 프로젝트 구조
 - [ ] WASM 엔진 통합
 - [ ] Canvas 2D Viewer 이식
-- [ ] 채팅 UI (API 키 입력 + 대화창)
+- [ ] ~~채팅 UI~~ → Claude Code 사용 (CLAUDE.md 문서화 완료)
+- [ ] ~~API 키 입력~~ → Claude Code가 관리
 - [ ] Windows/Mac/Linux 빌드
 
 ### 검증 시나리오 통과

@@ -15,14 +15,20 @@ struct SceneJson<'a> {
 pub fn serialize_scene(name: &str, entities: &[Entity], last_operation: Option<&str>) -> String {
     let scene_json = SceneJson {
         // AC3: omit the name for empty scenes to avoid implying content exists.
-        name: if entities.is_empty() { None } else { Some(name) },
+        name: if entities.is_empty() {
+            None
+        } else {
+            Some(name)
+        },
         entities,
         last_operation,
     };
 
-    serde_json::to_string_pretty(&scene_json)
-        .unwrap_or_else(|err| {
-            eprintln!("Warning: Scene serialization failed for '{}': {}", name, err);
-            r#"{"entities": []}"#.to_string()
-        })
+    serde_json::to_string_pretty(&scene_json).unwrap_or_else(|err| {
+        eprintln!(
+            "Warning: Scene serialization failed for '{}': {}",
+            name, err
+        );
+        r#"{"entities": []}"#.to_string()
+    })
 }

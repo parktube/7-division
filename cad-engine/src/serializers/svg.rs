@@ -26,15 +26,31 @@ fn entity_to_svg(entity: &Entity) -> String {
                 center[0], center[1], radius, style_attr, transform_attr
             ) + "\n"
         }
-        Geometry::Rect { origin, width, height } => {
+        Geometry::Rect {
+            origin,
+            width,
+            height,
+        } => {
             format!(
                 r#"    <rect x="{}" y="{}" width="{}" height="{}" {}{}/>"#,
                 origin[0], origin[1], width, height, style_attr, transform_attr
             ) + "\n"
         }
-        Geometry::Arc { center, radius, start_angle, end_angle } => {
+        Geometry::Arc {
+            center,
+            radius,
+            start_angle,
+            end_angle,
+        } => {
             // SVG doesn't have a native arc element, use path
-            arc_to_svg_path(center, *radius, *start_angle, *end_angle, &style_attr, &transform_attr)
+            arc_to_svg_path(
+                center,
+                *radius,
+                *start_angle,
+                *end_angle,
+                &style_attr,
+                &transform_attr,
+            )
         }
     }
 }
@@ -60,7 +76,11 @@ fn arc_to_svg_path(
     let angle_diff = (end_angle - start_angle).rem_euclid(two_pi);
 
     // Determine if arc is larger than 180 degrees
-    let large_arc_flag = if angle_diff > std::f64::consts::PI { 1 } else { 0 };
+    let large_arc_flag = if angle_diff > std::f64::consts::PI {
+        1
+    } else {
+        0
+    };
 
     // Sweep direction: 1 for counterclockwise (positive angle in our coordinate system)
     // After normalization, any positive angle_diff means counterclockwise sweep
@@ -69,11 +89,16 @@ fn arc_to_svg_path(
 
     format!(
         r#"    <path d="M {},{} A {},{} 0 {} {} {},{}" {}{}/>"#,
-        start_x, start_y,
-        radius, radius,
-        large_arc_flag, sweep_flag,
-        end_x, end_y,
-        style_attr, transform_attr
+        start_x,
+        start_y,
+        radius,
+        radius,
+        large_arc_flag,
+        sweep_flag,
+        end_x,
+        end_y,
+        style_attr,
+        transform_attr
     ) + "\n"
 }
 
@@ -82,7 +107,10 @@ fn transform_to_svg(transform: &Transform) -> String {
     let mut parts = Vec::new();
 
     if transform.translate != [0.0, 0.0] {
-        parts.push(format!("translate({}, {})", transform.translate[0], transform.translate[1]));
+        parts.push(format!(
+            "translate({}, {})",
+            transform.translate[0], transform.translate[1]
+        ));
     }
 
     if transform.rotate != 0.0 {
@@ -92,7 +120,10 @@ fn transform_to_svg(transform: &Transform) -> String {
     }
 
     if transform.scale != [1.0, 1.0] {
-        parts.push(format!("scale({}, {})", transform.scale[0], transform.scale[1]));
+        parts.push(format!(
+            "scale({}, {})",
+            transform.scale[0], transform.scale[1]
+        ));
     }
 
     if parts.is_empty() {
@@ -110,7 +141,8 @@ fn style_to_svg(style: &Style) -> String {
     if let Some(stroke) = &style.stroke {
         let [r, g, b, a] = stroke.color;
         // Clamp color values to prevent overflow (0.0 ~ 1.0 -> 0 ~ 255)
-        let color = format!("rgba({},{},{},{})",
+        let color = format!(
+            "rgba({},{},{},{})",
             (r.clamp(0.0, 1.0) * 255.0) as u8,
             (g.clamp(0.0, 1.0) * 255.0) as u8,
             (b.clamp(0.0, 1.0) * 255.0) as u8,
@@ -127,7 +159,8 @@ fn style_to_svg(style: &Style) -> String {
     if let Some(fill) = &style.fill {
         let [r, g, b, a] = fill.color;
         // Clamp color values to prevent overflow (0.0 ~ 1.0 -> 0 ~ 255)
-        let color = format!("rgba({},{},{},{})",
+        let color = format!(
+            "rgba({},{},{},{})",
             (r.clamp(0.0, 1.0) * 255.0) as u8,
             (g.clamp(0.0, 1.0) * 255.0) as u8,
             (b.clamp(0.0, 1.0) * 255.0) as u8,
@@ -238,12 +271,10 @@ mod tests {
 
     #[test]
     fn test_serialize_scene_svg() {
-        let entities = vec![
-            make_entity(Geometry::Circle {
-                center: [0.0, 100.0],
-                radius: 10.0,
-            }),
-        ];
+        let entities = vec![make_entity(Geometry::Circle {
+            center: [0.0, 100.0],
+            radius: 10.0,
+        })];
         let svg = serialize_scene_svg(&entities);
         assert!(svg.starts_with("<svg"));
         assert!(svg.ends_with("</svg>"));

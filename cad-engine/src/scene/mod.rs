@@ -1,17 +1,17 @@
-use std::fmt;
-use wasm_bindgen::prelude::*;
-use uuid::Uuid;
 use js_sys::Float64Array;
 use serde_json;
+use std::fmt;
+use uuid::Uuid;
+use wasm_bindgen::prelude::*;
 
-pub mod style;
 pub mod entity;
+pub mod style;
 
-use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
-use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 use crate::primitives::parse_line_points;
 use crate::serializers::json::serialize_scene;
 use crate::serializers::svg::serialize_scene_svg;
+use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
+use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum SceneError {
@@ -23,7 +23,11 @@ impl fmt::Display for SceneError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SceneError::DuplicateEntityName(fn_name, name) => {
-                write!(f, "[{}] duplicate_name: Entity '{}' already exists", fn_name, name)
+                write!(
+                    f,
+                    "[{}] duplicate_name: Entity '{}' already exists",
+                    fn_name, name
+                )
             }
             SceneError::InvalidInput(msg) => {
                 write!(f, "{}", msg)
@@ -71,7 +75,10 @@ impl Scene {
         geometry: Geometry,
     ) -> Result<String, SceneError> {
         if self.has_entity(name) {
-            return Err(SceneError::DuplicateEntityName(fn_name.to_string(), name.to_string()));
+            return Err(SceneError::DuplicateEntityName(
+                fn_name.to_string(),
+                name.to_string(),
+            ));
         }
 
         let entity = Entity {
@@ -93,14 +100,17 @@ impl Scene {
     /// 내부용 Line 생성 함수 (테스트용)
     /// Vec<f64> 좌표를 받아 Line Entity 생성
     fn add_line_internal(&mut self, name: &str, coords: Vec<f64>) -> Result<String, SceneError> {
-        let point_pairs = parse_line_points(coords)
-            .map_err(|msg| SceneError::InvalidInput(format!("[add_line] invalid_input: {}", msg)))?;
+        let point_pairs = parse_line_points(coords).map_err(|msg| {
+            SceneError::InvalidInput(format!("[add_line] invalid_input: {}", msg))
+        })?;
 
         self.add_entity_internal(
             "add_line",
             name,
             EntityType::Line,
-            Geometry::Line { points: point_pairs },
+            Geometry::Line {
+                points: point_pairs,
+            },
         )
     }
 
@@ -218,8 +228,12 @@ impl Scene {
         end_angle: f64,
     ) -> Result<String, SceneError> {
         // NaN/Infinity 검증 (유효하지 않은 geometry 방지)
-        if !cx.is_finite() || !cy.is_finite() || !radius.is_finite()
-            || !start_angle.is_finite() || !end_angle.is_finite() {
+        if !cx.is_finite()
+            || !cy.is_finite()
+            || !radius.is_finite()
+            || !start_angle.is_finite()
+            || !end_angle.is_finite()
+        {
             return Err(SceneError::InvalidInput(
                 "[add_arc] invalid_input: NaN or Infinity not allowed".to_string(),
             ));
@@ -399,6 +413,7 @@ impl Scene {
     /// # Errors
     /// * name 중복 시 에러
     /// * NaN 또는 Infinity 입력 시 에러
+    #[allow(clippy::too_many_arguments)]
     pub fn draw_arc(
         &mut self,
         name: &str,
@@ -418,8 +433,12 @@ impl Scene {
         }
 
         // NaN/Infinity 검증
-        if !cx.is_finite() || !cy.is_finite() || !radius.is_finite()
-            || !start_angle.is_finite() || !end_angle.is_finite() {
+        if !cx.is_finite()
+            || !cy.is_finite()
+            || !radius.is_finite()
+            || !start_angle.is_finite()
+            || !end_angle.is_finite()
+        {
             return Err(JsValue::from_str(
                 "[draw_arc] invalid_input: NaN or Infinity not allowed",
             ));
@@ -433,8 +452,7 @@ impl Scene {
         };
 
         // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json)
-            .unwrap_or_else(|_| Style::default());
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
         let entity = Entity {
             id: generate_id(),
@@ -504,8 +522,7 @@ impl Scene {
         };
 
         // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json)
-            .unwrap_or_else(|_| Style::default());
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
         let entity = Entity {
             id: generate_id(),
@@ -560,13 +577,14 @@ impl Scene {
             .map_err(|msg| JsValue::from_str(&format!("[draw_line] invalid_input: {}", msg)))?;
 
         // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json)
-            .unwrap_or_else(|_| Style::default());
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Line,
-            geometry: Geometry::Line { points: point_pairs },
+            geometry: Geometry::Line {
+                points: point_pairs,
+            },
             transform: Transform::default(),
             style,
             metadata: Metadata {
@@ -633,8 +651,7 @@ impl Scene {
         };
 
         // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json)
-            .unwrap_or_else(|_| Style::default());
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
         let entity = Entity {
             id: generate_id(),
@@ -686,15 +703,17 @@ impl Scene {
             if let Some(width) = json_value.get("width").and_then(|v| v.as_f64()) {
                 existing.width = width;
             }
-            if let Some(color) = json_value.get("color").and_then(|v| v.as_array()) {
-                if color.len() == 4 {
-                    existing.color = [
-                        color[0].as_f64().unwrap_or(0.0),
-                        color[1].as_f64().unwrap_or(0.0),
-                        color[2].as_f64().unwrap_or(0.0),
-                        color[3].as_f64().unwrap_or(1.0),
-                    ];
-                }
+            if let Some(color) = json_value
+                .get("color")
+                .and_then(|v| v.as_array())
+                .filter(|c| c.len() == 4)
+            {
+                existing.color = [
+                    color[0].as_f64().unwrap_or(0.0),
+                    color[1].as_f64().unwrap_or(0.0),
+                    color[2].as_f64().unwrap_or(0.0),
+                    color[3].as_f64().unwrap_or(1.0),
+                ];
             }
             if let Some(dash) = json_value.get("dash") {
                 if dash.is_null() {
@@ -720,29 +739,52 @@ impl Scene {
         } else {
             // 새 stroke 생성 (기본값 + JSON 값)
             let new_stroke = StrokeStyle {
-                width: json_value.get("width").and_then(|v| v.as_f64()).unwrap_or(1.0),
-                color: json_value.get("color").and_then(|v| v.as_array()).map(|arr| {
-                    if arr.len() == 4 {
-                        [
-                            arr[0].as_f64().unwrap_or(0.0),
-                            arr[1].as_f64().unwrap_or(0.0),
-                            arr[2].as_f64().unwrap_or(0.0),
-                            arr[3].as_f64().unwrap_or(1.0),
-                        ]
-                    } else {
-                        [0.0, 0.0, 0.0, 1.0]
-                    }
-                }).unwrap_or([0.0, 0.0, 0.0, 1.0]),
+                width: json_value
+                    .get("width")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(1.0),
+                color: json_value
+                    .get("color")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        if arr.len() == 4 {
+                            [
+                                arr[0].as_f64().unwrap_or(0.0),
+                                arr[1].as_f64().unwrap_or(0.0),
+                                arr[2].as_f64().unwrap_or(0.0),
+                                arr[3].as_f64().unwrap_or(1.0),
+                            ]
+                        } else {
+                            [0.0, 0.0, 0.0, 1.0]
+                        }
+                    })
+                    .unwrap_or([0.0, 0.0, 0.0, 1.0]),
                 dash: json_value.get("dash").and_then(|v| {
-                    if v.is_null() { None }
-                    else { v.as_array().map(|arr| arr.iter().filter_map(|x| x.as_f64()).collect()) }
+                    if v.is_null() {
+                        None
+                    } else {
+                        v.as_array()
+                            .map(|arr| arr.iter().filter_map(|x| x.as_f64()).collect())
+                    }
                 }),
-                cap: json_value.get("cap").and_then(|v| v.as_str()).map(|s| {
-                    match s { "Round" => LineCap::Round, "Square" => LineCap::Square, _ => LineCap::Butt }
-                }).unwrap_or(LineCap::Butt),
-                join: json_value.get("join").and_then(|v| v.as_str()).map(|s| {
-                    match s { "Round" => LineJoin::Round, "Bevel" => LineJoin::Bevel, _ => LineJoin::Miter }
-                }).unwrap_or(LineJoin::Miter),
+                cap: json_value
+                    .get("cap")
+                    .and_then(|v| v.as_str())
+                    .map(|s| match s {
+                        "Round" => LineCap::Round,
+                        "Square" => LineCap::Square,
+                        _ => LineCap::Butt,
+                    })
+                    .unwrap_or(LineCap::Butt),
+                join: json_value
+                    .get("join")
+                    .and_then(|v| v.as_str())
+                    .map(|s| match s {
+                        "Round" => LineJoin::Round,
+                        "Bevel" => LineJoin::Bevel,
+                        _ => LineJoin::Miter,
+                    })
+                    .unwrap_or(LineJoin::Miter),
             };
             entity.style.stroke = Some(new_stroke);
         }
@@ -768,18 +810,22 @@ impl Scene {
         let json_value: serde_json::Value = serde_json::from_str(fill_json)
             .map_err(|e| JsValue::from_str(&format!("[set_fill] invalid_json: {}", e)))?;
 
-        let color = json_value.get("color").and_then(|v| v.as_array()).map(|arr| {
-            if arr.len() == 4 {
-                [
-                    arr[0].as_f64().unwrap_or(0.0),
-                    arr[1].as_f64().unwrap_or(0.0),
-                    arr[2].as_f64().unwrap_or(0.0),
-                    arr[3].as_f64().unwrap_or(1.0),
-                ]
-            } else {
-                [0.0, 0.0, 0.0, 1.0]
-            }
-        }).unwrap_or([0.0, 0.0, 0.0, 1.0]);
+        let color = json_value
+            .get("color")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                if arr.len() == 4 {
+                    [
+                        arr[0].as_f64().unwrap_or(0.0),
+                        arr[1].as_f64().unwrap_or(0.0),
+                        arr[2].as_f64().unwrap_or(0.0),
+                        arr[3].as_f64().unwrap_or(1.0),
+                    ]
+                } else {
+                    [0.0, 0.0, 0.0, 1.0]
+                }
+            })
+            .unwrap_or([0.0, 0.0, 0.0, 1.0]);
 
         entity.style.fill = Some(FillStyle { color });
         Ok(true)
@@ -1054,15 +1100,24 @@ impl Scene {
 
                 ([min_x, min_y], [max_x, max_y])
             }
-            Geometry::Circle { center, radius } => {
-                ([center[0] - radius, center[1] - radius], [center[0] + radius, center[1] + radius])
-            }
-            Geometry::Rect { origin, width, height } => {
-                ([origin[0], origin[1]], [origin[0] + width, origin[1] + height])
-            }
+            Geometry::Circle { center, radius } => (
+                [center[0] - radius, center[1] - radius],
+                [center[0] + radius, center[1] + radius],
+            ),
+            Geometry::Rect {
+                origin,
+                width,
+                height,
+            } => (
+                [origin[0], origin[1]],
+                [origin[0] + width, origin[1] + height],
+            ),
             Geometry::Arc { center, radius, .. } => {
                 // Arc는 보수적으로 전체 원의 bounding box 사용
-                ([center[0] - radius, center[1] - radius], [center[0] + radius, center[1] + radius])
+                (
+                    [center[0] - radius, center[1] - radius],
+                    [center[0] + radius, center[1] + radius],
+                )
             }
         }
     }
@@ -1132,7 +1187,12 @@ mod tests {
             circle.get("entity_type").and_then(|v| v.as_str()),
             Some("Circle")
         );
-        assert!(circle.get("geometry").and_then(|g| g.get("Circle")).is_some());
+        assert!(
+            circle
+                .get("geometry")
+                .and_then(|g| g.get("Circle"))
+                .is_some()
+        );
         assert!(circle.get("transform").is_some());
 
         let line = &entities[1];
@@ -1169,7 +1229,10 @@ mod tests {
         let err = scene
             .add_entity_internal("add_entity", "head", EntityType::Line, sample_geometry())
             .expect_err("duplicate name should error");
-        assert_eq!(err.to_string(), "[add_entity] duplicate_name: Entity 'head' already exists");
+        assert_eq!(
+            err.to_string(),
+            "[add_entity] duplicate_name: Entity 'head' already exists"
+        );
         assert!(matches!(
             err,
             SceneError::DuplicateEntityName(fn_name, name) if fn_name == "add_entity" && name == "head"
@@ -1261,7 +1324,10 @@ mod tests {
             .add_line_internal("invalid", vec![0.0, 100.0])
             .expect_err("should error with < 2 points");
 
-        assert_eq!(err.to_string(), "[add_line] invalid_input: At least 2 points required");
+        assert_eq!(
+            err.to_string(),
+            "[add_line] invalid_input: At least 2 points required"
+        );
     }
 
     #[test]
@@ -1276,7 +1342,10 @@ mod tests {
             .add_line_internal("spine", vec![10.0, 10.0, 20.0, 20.0])
             .expect_err("duplicate name should error");
 
-        assert_eq!(err.to_string(), "[add_line] duplicate_name: Entity 'spine' already exists");
+        assert_eq!(
+            err.to_string(),
+            "[add_line] duplicate_name: Entity 'spine' already exists"
+        );
     }
 
     #[test]
@@ -1287,7 +1356,10 @@ mod tests {
             .add_line_internal("invalid", vec![0.0, f64::NAN, 0.0, 50.0])
             .expect_err("NaN should error");
 
-        assert_eq!(err.to_string(), "[add_line] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_line] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     #[test]
@@ -1298,7 +1370,10 @@ mod tests {
             .add_line_internal("invalid", vec![0.0, 100.0, f64::INFINITY, 50.0])
             .expect_err("Infinity should error");
 
-        assert_eq!(err.to_string(), "[add_line] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_line] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     // === add_circle 테스트 (Story 1.4) ===
@@ -1405,7 +1480,10 @@ mod tests {
             .add_circle_internal("head", 50.0, 50.0, 5.0)
             .expect_err("duplicate name should error");
 
-        assert_eq!(err.to_string(), "[add_circle] duplicate_name: Entity 'head' already exists");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] duplicate_name: Entity 'head' already exists"
+        );
     }
 
     #[test]
@@ -1415,17 +1493,26 @@ mod tests {
         let err = scene
             .add_circle_internal("invalid", f64::NAN, 0.0, 10.0)
             .expect_err("NaN x should error");
-        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_circle_internal("invalid", 0.0, f64::NAN, 10.0)
             .expect_err("NaN y should error");
-        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_circle_internal("invalid", 0.0, 0.0, f64::NAN)
             .expect_err("NaN radius should error");
-        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     #[test]
@@ -1435,17 +1522,26 @@ mod tests {
         let err = scene
             .add_circle_internal("invalid", f64::INFINITY, 0.0, 10.0)
             .expect_err("Infinity x should error");
-        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_circle_internal("invalid", 0.0, f64::NEG_INFINITY, 10.0)
             .expect_err("NEG_INFINITY y should error");
-        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_circle_internal("invalid", 0.0, 0.0, f64::INFINITY)
             .expect_err("Infinity radius should error");
-        assert_eq!(err.to_string(), "[add_circle] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_circle] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     // === add_rect 테스트 (Story 1.5) ===
@@ -1568,7 +1664,10 @@ mod tests {
             .add_rect_internal("torso", 100.0, 100.0, 20.0, 20.0)
             .expect_err("duplicate name should error");
 
-        assert_eq!(err.to_string(), "[add_rect] duplicate_name: Entity 'torso' already exists");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] duplicate_name: Entity 'torso' already exists"
+        );
     }
 
     #[test]
@@ -1578,22 +1677,34 @@ mod tests {
         let err = scene
             .add_rect_internal("invalid", f64::NAN, 0.0, 10.0, 10.0)
             .expect_err("NaN x should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_rect_internal("invalid", 0.0, f64::NAN, 10.0, 10.0)
             .expect_err("NaN y should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_rect_internal("invalid", 0.0, 0.0, f64::NAN, 10.0)
             .expect_err("NaN width should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_rect_internal("invalid", 0.0, 0.0, 10.0, f64::NAN)
             .expect_err("NaN height should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     #[test]
@@ -1603,22 +1714,34 @@ mod tests {
         let err = scene
             .add_rect_internal("invalid", f64::INFINITY, 0.0, 10.0, 10.0)
             .expect_err("Infinity x should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_rect_internal("invalid", 0.0, f64::NEG_INFINITY, 10.0, 10.0)
             .expect_err("NEG_INFINITY y should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_rect_internal("invalid", 0.0, 0.0, f64::INFINITY, 10.0)
             .expect_err("Infinity width should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_rect_internal("invalid", 0.0, 0.0, 10.0, f64::NEG_INFINITY)
             .expect_err("NEG_INFINITY height should error");
-        assert_eq!(err.to_string(), "[add_rect] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_rect] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     // === add_arc 테스트 (Story 1.6) ===
@@ -1628,7 +1751,14 @@ mod tests {
         // AC1: 기본 Arc 생성
         let mut scene = Scene::new("test");
         let name = scene
-            .add_arc_internal("quarter_arc", 0.0, 0.0, 50.0, 0.0, std::f64::consts::FRAC_PI_2)
+            .add_arc_internal(
+                "quarter_arc",
+                0.0,
+                0.0,
+                50.0,
+                0.0,
+                std::f64::consts::FRAC_PI_2,
+            )
             .expect("add_arc should succeed");
 
         assert_eq!(name, "quarter_arc");
@@ -1733,7 +1863,14 @@ mod tests {
         // 음수 각도 허용 (시계 방향)
         let mut scene = Scene::new("test");
         let name = scene
-            .add_arc_internal("neg_angle", 0.0, 0.0, 50.0, 0.0, -std::f64::consts::FRAC_PI_2)
+            .add_arc_internal(
+                "neg_angle",
+                0.0,
+                0.0,
+                50.0,
+                0.0,
+                -std::f64::consts::FRAC_PI_2,
+            )
             .expect("negative angles should be allowed");
 
         assert_eq!(name, "neg_angle");
@@ -1756,7 +1893,10 @@ mod tests {
             .add_arc_internal("arc1", 10.0, 10.0, 25.0, 0.0, 1.0)
             .expect_err("duplicate name should error");
 
-        assert_eq!(err.to_string(), "[add_arc] duplicate_name: Entity 'arc1' already exists");
+        assert_eq!(
+            err.to_string(),
+            "[add_arc] duplicate_name: Entity 'arc1' already exists"
+        );
     }
 
     #[test]
@@ -1767,12 +1907,18 @@ mod tests {
         let err = scene
             .add_arc_internal("invalid", f64::NAN, 0.0, 50.0, 0.0, 1.0)
             .expect_err("NaN cx should error");
-        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_arc] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_arc_internal("invalid", 0.0, 0.0, 50.0, f64::NAN, 1.0)
             .expect_err("NaN start_angle should error");
-        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_arc] invalid_input: NaN or Infinity not allowed"
+        );
     }
 
     #[test]
@@ -1783,11 +1929,17 @@ mod tests {
         let err = scene
             .add_arc_internal("invalid", 0.0, 0.0, f64::INFINITY, 0.0, 1.0)
             .expect_err("Infinity radius should error");
-        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_arc] invalid_input: NaN or Infinity not allowed"
+        );
 
         let err = scene
             .add_arc_internal("invalid", 0.0, 0.0, 50.0, 0.0, f64::NEG_INFINITY)
             .expect_err("NEG_INFINITY end_angle should error");
-        assert_eq!(err.to_string(), "[add_arc] invalid_input: NaN or Infinity not allowed");
+        assert_eq!(
+            err.to_string(),
+            "[add_arc] invalid_input: NaN or Infinity not allowed"
+        );
     }
 }

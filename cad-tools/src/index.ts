@@ -19,3 +19,6 @@ export type { LLMProvider, ToolCall } from './providers/types.js';
 
 // Providers
 export { AnthropicProvider, type AnthropicProviderOptions } from './providers/anthropic.js';
+
+// Logger
+export { logger } from './logger.js';

@@ -1313,30 +1313,43 @@ So that **"이거" 같은 지시어를 이해할 수 있다**.
 # Epic 6: "독립 실행 앱" - Electron 통합
 
 > **2025-12-30 추가**: MVP 범위 확장
+> **2025-12-30 범위 조정**: PR #12 논의 결과, Claude Code 통합 (Option B) 선택. Story 6-4, 6-5 범위 대폭 축소.
 
-**Epic Goal**: WASM CAD 엔진 + 뷰어 + 채팅 UI를 단일 Electron 앱으로 패키징한다.
+**Epic Goal**: WASM CAD 엔진 + 뷰어를 Electron 앱으로 패키징하고, Claude Code를 AI 인터페이스로 사용한다.
 
-**FRs Covered**: FR29, FR30
+**FRs Covered**: FR29, FR30 (수정됨)
 **NFRs Addressed**: NFR16 (앱 시작 시간), NFR17 (오프라인 동작)
 
 **Dependencies**: Epic 1, 2, 3, 4, 5 완료
+
+### 범위 변경 사항 (2025-12-30)
+
+PR #12에서 parktube님 제안으로 두 옵션 비교 후 **Option B (Claude Code 통합)** 선택:
+
+| 구분 | Option A (자체 UI) | Option B (Claude Code) ✅ |
+|------|-------------------|--------------------------|
+| 대상 사용자 | 일반 사용자 | 개발자 |
+| 개발 비용 | 높음 | 낮음 |
+| Story 6-4 | 전체 구현 | CLAUDE.md 문서화만 |
+| Story 6-5 | 전체 구현 | Claude Code에 위임 |
 
 ### Feasibility & Risk Analysis
 
 | 항목 | 평가 |
 |------|------|
-| **구현 가능성** | 🟡 중간 (Medium) |
-| **리스크 수준** | 🟡 중간 |
+| **구현 가능성** | 🟢 높음 (High) - 범위 축소됨 |
+| **리스크 수준** | 🟢 낮음 - Claude Code 검증된 도구 활용 |
 
 **긍정적 요인**:
 
-- Electron + Vite + WASM 조합은 검증된 스택
-- Chat UI와 CAD Viewer를 한 화면에 배치하여 "AI와 함께 그리는" 경험 완성 가능
+- Claude Code가 API 키, 스트리밍, 도구 실행 등 모든 복잡한 로직 처리
+- CLAUDE.md에 cad-cli.ts 사용법 문서화로 즉시 사용 가능
+- 개발 비용 대폭 절감
 
 **주요 리스크 및 고려사항**:
 
-1. **Client-Direct Architecture**: Electron Renderer에서 모든 로직 직접 실행. Main Process는 창 생성/파일 다이얼로그만. IPC 불필요 → 웹 버전과 코드 100% 동일
-2. **보안**: 사용자 API Key를 안전하게 저장(electron-store, Electron keytar 등)하고 관리하는 설계 필요
+1. **사용자 경험**: 터미널 기반 UI가 일반 사용자에게 복잡할 수 있음 → Post-MVP에서 자체 UI 고려
+2. **Claude Code 의존성**: 사용자가 Claude Code 설치 필요
 
 ---
 
@@ -1408,61 +1421,19 @@ So that **CAD 결과를 앱 내에서 확인할 수 있다**.
 
 ---
 
-## Story 6.4: 채팅 UI 구현
+## ~~Story 6.4, 6.5: 삭제됨~~
 
-As a **사용자 (인간)**,
-I want **앱 내에서 AI와 대화할 수 있도록**,
-So that **별도 터미널 없이 CAD 작업을 할 수 있다**.
-
-**Acceptance Criteria:**
-
-**Given** Electron 앱 실행
-**When** 채팅 입력창에 "원을 그려줘" 입력
-**Then** AI 응답이 채팅 영역에 표시된다
-**And** CAD 결과가 Canvas에 렌더링된다
-
-**Technical Notes:**
-
-- 간단한 채팅 UI (입력창 + 메시지 목록)
-- Renderer에서 Claude API 직접 호출 (IPC 불필요)
-- tool_use 응답 → WASM 직접 실행 → Canvas 렌더링
-
-**Requirements Fulfilled:** FR29 (부분)
+> **2025-12-30**: PR #12 논의 결과, Claude Code 통합 방향으로 결정.
+> Story 6-4 (채팅 UI), 6-5 (API 키 관리)는 Claude Code에 위임되어 삭제됨.
+>
+> - ✅ CLAUDE.md에 cad-cli.ts 사용법 문서화 완료
+> - ✅ cad-cli.ts 오프라인 동작 이미 가능
 
 ---
 
-## Story 6.5: API 키 입력 및 관리
+## Story 6.4: 앱 빌드 및 패키징
 
-As a **사용자 (인간)**,
-I want **내 Claude API 키를 입력하여 사용하도록**,
-So that **자체 API 키로 AI를 사용할 수 있다**.
-
-**Acceptance Criteria:**
-
-**Given** 앱 첫 실행
-**When** API 키가 없는 경우
-**Then** API 키 입력 화면이 표시된다
-
-**Given** 유효한 API 키 입력
-**When** 저장 버튼 클릭
-**Then** 키가 안전하게 저장된다 (electron-store 등)
-**And** 채팅 기능이 활성화된다
-
-**Given** API 키 없이
-**When** CAD 기능 사용
-**Then** 도형 생성/편집은 정상 동작한다 (NFR17)
-**And** AI 채팅만 비활성화된다
-
-**Technical Notes:**
-
-- electron-store로 키 저장
-- API 키 유효성 검증 (테스트 호출)
-
-**Requirements Fulfilled:** FR30, NFR17
-
----
-
-## Story 6.6: 앱 빌드 및 패키징
+> **번호 변경**: 기존 Story 6.6 → Story 6.4 (Story 6.4, 6.5 삭제로 인해)
 
 As a **개발자**,
 I want **Windows/Mac/Linux용 앱을 빌드하도록**,
@@ -1470,15 +1441,22 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 
 **Acceptance Criteria:**
 
-**Given** 모든 기능 구현 완료
+**AC1:** 로컬 빌드
+**Given** 모든 기능 구현 완료 (Story 6.1 ~ 6.3)
 **When** `npm run build` 실행
 **Then** Windows (.exe), Mac (.dmg), Linux (.AppImage) 파일이 생성된다
+
+**AC2:** CI/CD 파이프라인
+**Given** GitHub Actions 워크플로우 설정 완료
+**When** PR 생성 또는 태그 푸시
+**Then** 자동으로 테스트/빌드가 실행되고, 태그 시 GitHub Releases에 업로드
 
 **Technical Notes:**
 
 - electron-builder 설정
 - WASM 파일을 리소스로 번들링
-- 앱 크기 목표: ~100MB
+- 앱 크기 목표: ~100MB (채팅 UI 제거로 축소됨)
+- CI/CD: GitHub Actions 기반 (ADR-MVP-010)
 
 **Requirements Fulfilled:** FR29
 
@@ -1487,6 +1465,7 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 # Summary
 
 > **2025-12-30 업데이트**: MVP 범위 확장으로 Epic 4, 5, 6 추가
+> **2025-12-30 범위 조정**: Epic 6 Claude Code 통합 방향 선택 (PR #12). Story 6-4, 6-5 삭제.
 
 ## Epic & Story 총괄
 
@@ -1497,12 +1476,12 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 | Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 | Medium | ✅ 완료 |
 | Epic 4: 그룹화 및 피봇 | 6 | FR21, FR22, FR23, FR24, FR25 | High | ⬜ MVP |
 | Epic 5: Selection UI | 3 | FR26, FR27, FR28 | Medium | ⬜ MVP |
-| Epic 6: Electron 앱 | 6 | FR29, FR30 | High | ⬜ MVP |
-| **Total** | **34** | **30 FRs** | | |
+| Epic 6: Electron 앱 | **4** | FR29 | Low (축소됨) | ⬜ MVP |
+| **Total** | **32** | **29 FRs** | | |
 
 ## FR Coverage 검증
 
-모든 30개 Functional Requirements가 스토리에 매핑되었습니다:
+29개 Functional Requirements가 스토리에 매핑되었습니다 (FR30 삭제):
 
 - FR1-FR4: Epic 1 (도형 생성)
 - FR5-FR8: Epic 3 (변환)
@@ -1512,7 +1491,7 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 - FR17-FR20: Epic 1 (Style, Arc)
 - **FR21-FR25: Epic 4 (그룹화, 피봇)** ← MVP 추가
 - **FR26-FR28: Epic 5 (Selection UI)** ← MVP 추가
-- **FR29-FR30: Epic 6 (Electron 앱)** ← MVP 추가
+- **FR29: Epic 6 (Electron 앱)** ← MVP 추가, ~~FR30 삭제~~
 
 ## 구현 순서 권장
 
@@ -1532,4 +1511,4 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 | "SVG로 저장해줘" | 3.6 | ✅ 가능 |
 | **"팔을 구부린 포즈로"** | 4.1 → 4.4 → 4.5 → 4.6 | ⬜ MVP |
 | **[왼팔 클릭] + "이거 더 길게"** | 5.1 → 5.3 → 3.3 | ⬜ MVP |
-| **Electron 앱 실행** | 6.1 → 6.2 → 6.3 → 6.4 → 6.5 → 6.6 | ⬜ MVP |
+| **Electron 앱 실행** | 6.1 → 6.2 → 6.3 → 6.4 | ⬜ MVP |

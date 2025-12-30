@@ -57,8 +57,7 @@ cad-engine/*.svg
 # MCP config
 .mcp.json
 
-# Claude Code
-CLAUDE.md
+# Claude Code (CLAUDE.md는 버전 관리 포함 - 프로젝트 컨텍스트 공유용)
 
 # ===================
 # Test/Dev scripts (may reference API keys)

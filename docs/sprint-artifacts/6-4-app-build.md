@@ -1,4 +1,6 @@
-# Story 6.6: 앱 빌드 및 패키징
+# Story 6.4: 앱 빌드 및 패키징
+
+> **번호 변경**: 기존 Story 6.6 → Story 6.4 (Story 6.4, 6.5 삭제로 인해)
 
 Status: backlog
 
@@ -44,7 +46,13 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
    - Then: WASM CAD 엔진이 정상 로드된다
    - And: 모든 CAD 기능이 동작한다
 
-7. **AC7: 자동 업데이트 (Optional)**
+7. **AC7: CI/CD 파이프라인**
+   - Given: GitHub Actions 워크플로우 설정 완료
+   - When: PR 생성 또는 태그 푸시
+   - Then: 자동으로 테스트/빌드가 실행된다
+   - And: 태그 푸시 시 GitHub Releases에 빌드 결과물이 업로드된다
+
+8. **AC8: 자동 업데이트 (Optional)**
    - Given: 새 버전 릴리즈
    - When: 앱 실행 시 업데이트 확인
    - Then: 사용자에게 업데이트 알림
@@ -66,26 +74,33 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
 
 - [ ] **Task 3: 빌드 스크립트** (AC: 1, 2, 3)
   - [ ] 3.1: npm scripts 추가 (build:win, build:mac, build:linux)
-  - [ ] 3.2: CI/CD 빌드 스크립트 (GitHub Actions 등) - optional
-  - [ ] 3.3: 빌드 결과물 경로 설정 (dist/)
+  - [ ] 3.2: 빌드 결과물 경로 설정 (dist/)
 
-- [ ] **Task 4: WASM 번들링** (AC: 6)
-  - [ ] 4.1: WASM 파일을 빌드에 포함
-  - [ ] 4.2: extraResources 또는 files 설정
-  - [ ] 4.3: 빌드 후 경로 확인
+- [ ] **Task 4: CI/CD 파이프라인** (AC: 7)
+  - [ ] 4.1: `.github/workflows/ci.yml` - PR 시 lint, test, WASM 빌드
+  - [ ] 4.2: `.github/workflows/release.yml` - 태그 푸시 시 Electron 빌드
+  - [ ] 4.3: Windows/macOS/Linux 매트릭스 빌드 설정
+  - [ ] 4.4: GitHub Releases 자동 업로드 설정
+  - [ ] 4.5: 워크플로우 테스트 (테스트 PR 및 태그 생성)
 
-- [ ] **Task 5: 테스트** (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] 5.1: Windows 빌드 및 설치 테스트
-  - [ ] 5.2: macOS 빌드 및 설치 테스트 (가능한 경우)
-  - [ ] 5.3: Linux 빌드 및 실행 테스트
-  - [ ] 5.4: 아이콘 표시 확인
-  - [ ] 5.5: CAD 기능 동작 확인
+- [ ] **Task 5: WASM 번들링** (AC: 6)
+  - [ ] 5.1: WASM 파일을 빌드에 포함
+  - [ ] 5.2: extraResources 또는 files 설정
+  - [ ] 5.3: 빌드 후 경로 확인
 
-- [ ] **Task 6: 자동 업데이트 (Optional)** (AC: 7)
-  - [ ] 6.1: electron-updater 설정
-  - [ ] 6.2: GitHub Releases 연동
-  - [ ] 6.3: 업데이트 알림 UI
-  - [ ] 6.4: Note: MVP Stretch Goal
+- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7)
+  - [ ] 6.1: Windows 빌드 및 설치 테스트
+  - [ ] 6.2: macOS 빌드 및 설치 테스트 (가능한 경우)
+  - [ ] 6.3: Linux 빌드 및 실행 테스트
+  - [ ] 6.4: 아이콘 표시 확인
+  - [ ] 6.5: CAD 기능 동작 확인
+  - [ ] 6.6: CI/CD 파이프라인 동작 확인
+
+- [ ] **Task 7: 자동 업데이트 (Optional)** (AC: 8)
+  - [ ] 7.1: electron-updater 설정
+  - [ ] 7.2: GitHub Releases 연동
+  - [ ] 7.3: 업데이트 알림 UI
+  - [ ] 7.4: Note: MVP Stretch Goal
 
 ## Dev Notes
 
@@ -93,13 +108,14 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
 
 **배포 가능한 단일 앱:**
 
-- WASM CAD 엔진 + Canvas Viewer + 채팅 UI가 하나의 앱으로 패키징
-- 설치 후 추가 설정 없이 사용 가능 (API 키 제외)
+- WASM CAD 엔진 + Canvas Viewer가 하나의 앱으로 패키징
+- ~~채팅 UI~~ → Claude Code 사용 (별도 설치)
+- 설치 후 추가 설정 없이 Viewer 사용 가능
 
 **오프라인 동작:**
 
 - 모든 CAD 기능은 로컬에서 동작
-- Claude API만 네트워크 필요
+- AI 인터페이스는 Claude Code 사용
 
 ### Technical Requirements
 
@@ -194,6 +210,8 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
 
 - `electron-app/build/` - 빌드 리소스 (아이콘 등)
 - `electron-app/electron-builder.yml` - 빌드 설정
+- `.github/workflows/ci.yml` - CI 파이프라인 (PR 시 테스트/빌드 검증)
+- `.github/workflows/release.yml` - CD 파이프라인 (태그 시 Electron 빌드 + Release)
 
 수정 대상:
 
@@ -201,15 +219,17 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
 
 ### References
 
-- [Source: docs/epics.md#Story 6.6: 앱 빌드 및 패키징]
+- [Source: docs/epics.md#Story 6.4: 앱 빌드 및 패키징]
+- [Source: docs/architecture.md#ADR-MVP-010: CI/CD 전략]
 - [electron-builder 문서](https://www.electron.build/)
 - [Electron 배포 가이드](https://www.electronjs.org/docs/latest/tutorial/application-distribution)
+- [GitHub Actions 문서](https://docs.github.com/en/actions)
 
 ## Dev Agent Record
 
 ### Context Reference
 
-- docs/epics.md (Epic 6, Story 6.6)
+- docs/epics.md (Epic 6, Story 6.4)
 - electron-builder 문서
 
 ### Agent Model Used

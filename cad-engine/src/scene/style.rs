@@ -1,31 +1,21 @@
 use serde::{Deserialize, Serialize};
 
 /// 선의 끝 모양
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum LineCap {
+    #[default]
     Butt,
     Round,
     Square,
 }
 
-impl Default for LineCap {
-    fn default() -> Self {
-        LineCap::Butt
-    }
-}
-
 /// 선의 꺾임 모양
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum LineJoin {
+    #[default]
     Miter,
     Round,
     Bevel,
-}
-
-impl Default for LineJoin {
-    fn default() -> Self {
-        LineJoin::Miter
-    }
 }
 
 /// 선(stroke) 스타일
@@ -33,7 +23,7 @@ impl Default for LineJoin {
 #[serde(default)]
 pub struct StrokeStyle {
     pub width: f64,
-    pub color: [f64; 4],  // RGBA, 0.0-1.0
+    pub color: [f64; 4], // RGBA, 0.0-1.0
     pub dash: Option<Vec<f64>>,
     pub cap: LineCap,
     pub join: LineJoin,
@@ -43,7 +33,7 @@ impl Default for StrokeStyle {
     fn default() -> Self {
         StrokeStyle {
             width: 1.0,
-            color: [0.0, 0.0, 0.0, 1.0],  // 검은색
+            color: [0.0, 0.0, 0.0, 1.0], // 검은색
             dash: None,
             cap: LineCap::default(),
             join: LineJoin::default(),
@@ -55,13 +45,13 @@ impl Default for StrokeStyle {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct FillStyle {
-    pub color: [f64; 4],  // RGBA, 0.0-1.0
+    pub color: [f64; 4], // RGBA, 0.0-1.0
 }
 
 impl Default for FillStyle {
     fn default() -> Self {
         FillStyle {
-            color: [0.0, 0.0, 0.0, 1.0],  // 검은색
+            color: [0.0, 0.0, 0.0, 1.0], // 검은색
         }
     }
 }
@@ -130,7 +120,7 @@ mod tests {
         // AC5: JSON 직렬화
         let stroke = StrokeStyle {
             width: 2.0,
-            color: [0.0, 0.0, 1.0, 1.0],  // 파란색
+            color: [0.0, 0.0, 1.0, 1.0], // 파란색
             dash: Some(vec![5.0, 3.0]),
             cap: LineCap::Round,
             join: LineJoin::Bevel,
@@ -144,7 +134,8 @@ mod tests {
         assert!(json.contains("\"join\":\"Bevel\""));
 
         // 역직렬화
-        let parsed: StrokeStyle = serde_json::from_str(&json).expect("deserialization should succeed");
+        let parsed: StrokeStyle =
+            serde_json::from_str(&json).expect("deserialization should succeed");
         assert_eq!(parsed.width, 2.0);
         assert_eq!(parsed.cap, LineCap::Round);
     }
@@ -152,13 +143,14 @@ mod tests {
     #[test]
     fn test_fill_style_json_serialization() {
         let fill = FillStyle {
-            color: [1.0, 0.0, 0.0, 0.5],  // 반투명 빨간색
+            color: [1.0, 0.0, 0.0, 0.5], // 반투명 빨간색
         };
 
         let json = serde_json::to_string(&fill).expect("serialization should succeed");
         assert!(json.contains("\"color\":[1.0,0.0,0.0,0.5]"));
 
-        let parsed: FillStyle = serde_json::from_str(&json).expect("deserialization should succeed");
+        let parsed: FillStyle =
+            serde_json::from_str(&json).expect("deserialization should succeed");
         assert_eq!(parsed.color, [1.0, 0.0, 0.0, 0.5]);
     }
 

@@ -1,6 +1,6 @@
-/// Line 도형 생성을 위한 유틸리티 함수들
-///
-/// AX 원칙: AI가 Float64Array로 좌표를 전달하면 내부적으로 Vec<[f64; 2]>로 변환
+//! Line 도형 생성을 위한 유틸리티 함수들
+//!
+//! AX 원칙: AI가 Float64Array로 좌표를 전달하면 내부적으로 Vec<[f64; 2]>로 변환
 
 /// Float64Array에서 추출한 좌표 벡터를 [f64; 2] 배열의 벡터로 변환
 ///
@@ -59,10 +59,7 @@ mod tests {
     fn test_parse_polyline() {
         let coords = vec![0.0, 85.0, -20.0, 70.0, -25.0, 50.0];
         let result = parse_line_points(coords).unwrap();
-        assert_eq!(
-            result,
-            vec![[0.0, 85.0], [-20.0, 70.0], [-25.0, 50.0]]
-        );
+        assert_eq!(result, vec![[0.0, 85.0], [-20.0, 70.0], [-25.0, 50.0]]);
     }
 
     #[test]
