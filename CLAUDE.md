@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**7-division (도화지)**: AI-Native CAD 프로젝트의 설계 문서 및 제안서 저장소
+**7-division (도화지)**: AI-Native CAD 프로젝트
 
-현재 단계: Phase 0 (철학 정립) - 실제 코드 구현 전 설계 논의 중
+현재 단계: MVP (Epic 1~3 완료, Epic 4~6 진행 중)
 
 ## Key Documents
 

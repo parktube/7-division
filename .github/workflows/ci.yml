@@ -37,7 +37,7 @@ jobs:
 
       - name: Install wasm-pack (drager fork)
         run: |
-          cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046
+          cargo install --force --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046
 
       - name: Rust Format Check
         run: cargo fmt --manifest-path cad-engine/Cargo.toml -- --check

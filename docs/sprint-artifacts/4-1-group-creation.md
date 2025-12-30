@@ -60,13 +60,13 @@ so that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 
   - [ ] 2.3: children에서 존재하는 Entity만 필터링
   - [ ] 2.4: Group Entity 생성 (EntityType::Group, geometry는 Empty 또는 None)
   - [ ] 2.5: 각 자식의 parent_id를 그룹 ID로 설정
-  - [ ] 2.6: 자식이 기존 그룹인 경우 처리 (AC5 그룹 중첩)
-    - [ ] 2.6.1: 자식 Entity가 EntityType::Group인지 확인
-    - [ ] 2.6.2: 기존 그룹의 parent_id를 새 그룹으로 업데이트
-    - [ ] 2.6.3: 기존 그룹의 children은 유지 (계층 구조 보존)
+  - [ ] 2.6: 자식이 이미 다른 그룹에 속한 경우 처리 (AC5 그룹 중첩/이동)
+    - [ ] 2.6.1: 자식 Entity의 기존 parent_id 확인
+    - [ ] 2.6.2: 기존 부모가 있으면 기존 부모의 children 배열에서 해당 자식 제거
+    - [ ] 2.6.3: 자식의 parent_id를 새 그룹으로 업데이트
+    - [ ] 2.6.4: 자식이 그룹인 경우 자식의 children은 유지 (계층 구조 보존)
       - 예: forearm이 원래 elbow, wrist를 자식으로 가진 경우
       - forearm이 left_arm의 자식이 되어도 elbow, wrist는 여전히 forearm의 자식
-      - 이유: 자식의 자식도 함께 이동하는 계층 구조 유지
   - [ ] 2.7: Scene.entities에 그룹 추가
 
 - [ ] **Task 3: Geometry 확장** (AC: 1)
