@@ -214,59 +214,110 @@ Rust CAD 엔진
 
 ### Business Success
 
-- Phase 1: 기술 검증 (스켈레톤 테스트 통과)
-- Phase 2: 도메인 확장 검증 (그룹화, ActionHints)
-- Phase 3: 사용자 검증 (Selection UI, 실제 사용 케이스)
-- Phase 4: 시장 검증
+- **MVP**: 기술 검증 + 도메인 확장 + 사용자 검증 (스켈레톤 → 포즈 변경 → Selection)
+- **Post-MVP**: 시장 검증, 3D 확장
 
 ### Technical Success
 
 - WASM 엔진 직접 실행 성공
 - SVG 출력 정상 동작
 - Claude Code에서 도구 호출 원활
+- **Electron 앱 빌드 및 배포 성공**
+
+---
+
+## Functional Requirements
+
+> **2025-12-30 업데이트**: MVP 범위에 맞춰 FR21~FR30 추가
+
+### 기초 도형 및 스타일 (FR1~FR20) ✅
+
+*기존 Phase 1 요구사항 - 완료됨. 상세는 [epics.md](./epics.md) 참조*
+
+### 그룹화 및 피봇 (FR21~FR25)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR21 | Group 생성 | `create_group(name, children[])`으로 여러 도형을 그룹화할 수 있어야 한다 |
+| FR22 | Group 해제 | `ungroup(group_id)`으로 그룹을 해제하고 자식들을 독립 엔티티로 만들 수 있어야 한다 |
+| FR23 | Group 자식 관리 | `add_to_group(group_id, entity_id)`, `remove_from_group(group_id, entity_id)`로 그룹 구성원을 관리할 수 있어야 한다 |
+| FR24 | Pivot 설정 | `set_pivot(entity_id, px, py)`로 도형/그룹의 회전 중심점을 설정할 수 있어야 한다 |
+| FR25 | 계층적 변환 | 부모 그룹의 translate/rotate/scale이 모든 자식 엔티티에 전파되어야 한다 |
+
+### Selection UI (FR26~FR28)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR26 | 도형 선택 | Canvas 클릭으로 해당 위치의 도형을 선택할 수 있어야 한다 |
+| FR27 | 선택 상태 표시 | 선택된 도형은 시각적으로 구분되어야 한다 (하이라이트, 바운딩 박스 등) |
+| FR28 | 선택 정보 전달 | 선택된 도형의 정보(id, type, geometry)를 AI에게 전달할 수 있어야 한다 |
+
+### Electron 앱 (FR29~FR30)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR29 | 통합 앱 | WASM CAD 엔진 + Canvas 2D Viewer + 채팅 UI가 단일 Electron 앱으로 통합되어야 한다 |
+| FR30 | API 키 입력 | 사용자가 자신의 Claude API 키를 입력하여 LLM과 대화할 수 있어야 한다 |
+
+## Non-Functional Requirements (MVP 추가)
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| NFR14 | 그룹 중첩 | 그룹 안에 그룹을 포함할 수 있어야 한다 (최대 깊이 제한 가능) |
+| NFR15 | 선택 반응 속도 | 클릭 후 선택 피드백이 100ms 이내에 표시되어야 한다 |
+| NFR16 | 앱 시작 시간 | Electron 앱이 5초 이내에 시작되어야 한다 |
+| NFR17 | 오프라인 동작 | API 키 없이도 CAD 기능(도형 생성/편집)은 동작해야 한다 |
 
 ---
 
 ## Product Scope
 
-### Phase 1: 최소 검증 — "사람 스켈레톤을 그려줘"
+### MVP: 완전한 AI-Native CAD 경험
 
-**목표**: 기초 도형 도구만으로 AI가 복잡한 형상을 만들 수 있는지 검증
+> **2025-12-30 업데이트**: Phase 1~3을 MVP로 통합. "말하기 + 가리키기"로 캐릭터 리깅까지 가능한 완전한 경험 제공.
 
+**목표**: AI와 대화하며 복잡한 형상을 만들고, 포즈를 변경할 수 있는 완전한 경험 검증
+
+#### 기초 도형 및 스타일 ✅
 - 기초 도형: `line`, `circle`, `rect`, `arc`
 - 스타일: `stroke`, `fill` 적용
 - 변환: `translate`, `rotate`, `scale`, `delete`
 - 출력: scene.json + SVG export
-- **Tool Use Foundation**: Claude가 도구를 직접 호출할 수 있는 에이전트 런타임
-- **Canvas 2D 뷰어** (polling 방식) - 가장 단순하게 시작
 
-**검증 시나리오**: "사람 스켈레톤을 그려줘"
+#### 그룹화 및 피봇
+- **Group System**: `create_group`, `ungroup`, `add_to_group`, `remove_from_group`
+- **Pivot**: `set_pivot` - 각 도형/그룹의 회전 중심점 설정
+- **Hierarchy Transform**: 부모 변환이 자식에 전파
 
-### Phase 2: 도메인 확장
+#### Selection UI
+- 클릭으로 객체 선택
+- 선택 상태 시각적 표시
+- 선택된 객체 정보를 AI에 전달
 
-**목표**: AI가 더 복잡한 구조를 다룰 수 있는지 검증
+#### Electron 앱
+- WASM + Canvas 2D Viewer + 채팅 UI 통합
+- 사용자 API 키 입력 방식
+- 오프라인 우선 (로컬 LLM 지원 준비)
 
-- Phase 1 도구 + 그룹화, 레이어
-- 더 복잡한 요청: "팔을 구부린 포즈로", "걷는 자세로"
-- ActionHints 동작 확인
-- 검증 UI 프로토타입
-- **Three.js로 뷰어 마이그레이션** (3D 준비)
+**검증 시나리오**:
+1. "사람 스켈레톤을 그려줘"
+2. "팔을 구부린 포즈로 바꿔줘"
+3. [왼팔 클릭] + "이거 더 길게"
 
-### Phase 3: Selection UI + 실사용 테스트
+### Post-MVP: 확장 기능
 
-**목표**: "가리키기 + 말하기" 인터랙션 검증
+> MVP 완성 후 필요에 따라 추가
 
-- Selection UI (클릭으로 객체 선택)
-- 실제 작업 시도 (캐릭터 리깅용 스켈레톤 등)
-- DXF 출력
-- 인간-AI 협업 플로우 검증
-
-### Phase 4+: Vision
-
-- Gateway + 채팅 UI
-- MCP 래퍼
-- 로컬 LLM 지원
-- 3D 확장
+| 항목 | 설명 |
+|------|------|
+| **ActionHints 확장** | DesignHints 포함한 완전한 협업 경험 |
+| **Three.js 뷰어** | 3D 준비를 위한 렌더러 마이그레이션 |
+| **Layer System** | 레이어별 도형 관리 |
+| **DXF 출력** | 2D 업계 표준 포맷 |
+| **Gateway + 채팅 UI** | 별도 서비스로 분리 |
+| **MCP 래퍼** | 외부 시스템 연동 |
+| **3D 확장** | STEP/STL 출력, 3D 뷰어 |
+| **wgpu** | 고성능 렌더링 (필요 시) |
 
 ---
 
@@ -434,39 +485,61 @@ Entity
 
 ---
 
-## Out of Scope (Phase 1)
+## Out of Scope (MVP)
+
+> **2025-12-30 업데이트**: MVP 완성 후 필요에 따라 추가
 
 | 항목 | 이유 | 예정 |
 |------|------|------|
-| 그룹화/레이어 | Phase 1은 기초 도형만 | Phase 2 |
-| ActionHints | 도메인 확장 단계에서 | Phase 2 |
-| Selection UI | "가리키기" 인터랙션 | Phase 3 |
-| DXF/DWG 출력 | SVG로 검증 후 | Phase 3 |
-| 3D 기능 | 2D 먼저 검증 | Phase 4+ |
-| 채팅 UI | Claude Code로 충분 | Phase 4+ |
-| MCP 래퍼 | Direct-First 검증 후 | Phase 4+ |
-| 실시간 협업 | 단일 사용자 먼저 | Phase 4+ |
-| Undo/Redo UI | 엔진만 구현 | Phase 2-3 |
+| ActionHints 확장 | 기본 힌트는 구현됨, 확장은 후순위 | Post-MVP |
+| Three.js 뷰어 | Canvas 2D로 충분, 3D 필요 시 | Post-MVP |
+| Layer System | 그룹화로 대부분 해결 | Post-MVP |
+| DXF/DWG 출력 | SVG로 충분 | Post-MVP |
+| 3D 기능 | 2D 먼저 검증 | Post-MVP |
+| MCP 래퍼 | Direct-First 검증 후 | Post-MVP |
+| 실시간 협업 | 단일 사용자 먼저 | Post-MVP |
+| wgpu | Canvas 2D 성능으로 충분 | Post-MVP |
 
 ---
 
-## Definition of Done (Phase 1)
+## Definition of Done (MVP)
 
-### 필수 완료 조건
+> **2025-12-30 업데이트**: Phase 1~3 통합 MVP 기준
+
+### 기초 도형 및 스타일 ✅
 
 - [x] Rust CAD 엔진 WASM 빌드 성공
 - [x] 기초 도형 4종: `line`, `circle`, `rect`, `arc`
 - [x] 스타일 시스템: `stroke`, `fill` 적용
-- [ ] 변환 4종: `translate`, `rotate`, `scale`, `delete`
+- [x] 변환 4종: `translate`, `rotate`, `scale`, `delete`
 - [x] scene.json 출력 정상 동작
+- [x] SVG export 정상 동작
 - [x] Canvas 2D 뷰어에서 scene.json 렌더링 (polling)
-- [ ] **Tool Use Foundation**: Claude가 tool_use로 도구 직접 호출
-  - [ ] 도구 스키마 정의 (name, description, input_schema)
-  - [ ] WASM Executor 래퍼 (입력 변환 자동화)
-  - [ ] 에이전트 런타임 (tool_use 루프)
+- [x] **Tool Use Foundation**: Claude가 CLI로 도구 직접 호출
+
+### 그룹화 및 피봇
+
+- [ ] **Group System**: 그룹 생성/해제, 자식 추가/제거
+- [ ] **Pivot**: 도형/그룹의 회전 중심점 설정
+- [ ] **Hierarchy Transform**: 부모 변환이 자식에 전파
+
+### Selection UI
+
+- [ ] 클릭으로 객체 선택
+- [ ] 선택 상태 시각적 표시 (하이라이트)
+- [ ] 선택된 객체 정보를 AI에 전달
+
+### Electron 앱
+
+- [ ] Electron 프로젝트 구조
+- [ ] WASM 엔진 통합
+- [ ] Canvas 2D Viewer 이식
+- [ ] 채팅 UI (API 키 입력 + 대화창)
+- [ ] Windows/Mac/Linux 빌드
 
 ### 검증 시나리오 통과
 
+**시나리오 1: 스켈레톤 생성**
 ```
 입력: "사람 스켈레톤을 그려줘"
 기대 결과:
@@ -477,11 +550,20 @@ Entity
 - 적절한 비율과 위치
 ```
 
-### 수정 요청 테스트
-
+**시나리오 2: 포즈 변경**
 ```
-입력: "왼쪽 팔을 더 길게 해줘"
-기대 결과: 해당 entity의 scale 또는 points 수정
+입력: "팔을 구부린 포즈로 바꿔줘"
+기대 결과:
+- 팔 그룹의 피봇 기준 회전
+- 자연스러운 관절 표현
+```
+
+**시나리오 3: Selection + 수정**
+```
+입력: [왼팔 클릭] + "이거 더 길게"
+기대 결과:
+- 선택된 객체 인식
+- 해당 entity의 scale 수정
 ```
 
 ---

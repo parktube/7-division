@@ -5,12 +5,12 @@
 
 ---
 
-## Tech Stack (Phase 1 확정)
+## Tech Stack (MVP 확정)
 
-> **최종 업데이트: 2025-12-17** - Phase 1 기준 기술 스택 확정
-> Phase 2 이후 마이그레이션은 별도 검토
+> **최종 업데이트: 2025-12-30** - MVP 기준 기술 스택 확정
+> Post-MVP 마이그레이션(Three.js, wgpu 등)은 별도 검토
 
-### Phase 1 Tech Stack Summary
+### MVP Tech Stack Summary
 
 | 컴포넌트 | 기술 | 버전 | 비고 |
 |---------|------|------|------|
@@ -18,9 +18,21 @@
 | **WASM 빌드** | wasm-pack | 0.13.1 | [drager fork](https://github.com/drager/wasm-pack) |
 | **WASM 바인딩** | wasm-bindgen | 0.2.92 | 버전 고정 |
 | **런타임** | Node.js | 22.x LTS | Maintenance LTS |
-| **뷰어** | HTML Canvas 2D | - | 가장 단순 |
-| **빌드 도구** | 없음 (정적 서버) | - | Phase 1 단순화 |
+| **뷰어** | HTML Canvas 2D | - | Selection UI 포함 |
+| **데스크톱** | Electron | 33.x | WASM + Viewer + Chat UI |
+| **빌드 도구** | Vite | 6.x | Electron 번들링 |
 | **테스트** | Vitest | 3.x | 또는 Jest |
+
+### MVP 기능 범위
+
+| 기능 | 설명 |
+|------|------|
+| **기초 도형** | line, circle, rect, arc + style |
+| **변환** | translate, rotate, scale, delete |
+| **그룹화** | create_group, ungroup, add/remove |
+| **피봇** | set_pivot, hierarchy transform |
+| **Selection UI** | 클릭 선택, 선택 상태 표시 |
+| **Electron 앱** | 채팅 UI + API 키 입력 |
 
 ---
 
@@ -1157,57 +1169,175 @@ cd viewer && npm run dev
 
 ---
 
-## Future Extensions
+## MVP Architecture Decisions
 
-### Phase 2: 도메인 확장 (그룹화, ActionHints)
+> **2025-12-30 업데이트**: Phase 1~3을 MVP로 통합. 그룹화, 피봇, Selection UI, Electron 앱 포함.
 
-> Phase 1 도구에 그룹화, 레이어, ActionHints 추가.
-> 여전히 "말하기만" 인터페이스 유지.
+### ADR-MVP-001: Group System 설계
 
-**추가 API**:
-```typescript
-// 그룹화
-cad.create_group(name: string, entity_ids: string[]) -> string
-cad.ungroup(group_id: string)
+**Context**: 스켈레톤 포즈 변경을 위해 팔/다리 등을 그룹으로 관리해야 함
 
-// 레이어
-cad.create_layer(name: string) -> string
-cad.set_layer(entity_id: string, layer_id: string)
+**Decision**: Entity 타입에 Group 추가, parent_id 필드로 계층 구조 표현
 
-// ActionHints (응답에 포함)
-interface ActionHints {
-    recommended: { action: string, reason: string }[];
-    warnings?: string[];
+```rust
+// Entity 확장
+pub enum EntityType {
+    Line, Circle, Rect, Arc,
+    Group,  // 자식 엔티티를 포함하는 그룹
+}
+
+pub struct Entity {
+    pub id: String,
+    pub name: String,
+    pub entity_type: EntityType,
+    pub parent_id: Option<String>,  // 소속 그룹 ID
+    pub children: Vec<String>,       // Group인 경우 자식 ID 목록
+    // ...
 }
 ```
 
-### Phase 3: Selection UI
+**API**:
+```typescript
+cad.create_group(name: string, children: string[]) -> string
+cad.ungroup(group_id: string) -> boolean
+cad.add_to_group(group_id: string, entity_id: string) -> boolean
+cad.remove_from_group(group_id: string, entity_id: string) -> boolean
+```
 
-> **역방향 통신 필요**: "브라우저 선택 → Claude Code" 방향은 파일 polling만으로 불가능합니다.
-> Phase 3에서는 다음 중 하나가 필요합니다:
-> - 로컬 서버 + WebSocket
-> - 이벤트 파일 큐 (브라우저가 파일에 쓰고, Claude Code가 읽음)
-> - Vite HMR WebSocket 활용
+**Consequences**:
+- 그룹 중첩 지원 (팔 그룹 안에 upper_arm, lower_arm 그룹)
+- 렌더링 시 계층 순회 필요
+- 삭제 시 자식 처리 정책 필요 (함께 삭제 vs 독립화)
+
+---
+
+### ADR-MVP-002: Pivot System 설계
+
+**Context**: 팔꿈치를 구부리려면 lower_arm이 elbow 위치를 기준으로 회전해야 함
+
+**Decision**: Entity에 pivot 필드 추가, rotate 시 pivot 기준 회전
+
+```rust
+pub struct Transform {
+    pub translate: [f64; 2],
+    pub rotate: f64,
+    pub scale: [f64; 2],
+    pub pivot: [f64; 2],  // 회전 중심점 (기본값: [0, 0] = 엔티티 로컬 원점)
+}
+```
+
+**API**:
+```typescript
+cad.set_pivot(entity_id: string, px: number, py: number) -> boolean
+// rotate는 기존 API 유지, 내부적으로 pivot 적용
+cad.rotate(entity_id: string, angle: number) -> boolean
+```
+
+**렌더링 변환 순서**:
+```
+1. translate(-pivot.x, -pivot.y)  // 피봇을 원점으로
+2. rotate(angle)                   // 원점 기준 회전
+3. translate(pivot.x, pivot.y)     // 피봇 위치 복원
+4. translate(dx, dy)               // 이동
+5. scale(sx, sy)                   // 스케일
+```
+
+---
+
+### ADR-MVP-003: Hierarchy Transform 설계
+
+**Context**: 부모 그룹을 이동하면 자식들도 함께 이동해야 함
+
+**Decision**: 렌더링/Export 시 부모 → 자식 순으로 변환 행렬 누적
 
 ```typescript
-interface SelectionEvent {
-    id: string;
-    type: "line" | "circle" | "rect" | ...;
-    bounds: { x, y, width, height };
-    screenPosition: { x, y };
-}
-
-// Raycasting으로 객체 선택
-onClick(event) {
-    const intersects = raycaster.intersectObjects(scene.children);
-    if (intersects.length > 0) {
-        const selected = intersects[0].object;
-        emitSelectionEvent(selected);
+// 렌더링 시 변환 계산
+function getWorldTransform(entity: Entity, scene: Scene): Matrix {
+    if (entity.parent_id) {
+        const parent = scene.entities.get(entity.parent_id);
+        return multiply(getWorldTransform(parent), entity.transform);
     }
+    return entity.transform;
 }
 ```
 
-### Phase 4: Gateway + Chat UI
+**Consequences**:
+- WASM에서 로컬 변환만 저장, 월드 변환은 렌더러/Export 시 계산
+- 성능: 변환 행렬 캐싱 고려 (MVP에서는 매 프레임 계산)
+
+---
+
+### ADR-MVP-004: Selection UI 설계
+
+**Context**: "이거 더 길게" 같은 요청을 위해 도형 선택 필요
+
+**Decision**: Canvas 클릭 → Hit Test → 선택 상태 저장 → 파일로 AI에 전달
+
+```typescript
+// Selection 상태 (viewer가 관리)
+interface SelectionState {
+    selected_ids: string[];
+    last_selected: string | null;
+}
+
+// viewer/selection.json에 저장 (AI가 polling)
+{
+    "selected_ids": ["left_arm"],
+    "last_selected": "left_arm",
+    "timestamp": 1735500000000
+}
+```
+
+**Hit Test 방식**:
+- Canvas 2D: 바운딩 박스 검사 (단순, 충분)
+- 추후 Three.js: Raycasting
+
+**선택 표시**:
+- 선택된 도형에 하이라이트 색상 오버레이
+- 바운딩 박스 점선 표시
+
+---
+
+### ADR-MVP-005: Electron 앱 구조
+
+**Context**: 독립 실행 가능한 데스크톱 앱 필요
+
+**Decision**: Electron + Vite로 빌드, Main/Renderer 프로세스 분리
+
+```
+electron-app/
+├── main/                 # Electron Main Process
+│   ├── index.ts          # 앱 진입점
+│   ├── wasm-loader.ts    # WASM 엔진 로드
+│   └── llm-client.ts     # Claude API 호출
+├── renderer/             # Electron Renderer Process
+│   ├── index.html        # 메인 UI
+│   ├── viewer/           # Canvas 2D 뷰어 (기존 viewer/ 이식)
+│   └── chat/             # 채팅 UI
+├── preload.ts            # IPC 브릿지
+└── package.json
+```
+
+**IPC 통신**:
+```typescript
+// Renderer → Main: 채팅 메시지
+ipcRenderer.send('chat:send', { message: '원을 그려줘' });
+
+// Main → Renderer: CAD 상태 업데이트
+ipcRenderer.on('cad:update', (event, sceneJson) => {
+    renderScene(sceneJson);
+});
+```
+
+**빌드**:
+- electron-builder로 Windows/Mac/Linux 패키징
+- WASM 파일은 리소스로 번들링
+
+---
+
+## Post-MVP Extensions
+
+### Gateway + Chat UI
 
 ```
 User (Browser)
@@ -1219,7 +1349,7 @@ Claude Code CLI
 CAD Engine
 ```
 
-### Phase 4: MCP Wrapper
+### MCP Wrapper
 
 ```typescript
 // 기존 WASM 엔진을 MCP로 래핑

@@ -81,6 +81,36 @@ NFR11: wasm-bindgen 클래스 래퍼 패턴 사용 (struct 왕복 피함)
 NFR12: Float64Array 등 명확한 타입 사용 (wasm-bindgen 제약 회피)
 NFR13: uuid js feature 또는 js_sys::Math::random() 사용 (getrandom 이슈 회피)
 
+---
+
+> **2025-12-30 업데이트**: MVP 범위 확장으로 FR21~FR30, NFR14~NFR17 추가
+
+**그룹화 및 피봇 (MVP 추가)**
+
+FR21: Group 생성 - `create_group(name, children[])`으로 여러 도형을 그룹화할 수 있어야 한다
+FR22: Group 해제 - `ungroup(group_id)`으로 그룹을 해제하고 자식들을 독립 엔티티로 만들 수 있어야 한다
+FR23: Group 자식 관리 - `add_to_group`, `remove_from_group`으로 그룹 구성원을 관리할 수 있어야 한다
+FR24: Pivot 설정 - `set_pivot(entity_id, px, py)`로 도형/그룹의 회전 중심점을 설정할 수 있어야 한다
+FR25: 계층적 변환 - 부모 그룹의 translate/rotate/scale이 모든 자식 엔티티에 전파되어야 한다
+
+**Selection UI (MVP 추가)**
+
+FR26: 도형 선택 - Canvas 클릭으로 해당 위치의 도형을 선택할 수 있어야 한다
+FR27: 선택 상태 표시 - 선택된 도형은 시각적으로 구분되어야 한다 (하이라이트, 바운딩 박스 등)
+FR28: 선택 정보 전달 - 선택된 도형의 정보(id, type, geometry)를 AI에게 전달할 수 있어야 한다
+
+**Electron 앱 (MVP 추가)**
+
+FR29: 통합 앱 - WASM CAD 엔진 + Canvas 2D Viewer + 채팅 UI가 단일 Electron 앱으로 통합되어야 한다
+FR30: API 키 입력 - 사용자가 자신의 Claude API 키를 입력하여 LLM과 대화할 수 있어야 한다
+
+**MVP 추가 NFRs**
+
+NFR14: 그룹 중첩 - 그룹 안에 그룹을 포함할 수 있어야 한다 (최대 깊이 제한 가능)
+NFR15: 선택 반응 속도 - 클릭 후 선택 피드백이 100ms 이내에 표시되어야 한다
+NFR16: 앱 시작 시간 - Electron 앱이 5초 이내에 시작되어야 한다
+NFR17: 오프라인 동작 - API 키 없이도 CAD 기능(도형 생성/편집)은 동작해야 한다
+
 ### Additional Requirements
 
 **Tech Stack (Architecture 결정사항)**
@@ -143,6 +173,16 @@ viewer/
 | FR14 | Epic 1 | Scene 인스턴스화 |
 | FR15 | Epic 3 | 함수 직접 호출 |
 | FR16 | Epic 2 | 파일 저장 |
+| FR21 | Epic 4 | Group 생성 |
+| FR22 | Epic 4 | Group 해제 |
+| FR23 | Epic 4 | Group 자식 관리 |
+| FR24 | Epic 4 | Pivot 설정 |
+| FR25 | Epic 4 | 계층적 변환 |
+| FR26 | Epic 5 | 도형 선택 |
+| FR27 | Epic 5 | 선택 상태 표시 |
+| FR28 | Epic 5 | 선택 정보 전달 |
+| FR29 | Epic 6 | Electron 통합 앱 |
+| FR30 | Epic 6 | API 키 입력 |
 
 ## Epic List
 
@@ -912,36 +952,443 @@ So that **최종 결과물을 벡터 이미지로 저장하고 공유할 수 있
 
 ---
 
+# Epic 4: "포즈를 바꾼다" - 그룹화 및 피봇
+
+> **2025-12-30 추가**: MVP 범위 확장
+
+**Epic Goal**: 도형들을 그룹화하고 피봇을 설정하여 포즈를 변경할 수 있다.
+
+**FRs Covered**: FR21, FR22, FR23, FR24, FR25
+**NFRs Addressed**: NFR14 (그룹 중첩)
+
+**Dependencies**: Epic 1, Epic 2, Epic 3 완료
+
+---
+
+## Story 4.1: Group 생성 기능
+
+As a **AI 에이전트 (Claude Code)**,
+I want **여러 도형을 그룹으로 묶을 수 있도록**,
+So that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene에 여러 Entity가 존재
+**When** `scene.create_group("left_arm", ["upper_arm", "lower_arm", "hand"])` 호출
+**Then** Group 타입의 Entity가 생성된다
+**And** 지정된 자식 Entity들의 parent_id가 그룹 ID로 설정된다
+**And** name ("left_arm")이 반환된다
+
+**Given** 존재하지 않는 자식 ID가 포함된 경우
+**When** create_group 호출
+**Then** 존재하는 자식들만 그룹에 추가된다 (관대한 입력 보정)
+
+**Technical Notes:**
+- Entity에 parent_id, children 필드 추가
+- 그룹 중첩 지원 (NFR14)
+
+**Requirements Fulfilled:** FR21
+
+---
+
+## Story 4.2: Group 해제 기능
+
+As a **AI 에이전트 (Claude Code)**,
+I want **그룹을 해제하여 자식들을 독립 엔티티로 만들 수 있도록**,
+So that **그룹 구조를 유연하게 변경할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene에 Group Entity가 존재
+**When** `scene.ungroup("left_arm")` 호출
+**Then** 그룹이 삭제되고 자식 Entity들의 parent_id가 None으로 설정된다
+**And** 자식들은 독립 엔티티로 Scene에 유지된다
+
+**Given** 존재하지 않는 그룹 ID
+**When** ungroup 호출
+**Then** Ok(false) 반환하고 무시된다
+
+**Technical Notes:**
+- 그룹 삭제 시 자식들의 월드 변환 유지 고려
+
+**Requirements Fulfilled:** FR22
+
+---
+
+## Story 4.3: Group 자식 관리
+
+As a **AI 에이전트 (Claude Code)**,
+I want **그룹에 자식을 추가하거나 제거할 수 있도록**,
+So that **그룹 구성을 동적으로 변경할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene에 Group과 Entity가 존재
+**When** `scene.add_to_group("left_arm", "wrist")` 호출
+**Then** wrist Entity가 left_arm 그룹의 자식으로 추가된다
+
+**Given** 그룹에 자식이 존재
+**When** `scene.remove_from_group("left_arm", "hand")` 호출
+**Then** hand Entity가 그룹에서 제거되고 독립 엔티티가 된다
+
+**Technical Notes:**
+- 이미 다른 그룹에 속한 엔티티는 기존 그룹에서 제거 후 추가
+
+**Requirements Fulfilled:** FR23
+
+---
+
+## Story 4.4: Pivot 설정 기능
+
+As a **AI 에이전트 (Claude Code)**,
+I want **도형/그룹의 회전 중심점을 설정할 수 있도록**,
+So that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Scene에 Entity가 존재
+**When** `scene.set_pivot("lower_arm", 0, 50)` 호출
+**Then** lower_arm Entity의 pivot이 (0, 50)으로 설정된다
+
+**Given** pivot이 설정된 Entity
+**When** `scene.rotate("lower_arm", 45)` 호출
+**Then** 도형이 pivot 위치를 기준으로 45도 회전된다
+
+**Technical Notes:**
+- Transform 구조에 pivot 필드 추가
+- 기본 pivot: [0, 0] (엔티티 로컬 원점)
+- 렌더링 시 pivot 고려한 변환 적용
+
+**Requirements Fulfilled:** FR24
+
+---
+
+## Story 4.5: 계층적 변환 구현
+
+As a **AI 에이전트 (Claude Code)**,
+I want **부모 그룹의 변환이 자식들에게 전파되도록**,
+So that **어깨를 회전하면 팔 전체가 함께 회전한다**.
+
+**Acceptance Criteria:**
+
+**Given** 그룹과 자식들이 존재
+**When** `scene.translate("left_arm_group", 10, 0)` 호출
+**Then** 그룹 내 모든 자식들이 함께 (10, 0)만큼 이동된다
+
+**Given** 그룹에 rotate 적용
+**When** Canvas 렌더링 실행
+**Then** 자식들이 부모의 변환을 상속받아 올바른 위치에 렌더링된다
+
+**Technical Notes:**
+- 렌더링/Export 시 월드 변환 계산 (부모 → 자식 순)
+- WASM에서는 로컬 변환만 저장
+
+**Requirements Fulfilled:** FR25
+
+---
+
+## Story 4.6: 그룹화된 도형 렌더링
+
+As a **사용자 (인간)**,
+I want **그룹화된 도형들이 올바르게 렌더링되도록**,
+So that **그룹 변환이 적용된 결과를 확인할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 그룹과 자식들에 변환이 적용된 상태
+**When** Canvas 렌더링 실행
+**Then** 자식들이 부모의 변환을 상속받아 올바른 위치에 렌더링된다
+
+**Given** pivot이 설정된 도형
+**When** 회전 후 렌더링
+**Then** pivot 위치를 기준으로 회전된 결과가 표시된다
+
+**Technical Notes:**
+- getWorldTransform() 함수로 계층 변환 계산
+- 렌더링 순서: 부모 → 자식
+
+---
+
+# Epic 5: "가리키며 말한다" - Selection UI
+
+> **2025-12-30 추가**: MVP 범위 확장
+
+**Epic Goal**: 사용자가 클릭으로 도형을 선택하고, AI가 선택된 도형을 인식할 수 있다.
+
+**FRs Covered**: FR26, FR27, FR28
+**NFRs Addressed**: NFR15 (선택 반응 속도)
+
+**Dependencies**: Epic 2 (뷰어), Epic 4 (그룹)
+
+---
+
+## Story 5.1: 도형 클릭 선택
+
+As a **사용자 (인간)**,
+I want **Canvas에서 도형을 클릭하여 선택할 수 있도록**,
+So that **"이거 더 길게" 같은 지시를 할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Canvas에 도형들이 렌더링된 상태
+**When** 도형 위를 클릭
+**Then** 해당 도형이 선택 상태가 된다
+**And** 100ms 이내에 시각적 피드백이 표시된다 (NFR15)
+
+**Given** 빈 공간을 클릭
+**When** 클릭 이벤트 발생
+**Then** 기존 선택이 해제된다
+
+**Technical Notes:**
+- Hit Test: 바운딩 박스 검사
+- 선택 상태는 viewer/selection.json에 저장
+
+**Requirements Fulfilled:** FR26
+
+---
+
+## Story 5.2: 선택 상태 시각적 표시
+
+As a **사용자 (인간)**,
+I want **선택된 도형이 시각적으로 구분되도록**,
+So that **어떤 도형이 선택되었는지 알 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 도형이 선택된 상태
+**When** Canvas 렌더링 실행
+**Then** 선택된 도형 주변에 하이라이트 또는 바운딩 박스가 표시된다
+
+**Given** 선택 해제
+**When** Canvas 렌더링
+**Then** 하이라이트가 사라진다
+
+**Technical Notes:**
+- 하이라이트 색상: 파란색 점선 바운딩 박스
+- 다중 선택 시 모든 선택된 도형에 표시
+
+**Requirements Fulfilled:** FR27
+
+---
+
+## Story 5.3: 선택 정보 AI 전달
+
+As a **AI 에이전트 (Claude Code)**,
+I want **사용자가 선택한 도형 정보를 받을 수 있도록**,
+So that **"이거" 같은 지시어를 이해할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 사용자가 도형을 선택한 상태
+**When** AI가 viewer/selection.json을 읽음
+**Then** 선택된 도형의 id, type, geometry 정보를 얻을 수 있다
+
+**Given** "이거 더 길게" 같은 요청
+**When** selection.json에 선택 정보가 있음
+**Then** AI가 해당 도형에 scale을 적용할 수 있다
+
+**Technical Notes:**
+- selection.json 구조: { selected_ids, last_selected, timestamp }
+- AI polling 간격: 500ms (scene.json과 동일)
+
+**Requirements Fulfilled:** FR28
+
+---
+
+# Epic 6: "독립 실행 앱" - Electron 통합
+
+> **2025-12-30 추가**: MVP 범위 확장
+
+**Epic Goal**: WASM CAD 엔진 + 뷰어 + 채팅 UI를 단일 Electron 앱으로 패키징한다.
+
+**FRs Covered**: FR29, FR30
+**NFRs Addressed**: NFR16 (앱 시작 시간), NFR17 (오프라인 동작)
+
+**Dependencies**: Epic 1, 2, 3, 4, 5 완료
+
+---
+
+## Story 6.1: Electron 프로젝트 셋업
+
+As a **개발자**,
+I want **Electron + Vite 프로젝트를 구성하도록**,
+So that **WASM과 Viewer를 데스크톱 앱으로 빌드할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 빈 electron-app 디렉토리
+**When** 프로젝트 셋업 완료
+**Then** `npm run dev`로 개발 모드 실행 가능
+**And** `npm run build`로 패키징 가능
+
+**Technical Notes:**
+- electron-builder 사용
+- Main/Renderer 프로세스 분리
+- Vite로 Renderer 빌드
+
+**Requirements Fulfilled:** FR29 (부분)
+
+---
+
+## Story 6.2: WASM 엔진 통합
+
+As a **개발자**,
+I want **WASM CAD 엔진을 Electron Main 프로세스에서 로드하도록**,
+So that **채팅에서 CAD 명령을 실행할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Electron 앱이 시작된 상태
+**When** WASM 로딩
+**Then** CAD 엔진이 정상적으로 초기화된다
+**And** 5초 이내에 앱이 시작된다 (NFR16)
+
+**Technical Notes:**
+- wasm-loader.ts에서 WASM 로드
+- IPC로 Renderer와 통신
+
+**Requirements Fulfilled:** FR29 (부분), NFR16
+
+---
+
+## Story 6.3: Canvas 2D Viewer 이식
+
+As a **개발자**,
+I want **기존 viewer/를 Electron Renderer에 이식하도록**,
+So that **CAD 결과를 앱 내에서 확인할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Electron 앱 실행
+**When** CAD 명령 실행 후
+**Then** Renderer의 Canvas에 도형이 렌더링된다
+**And** Selection UI가 동작한다
+
+**Technical Notes:**
+- 기존 viewer/ 코드 재사용
+- IPC로 scene 데이터 수신
+
+**Requirements Fulfilled:** FR29 (부분)
+
+---
+
+## Story 6.4: 채팅 UI 구현
+
+As a **사용자 (인간)**,
+I want **앱 내에서 AI와 대화할 수 있도록**,
+So that **별도 터미널 없이 CAD 작업을 할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** Electron 앱 실행
+**When** 채팅 입력창에 "원을 그려줘" 입력
+**Then** AI 응답이 채팅 영역에 표시된다
+**And** CAD 결과가 Canvas에 렌더링된다
+
+**Technical Notes:**
+- 간단한 채팅 UI (입력창 + 메시지 목록)
+- IPC로 Main 프로세스와 통신
+
+**Requirements Fulfilled:** FR29 (부분)
+
+---
+
+## Story 6.5: API 키 입력 및 관리
+
+As a **사용자 (인간)**,
+I want **내 Claude API 키를 입력하여 사용하도록**,
+So that **자체 API 키로 AI를 사용할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 앱 첫 실행
+**When** API 키가 없는 경우
+**Then** API 키 입력 화면이 표시된다
+
+**Given** 유효한 API 키 입력
+**When** 저장 버튼 클릭
+**Then** 키가 안전하게 저장된다 (electron-store 등)
+**And** 채팅 기능이 활성화된다
+
+**Given** API 키 없이
+**When** CAD 기능 사용
+**Then** 도형 생성/편집은 정상 동작한다 (NFR17)
+**And** AI 채팅만 비활성화된다
+
+**Technical Notes:**
+- electron-store로 키 저장
+- API 키 유효성 검증 (테스트 호출)
+
+**Requirements Fulfilled:** FR30, NFR17
+
+---
+
+## Story 6.6: 앱 빌드 및 패키징
+
+As a **개발자**,
+I want **Windows/Mac/Linux용 앱을 빌드하도록**,
+So that **사용자가 다운로드하여 실행할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 모든 기능 구현 완료
+**When** `npm run build` 실행
+**Then** Windows (.exe), Mac (.dmg), Linux (.AppImage) 파일이 생성된다
+
+**Technical Notes:**
+- electron-builder 설정
+- WASM 파일을 리소스로 번들링
+- 앱 크기 목표: ~100MB
+
+**Requirements Fulfilled:** FR29
+
+---
+
 # Summary
+
+> **2025-12-30 업데이트**: MVP 범위 확장으로 Epic 4, 5, 6 추가
 
 ## Epic & Story 총괄
 
-| Epic | 스토리 수 | FRs Covered |
-|------|----------|-------------|
-| Epic 1: CAD 엔진 기초 | 9 | FR1, FR2, FR3, FR4, FR14, FR17, FR18, FR19, FR20 |
-| Epic 2: Canvas 2D 뷰어 | 3 | FR9, FR11, FR12, FR16 |
-| Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 |
-| **Total** | **19** | **16 FRs (100%)** |
+| Epic | 스토리 수 | FRs Covered | 상태 |
+|------|----------|-------------|------|
+| Epic 1: CAD 엔진 기초 | 9 | FR1, FR2, FR3, FR4, FR14, FR17, FR18, FR19, FR20 | ✅ 완료 |
+| Epic 2: Canvas 2D 뷰어 | 3 | FR9, FR11, FR12, FR16 | ✅ 완료 |
+| Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 | ✅ 완료 |
+| Epic 4: 그룹화 및 피봇 | 6 | FR21, FR22, FR23, FR24, FR25 | ⬜ MVP |
+| Epic 5: Selection UI | 3 | FR26, FR27, FR28 | ⬜ MVP |
+| Epic 6: Electron 앱 | 6 | FR29, FR30 | ⬜ MVP |
+| **Total** | **34** | **30 FRs** | |
 
 ## FR Coverage 검증
 
-모든 16개 Functional Requirements가 스토리에 매핑되었습니다:
+모든 30개 Functional Requirements가 스토리에 매핑되었습니다:
 - FR1-FR4: Epic 1 (도형 생성)
 - FR5-FR8: Epic 3 (변환)
 - FR9-FR10: Epic 2, 3 (출력)
 - FR11-FR13: Epic 2, 3 (뷰어)
 - FR14-FR16: Epic 1, 2, 3 (Claude Code 통합)
+- FR17-FR20: Epic 1 (Style, Arc)
+- **FR21-FR25: Epic 4 (그룹화, 피봇)** ← MVP 추가
+- **FR26-FR28: Epic 5 (Selection UI)** ← MVP 추가
+- **FR29-FR30: Epic 6 (Electron 앱)** ← MVP 추가
 
 ## 구현 순서 권장
 
-1. **Epic 1** → WASM 기반 구축, 도형 생성 기능 완성
-2. **Epic 2** → 뷰어 연결, 검증 루프 확립
-3. **Epic 3** → 수정 기능, 최종 Export
+1. **Epic 1** → WASM 기반 구축, 도형 생성 기능 완성 ✅
+2. **Epic 2** → 뷰어 연결, 검증 루프 확립 ✅
+3. **Epic 3** → 수정 기능, 최종 Export ✅
+4. **Epic 4** → 그룹화, 피봇, 계층 변환
+5. **Epic 5** → Selection UI
+6. **Epic 6** → Electron 앱 통합
 
 ## 검증 시나리오 매핑
 
-| 검증 시나리오 | 필요 스토리 |
-|--------------|------------|
-| "스켈레톤을 그려줘" | 1.1 → 1.2 → 1.3, 1.4, 1.5 → 2.1 → 2.2 → 2.3 |
-| "팔을 더 길게" | 3.1 또는 3.3 → 3.5 |
-| "SVG로 저장해줘" | 3.6 |
+| 검증 시나리오 | 필요 스토리 | 상태 |
+|--------------|------------|------|
+| "스켈레톤을 그려줘" | 1.1 → 1.2 → 1.3, 1.4, 1.5 → 2.1 → 2.2 → 2.3 | ✅ 가능 |
+| "팔을 더 길게" | 3.1 또는 3.3 → 3.5 | ✅ 가능 |
+| "SVG로 저장해줘" | 3.6 | ✅ 가능 |
+| **"팔을 구부린 포즈로"** | 4.1 → 4.4 → 4.5 → 4.6 | ⬜ MVP |
+| **[왼팔 클릭] + "이거 더 길게"** | 5.1 → 5.3 → 3.3 | ⬜ MVP |
+| **Electron 앱 실행** | 6.1 → 6.2 → 6.3 → 6.4 → 6.5 → 6.6 | ⬜ MVP |
