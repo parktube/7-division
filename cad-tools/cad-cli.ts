@@ -13,6 +13,7 @@
 
 import '../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
+import { logger } from './src/logger.js';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -46,7 +47,7 @@ function loadState(): SceneState {
     try {
       return JSON.parse(readFileSync(STATE_FILE, 'utf-8'));
     } catch (err) {
-      console.error('Failed to load state file:', err instanceof Error ? err.message : err);
+      logger.error('Failed to load state file:', err instanceof Error ? err.message : String(err));
     }
   }
   return { sceneName: 'cad-scene', entities: [] };
@@ -487,19 +488,17 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
         break;
 
       case 'Group':
-        // Group은 children을 통해 재생성
-        if (entity.children && entity.children.length > 0) {
-          executor.exec('create_group', {
-            name,
-            children: entity.children,
-          });
-        }
+        // Group은 children을 통해 재생성 (빈 그룹도 포함)
+        executor.exec('create_group', {
+          name,
+          children: entity.children ?? [],
+        });
         break;
     }
   } catch (err) {
     // Log but continue - don't fail entire replay for one bad entity
-    console.error('Failed to replay entity:', entity.metadata?.name, err instanceof Error ? err.message : err);
+    logger.error('Failed to replay entity:', entity.metadata?.name, err instanceof Error ? err.message : String(err));
   }
 }
 
-main().catch(console.error);
+main().catch((err) => logger.error('Main error:', err instanceof Error ? err.message : String(err)));
