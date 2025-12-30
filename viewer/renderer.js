@@ -364,7 +364,12 @@ function applyTransform(transform) {
   }
 }
 
-function renderEntity(entity) {
+/**
+ * Entity를 렌더링합니다.
+ * @param {Object} entity - 렌더링할 Entity
+ * @param {Object} entitiesByName - name으로 Entity를 조회하기 위한 맵
+ */
+function renderEntity(entity, entitiesByName) {
   if (!entity || !entity.entity_type) {
     return;
   }
@@ -387,7 +392,15 @@ function renderEntity(entity) {
       renderArc(entity.geometry, entity.style);
       break;
     case 'Group':
-      // Group은 자체 geometry가 없음 (자식들이 개별 렌더링)
+      // Group의 변환이 적용된 상태에서 자식들을 렌더링 (계층적 변환)
+      if (Array.isArray(entity.children) && entitiesByName) {
+        for (const childName of entity.children) {
+          const child = entitiesByName[childName];
+          if (child) {
+            renderEntity(child, entitiesByName);
+          }
+        }
+      }
       break;
     default:
       console.warn('Unknown entity type:', entity.entity_type);
@@ -402,12 +415,25 @@ function renderScene(scene) {
     return;
   }
 
+  // Build name -> entity map for hierarchical rendering
+  const entitiesByName = {};
+  for (const entity of scene.entities) {
+    const name = entity.metadata?.name;
+    if (name) {
+      entitiesByName[name] = entity;
+    }
+  }
+
   ctx.save();
   ctx.translate(state.viewport.width / 2, state.viewport.height / 2);
   ctx.scale(1, -1);
 
+  // Only render root-level entities (those without parent_id)
+  // Children are rendered by their parent Group
   for (const entity of scene.entities) {
-    renderEntity(entity);
+    if (!entity.parent_id) {
+      renderEntity(entity, entitiesByName);
+    }
   }
 
   ctx.restore();
