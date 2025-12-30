@@ -13,6 +13,9 @@ describe('discovery', () => {
       const domains = listDomains();
       expect(domains).toContain('primitives');
       expect(domains).toContain('style');
+      expect(domains).toContain('transforms');
+      expect(domains).toContain('query');
+      expect(domains).toContain('registry');
       expect(domains).toContain('export');
     });
   });
@@ -68,7 +71,7 @@ describe('discovery', () => {
   describe('getAllTools', () => {
     it('should return all tools', () => {
       const tools = getAllTools();
-      expect(tools.length).toBe(9); // 4 + 4 + 1
+      expect(tools.length).toBe(21); // 4 primitives + 4 style + 4 transforms + 3 query + 4 registry + 2 export
     });
   });
 });

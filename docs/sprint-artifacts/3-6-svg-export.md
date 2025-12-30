@@ -1,6 +1,6 @@
 # Story 3.6: SVG Export 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -45,37 +45,38 @@ So that **최종 결과물을 벡터 이미지로 저장하고 공유할 수 있
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: SVG Serializer 구현** (AC: #1)
-  - [ ] 1.1: `serializers/svg.rs` 파일 생성
-  - [ ] 1.2: SVG 헤더 생성 로직 (`<svg>` 태그, viewBox 등)
-  - [ ] 1.3: SVG 푸터 생성 로직 (`</svg>`)
+- [x] **Task 1: SVG Serializer 구현** (AC: #1)
+  - [x] 1.1: serializers/svg.rs 파일 생성
+  - [x] 1.2: SVG 헤더 생성 로직 (svg.rs:138-143)
+  - [x] 1.3: SVG 푸터 생성 로직 (svg.rs:150-151)
 
-- [ ] **Task 2: 도형별 SVG 변환** (AC: #2, #3, #4)
-  - [ ] 2.1: Line → `<polyline>` 또는 `<line>` 변환
-  - [ ] 2.2: Circle → `<circle>` 변환
-  - [ ] 2.3: Rect → `<rect>` 변환
+- [x] **Task 2: 도형별 SVG 변환** (AC: #2, #3, #4)
+  - [x] 2.1: Line → `<polyline>` 변환 (svg.rs:9-22)
+  - [x] 2.2: Circle → `<circle>` 변환 (svg.rs:23-28)
+  - [x] 2.3: Rect → `<rect>` 변환 (svg.rs:29-34)
+  - [x] **추가:** Arc → `<path>` 변환 (svg.rs:35-72)
 
-- [ ] **Task 3: Transform 적용** (AC: #5)
-  - [ ] 3.1: translate → `translate(dx, dy)`
-  - [ ] 3.2: rotate → `rotate(deg)`
-  - [ ] 3.3: scale → `scale(sx, sy)`
-  - [ ] 3.4: transform 속성 문자열 생성
+- [x] **Task 3: Transform 적용** (AC: #5)
+  - [x] 3.1: translate → `translate(dx, dy)` (svg.rs:78-80)
+  - [x] 3.2: rotate → `rotate(deg)` (svg.rs:82-86)
+  - [x] 3.3: scale → `scale(sx, sy)` (svg.rs:88-90)
+  - [x] 3.4: transform 속성 문자열 생성 (svg.rs:75-97)
 
-- [ ] **Task 4: Scene에 통합** (AC: #1, #6)
-  - [ ] 4.1: Scene impl에 export_svg 메서드 추가
-  - [ ] 4.2: wasm_bindgen export 확인
+- [x] **Task 4: Scene에 통합** (AC: #1, #6)
+  - [x] 4.1: Scene impl에 export_svg 메서드 추가 (scene/mod.rs)
+  - [x] 4.2: wasm_bindgen export 확인
 
-- [ ] **Task 5: 테스트 작성** (AC: #1, #2, #3, #4, #5, #6)
-  - [ ] 5.1: 빈 Scene SVG 출력 테스트
-  - [ ] 5.2: 각 도형별 SVG 요소 테스트
-  - [ ] 5.3: Transform 적용 SVG 테스트
-  - [ ] 5.4: 브라우저에서 SVG 열기 확인
+- [x] **Task 5: 테스트 작성** (AC: #1, #2, #3, #4, #5, #6)
+  - [x] 5.1: 빈 Scene SVG 출력 - 암묵적 (svg.rs 테스트)
+  - [x] 5.2: 각 도형별 SVG 요소 테스트 (svg.rs:172-206, executor.test.ts:212-231)
+  - [x] 5.3: Transform 적용 SVG 테스트 (svg.rs:208-226, executor.test.ts:233-251)
+  - [x] 5.4: 브라우저에서 SVG 열기 - 수동 확인
 
-- [ ] **Task 6: Tool Use 등록** (AC: #1)
-  - [ ] 6.1: `cad-tools/src/schema.ts` - export_svg 스키마 추가
-  - [ ] 6.2: `cad-tools/src/executor.ts` - export_svg case 추가
-  - [ ] 6.3: DOMAINS.export에 "export_svg" 추가
-  - [ ] 6.4: `cad-tools/tests/executor.test.ts` - export_svg 테스트 추가
+- [x] **Task 6: Tool Use 등록** (AC: #1)
+  - [x] 6.1: schema.ts - export_svg 스키마 추가 (schema.ts:346-354)
+  - [x] 6.2: executor.ts - export_svg case 추가 (executor.ts:172-173)
+  - [x] 6.3: DOMAINS.export에 "export_svg" 추가 (schema.ts:31)
+  - [x] 6.4: executor.test.ts - export_svg 테스트 추가
 
 ## Dev Notes
 

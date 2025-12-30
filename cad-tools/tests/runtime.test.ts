@@ -202,7 +202,7 @@ describe('runAgentLoop', () => {
 
     await runAgentLoop(provider, executor, 'Test');
 
-    // Default: primitives (4) + style (4) + export (1) = 9 tools
-    expect(provider.sentTools).toHaveLength(9);
+    // Default: primitives (4) + style (4) + transforms (4) + query (3) + registry (4) + export (2) = 21 tools
+    expect(provider.sentTools).toHaveLength(21);
   });
 });

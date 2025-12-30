@@ -1,6 +1,6 @@
 # Story 3.3: Scale 변환 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -34,31 +34,31 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: scale 함수 구현** (AC: #1, #2)
-  - [ ] 1.1: `scale(&mut self, name: &str, sx: f64, sy: f64)` 구현
-  - [ ] 1.2: name으로 Entity 찾기 로직
-  - [ ] 1.3: transform.scale 곱셈 로직
+- [x] **Task 1: scale 함수 구현** (AC: #1, #2)
+  - [x] 1.1: `scale(&mut self, name: &str, sx: f64, sy: f64)` 구현
+  - [x] 1.2: name으로 Entity 찾기 로직
+  - [x] 1.3: transform.scale 곱셈 로직
 
-- [ ] **Task 2: 입력 보정** (AC: #3)
-  - [ ] 2.1: sx <= 0 또는 sy <= 0 검증
-  - [ ] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
+- [x] **Task 2: 입력 보정** (AC: #3)
+  - [x] 2.1: sx <= 0 또는 sy <= 0 검증
+  - [x] 2.2: abs().max(0.001)로 양수 변환 (관대한 입력 보정)
 
-- [ ] **Task 3: Scene에 통합** (AC: #1, #4)
-  - [ ] 3.1: Scene impl에 scale 메서드 추가
-  - [ ] 3.2: wasm_bindgen export 확인
+- [x] **Task 3: Scene에 통합** (AC: #1, #4)
+  - [x] 3.1: Scene impl에 scale 메서드 추가
+  - [x] 3.2: wasm_bindgen export 확인
 
-- [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3, #4)
-  - [ ] 4.1: 기본 scale 테스트 (확대)
-  - [ ] 4.2: 축소 scale 테스트
-  - [ ] 4.3: 비균일 scale 테스트
-  - [ ] 4.4: 0 이하 scale 보정 테스트 (abs() 변환 확인)
-  - [ ] 4.5: 누적 scale 테스트
+- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3, #4)
+  - [x] 4.1: 기본 scale 테스트 (확대)
+  - [x] 4.2: 축소 scale 테스트
+  - [x] 4.3: 비균일 scale 테스트
+  - [x] 4.4: 0 이하 scale 보정 테스트 (abs() 변환 확인)
+  - [x] 4.5: 누적 scale 테스트
 
-- [ ] **Task 5: Tool Use 등록** (AC: #1)
-  - [ ] 5.1: `cad-tools/src/schema.ts` - scale 스키마 추가
-  - [ ] 5.2: `cad-tools/src/executor.ts` - scale case 추가
-  - [ ] 5.3: DOMAINS.transforms에 "scale" 추가
-  - [ ] 5.4: `cad-tools/tests/executor.test.ts` - scale 테스트 추가
+- [x] **Task 5: Tool Use 등록** (AC: #1)
+  - [x] 5.1: `cad-tools/src/schema.ts` - scale 스키마 추가
+  - [x] 5.2: `cad-tools/src/executor.ts` - scale case 추가
+  - [x] 5.3: DOMAINS.transforms에 "scale" 추가
+  - [x] 5.4: `cad-tools/tests/executor.test.ts` - scale 테스트 추가
 
 ## Dev Notes
 

@@ -1,6 +1,6 @@
 # Story 3.0-b: Dynamic Tool Registry (도구 동적 등록)
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -171,30 +171,30 @@ executor.exec('get_tool_schema', { name: 'draw_rectangle' })
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Schema Registry 구현** (AC: #1, #2, #3, #5)
-  - [ ] 1.1: ToolRegistry 싱글톤 클래스 생성 (tool-registry.ts)
-  - [ ] 1.2: 도메인 메타데이터 추가 (description 포함)
-  - [ ] 1.3: 도구 검색/필터링 메서드 구현
-  - [ ] 1.4: 유사 이름 검색 (prefix/contains 단순 매칭)
+- [x] **Task 1: Schema Registry 구현** (AC: #1, #2, #3, #5)
+  - [x] 1.1: ToolRegistry 싱글톤 클래스 생성 (tool-registry.ts:43-61)
+  - [x] 1.2: 도메인 메타데이터 추가 (schema.ts:37-44 DOMAIN_METADATA)
+  - [x] 1.3: 도구 검색/필터링 메서드 구현 (tool-registry.ts:85-105)
+  - [x] 1.4: 유사 이름 검색 (tool-registry.ts:118-131)
 
-- [ ] **Task 2: Registry Query 도구 구현** (AC: #1, #2, #3)
-  - [ ] 2.1: list_domains 도구 추가
-  - [ ] 2.2: list_tools 도구 추가 (domain 필터)
-  - [ ] 2.3: get_tool_schema 도구 추가
-  - [ ] 2.4: Executor에 핸들러 연결
+- [x] **Task 2: Registry Query 도구 구현** (AC: #1, #2, #3)
+  - [x] 2.1: list_domains 도구 추가 (executor.ts:157, tool-registry.ts:73-79)
+  - [x] 2.2: list_tools 도구 추가 (executor.ts:160, tool-registry.ts:85-105)
+  - [x] 2.3: get_tool_schema 도구 추가 (executor.ts:163, tool-registry.ts:111-113)
+  - [x] 2.4: Executor에 핸들러 연결 (executor.ts:155-166)
 
-- [ ] **Task 3: Tool Request Queue** (AC: #4)
-  - [ ] 3.1: ToolRequest 인터페이스 정의
-  - [ ] 3.2: request_tool 도구 구현
-  - [ ] 3.3: 요청을 파일로 영속화 (`tool-requests.json`)
-  - [ ] 3.4: 요청 목록 조회 도구 (list_tool_requests)
-  - [ ] 3.5: 기존 요청 파일 로드 (프로세스 재시작 시)
+- [x] **Task 3: Tool Request Queue** (AC: #4)
+  - [x] 3.1: ToolRequest 인터페이스 정의 (tool-registry.ts:30-38)
+  - [x] 3.2: request_tool 도구 구현 (tool-registry.ts:136-156)
+  - [x] 3.3: 요청을 파일로 영속화 (tool-registry.ts:186-191)
+  - [x] 3.4: 요청 목록 조회 도구 (tool-registry.ts:161-166)
+  - [x] 3.5: 기존 요청 파일 로드 (tool-registry.ts:171-180)
 
-- [ ] **Task 4: 테스트** (AC: #1~#5)
-  - [ ] 4.1: Registry 단위 테스트
-  - [ ] 4.2: Query 도구 통합 테스트
-  - [ ] 4.3: Request Queue 테스트
-  - [ ] 4.4: 유사 이름 제안 테스트
+- [x] **Task 4: 테스트** (AC: #1~#5)
+  - [x] 4.1: Registry 단위 테스트 (executor.test.ts)
+  - [x] 4.2: Query 도구 통합 테스트 (executor.test.ts:436-509)
+  - [x] 4.3: Request Queue 테스트 (executor.test.ts:494-508)
+  - [x] 4.4: 유사 이름 제안 테스트 (executor.test.ts:484-492)
 
 ## Dev Notes
 

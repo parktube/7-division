@@ -1,6 +1,6 @@
 # Story 3.1: Translate 변환 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -31,35 +31,33 @@ So that **"왼쪽 팔을 더 왼쪽으로" 같은 수정 요청을 처리할 수
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: transforms 모듈 생성** (AC: #1)
-  - [ ] 1.1: `transforms/` 디렉토리 생성
-  - [ ] 1.2: `transforms/mod.rs` 파일 생성
-  - [ ] 1.3: `transforms/translate.rs` 파일 생성
+- [x] **Task 1: transforms 모듈 생성** (AC: #1)
+  - [x] 1.1-1.3: scene/mod.rs에 직접 구현 (별도 모듈 대신)
 
-- [ ] **Task 2: translate 함수 구현** (AC: #1)
-  - [ ] 2.1: `translate(&mut self, name: &str, dx: f64, dy: f64)` 구현
-  - [ ] 2.2: name으로 Entity 찾기 로직 (metadata.name 사용)
-  - [ ] 2.3: transform.translate 누적 로직
+- [x] **Task 2: translate 함수 구현** (AC: #1)
+  - [x] 2.1: translate 함수 구현 (scene/mod.rs:831-841)
+  - [x] 2.2: name으로 Entity 찾기 (scene/mod.rs:832-835 find_by_name_mut)
+  - [x] 2.3: transform.translate 누적 로직 (scene/mod.rs:838-839)
 
-- [ ] **Task 3: 에러 처리** (AC: #2)
-  - [ ] 3.1: name 미발견 시 Ok(false) 반환 (no-op)
-  - [ ] 3.2: 에러 처리 방식 문서화
+- [x] **Task 3: 에러 처리** (AC: #2)
+  - [x] 3.1: name 미발견 시 Ok(false) 반환 (scene/mod.rs:834)
+  - [x] 3.2: 에러 처리 방식 문서화 (주석)
 
-- [ ] **Task 4: Scene에 통합** (AC: #1, #3)
-  - [ ] 4.1: Scene impl에 translate 메서드 추가
-  - [ ] 4.2: wasm_bindgen export 확인
+- [x] **Task 4: Scene에 통합** (AC: #1, #3)
+  - [x] 4.1: Scene impl에 translate 메서드 추가
+  - [x] 4.2: wasm_bindgen export 확인
 
-- [ ] **Task 5: 테스트 작성** (AC: #1, #2, #3)
-  - [ ] 5.1: 기본 translate 테스트
-  - [ ] 5.2: 누적 translate 테스트
-  - [ ] 5.3: 잘못된 ID 테스트
-  - [ ] 5.4: export_json에 translate 포함 확인
+- [x] **Task 5: 테스트 작성** (AC: #1, #2, #3)
+  - [x] 5.1: 기본 translate 테스트 (executor.test.ts:311-321)
+  - [x] 5.2: 누적 translate 테스트 (executor.test.ts:323-330)
+  - [x] 5.3: 잘못된 ID 테스트 (executor.test.ts:332-337)
+  - [x] 5.4: export_json에 translate 포함 확인 (executor.test.ts:318-320)
 
-- [ ] **Task 6: Tool Use 등록** (AC: #1)
-  - [ ] 6.1: `cad-tools/src/schema.ts` - translate 스키마 추가
-  - [ ] 6.2: `cad-tools/src/executor.ts` - translate case 추가
-  - [ ] 6.3: DOMAINS.transforms에 "translate" 추가
-  - [ ] 6.4: `cad-tools/tests/executor.test.ts` - translate 테스트 추가
+- [x] **Task 6: Tool Use 등록** (AC: #1)
+  - [x] 6.1: schema.ts - translate 스키마 추가 (schema.ts:227-239)
+  - [x] 6.2: executor.ts - translate case 추가 (executor.ts:143-144)
+  - [x] 6.3: DOMAINS.transforms에 "translate" 추가 (schema.ts:28)
+  - [x] 6.4: executor.test.ts - translate 테스트 추가
 
 ## Dev Notes
 
