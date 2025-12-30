@@ -103,11 +103,13 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
 ### Architecture Compliance
 
 **Client-Direct Architecture:**
+
 - Renderer에서 Claude API 직접 호출 (fetch)
 - API 키가 Renderer에 노출되지만 로컬 앱이므로 OK
 - IPC 불필요 → 웹 버전과 코드 100% 동일
 
 **CAD 명령 실행 방식:**
+
 ```
 ┌─ Electron Renderer (= 브라우저) ─────────────────────────┐
 │                                                          │
@@ -129,6 +131,7 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
 ### Technical Requirements
 
 1. **Anthropic SDK 사용**:
+
    ```typescript
    import Anthropic from '@anthropic-ai/sdk';
 
@@ -153,6 +156,7 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
    ```
 
 2. **CAD 도구 정의 (tool_use)**:
+
    ```typescript
    const cadTools = [
        {
@@ -174,6 +178,7 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
    ```
 
 3. **메시지 타입**:
+
    ```typescript
    interface Message {
        id: string;
@@ -185,6 +190,7 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
    ```
 
 4. **채팅 UI 구조**:
+
    ```html
    <div class="chat-panel">
        <div class="message-list">
@@ -200,12 +206,14 @@ so that **별도 터미널 없이 CAD 작업을 할 수 있다**.
 ### File Structure Notes
 
 새로 생성:
+
 - `electron-app/src/renderer/components/ChatPanel.ts`
 - `electron-app/src/renderer/services/api-client.ts`
 - `electron-app/src/renderer/services/cad-executor.ts`
 - `electron-app/src/renderer/styles/chat.css`
 
 의존성 추가:
+
 - `@anthropic-ai/sdk` - Claude API 클라이언트
 
 ### References

@@ -109,22 +109,26 @@ so that **그룹 변환이 적용된 결과를 확인할 수 있다**.
 | **Mode B** (App) | WASM 메모리 직접 | executor.getScene() → Canvas |
 
 **Mode A (현재 구현 대상):**
+
 - viewer는 scene.json을 500ms 폴링
 - JSON에서 parent_id, children을 파싱하여 계층 구조 재구성
 - 별도의 IPC 없이 기존 아키텍처 그대로 사용
 
 **Mode B 최적화 (Epic 6 구현 시):**
+
 - DirectExecutor.getScene()에서 WASM 메모리 직접 읽기
 - 파일 I/O 없이 즉각적인 렌더링
 - 렌더링 로직 자체는 Mode A와 동일 (재사용 가능)
 
 **Story 4-5와의 관계:**
+
 - Story 4-5에서 get_world_transform 함수 제공
 - 이 스토리에서는 렌더러가 계층 변환을 직접 계산 (Canvas 변환 스택 활용)
 
 ### Technical Requirements
 
 1. **scene.json 구조 (그룹 포함)**:
+
    ```json
    {
      "entities": [
@@ -149,6 +153,7 @@ so that **그룹 변환이 적용된 결과를 확인할 수 있다**.
    ```
 
 2. **렌더링 알고리즘**:
+
    ```javascript
    function renderScene(scene) {
        const entityMap = buildEntityMap(scene.entities);
@@ -196,6 +201,7 @@ so that **그룹 변환이 적용된 결과를 확인할 수 있다**.
    ```
 
 3. **SVG 그룹 구조**:
+
    ```xml
    <g id="arm_group" transform="translate(100, 0)">
      <line id="upper_arm" x1="0" y1="0" x2="50" y2="0" .../>
@@ -210,10 +216,12 @@ so that **그룹 변환이 적용된 결과를 확인할 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `viewer/renderer.js` - 계층적 렌더링 로직 추가
 - `cad-engine/src/serializers/svg.rs` - SVG Export 그룹 지원
 
 의존 파일:
+
 - `cad-engine/src/scene/entity.rs` - EntityType::Group, parent_id, children
 - `cad-engine/src/scene/mod.rs` - export_json (그룹 구조 포함)
 

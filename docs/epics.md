@@ -125,11 +125,13 @@ NFR17: 오프라인 동작 - API 키 없이도 CAD 기능(도형 생성/편집)�
 | **Mode B** (App) | Electron App | Client-Direct | Renderer → WASM (Memory) → Canvas | Direct Function Call |
 
 **Epic별 모드 대응:**
+
 - Epic 1~3: Mode A 기준으로 구현 완료
 - Epic 4~5: Mode A 기준으로 설계, Epic 6 구현 시 Mode B 최적화 필요
 - Epic 6: Mode B (Client-Direct) 전용
 
 **CADExecutor Adapter 패턴:**
+
 - `FileBasedExecutor`: Mode A용 (scene.json, selection.json 기반)
 - `DirectExecutor`: Mode B용 (메모리 직접 접근)
 - 비즈니스 로직은 Executor 타입과 무관하게 동작
@@ -242,6 +244,7 @@ viewer/
 **NFRs addressed**: NFR2 (< 1ms 호출), NFR6 (Direct-First), NFR7 (오프라인), NFR8-9 (AX 시맨틱), NFR11-13 (코드 품질)
 
 **완료 조건**:
+
 - [ ] Rust CAD 엔진 WASM 빌드 성공 (wasm-pack)
 - [ ] `line(points)` 함수로 선분 생성
 - [ ] `circle(x, y, radius)` 함수로 원 생성
@@ -264,6 +267,7 @@ viewer/
 **선행 조건**: Epic 1 완료 (도형 생성 기능)
 
 **완료 조건**:
+
 - [ ] `export_json()` 함수로 scene.json 출력
 - [ ] Canvas 2D 뷰어가 scene.json을 500ms polling
 - [ ] line, circle, rect 3종 도형 렌더링
@@ -285,6 +289,7 @@ viewer/
 **선행 조건**: Epic 1, Epic 2 완료
 
 **완료 조건**:
+
 - [ ] `translate(id, dx, dy)` 함수로 이동
 - [ ] `rotate(id, angle)` 함수로 회전
 - [ ] `scale(id, sx, sy)` 함수로 확대/축소
@@ -298,6 +303,7 @@ viewer/
 ## 검증 시나리오 (Phase 1 Definition of Done)
 
 ### 시나리오 1: 스켈레톤 생성
+
 ```
 입력: "사람 스켈레톤을 그려줘"
 기대 결과:
@@ -310,6 +316,7 @@ viewer/
 ```
 
 ### 시나리오 2: 수정 요청
+
 ```
 입력: "왼쪽 팔을 더 길게 해줘"
 기대 결과:
@@ -348,6 +355,7 @@ So that **MCP 없이 직접 CAD 함수를 호출할 수 있다** (Direct-First A
 **And** 호출 지연 시간이 1ms 미만이다 (NFR2)
 
 **Technical Notes:**
+
 - Cargo.toml: `wasm-bindgen = "0.2.92"`, `serde = "1.0"`, `uuid = { version = "1", features = ["js"] }`
 - wasm-pack 0.13.1 (drager fork) 사용
 - Rust 1.85.0+ (2024 Edition)
@@ -381,6 +389,7 @@ So that **도형들을 하나의 씬에서 관리하고 추적할 수 있다**.
 **And** `js_sys::Math::random()` 또는 `uuid` js feature로 ID 생성
 
 **Technical Notes:**
+
 - Entity 구조: `{ id, type, geometry, transform, style, metadata }`
 - wasm-bindgen 클래스 래퍼 패턴 적용 (NFR11)
 - getrandom 이슈 회피 (NFR13)
@@ -419,6 +428,7 @@ So that **스켈레톤의 척추, 팔, 다리 등을 표현할 수 있다**.
 **And** (홀수 좌표 trim 후 유효 좌표에서만 검증)
 
 **Technical Notes:**
+
 - Float64Array 입력 처리 (NFR12)
 - 시맨틱 명확한 함수명: `add_line` (NFR9)
 
@@ -454,6 +464,7 @@ So that **스켈레톤의 머리나 관절 등을 표현할 수 있다**.
 **Then** 에러가 반환된다: `[add_circle] invalid_input: NaN or Infinity not allowed`
 
 **Technical Notes:**
+
 - 시맨틱 명확한 함수명: `add_circle` (NFR9)
 - f64 타입 사용
 - NaN/Infinity 입력 시 에러 반환 (유효하지 않은 geometry 방지)
@@ -486,6 +497,7 @@ So that **스켈레톤의 몸통이나 배경 요소를 표현할 수 있다**.
 **Then** origin(0,0)에서 width=100, height=50인 사각형이 생성된다
 
 **Technical Notes:**
+
 - 시맨틱 명확한 함수명: `add_rect` (NFR9)
 - origin은 좌하단 기준 (Y-up 좌표계)
 
@@ -520,6 +532,7 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시 등을 표현할 수 
 **Then** 스타일이 적용된 Arc가 생성된다
 
 **Technical Notes:**
+
 - 각도 단위: 라디안
 - 양수 각도 = 반시계방향 (CCW, Y-up 좌표계)
 - PRD에 정의됨: `arc(radius, startAngle, endAngle)`
@@ -533,6 +546,7 @@ So that **스켈레톤의 곡선 팔, 관절 회전 표시 등을 표현할 수 
 ## Story 1.7: Style 데이터 구조 정의
 
 > **설계 결정**: Style은 Renderer가 아닌 Entity에 포함됩니다.
+>
 > - 이유: 도면 출력(DXF, SVG, PDF)시 스타일 정보가 필요
 > - 3D 확장 시 Material Reference로 발전 가능
 
@@ -553,6 +567,7 @@ So that **"빨간 원", "파란 점선" 같은 스타일이 적용된 도형을 
 **Then** stroke: 검은색 1px, fill: None으로 설정된다 (기존 호환)
 
 **Technical Notes:**
+
 - LineCap: Butt, Round, Square
 - LineJoin: Miter, Round, Bevel
 - color: [f64; 4] - RGBA (0.0-1.0)
@@ -584,6 +599,7 @@ So that **"빨간 테두리의 파란 원" 같은 요청을 한 번의 호출로
 **Then** 기본 스타일로 생성된다 (하위 호환)
 
 **Technical Notes:**
+
 - draw_circle, draw_line, draw_rect, draw_arc 추가
 - 기존 add_* 함수는 유지 (하위 호환)
 
@@ -614,6 +630,7 @@ So that **"이 원을 빨간색으로 바꿔줘" 같은 수정 요청을 처리�
 **Then** Ok(false) 반환하고 무시된다 (ID 미발견 시 no-op)
 
 **Technical Notes:**
+
 - set_stroke, set_fill, remove_stroke, remove_fill 함수
 - 부분 업데이트 지원 (color만 변경 등)
 
@@ -658,6 +675,7 @@ So that **뷰어가 파일을 읽어 렌더링할 수 있다**.
 **Then** `{"entities": []}` 형태의 유효한 JSON이 반환된다
 
 **Technical Notes:**
+
 - serde_json 사용하여 직렬화
 - scene.json 포맷은 뷰어와 공유되는 계약
 
@@ -690,10 +708,11 @@ So that **AI가 도형을 생성할 때마다 실시간으로 결과를 확인�
 
 **Given** 정적 파일 서버에서 뷰어 실행
 **When** `python -m http.server` 또는 유사 서버로 viewer 폴더 서빙
-**Then** http://localhost:8000에서 뷰어가 동작한다
+**Then** <http://localhost:8000에서> 뷰어가 동작한다
 **And** Vite 없이 정상 동작한다
 
 **Technical Notes:**
+
 - setInterval(fetch, 500) 패턴
 - 정적 HTML + vanilla JS
 - Vite 미사용 (Phase 1 단순화)
@@ -735,6 +754,7 @@ So that **AI가 만든 스켈레톤이 올바르게 표현되었는지 검증할
 **Then** 사람 형태의 스켈레톤이 시각적으로 인식 가능하다
 
 **Technical Notes:**
+
 - Canvas 2D API 사용
 - switch(entity.type) 패턴으로 분기
 - stroke 스타일 기본값: black, 1px
@@ -778,6 +798,7 @@ So that **스크립트 작성 없이 도구를 자기 몸처럼 사용할 수 �
 **And** Claude가 다음 행동을 결정할 수 있다
 
 **Technical Notes:**
+
 - Progressive Exposure 패턴: listDomains → listTools → getTool → exec
 - tool_use 스키마 정의 (name, description, input_schema)
 - WASM 함수 래핑 (Float64Array 변환, JSON.stringify 자동화)
@@ -812,6 +833,7 @@ So that **"왼쪽 팔을 더 왼쪽으로" 같은 수정 요청을 처리할 수
 **Then** JSON에 transform.translate 값이 포함된다
 
 **Technical Notes:**
+
 - Transform 구조: `{ translate: [dx, dy], rotate: angle, scale: [sx, sy] }`
 - 초기 transform: `{ translate: [0, 0], rotate: 0, scale: [1, 1] }`
 
@@ -841,6 +863,7 @@ So that **"팔을 위로 들어" 같은 포즈 변경 요청을 처리할 수 �
 **Then** 반시계 방향 회전으로 처리된다
 
 **Technical Notes:**
+
 - 각도 단위: 라디안 권장 (Canvas API와 일치)
 - 회전 중심: Entity의 중심 또는 원점 (Phase 1에서는 원점 기준)
 
@@ -859,7 +882,7 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
 **Given** Scene에 Entity가 존재 (ID로 식별)
 **When** `scene.scale(id, sx, sy)` 호출
 **Then** 해당 Entity의 transform.scale 값이 [sx, sy]로 설정된다
-**And** 기존 scale 값이 있으면 곱해진다 ([prev_sx * sx, prev_sy * sy])
+**And** 기존 scale 값이 있으면 곱해진다 ([prev_sx *sx, prev_sy* sy])
 
 **Given** sx와 sy가 다른 경우 (비균일 스케일)
 **When** scale(id, 2, 1) 호출
@@ -874,6 +897,7 @@ So that **"팔을 더 길게" 같은 크기 조정 요청을 처리할 수 있�
 **Then** 도형이 절반 크기로 축소된다
 
 **Technical Notes:**
+
 - 초기 scale: [1, 1] (100%)
 - 음수 scale은 뒤집기 효과 (Phase 1에서는 지원 안 함)
 
@@ -905,6 +929,7 @@ So that **"오른쪽 팔을 없애줘" 같은 요청을 처리할 수 있다**.
 **And** 다른 Entity들의 ID는 변경되지 않는다
 
 **Technical Notes:**
+
 - entities.retain(|e| e.id != id) 패턴 사용
 - Undo/Redo는 Phase 2에서 구현
 
@@ -945,6 +970,7 @@ So that **AI가 수정한 결과가 정확히 반영되었는지 확인할 수 �
 **And** 다른 Entity들은 변경 없이 표시된다
 
 **Technical Notes:**
+
 - 변환 순서: ctx.translate → ctx.rotate → ctx.scale
 - 각 Entity 렌더링 전후로 ctx.save()/restore() 필수
 - transform 값이 없으면 기본값 사용 (translate: [0,0], rotate: 0, scale: [1,1])
@@ -989,6 +1015,7 @@ So that **최종 결과물을 벡터 이미지로 저장하고 공유할 수 있
 **And** 브라우저에서 열면 도형들이 표시된다
 
 **Technical Notes:**
+
 - SVG viewBox 자동 계산 또는 고정 크기 (500x500)
 - stroke: black, fill: none 기본값
 - SVG 1.1 표준 준수
@@ -1016,10 +1043,12 @@ So that **최종 결과물을 벡터 이미지로 저장하고 공유할 수 있
 | **리스크 수준** | 🟡 낮음 |
 
 **긍정적 요인**:
+
 - 현재 Entity 구조가 깔끔하여 `parent_id` 필드 추가 및 트리 탐색 구현이 직관적
 - String ID 기반 그룹화 로직은 wasm-bindgen에서 성능/복잡도 측면에서 큰 이슈 없음
 
 **주요 리스크 및 고려사항**:
+
 1. **계층적 변환 (Recursive Transform)**: 부모의 회전/스케일이 자식에게 전파될 때, 현재 단순 `Transform` struct로는 변환 순서 문제 발생 가능. Matrix3x3 도입 검토 필요
 2. **AX 시맨틱**: AI가 "그룹 내 특정 개체"를 지칭할 때의 문법 정의 필요 (예: `group_1.child_A` vs `child_A (in group_1)`)
 
@@ -1044,6 +1073,7 @@ So that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 
 **Then** 존재하는 자식들만 그룹에 추가된다 (관대한 입력 보정)
 
 **Technical Notes:**
+
 - Entity에 parent_id, children 필드 추가
 - 그룹 중첩 지원 (NFR14)
 
@@ -1069,6 +1099,7 @@ So that **그룹 구조를 유연하게 변경할 수 있다**.
 **Then** Ok(false) 반환하고 무시된다
 
 **Technical Notes:**
+
 - 그룹 삭제 시 자식들의 월드 변환 유지 고려
 
 **Requirements Fulfilled:** FR22
@@ -1092,6 +1123,7 @@ So that **그룹 구성을 동적으로 변경할 수 있다**.
 **Then** hand Entity가 그룹에서 제거되고 독립 엔티티가 된다
 
 **Technical Notes:**
+
 - 이미 다른 그룹에 속한 엔티티는 기존 그룹에서 제거 후 추가
 
 **Requirements Fulfilled:** FR23
@@ -1115,6 +1147,7 @@ So that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
 **Then** 도형이 pivot 위치를 기준으로 45도 회전된다
 
 **Technical Notes:**
+
 - Transform 구조에 pivot 필드 추가
 - 기본 pivot: [0, 0] (엔티티 로컬 원점)
 - 렌더링 시 pivot 고려한 변환 적용
@@ -1140,6 +1173,7 @@ So that **어깨를 회전하면 팔 전체가 함께 회전한다**.
 **Then** 자식들이 부모의 변환을 상속받아 올바른 위치에 렌더링된다
 
 **Technical Notes:**
+
 - 렌더링/Export 시 월드 변환 계산 (부모 → 자식 순)
 - WASM에서는 로컬 변환만 저장
 
@@ -1164,6 +1198,7 @@ So that **그룹 변환이 적용된 결과를 확인할 수 있다**.
 **Then** pivot 위치를 기준으로 회전된 결과가 표시된다
 
 **Technical Notes:**
+
 - getWorldTransform() 함수로 계층 변환 계산
 - 렌더링 순서: 부모 → 자식
 
@@ -1188,10 +1223,12 @@ So that **그룹 변환이 적용된 결과를 확인할 수 있다**.
 | **리스크 수준** | 🟡 중간 |
 
 **긍정적 요인**:
+
 - Canvas 2D에서 기초 도형(선, 원, 사각형)에 대한 클릭 판정(Hit-testing)은 수학적으로 간단
 - 기존 "File-based Polling" 아키텍처를 확장하여 `selection.json`을 통해 브라우저 → Claude 방향의 통신 가능
 
 **주요 리스크 및 고려사항**:
+
 1. **폴링 지연 (Latency)**: 사용자가 클릭한 후 Claude가 이를 인지하기까지 최대 500ms(NFR 기준) 지연 발생. 사용자 경험상 "느리다"고 느껴질 수 있음
 2. **정밀도**: Line처럼 얇은 객체를 클릭할 때의 판정 범위(Tolerance) 설정 필요
 
@@ -1215,6 +1252,7 @@ So that **"이거 더 길게" 같은 지시를 할 수 있다**.
 **Then** 기존 선택이 해제된다
 
 **Technical Notes:**
+
 - Hit Test: 바운딩 박스 검사
 - 선택 상태는 viewer/selection.json에 저장
 
@@ -1239,6 +1277,7 @@ So that **어떤 도형이 선택되었는지 알 수 있다**.
 **Then** 하이라이트가 사라진다
 
 **Technical Notes:**
+
 - 하이라이트 색상: 파란색 점선 바운딩 박스
 - 다중 선택 시 모든 선택된 도형에 표시
 
@@ -1263,6 +1302,7 @@ So that **"이거" 같은 지시어를 이해할 수 있다**.
 **Then** AI가 해당 도형에 scale을 적용할 수 있다
 
 **Technical Notes:**
+
 - selection.json 구조: { selected_ids, last_selected, timestamp }
 - AI polling 간격: 500ms (scene.json과 동일)
 
@@ -1289,10 +1329,12 @@ So that **"이거" 같은 지시어를 이해할 수 있다**.
 | **리스크 수준** | 🟡 중간 |
 
 **긍정적 요인**:
+
 - Electron + Vite + WASM 조합은 검증된 스택
 - Chat UI와 CAD Viewer를 한 화면에 배치하여 "AI와 함께 그리는" 경험 완성 가능
 
 **주요 리스크 및 고려사항**:
+
 1. **Client-Direct Architecture**: Electron Renderer에서 모든 로직 직접 실행. Main Process는 창 생성/파일 다이얼로그만. IPC 불필요 → 웹 버전과 코드 100% 동일
 2. **보안**: 사용자 API Key를 안전하게 저장(electron-store, Electron keytar 등)하고 관리하는 설계 필요
 
@@ -1312,6 +1354,7 @@ So that **WASM과 Viewer를 데스크톱 앱으로 빌드할 수 있다**.
 **And** `npm run build`로 패키징 가능
 
 **Technical Notes:**
+
 - electron-builder 사용
 - Client-Direct Architecture: Renderer에서 전부 처리
 - Vite로 Renderer 빌드
@@ -1335,6 +1378,7 @@ So that **채팅에서 CAD 명령을 실행할 수 있다**.
 **And** 5초 이내에 앱이 시작된다 (NFR16)
 
 **Technical Notes:**
+
 - Renderer에서 WASM 직접 로드 (웹 브라우저와 동일)
 - IPC 불필요 - 메모리에서 직접 렌더링
 
@@ -1356,6 +1400,7 @@ So that **CAD 결과를 앱 내에서 확인할 수 있다**.
 **And** Selection UI가 동작한다
 
 **Technical Notes:**
+
 - 기존 viewer/ 코드 재사용
 - 메모리에서 직접 렌더링 (파일 폴링 불필요)
 
@@ -1377,6 +1422,7 @@ So that **별도 터미널 없이 CAD 작업을 할 수 있다**.
 **And** CAD 결과가 Canvas에 렌더링된다
 
 **Technical Notes:**
+
 - 간단한 채팅 UI (입력창 + 메시지 목록)
 - Renderer에서 Claude API 직접 호출 (IPC 불필요)
 - tool_use 응답 → WASM 직접 실행 → Canvas 렌더링
@@ -1408,6 +1454,7 @@ So that **자체 API 키로 AI를 사용할 수 있다**.
 **And** AI 채팅만 비활성화된다
 
 **Technical Notes:**
+
 - electron-store로 키 저장
 - API 키 유효성 검증 (테스트 호출)
 
@@ -1428,6 +1475,7 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 **Then** Windows (.exe), Mac (.dmg), Linux (.AppImage) 파일이 생성된다
 
 **Technical Notes:**
+
 - electron-builder 설정
 - WASM 파일을 리소스로 번들링
 - 앱 크기 목표: ~100MB
@@ -1455,6 +1503,7 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 ## FR Coverage 검증
 
 모든 30개 Functional Requirements가 스토리에 매핑되었습니다:
+
 - FR1-FR4: Epic 1 (도형 생성)
 - FR5-FR8: Epic 3 (변환)
 - FR9-FR10: Epic 2, 3 (출력)

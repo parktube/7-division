@@ -107,16 +107,19 @@ so that **어깨를 회전하면 팔 전체가 함께 회전한다**.
 ### Architecture Compliance
 
 **ADR-MVP-001 준수사항:**
+
 - WASM에서는 로컬 변환만 저장
 - 렌더링/Export 시 월드 변환 계산 (부모 → 자식 순)
 
 **MVP Technical Risks 대응 (architecture.md):**
+
 - Option A (TRS 유지) 채택: 렌더러에서 변환 순서 고려
 - 복잡한 케이스(회전+스케일 조합)는 제한적 지원
 
 ### Technical Requirements
 
 1. **변환 합성 순서**:
+
    ```
    World = Parent_World * Local
 
@@ -158,6 +161,7 @@ so that **어깨를 회전하면 팔 전체가 함께 회전한다**.
    **Post-MVP 권장**: 3x3 행렬 곱셈으로 정확한 변환 합성
 
 3. **Canvas 2D 렌더링 접근**:
+
    ```javascript
    function renderWithHierarchy(entity, parentTransform) {
        ctx.save();
@@ -189,11 +193,13 @@ so that **어깨를 회전하면 팔 전체가 함께 회전한다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `cad-engine/src/scene/mod.rs` - get_world_transform, compose_transforms 추가
 - `cad-tools/cad-cli.ts` - CLI 명령어 추가
 - `viewer/renderer.js` - 계층적 렌더링 로직 (Story 4-6과 연계)
 
 의존 파일:
+
 - `cad-engine/src/scene/entity.rs` - parent_id, children, Transform (Story 4-1, 4-4)
 
 ### References

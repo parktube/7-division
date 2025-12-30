@@ -154,15 +154,18 @@ Rust CAD 엔진
 ### CAD 엔진 (Rust → WASM)
 
 **Primitives** (JSCAD 참조):
+
 - `circle(radius)` / `ellipse(rx, ry)`
 - `rectangle(width, height)` / `square(size)`
 - `line(points)` / `polygon(points)`
 - `arc(radius, startAngle, endAngle)`
 
 **Transforms**:
+
 - `translate(x, y)` / `rotate(angle)` / `scale(sx, sy)`
 
 **Output**:
+
 - MVP: scene.json (Canvas 2D 뷰어용) + SVG export
 - Post-MVP: DXF export (2D 업계 표준)
 - Post-MVP (3D): STL (필수), STEP (옵션) - 3D 확장 시
@@ -181,11 +184,13 @@ Rust CAD 엔진
 ```
 
 **핵심 컴포넌트**:
+
 - **도구 스키마**: 각 CAD 도구의 name, description, input_schema 정의
 - **WASM Executor**: 입력 변환 자동화 (배열 → Float64Array)
 - **에이전트 런타임**: LLM 호출 → tool_use 감지 → 실행 → 결과 반환 루프
 
 **Progressive Exposure 패턴**:
+
 - `listDomains()` → `listTools(domain)` → `getTool(name)` → `exec(name, input)`
 - LLM 컨텍스트 효율성: 전체 API ~2000토큰 → 필요한 것만 ~110토큰
 
@@ -206,6 +211,7 @@ Rust CAD 엔진
 | **처음 의도보다 나은 결과** | AI 제안으로 개선된 비율 |
 
 **Aha! Moment**:
+
 - Phase 1: "말했더니 진짜 그려졌다"
 - Phase 2+: "AI 덕분에 더 좋은 디자인이 됐다"
 - Ultimate: "나도 이제 CAD 개념을 알게 됐다"
@@ -277,27 +283,32 @@ Rust CAD 엔진
 **목표**: AI와 대화하며 복잡한 형상을 만들고, 포즈를 변경할 수 있는 완전한 경험 검증
 
 #### 기초 도형 및 스타일 ✅
+
 - 기초 도형: `line`, `circle`, `rect`, `arc`
 - 스타일: `stroke`, `fill` 적용
 - 변환: `translate`, `rotate`, `scale`, `delete`
 - 출력: scene.json + SVG export
 
 #### 그룹화 및 피봇
+
 - **Group System**: `create_group`, `ungroup`, `add_to_group`, `remove_from_group`
 - **Pivot**: `set_pivot` - 각 도형/그룹의 회전 중심점 설정
 - **Hierarchy Transform**: 부모 변환이 자식에 전파
 
 #### Selection UI
+
 - 클릭으로 객체 선택
 - 선택 상태 시각적 표시
 - 선택된 객체 정보를 AI에 전달
 
 #### Electron 앱
+
 - WASM + Canvas 2D Viewer + 채팅 UI 통합
 - 사용자 API 키 입력 방식
 - 오프라인 우선 (로컬 LLM 지원 준비)
 
 **검증 시나리오**:
+
 1. "사람 스켈레톤을 그려줘"
 2. "팔을 구부린 포즈로 바꿔줘"
 3. [왼팔 클릭] + "이거 더 길게"
@@ -535,6 +546,7 @@ Entity
 ### 검증 시나리오 통과
 
 **시나리오 1: 스켈레톤 생성**
+
 ```
 입력: "사람 스켈레톤을 그려줘"
 기대 결과:
@@ -546,6 +558,7 @@ Entity
 ```
 
 **시나리오 2: 포즈 변경**
+
 ```
 입력: "팔을 구부린 포즈로 바꿔줘"
 기대 결과:
@@ -554,6 +567,7 @@ Entity
 ```
 
 **시나리오 3: Selection + 수정**
+
 ```
 입력: [왼팔 클릭] + "이거 더 길게"
 기대 결과:
@@ -562,4 +576,3 @@ Entity
 ```
 
 ---
-

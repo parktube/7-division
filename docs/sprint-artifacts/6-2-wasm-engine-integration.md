@@ -98,17 +98,20 @@ so that **채팅에서 CAD 명령을 실행할 수 있다**.
 ### Architecture Compliance
 
 **Client-Direct Architecture:**
+
 - Renderer 프로세스: WASM 로드, Claude API 호출, Canvas 렌더링 - 전부 직접 처리
 - Main 프로세스: 창 생성, 파일 다이얼로그 (Export 시) - 최소 역할만
 - IPC 불필요: 웹 버전과 코드 100% 동일
 
 **오프라인 우선:**
+
 - CAD 기능은 완전히 로컬에서 동작
 - API 키는 채팅 기능에만 필요
 
 ### Technical Requirements
 
 1. **WASM 로드 방식 (Renderer/Browser)**:
+
    ```typescript
    // src/renderer/cad-engine.ts
    import init, { Scene } from '../wasm/cad_engine.js';
@@ -131,6 +134,7 @@ so that **채팅에서 CAD 명령을 실행할 수 있다**.
    ```
 
 2. **Client-Direct Architecture**:
+
    ```
    ┌─ Electron Renderer (= 브라우저) ─────────────────────────┐
    │                                                          │
@@ -161,12 +165,14 @@ so that **채팅에서 CAD 명령을 실행할 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `electron-app/src/renderer/cad-engine.ts` - CAD 엔진 래퍼 (새 파일)
 - `electron-app/src/renderer/app.ts` - WASM 초기화 로직
 - `electron-app/src/main/index.ts` - 창 생성만 (최소 역할)
 - Note: preload.ts 불필요 (IPC 미사용)
 
 복사 대상:
+
 - `cad-engine/pkg/*` → `electron-app/src/renderer/wasm/` (Renderer에서 로드)
 
 ### References

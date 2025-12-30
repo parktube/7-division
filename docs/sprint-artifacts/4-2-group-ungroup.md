@@ -102,11 +102,13 @@ so that **그룹 구조를 유연하게 변경할 수 있다**.
 ### Architecture Compliance
 
 **ADR-MVP-001 준수사항:**
+
 - ungroup은 그룹만 삭제, 자식들은 독립 엔티티로 유지
 - parent_id를 None으로 설정하여 계층 관계 해제
 - 자식 그룹이 있을 경우 그 하위 구조는 유지
 
 **Story 4-1과의 관계:**
+
 - Story 4-1에서 추가한 `parent_id`, `children` 필드 활용
 - EntityType::Group 타입 검사 필요
 - 그룹 삭제는 기존 delete 로직과 유사하나 자식 처리가 다름
@@ -125,6 +127,7 @@ so that **그룹 구조를 유연하게 변경할 수 있다**.
    - MVP 권장: 월드 변환 유지 없이 단순 해제 먼저 구현
 
 3. **에러 메시지 형식**:
+
    ```
    [ungroup] not_a_group: Entity 'entity_name' is not a Group
    [ungroup] not_found: Entity 'entity_name' not found
@@ -133,10 +136,12 @@ so that **그룹 구조를 유연하게 변경할 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `cad-engine/src/scene/mod.rs` - ungroup 함수 추가
 - `cad-tools/cad-cli.ts` - CLI 명령어 추가
 
 의존 파일 (Story 4-1에서 수정됨):
+
 - `cad-engine/src/scene/entity.rs` - Entity에 parent_id, children, EntityType::Group
 
 ### References

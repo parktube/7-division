@@ -109,6 +109,7 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
 ### Architecture Compliance
 
 **렌더링 순서:**
+
 1. 도형들 렌더링 (기존 로직)
 2. 선택된 도형들의 하이라이트 렌더링 (위에 오버레이)
 
@@ -120,10 +121,12 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
 | **Mode B** (App) | 메모리 상태 직접 | selectedIds → highlight |
 
 **Mode A (현재 구현 대상):**
+
 - selection.json을 scene.json과 함께 폴링
 - 또는 동일 렌더링 사이클에서 처리
 
 **Mode B 최적화 (Epic 6 구현 시):**
+
 - DirectExecutor.getSelection()에서 메모리 직접 읽기
 - 파일 폴링 불필요 → 즉각적인 하이라이트 반영
 - 렌더링 로직 자체는 Mode A와 동일 (재사용 가능)
@@ -131,6 +134,7 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
 ### Technical Requirements
 
 1. **하이라이트 스타일**:
+
    ```javascript
    const HIGHLIGHT_STYLE = {
        strokeColor: '#0066ff',
@@ -141,6 +145,7 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
    ```
 
 2. **바운딩 박스 계산 예시**:
+
    ```javascript
    function getBoundingBox(entity) {
        const geom = entity.geometry;
@@ -175,6 +180,7 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
    ```
 
 3. **하이라이트 렌더링**:
+
    ```javascript
    function renderSelectionHighlight(entity, ctx) {
        const bbox = getBoundingBox(entity);
@@ -207,6 +213,7 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `viewer/renderer.js` - 하이라이트 렌더링 로직 추가
 
 ### References

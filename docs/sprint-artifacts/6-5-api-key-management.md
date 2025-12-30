@@ -95,11 +95,13 @@ so that **매번 API 키를 입력하지 않아도 된다**.
 ### Architecture Compliance
 
 **보안 고려사항:**
+
 - API 키는 민감 정보 → 평문 저장 금지
 - electron-store (암호화 옵션) 또는 keytar (OS 키체인) 사용
 - Renderer에서 직접 API 호출 시 키가 메모리에 존재하지만, 로컬 앱이므로 허용
 
 **NFR17 준수:**
+
 - API 키 없이도 CAD 기능은 완전 동작
 - 채팅만 API 키 필요
 
@@ -147,6 +149,7 @@ so that **매번 API 키를 입력하지 않아도 된다**.
    **추가 의존성**: `npm install node-machine-id`
 
 2. **keytar 사용 (OS 키체인) - 더 안전**:
+
    ```typescript
    import keytar from 'keytar';
 
@@ -167,6 +170,7 @@ so that **매번 API 키를 입력하지 않아도 된다**.
    ```
 
 3. **키 마스킹**:
+
    ```typescript
    function maskApiKey(key: string): string {
        if (key.length <= 10) return '****';
@@ -176,6 +180,7 @@ so that **매번 API 키를 입력하지 않아도 된다**.
    ```
 
 4. **유효성 검증**:
+
    ```typescript
    async function validateApiKey(key: string): Promise<boolean> {
        try {
@@ -196,11 +201,13 @@ so that **매번 API 키를 입력하지 않아도 된다**.
 ### File Structure Notes
 
 새로 생성:
+
 - `electron-app/src/renderer/components/ApiKeyDialog.ts`
 - `electron-app/src/renderer/components/SettingsMenu.ts`
 - `electron-app/src/main/services/key-store.ts` (또는 renderer에서 직접)
 
 의존성 추가:
+
 - `electron-store` 또는 `keytar`
 
 ### References

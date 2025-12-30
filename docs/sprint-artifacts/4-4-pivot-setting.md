@@ -94,10 +94,12 @@ so that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
 ### Architecture Compliance
 
 **ADR-MVP-001 준수사항:**
+
 - Transform 구조에 pivot 필드 추가
 - 기본 pivot: [0, 0] (엔티티 로컬 원점)
 
 **렌더링과의 관계:**
+
 - WASM에서는 pivot 데이터만 저장
 - 실제 pivot 기준 회전은 렌더러(Canvas/SVG)에서 적용
 - Story 4-6 (그룹화된 도형 렌더링)에서 pivot 적용 렌더링 구현
@@ -105,6 +107,7 @@ so that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
 ### Technical Requirements
 
 1. **Transform 구조 수정**:
+
    ```rust
    #[derive(Debug, Clone, Serialize, Deserialize)]
    pub struct Transform {
@@ -132,6 +135,7 @@ so that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
      2. 회전 적용 (rotate)
      3. pivot만큼 원위치 (translate(px, py))
    - Canvas 2D에서:
+
      ```javascript
      ctx.translate(pivot[0], pivot[1]);
      ctx.rotate(angle);
@@ -146,6 +150,7 @@ so that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `cad-engine/src/scene/entity.rs` - Transform 구조에 pivot 추가
 - `cad-engine/src/scene/mod.rs` - set_pivot 함수 추가
 - `cad-tools/cad-cli.ts` - CLI 명령어 추가

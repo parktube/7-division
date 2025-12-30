@@ -92,16 +92,19 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
 ### Architecture Compliance
 
 **배포 가능한 단일 앱:**
+
 - WASM CAD 엔진 + Canvas Viewer + 채팅 UI가 하나의 앱으로 패키징
 - 설치 후 추가 설정 없이 사용 가능 (API 키 제외)
 
 **오프라인 동작:**
+
 - 모든 CAD 기능은 로컬에서 동작
 - Claude API만 네트워크 필요
 
 ### Technical Requirements
 
 1. **electron-builder.yml 예시**:
+
    ```yaml
    appId: com.example.ai-native-cad
    productName: AI-Native CAD
@@ -142,6 +145,7 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
    ```
 
 2. **package.json scripts**:
+
    ```json
    {
      "scripts": {
@@ -154,6 +158,7 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
    ```
 
 3. **아이콘 파일**:
+
    ```
    build/
    ├── icon.ico     # Windows (256x256)
@@ -162,6 +167,7 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
    ```
 
 4. **WASM 경로 처리 (프로덕션)**:
+
    ```typescript
    import path from 'path';
    import { app } from 'electron';
@@ -185,10 +191,12 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
 ### File Structure Notes
 
 생성 대상:
+
 - `electron-app/build/` - 빌드 리소스 (아이콘 등)
 - `electron-app/electron-builder.yml` - 빌드 설정
 
 수정 대상:
+
 - `electron-app/package.json` - 빌드 스크립트 추가
 
 ### References

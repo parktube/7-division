@@ -14,6 +14,8 @@ reviews:
   tools:
     clippy:
       enabled: true
+    markdownlint:
+      enabled: false  # 설계 문서 프로젝트 - 형식보다 내용 중심
 
   path_instructions:
     - path: "cad-engine/**/*.rs"

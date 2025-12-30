@@ -134,16 +134,19 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
 | **Mode B** (App) | 메모리 상태 (selectedIds) | executor.getSelection() |
 
 **Mode A (현재 구현 대상):**
+
 - 브라우저 → Claude 방향 통신은 selection.json 파일 사용
 - Claude가 selection.json을 폴링하여 선택 정보 인지
 - 기존 scene.json 폴링과 동일한 패턴
 
 **Mode B 최적화 (Epic 6 구현 시):**
+
 - DirectExecutor.setSelection(ids)로 메모리에 저장
 - Claude API 요청 시 executor.getSelection() 포함
 - selection.json 불필요 (파일 I/O 제거)
 
 **NFR15 준수:**
+
 - 클릭 후 100ms 이내 시각적 피드백
 - Mode A: selection.json 저장은 비동기로 처리 (UI 블로킹 없음)
 - Mode B: 메모리 즉시 반영 (더 빠름)
@@ -151,6 +154,7 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
 ### Technical Requirements
 
 1. **selection.json 구조**:
+
    ```json
    {
      "selected_ids": ["entity_1", "entity_2"],
@@ -160,6 +164,7 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
    ```
 
 2. **Hit Test 수학**:
+
    ```javascript
    // Circle: 거리 비교
    function hitTestCircle(click, circle) {
@@ -193,6 +198,7 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
    - viewer에서 이미 Y축 뒤집기 처리 중이면 일관성 유지
 
 4. **Transform 역변환**:
+
    ```javascript
    function toLocalCoords(worldClick, entity) {
        // 1. translate 역변환
@@ -209,6 +215,7 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
 ### File Structure Notes
 
 수정/생성 대상 파일:
+
 - `viewer/renderer.js` - 클릭 이벤트 핸들링, hit test 로직
 - `viewer/selection.json` - 선택 상태 저장 (새 파일)
 

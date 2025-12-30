@@ -102,11 +102,13 @@ so that **WASM과 Viewer를 데스크톱 앱으로 빌드할 수 있다**.
 ### Architecture Compliance
 
 **파일 폴링 아키텍처 유지:**
+
 - Electron Renderer = 웹 브라우저 (Chromium)
 - 기존 viewer/ 코드의 fetch 폴링 그대로 사용
 - IPC 전환 없음 (웹 서비스 확장성 유지)
 
 **디렉토리 구조:**
+
 ```
 electron-app/
 ├── package.json
@@ -129,6 +131,7 @@ electron-app/
 ### Technical Requirements
 
 1. **의존성 목록**:
+
    ```json
    {
      "devDependencies": {
@@ -144,6 +147,7 @@ electron-app/
    ```
 
 2. **Main 프로세스 기본 코드**:
+
    ```typescript
    // src/main/index.ts
    import { app, BrowserWindow } from 'electron';
@@ -177,6 +181,7 @@ electron-app/
    ```
 
 3. **Vite 설정**:
+
    ```typescript
    // vite.config.ts
    import { defineConfig } from 'vite';
@@ -202,9 +207,11 @@ electron-app/
 ### File Structure Notes
 
 생성 대상 디렉토리:
+
 - `electron-app/` - 새 Electron 앱 프로젝트
 
 참고 파일:
+
 - `viewer/` - 기존 Canvas 2D Viewer (Story 6-3에서 이식)
 
 ### References

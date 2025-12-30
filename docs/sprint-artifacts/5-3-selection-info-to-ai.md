@@ -100,16 +100,19 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
 | **Mode B** (App) | executor.getSelection() | Claude API 요청에 포함 |
 
 **Mode A (현재 구현 대상):**
+
 - 브라우저: 클릭 시 selection.json 저장
 - Claude: get_selection 또는 직접 파일 읽기로 선택 정보 획득
 - 폴링 간격: 필요 시에만 조회 (scene.json처럼 주기적 폴링 필요 없음)
 
 **Mode B 최적화 (Epic 6 구현 시):**
+
 - Chat UI에서 Claude API 호출 시 executor.getSelection() 포함
 - selection.json 불필요 → 파일 I/O 제거
 - "이거" 같은 지시어를 API 메시지에 직접 포함
 
 **기존 도구와의 통합:**
+
 - Mode A: get_selection으로 선택 정보 획득
 - Mode B: executor.getSelection()으로 선택 정보 획득
 - 공통: get_entity로 상세 정보 조회, translate/scale/set_fill 등으로 수정
@@ -117,6 +120,7 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
 ### Technical Requirements
 
 1. **selection.json 전체 구조**:
+
    ```json
    {
      "selected_ids": ["head", "body"],
@@ -127,6 +131,7 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
    ```
 
 2. **get_selection 출력 예시**:
+
    ```json
    {
      "selected_ids": ["head"],
@@ -136,6 +141,7 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
    ```
 
 3. **get_selection --detailed 출력 예시** (optional):
+
    ```json
    {
      "selected_ids": ["head"],
@@ -152,6 +158,7 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
    ```
 
 4. **CLAUDE.md 추가 내용**:
+
    ```markdown
    ### Selection (선택)
 
@@ -169,9 +176,11 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
    1. get_selection으로 선택 정보 확인
    2. 선택된 도형에 요청된 작업 수행
    3. 선택이 없으면 사용자에게 도형 선택 안내
+
    ```
 
 5. **Claude 동작 흐름**:
+
    ```
    사용자: "이거 더 길게"
 
@@ -185,10 +194,12 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `cad-tools/cad-cli.ts` - get_selection 명령어 추가
 - `CLAUDE.md` - selection 사용법 가이드 추가
 
 의존 파일:
+
 - `viewer/selection.json` - Story 5-1에서 생성
 
 ### References

@@ -86,11 +86,13 @@ so that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 
 ### Architecture Compliance
 
 **ADR-MVP-001 준수사항:**
+
 - EntityType에 Group 추가
 - Entity에 parent_id, children 필드 추가
 - create_group API는 name + children[] 받음
 
 **현재 Entity 구조** (`cad-engine/src/scene/entity.rs`):
+
 ```rust
 pub struct Entity {
     pub id: String,
@@ -123,6 +125,7 @@ pub struct Entity {
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `cad-engine/src/scene/entity.rs` - Entity, EntityType, Geometry 확장
 - `cad-engine/src/scene/mod.rs` - create_group 함수 추가
 - `cad-tools/cad-cli.ts` - CLI 명령어 추가

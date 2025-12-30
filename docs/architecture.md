@@ -358,11 +358,13 @@ viewer/  (planned)
 ```
 
 **원칙**:
+
 - **작업 중**: WASM 메모리에서 빠르게 처리
 - **저장 시점**: `export_json()` 명시적 호출 (또는 자동 저장 with throttle)
 - **세션 종료**: 메모리 소실 → 파일로 복원 가능
 
 **장점**:
+
 - 파일 I/O 최소화 → 속도 향상
 - 중간 상태는 메모리에만 존재 → 깔끔
 - Phase 1 scope에 적합한 단순함
@@ -393,6 +395,7 @@ viewer/  (planned)
 | **Export** | DXF, SVG, STL | 외부 호환 |
 
 **왜 분리하는가?**
+
 - JSON은 CAD에 최적이 아님 (부동소수점 정밀도, 크기)
 - LLM은 텍스트 기반 포맷이 유리
 - 저장용과 뷰어용의 요구사항이 다름
@@ -565,6 +568,7 @@ exec("draw_circle", { name: "head", x: 0, y: 100, radius: 20 })
 ```
 
 **컨텍스트 비용 비교**:
+
 - 전체 .d.ts 파일: ~2000+ 토큰
 - Progressive Exposure: ~110 토큰 (필요한 도구만)
 
@@ -873,6 +877,7 @@ if (!moved) console.log(`${id} not found, skipped translate`);
 ```
 
 **구현 예시 (Phase 1)**:
+
 ```javascript
 // viewer/src/renderer.js
 const canvas = document.getElementById('canvas');
@@ -979,6 +984,7 @@ function render(scene) {
 | **4+** | NURBS/Spline | - | ⚠️ 제한적 |
 
 **C++ CGAL 대비 부족한 영역** (Phase 4+ 해당):
+
 - 3D Boolean operations
 - NURBS/B-Spline 곡면
 - 고급 Mesh processing
@@ -991,11 +997,13 @@ function render(scene) {
 > **출처**: [The state of realtime graphics in Rust (Feb 2025)](https://valerioviperino.me/the-state-of-realtime-graphics-in-rust-feb-2025/)
 
 **현황**:
+
 - wgpu v22가 첫 "v1" 릴리스 (2024-07)
 - v24.0.1 (2025-01) 현재도 "moving fast and breaking things" 단계
 - 다수 프레임워크 (ggez, nannou, comfy) 유지보수 중단 또는 지연
 
 **완화 전략**:
+
 1. **버전 고정**: `wgpu = "=24.0"` 으로 특정 버전 고정
 2. **추상화 레이어**: CADRenderer trait로 wgpu 직접 의존성 격리
 3. **의존성 최소화**: wgpu 핵심 기능만 사용, 고수준 래퍼 피함
@@ -1031,6 +1039,7 @@ glyphon = "0.9"     # 안정적
 #### 마이그레이션 비용 허용
 
 Phase 1 → Phase 2 마이그레이션:
+
 - Canvas 2D → Three.js로 렌더러 교체
 - scene.json 포맷은 동일 유지
 - CAD 엔진 변경 없음
@@ -1041,6 +1050,7 @@ Phase 1 → Phase 2 마이그레이션:
 #### wgpu 도입 시점 (Phase 3+)
 
 wgpu를 검토해야 하는 신호:
+
 - Three.js에서 렌더링 병목 발생
 - 대규모 모델 (수만 개 도형) 처리 필요
 - CAD 엔진과 렌더러 간 JSON 변환 오버헤드 문제
@@ -1169,6 +1179,7 @@ cd viewer && npm run dev
 ### Epic 4: Transform Matrix 검토
 
 **현재 구조** (`cad-engine/src/scene/entity.rs`):
+
 ```rust
 pub struct Transform {
     pub translate: [f64; 2],
@@ -1180,6 +1191,7 @@ pub struct Transform {
 **문제점**: 계층적 변환 시 부모의 회전+스케일이 자식에게 전파될 때 변환 순서가 복잡해짐
 
 **권장 방안**:
+
 - **Option A**: 현재 TRS 구조 유지, 렌더러에서 월드 변환 계산 시 순서 고려 (MVP 권장)
 - **Option B**: Matrix3x3 도입으로 변환 합성 단순화 (Post-MVP)
 
@@ -1188,6 +1200,7 @@ pub struct Transform {
 **문제점**: 클릭 후 Claude 인지까지 최대 500ms 지연
 
 **완화 방안**:
+
 1. UI에서 즉시 하이라이트 표시 (사용자 피드백 즉시)
 2. Claude가 selection.json 폴링으로 비동기 인지
 3. 필요 시 폴링 간격 단축 (250ms) 검토
@@ -1213,12 +1226,14 @@ pub struct Transform {
 ```
 
 **이유**:
+
 - API 키만 있으면 **어디서든** Claude API 호출 가능
 - WASM은 브라우저에서 직접 실행 가능
 - 파일 폴링 불필요 → 메모리에서 직접 렌더링
 - 웹/Electron 코드 완전 동일 → 유지보수 용이
 
 **파일 저장은 Export 시에만**:
+
 - 웹: Blob 다운로드
 - Electron: fs 접근 (이때만 Main 경유)
 
@@ -1255,6 +1270,7 @@ pub struct Entity {
 ```
 
 **API**:
+
 ```typescript
 cad.create_group(name: string, children: string[]) -> string
 cad.ungroup(group_id: string) -> boolean
@@ -1263,10 +1279,12 @@ cad.remove_from_group(group_id: string, entity_id: string) -> boolean
 ```
 
 **Consequences**:
+
 - 그룹 중첩 지원 (팔 그룹 안에 upper_arm, lower_arm 그룹)
 - 렌더링 시 계층 순회 필요
 
 **그룹 삭제 정책 (MVP)**:
+
 - `delete(group_id)` 호출 시: **자식들도 함께 삭제** (Cascade Delete)
 - 자식만 독립시키려면: 먼저 `ungroup(group_id)` → 그 후 `delete(group_id)`
 - 이유: 직관적 동작 + 구현 단순성. Post-MVP에서 옵션 추가 고려
@@ -1289,6 +1307,7 @@ pub struct Transform {
 ```
 
 **API**:
+
 ```typescript
 cad.set_pivot(entity_id: string, px: number, py: number) -> boolean
 // rotate는 기존 API 유지, 내부적으로 pivot 적용
@@ -1329,6 +1348,7 @@ function getWorldTransform(entity: Entity, scene: Scene): Matrix {
 ```
 
 **Consequences**:
+
 - WASM에서 로컬 변환만 저장, 월드 변환은 렌더러/Export 시 계산
 - 성능: 변환 행렬 캐싱 고려 (MVP에서는 매 프레임 계산)
 
@@ -1356,10 +1376,12 @@ interface SelectionState {
 ```
 
 **Hit Test 방식**:
+
 - Canvas 2D: 바운딩 박스 검사 (MVP, 충분)
 - Post-MVP wgpu: Raycasting
 
 **선택 표시**:
+
 - 선택된 도형에 하이라이트 색상 오버레이
 - 바운딩 박스 점선 표시
 
@@ -1386,6 +1408,7 @@ electron-app/
 ```
 
 **아키텍처 흐름**:
+
 ```
 ┌─ Electron Renderer (= 브라우저) ─────────────────────────┐
 │                                                          │
@@ -1403,17 +1426,20 @@ electron-app/
 ```
 
 **Main Process 역할 (최소)**:
+
 - 창 생성 (BrowserWindow)
 - 파일 다이얼로그 (Export 시)
 - 앱 메뉴
 
 **Renderer Process 역할 (전부)**:
+
 - Claude API 호출 (fetch)
 - WASM 엔진 실행
 - Scene 메모리 관리
 - Canvas 렌더링
 
 **빌드**:
+
 - electron-builder로 Windows/Mac/Linux 패키징
 - WASM 파일은 리소스로 번들링
 
@@ -1441,6 +1467,7 @@ electron-app/
 ```
 
 **Consequences**:
+
 - Scene 구조 단순화 가능 (LLM 이해 최적화)
 - 필요시 상위 레벨 요약 JSON 제공 가능
 - 자체 저장 포맷 불필요 → Export만 (SVG, PNG, DXF)
@@ -1476,16 +1503,19 @@ electron-app/
 ```
 
 **구현**:
+
 - `get_scene_info` → JSON 반환 (구조적 정보)
 - `export_png` → PNG 반환 (시각적 정보)
 - Claude Code에서 둘 다 제공 가능
 
 **Consequences**:
+
 - Vision 모델 활용 극대화
 - 구조적 정확성 (JSON) + 직관적 이해 (PNG) 결합
 - "이거 더 길게" 같은 요청에 "이거"를 시각적으로 이해
 
 **PNG 생성 최적화 전략**:
+
 - 매 턴마다 PNG 생성은 비용/지연 증가 → 조건부 생성
 - **MVP 전략**: Scene 변경 시에만 PNG 갱신 (dirty flag)
 - **대안**: LLM이 명시적으로 요청 시에만 생성 (`get_scene_preview`)
@@ -1522,6 +1552,7 @@ electron-app/
 ```
 
 **Consequences**:
+
 - 두 모드 공존: CLI 개발 편의성 + App 사용자 경험
 - Epic 4, 5 스토리는 Mode A 기준 → Epic 6 구현 시 Mode B 최적화 필요
 - Adapter 패턴으로 코드 재사용 극대화
@@ -1584,11 +1615,13 @@ class DirectExecutor implements CADExecutor {
 ```
 
 **사용처**:
+
 - Chat UI: `executor.execute('draw_circle', {...})`
 - Selection: `executor.getSelection()` → Claude API 요청에 포함
 - Viewer: `executor.getScene()` → Canvas 렌더링
 
 **Consequences**:
+
 - 비즈니스 로직(Chat, Selection 처리)은 Executor 타입과 무관
 - Mode 전환 시 Executor만 교체
 - 테스트 용이 (Mock Executor 가능)
@@ -1707,18 +1740,21 @@ const server = new MCPServer({
 ### 참고 사례
 
 #### Figma (Electron + WebGL)
+
 - **프레임워크**: Electron + BrowserView
 - **렌더링**: WebGL 기반 캔버스
 - **특징**: 웹/데스크톱 동일 코드베이스
 - [Figma BrowserView](https://www.figma.com/blog/introducing-browserview-for-electron/)
 
 #### Jan AI (Tauri - 참고만)
+
 - **프레임워크**: Tauri (Rust + WebView)
 - **특징**: LLM 채팅 앱 (WebGL 없음)
 - **교훈**: WebGL 없는 앱에서만 Tauri 유효
 - [GitHub - Jan AI](https://github.com/janhq/jan)
 
 #### Cursor (피해야 할 패턴)
+
 - **문제점**: 서버 의존적 - 모든 요청이 Cursor 서버 경유
 - **오프라인**: 불가능
 - [Cursor 아키텍처 분석](https://www.tensorzero.com/blog/reverse-engineering-cursors-llm-client/)
@@ -2035,6 +2071,7 @@ cargo build --target wasm64-unknown-unknown
 | Phase 4+ | **높음** | SpineLift 사례로 볼 때 조기 도달 가능 |
 
 **전략**:
+
 1. Phase 3부터 메모리 사용량 모니터링
 2. 2GB 도달 시 Memory64 전환 준비 시작
 3. 성능 저하(10~100%) 감수 vs 기능 제한 트레이드오프 검토
@@ -2233,6 +2270,7 @@ test('select and scale entity', async ({ page }) => {
 ### 실행 경로 비교
 
 **SpineLift (4계층)**
+
 ```
 Claude → MCP Server → WebSocket → Browser → WASM (C++)
         ~~~~~~~~~~~   ~~~~~~~~~~   ~~~~~~~   ~~~~~~~~
@@ -2240,6 +2278,7 @@ Claude → MCP Server → WebSocket → Browser → WASM (C++)
 ```
 
 **AI-Native CAD (1계층)**
+
 ```
 Claude Code → WASM (Rust/Node.js) → File → Browser (뷰어)
              ~~~~~~~~~~~~~~~~~~~~
@@ -2261,6 +2300,7 @@ Claude Code → WASM (Rust/Node.js) → File → Browser (뷰어)
 ### 프론트엔드 구조 비교
 
 **SpineLift** (복잡한 애플리케이션)
+
 ```
 frontend/src/
 ├── components/        # React UI 컴포넌트
@@ -2273,6 +2313,7 @@ frontend/src/
 ```
 
 **AI-Native CAD** (단순한 뷰어)
+
 ```
 viewer/src/
 ├── main.ts            # 엔트리포인트

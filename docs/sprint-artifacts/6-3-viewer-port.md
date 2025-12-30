@@ -90,6 +90,7 @@ so that **CAD 결과를 앱 내에서 확인할 수 있다**.
 ### Architecture Compliance
 
 **Client-Direct Architecture (메모리 직접 렌더링):**
+
 - Electron Renderer = 웹 브라우저 (Chromium)
 - WASM Scene 객체에서 직접 데이터 읽기
 - 파일 폴링 불필요 → 즉각적인 렌더링
@@ -113,6 +114,7 @@ so that **CAD 결과를 앱 내에서 확인할 수 있다**.
 ### Technical Requirements
 
 1. **메모리 직접 렌더링**:
+
    ```typescript
    // 파일 경로 불필요 - 메모리에서 직접
    import { getSceneData } from './cad-engine';
@@ -131,6 +133,7 @@ so that **CAD 결과를 앱 내에서 확인할 수 있다**.
    ```
 
 2. **레이아웃 CSS**:
+
    ```css
    .app-container {
        display: flex;
@@ -147,6 +150,7 @@ so that **CAD 결과를 앱 내에서 확인할 수 있다**.
    ```
 
 3. **Canvas 리사이즈 처리**:
+
    ```typescript
    function resizeCanvas() {
        const container = document.querySelector('.cad-viewer');
@@ -160,10 +164,12 @@ so that **CAD 결과를 앱 내에서 확인할 수 있다**.
 ### File Structure Notes
 
 복사/수정 대상:
+
 - `viewer/renderer.js` → `electron-app/src/renderer/cad-viewer.ts`
 - `viewer/index.html` 스타일 → `electron-app/src/renderer/styles.css`
 
 새로 생성:
+
 - `electron-app/src/renderer/App.ts` - 메인 앱 컴포넌트
 - `electron-app/src/renderer/layout.css` - 레이아웃 스타일
 

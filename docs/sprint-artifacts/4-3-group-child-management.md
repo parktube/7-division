@@ -113,11 +113,13 @@ so that **그룹 구성을 동적으로 변경할 수 있다**.
 ### Architecture Compliance
 
 **ADR-MVP-001 준수사항:**
+
 - add_to_group: 그룹에 자식 추가
 - remove_from_group: 그룹에서 자식 제거
 - 이미 다른 그룹에 속한 엔티티는 기존 그룹에서 제거 후 추가
 
 **NFR14 (그룹 중첩 지원) 준수:**
+
 - 그룹 안에 그룹을 추가할 수 있어야 함
 - 순환 참조만 방지하면 됨
 
@@ -130,6 +132,7 @@ so that **그룹 구성을 동적으로 변경할 수 있다**.
    - 자식의 parent_id 업데이트
 
 2. **순환 참조 검사 알고리즘**:
+
    ```rust
    fn is_ancestor(&self, entity_id: &str, potential_ancestor_id: &str) -> bool {
        let mut current = Some(entity_id.to_string());
@@ -145,6 +148,7 @@ so that **그룹 구성을 동적으로 변경할 수 있다**.
    ```
 
 3. **에러 메시지 형식**:
+
    ```
    [add_to_group] group_not_found: Group 'group_name' not found
    [add_to_group] not_a_group: Entity 'entity_name' is not a Group
@@ -160,10 +164,12 @@ so that **그룹 구성을 동적으로 변경할 수 있다**.
 ### File Structure Notes
 
 수정 대상 파일:
+
 - `cad-engine/src/scene/mod.rs` - add_to_group, remove_from_group 함수 추가
 - `cad-tools/cad-cli.ts` - CLI 명령어 추가
 
 의존 파일 (Story 4-1에서 수정됨):
+
 - `cad-engine/src/scene/entity.rs` - Entity에 parent_id, children, EntityType::Group
 
 ### References
