@@ -38,10 +38,10 @@ impl Scene {
                 .and_then(|e| e.parent_id.clone());
 
             // 기존 부모가 있으면 그 부모의 children에서 제거
-            if let Some(old_parent_name) = old_parent {
-                if let Some(old_parent_entity) = self.find_by_name_mut(&old_parent_name) {
-                    old_parent_entity.children.retain(|c| c != child_name);
-                }
+            if let Some(old_parent_name) = old_parent
+                && let Some(old_parent_entity) = self.find_by_name_mut(&old_parent_name)
+            {
+                old_parent_entity.children.retain(|c| c != child_name);
             }
 
             // 자식의 parent_id를 새 그룹으로 설정
@@ -143,10 +143,10 @@ impl Scene {
             .find_by_name(entity_name)
             .and_then(|e| e.parent_id.clone());
 
-        if let Some(old_parent_name) = old_parent {
-            if let Some(old_parent_entity) = self.find_by_name_mut(&old_parent_name) {
-                old_parent_entity.children.retain(|c| c != entity_name);
-            }
+        if let Some(old_parent_name) = old_parent
+            && let Some(old_parent_entity) = self.find_by_name_mut(&old_parent_name)
+        {
+            old_parent_entity.children.retain(|c| c != entity_name);
         }
 
         // 자식의 parent_id를 새 그룹으로 설정
@@ -155,10 +155,10 @@ impl Scene {
         }
 
         // 그룹의 children에 추가
-        if let Some(group) = self.find_by_name_mut(group_name) {
-            if !group.children.contains(&entity_name.to_string()) {
-                group.children.push(entity_name.to_string());
-            }
+        if let Some(group) = self.find_by_name_mut(group_name)
+            && !group.children.contains(&entity_name.to_string())
+        {
+            group.children.push(entity_name.to_string());
         }
 
         self.last_operation = Some(format!("add_to_group({}, {})", group_name, entity_name));
