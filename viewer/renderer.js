@@ -32,6 +32,8 @@ const state = {
   selectedIds: [],
   lastSelected: null,
   selectionTimestamp: null,
+  // Entity lookup map (for groups)
+  entitiesByName: {},
 };
 
 let pollTimer = null;
@@ -431,6 +433,8 @@ function renderScene(scene) {
       entitiesByName[name] = entity;
     }
   }
+  // Store in state for selection highlight access
+  state.entitiesByName = entitiesByName;
 
   ctx.save();
   ctx.translate(state.viewport.width / 2, state.viewport.height / 2);
@@ -594,8 +598,45 @@ document.addEventListener('visibilitychange', handleVisibilityChange);
 /**
  * Get entity bounding box (in local coordinates, before transform)
  */
-function getEntityBounds(entity) {
+function getEntityBounds(entity, entitiesByName) {
   const geo = entity.geometry;
+
+  // Handle Group entities - compute combined bounds of children
+  if (entity.entity_type === 'Group' && Array.isArray(entity.children)) {
+    const lookup = entitiesByName || state.entitiesByName;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasValidBounds = false;
+
+    for (const childName of entity.children) {
+      const child = lookup[childName];
+      if (!child) continue;
+
+      const childBounds = getEntityBounds(child, lookup);
+      if (!childBounds) continue;
+
+      // Apply child's transform to its bounds corners
+      const childTransform = child.transform;
+      const corners = [
+        [childBounds.minX, childBounds.minY],
+        [childBounds.maxX, childBounds.minY],
+        [childBounds.minX, childBounds.maxY],
+        [childBounds.maxX, childBounds.maxY],
+      ];
+
+      for (const [cx, cy] of corners) {
+        const transformed = applyTransformToPoint(cx, cy, childTransform);
+        minX = Math.min(minX, transformed.x);
+        minY = Math.min(minY, transformed.y);
+        maxX = Math.max(maxX, transformed.x);
+        maxY = Math.max(maxY, transformed.y);
+        hasValidBounds = true;
+      }
+    }
+
+    if (!hasValidBounds) return null;
+    return { minX, minY, maxX, maxY };
+  }
+
   if (!geo) return null;
 
   if (geo.Circle) {
@@ -640,6 +681,46 @@ function getEntityBounds(entity) {
     };
   }
   return null;
+}
+
+/**
+ * Apply transform to a point (forward transform, not inverse)
+ */
+function applyTransformToPoint(x, y, transform) {
+  if (!transform) return { x, y };
+
+  const { translate, rotate, scale, pivot } = transform;
+  const tx = translate?.[0] || 0;
+  const ty = translate?.[1] || 0;
+  const r = rotate || 0;
+  const sx = scale?.[0] || 1;
+  const sy = scale?.[1] || 1;
+  const px = pivot?.[0] || 0;
+  const py = pivot?.[1] || 0;
+
+  // Apply transform: translate to pivot, scale, rotate, translate back, then translate
+  let ox = x - px;
+  let oy = y - py;
+
+  // Scale
+  ox *= sx;
+  oy *= sy;
+
+  // Rotate
+  if (r !== 0) {
+    const cos = Math.cos(r);
+    const sin = Math.sin(r);
+    const rx = ox * cos - oy * sin;
+    const ry = ox * sin + oy * cos;
+    ox = rx;
+    oy = ry;
+  }
+
+  // Translate back from pivot and apply translation
+  ox += px + tx;
+  oy += py + ty;
+
+  return { x: ox, y: oy };
 }
 
 /**
@@ -705,10 +786,13 @@ function hitTestEntity(entity, worldX, worldY, entitiesByName, parentTransform) 
       const child = entitiesByName?.[childName];
       if (child) {
         const hit = hitTestEntity(child, local.x, local.y, entitiesByName, transform);
-        if (hit) return hit;
+        if (hit) {
+          // Return the group if any child is hit (group selection mode)
+          return entity;
+        }
       }
     }
-    return null; // Groups themselves are not selectable
+    return null;
   }
 
   // Get bounds and test

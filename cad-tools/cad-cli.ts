@@ -14,6 +14,7 @@
 import '../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
 import { logger } from './src/logger.js';
+import { captureViewport } from './src/capture.js';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -416,6 +417,34 @@ async function main(): Promise<void> {
         success: true,
         selection: { selected_ids: [], last_selected: null, timestamp: null },
         hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
+      }, null, 2));
+    }
+    return;
+  }
+
+  // Capture viewport command - take screenshot of viewer
+  if (command === 'capture_viewport') {
+    const outputPath = resolve(__dirname, '../viewer/capture.png');
+    console.log('📸 Capturing viewport...');
+    const result = await captureViewport({
+      url: 'http://localhost:8000/index.html',
+      width: 800,
+      height: 600,
+      outputPath,
+      waitMs: 1000,
+    });
+    if (result.success) {
+      console.log(JSON.stringify({
+        success: true,
+        path: result.path,
+        message: 'Viewport captured. Use Read tool to view the image.',
+        hint: `Read file: ${result.path}`,
+      }, null, 2));
+    } else {
+      console.log(JSON.stringify({
+        success: false,
+        error: result.error,
+        hint: '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs)',
       }, null, 2));
     }
     return;
