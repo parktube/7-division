@@ -8,6 +8,7 @@ import puppeteer from 'puppeteer';
 import { existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { logger } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -39,6 +40,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
   let browser;
   try {
+    logger.debug('Starting viewport capture', { url, width, height, outputPath });
+
     // Ensure output directory exists
     const outputDir = dirname(outputPath);
     if (!existsSync(outputDir)) {
@@ -46,6 +49,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     }
 
     // Launch headless browser (Puppeteer v22+ uses new headless by default)
+    logger.debug('Launching headless browser');
     browser = await puppeteer.launch({
       headless: true,
       args: [

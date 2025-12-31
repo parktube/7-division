@@ -81,14 +81,14 @@ function handleSelectionPost(req, res) {
     }
     body += chunk.toString();
   });
-  req.on('end', () => {
+  req.on('end', async () => {
     try {
       // Validate JSON
       const selection = JSON.parse(body);
 
-      // Write to selection.json
+      // Write to selection.json (async to avoid blocking event loop)
       const selectionPath = path.join(VIEWER_DIR, 'selection.json');
-      fs.writeFileSync(selectionPath, JSON.stringify(selection, null, 2));
+      await fs.promises.writeFile(selectionPath, JSON.stringify(selection, null, 2));
 
       console.log(`[Selection] Saved: ${JSON.stringify(selection.selected_ids)}`);
       sendResponse(res, 200, 'application/json', JSON.stringify({ success: true }));
