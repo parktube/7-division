@@ -109,7 +109,27 @@ impl Scene {
         Ok(name.to_string())
     }
 
-    // Primitive internal functions moved to primitives.rs
+    // Primitive creation helpers: add_line_internal, add_circle_internal, add_rect_internal, add_arc_internal
+    // See primitives.rs for implementations
+
+    /// Set pivot point for an entity (internal, for native testing)
+    fn set_pivot_internal(&mut self, name: &str, px: f64, py: f64) -> Result<bool, SceneError> {
+        // Validate finite values
+        if !px.is_finite() || !py.is_finite() {
+            return Err(SceneError::InvalidInput(
+                "[set_pivot] invalid_input: Pivot coordinates must be finite numbers".to_string(),
+            ));
+        }
+
+        let entity = match self.find_by_name_mut(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        entity.transform.pivot = [px, py];
+        self.last_operation = Some(format!("set_pivot({}, [{}, {}])", name, px, py));
+        Ok(true)
+    }
 }
 
 #[wasm_bindgen]
@@ -843,21 +863,8 @@ impl Scene {
     /// pivot은 rotate/scale 변환의 중심점입니다.
     /// 기본값 [0, 0]은 엔티티의 로컬 원점입니다.
     pub fn set_pivot(&mut self, name: &str, px: f64, py: f64) -> Result<bool, JsValue> {
-        // Validate finite values
-        if !px.is_finite() || !py.is_finite() {
-            return Err(JsValue::from_str(
-                "Pivot coordinates must be finite numbers",
-            ));
-        }
-
-        let entity = match self.find_by_name_mut(name) {
-            Some(e) => e,
-            None => return Ok(false),
-        };
-
-        entity.transform.pivot = [px, py];
-        self.last_operation = Some(format!("set_pivot({}, [{}, {}])", name, px, py));
-        Ok(true)
+        self.set_pivot_internal(name, px, py)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
     // ========================================
@@ -1230,7 +1237,7 @@ mod tests {
         let mut scene = Scene::new("test");
         scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
 
-        let result = scene.set_pivot("c1", 5.0, 10.0);
+        let result = scene.set_pivot_internal("c1", 5.0, 10.0);
         assert!(result.is_ok());
         assert!(result.unwrap());
 
@@ -1243,7 +1250,7 @@ mod tests {
         // AC2: Entity 미존재 시 false
         let mut scene = Scene::new("test");
 
-        let result = scene.set_pivot("nonexistent", 5.0, 10.0);
+        let result = scene.set_pivot_internal("nonexistent", 5.0, 10.0);
         assert!(result.is_ok());
         assert!(!result.unwrap());
     }
@@ -1254,7 +1261,7 @@ mod tests {
         let mut scene = Scene::new("test");
         scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
 
-        let result = scene.set_pivot("c1", -5.0, -10.0);
+        let result = scene.set_pivot_internal("c1", -5.0, -10.0);
         assert!(result.is_ok());
         assert!(result.unwrap());
 
@@ -1267,9 +1274,9 @@ mod tests {
         // AC4: pivot을 [0, 0]으로 재설정 가능
         let mut scene = Scene::new("test");
         scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
-        scene.set_pivot("c1", 5.0, 10.0).unwrap();
+        scene.set_pivot_internal("c1", 5.0, 10.0).unwrap();
 
-        let result = scene.set_pivot("c1", 0.0, 0.0);
+        let result = scene.set_pivot_internal("c1", 0.0, 0.0);
         assert!(result.is_ok());
         assert!(result.unwrap());
 
@@ -1282,7 +1289,7 @@ mod tests {
         // AC5: pivot이 [0, 0]이 아니면 JSON에 포함됨
         let mut scene = Scene::new("test");
         scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
-        scene.set_pivot("c1", 5.0, 10.0).unwrap();
+        scene.set_pivot_internal("c1", 5.0, 10.0).unwrap();
 
         let json = scene.export_json();
         let value: serde_json::Value = serde_json::from_str(&json).unwrap();
@@ -1308,5 +1315,28 @@ mod tests {
         let transform = c1.get("transform").unwrap();
         // pivot 필드가 없거나 null
         assert!(transform.get("pivot").is_none());
+    }
+
+    #[test]
+    fn test_set_pivot_nan_infinity() {
+        // AC7: NaN/Infinity 값은 에러 반환
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        // NaN should error
+        let result = scene.set_pivot_internal("c1", f64::NAN, 0.0);
+        assert!(result.is_err());
+
+        // Infinity should error
+        let result = scene.set_pivot_internal("c1", 0.0, f64::INFINITY);
+        assert!(result.is_err());
+
+        // Negative infinity should error
+        let result = scene.set_pivot_internal("c1", f64::NEG_INFINITY, 0.0);
+        assert!(result.is_err());
+
+        // Valid values should still work
+        let result = scene.set_pivot_internal("c1", 5.0, 10.0);
+        assert!(result.is_ok());
     }
 }

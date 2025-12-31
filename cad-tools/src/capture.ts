@@ -31,7 +31,7 @@ export interface CaptureResult {
  */
 export async function captureViewport(options: CaptureOptions = {}): Promise<CaptureResult> {
   const {
-    url = 'http://localhost:8000/index.html',
+    url = process.env.CAD_VIEWER_URL || 'http://localhost:8000/index.html',
     width = 800,
     height = 600,
     outputPath = resolve(__dirname, '../../viewer/capture.png'),
@@ -48,7 +48,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       mkdirSync(outputDir, { recursive: true });
     }
 
-    // Launch headless browser (Puppeteer v22+ uses new headless by default)
+    // Launch headless browser (Puppeteer v22+ uses new headless mode by default)
     logger.debug('Launching headless browser');
     browser = await puppeteer.launch({
       headless: true,

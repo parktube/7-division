@@ -2,6 +2,7 @@ const POLL_INTERVAL_MS = 500;
 const SOURCE_FILE = 'scene.json';
 const SELECTION_FILE = 'selection.json';
 const LINE_HIT_TOLERANCE = 5; // pixels tolerance for line hit testing
+const DEBUG = false; // Set to true for debug logging
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -772,7 +773,7 @@ function transformPoint(x, y, transform) {
 /**
  * Hit test for a single entity
  */
-function hitTestEntity(entity, worldX, worldY, entitiesByName, parentTransform) {
+function hitTestEntity(entity, worldX, worldY, entitiesByName, _parentTransform) {
   if (!entity) return null;
 
   // Combine parent transform with entity transform (simplified - just applies in sequence)
@@ -931,7 +932,7 @@ async function saveSelection() {
   try {
     localStorage.setItem('cad-selection', JSON.stringify(selection));
   } catch (e) {
-    console.warn('Failed to save selection to localStorage:', e);
+    if (DEBUG) console.warn('Failed to save selection to localStorage:', e);
   }
 
   // POST to server to save selection.json (for AI to read)
@@ -941,7 +942,7 @@ async function saveSelection() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(selection),
     });
-    if (!response.ok && response.status !== 501) {
+    if (!response.ok && response.status !== 501 && DEBUG) {
       console.warn('[Selection] Failed to save:', response.status);
     }
   } catch (e) {
@@ -950,8 +951,8 @@ async function saveSelection() {
     // Use: node server.js for full selection.json support
   }
 
-  // Log to console for debugging
-  console.log('[Selection]', selection);
+  // Log to console for debugging (only in debug mode)
+  if (DEBUG) console.log('[Selection]', selection);
 }
 
 /**

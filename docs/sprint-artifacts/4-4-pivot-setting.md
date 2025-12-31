@@ -81,13 +81,14 @@ so that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
   - [x] 5.2: JSON 파라미터 파싱: `'{\"name\":\"lower_arm\",\"px\":0,\"py\":50}'`
 
 - [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
-  - [x] 6.1: Rust 단위 테스트 - 기본 Pivot 설정
-  - [x] 6.2: Rust 단위 테스트 - 기본 Pivot 값 확인
-  - [x] 6.3: Rust 단위 테스트 - Pivot 초기화
-  - [x] 6.4: Rust 단위 테스트 - 존재하지 않는 Entity
-  - [x] 6.5: Rust 단위 테스트 - 그룹에 Pivot 설정
-  - [x] 6.6: Rust 단위 테스트 - export_json에 pivot 포함
-  - [x] 6.7: WASM 빌드 및 Node.js 통합 테스트
+  - [x] 6.1: Rust 단위 테스트 - 기본 Pivot 설정 (AC1)
+  - [x] 6.2: Rust 단위 테스트 - 기본 Pivot 값 확인 (AC2)
+  - [x] 6.3: Rust 단위 테스트 - Pivot 초기화 (AC3)
+  - [x] 6.4: Rust 단위 테스트 - 존재하지 않는 Entity (AC4)
+  - [x] 6.5: Rust 단위 테스트 - 그룹에 Pivot 설정 (AC5)
+  - [x] 6.6: Rust 단위 테스트 - export_json에 pivot 포함 (AC6)
+  - [x] 6.7: Rust 단위 테스트 - NaN/Infinity 값 거부 (AC7)
+  - [x] 6.8: WASM 빌드 및 Node.js 통합 테스트 (AC8)
 
 ## Dev Notes
 
