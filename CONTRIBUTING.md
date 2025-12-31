@@ -12,20 +12,35 @@
 git clone git@github.com:parktube/7-division.git
 cd 7-division
 
-# 2. 개발 환경 설정
+# 2. 개발 환경 설정 (또는 npm run setup)
 rustup target add wasm32-unknown-unknown
 cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
-# 3. WASM 빌드 & 도구 설치
+# 3. Root 패키지 설치 (husky pre-commit hook 활성화)
+npm install
+
+# 4. WASM 빌드 & 도구 설치
 cd cad-engine && wasm-pack build --target nodejs --release && cd ..
 cd cad-tools && npm install && cd ..
 
-# 4. 뷰어 실행
+# 5. 뷰어 실행
 cd viewer && node server.cjs  # http://localhost:8000
 
-# 5. 현재 스프린트 상태 확인
+# 6. 현재 스프린트 상태 확인
 cat docs/sprint-artifacts/sprint-status.yaml
 ```
+
+### Root 스크립트
+
+| 스크립트 | 설명 |
+|---------|------|
+| `npm run setup` | Rust + wasm-pack 환경 설정 |
+| `npm run build:release` | WASM 릴리즈 빌드 |
+| `npm run test` | Rust 단위 테스트 |
+| `npm run test:tools` | TypeScript (cad-tools) 테스트 |
+| `npm run test:all` | Rust + TypeScript 전체 테스트 |
+| `npm run lint:rs` | Rust fmt + clippy 검사 |
+| `npm run lint:ts` | TypeScript ESLint 검사 |
 
 ---
 
@@ -534,46 +549,33 @@ cargo clippy --target wasm32-unknown-unknown -- -D warnings
 cargo fmt --check
 ```
 
-### JavaScript/Viewer 테스트
-
-#### 1. Vitest 설정 (Phase 1)
+### TypeScript 테스트 (cad-tools)
 
 ```bash
-cd viewer
-npm install -D vitest jsdom
+cd cad-tools
+npm run test        # Vitest 실행
+npm run test:watch  # watch 모드
+npm run lint        # ESLint 검사
+npm run typecheck   # TypeScript 타입 검사
 ```
 
-```javascript
-// vitest.config.js
-export default {
-  test: {
-    environment: 'jsdom'
-  }
-}
-```
+#### 테스트 예시
 
-#### 2. 렌더링 테스트 예시
+```typescript
+// src/__tests__/executor.test.ts
+import { describe, it, expect } from 'vitest';
+import { CADToolExecutor } from '../executor.js';
 
-```javascript
-// renderer.test.js
-import { describe, it, expect, beforeEach } from 'vitest';
-
-describe('renderLine', () => {
-  let ctx;
-
-  beforeEach(() => {
-    const canvas = document.createElement('canvas');
-    ctx = canvas.getContext('2d');
-  });
-
-  it('should draw a line with correct coordinates', () => {
-    const entity = {
-      entity_type: 'Line',
-      geometry: { Line: { points: [[0, 0], [100, 100]] } }
-    };
-
-    renderLine(ctx, entity);
-    // Canvas API mock으로 검증
+describe('CADToolExecutor', () => {
+  it('should create a circle', () => {
+    const executor = new CADToolExecutor();
+    const result = executor.exec('draw_circle', {
+      name: 'test',
+      x: 0,
+      y: 0,
+      radius: 10,
+    });
+    expect(result.success).toBe(true);
   });
 });
 ```
@@ -625,79 +627,79 @@ npx tsx cad-cli.ts capture_viewport
 ```markdown
 ## PR Checklist
 
+### Pre-commit (자동)
+- [ ] `npm install` 실행 완료 (husky 활성화)
+- [ ] 커밋 시 lint-staged 통과 (자동 실행)
+
 ### Rust (cad-engine)
-- [ ] `cargo check --target wasm32-unknown-unknown` 통과
-- [ ] `cargo clippy -- -D warnings` 경고 없음
 - [ ] `cargo fmt --check` 통과
+- [ ] `cargo clippy -- -D warnings` 경고 없음
 - [ ] `cargo test` 모든 테스트 통과
 - [ ] `wasm-pack build --target nodejs --release` 성공
 
-### JavaScript (viewer)
-- [ ] `npm test` 통과 (있는 경우)
-- [ ] 브라우저에서 수동 테스트 완료
-- [ ] 콘솔 에러 없음
+### TypeScript (cad-tools)
+- [ ] `npm run lint` 통과
+- [ ] `npm run typecheck` 통과
+- [ ] `npm run test` 모든 테스트 통과
 
 ### 통합
-- [ ] 스켈레톤 렌더링 정상 (해당 스토리의 경우)
+- [ ] 뷰어에서 수동 테스트 완료 (`node viewer/server.cjs`)
 - [ ] sprint-status.yaml 상태 업데이트됨
 - [ ] 스토리 파일의 Tasks 체크됨
 ```
 
-### CI 설정 (권장)
+### Pre-commit Hook (자동 실행)
 
-```yaml
-# .github/workflows/ci.yml
-name: CI
+Root에서 `npm install` 실행 시 husky가 자동 설정됩니다.
 
-on: [push, pull_request]
+**커밋 시 자동 실행되는 검사:**
 
-jobs:
-  rust:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-          components: clippy, rustfmt
+| 파일 타입 | 검사 내용 |
+|----------|----------|
+| `cad-engine/**/*.rs` | `cargo fmt` (자동 포맷) |
+| `cad-tools/src/**/*.ts` | `eslint --fix` (자동 수정) |
 
-      - name: Check
-        run: cargo check --target wasm32-unknown-unknown
-        working-directory: cad-engine
-
-      - name: Clippy
-        run: cargo clippy -- -D warnings
-        working-directory: cad-engine
-
-      - name: Format
-        run: cargo fmt --check
-        working-directory: cad-engine
-
-      - name: Test
-        run: cargo test
-        working-directory: cad-engine
-
-      - name: WASM Build
-        run: |
-          cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
-          wasm-pack build --target nodejs --release
-        working-directory: cad-engine
-
-  viewer:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install & Test
-        run: |
-          npm install
-          npm test
-        working-directory: viewer
-        continue-on-error: true  # Phase 1에서는 optional
+```bash
+# .husky/pre-commit 내용
+npx lint-staged
 ```
+
+수동 실행:
+```bash
+npm run lint:rs   # Rust: fmt --check + clippy
+npm run lint:ts   # TypeScript: eslint
+```
+
+### CI/CD 파이프라인
+
+`.github/workflows/ci.yml` - main/develop 브랜치 push/PR 시 자동 실행
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     CI Pipeline                          │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  [rust] ──────────────────────────────────────────────  │
+│    │  cargo fmt --check                                  │
+│    │  cargo clippy -D warnings                          │
+│    │  cargo test                                        │
+│    │  wasm-pack build --release                         │
+│    │  → WASM artifact 업로드                             │
+│    ▼                                                    │
+│  [typescript] ◀── WASM artifact 다운로드                 │
+│    │  npm ci (cad-tools)                                │
+│    │  npm run lint                                      │
+│    │  npm run typecheck                                 │
+│    │  npm run build                                     │
+│    │  npm run test                                      │
+│    ▼                                                    │
+│  [integration] ◀── WASM artifact 다운로드                │
+│       node test-wasm.mjs                                │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**PR 머지 조건**: 모든 job 통과 필수
 
 ---
 
