@@ -1,6 +1,6 @@
 # Story 5.2: 선택 상태 시각적 표시
 
-Status: backlog
+Status: done
 
 ## Story
 
@@ -66,46 +66,46 @@ so that **어떤 도형이 선택되었는지 알 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: 바운딩 박스 계산 함수** (AC: 4, 5, 6, 7)
-  - [ ] 1.1: `getBoundingBox(entity) -> { minX, minY, maxX, maxY }`
-  - [ ] 1.2: Circle 바운딩 박스: center ± radius
-  - [ ] 1.3: Rect 바운딩 박스: origin, origin + size
-  - [ ] 1.4: Line 바운딩 박스: points의 min/max
-  - [ ] 1.5: Arc 바운딩 박스: 양 끝점 + 극값 고려
+- [x] **Task 1: 바운딩 박스 계산 함수** (AC: 4, 5, 6, 7)
+  - [x] 1.1: `getBoundingBox(entity) -> { minX, minY, maxX, maxY }`
+  - [x] 1.2: Circle 바운딩 박스: center ± radius
+  - [x] 1.3: Rect 바운딩 박스: origin, origin + size
+  - [x] 1.4: Line 바운딩 박스: points의 min/max
+  - [x] 1.5: Arc 바운딩 박스: 양 끝점 + 극값 고려
 
-- [ ] **Task 2: Transform 적용 바운딩 박스** (AC: 8)
-  - [ ] 2.1: 로컬 바운딩 박스 계산
-  - [ ] 2.2: 4개 코너에 월드 변환 적용
-  - [ ] 2.3: 변환된 코너들의 min/max로 AABB 계산
-  - [ ] 2.4: 또는 바운딩 박스도 함께 회전 (OBB 표시)
+- [x] **Task 2: Transform 적용 바운딩 박스** (AC: 8)
+  - [x] 2.1: 로컬 바운딩 박스 계산
+  - [x] 2.2: 4개 코너에 월드 변환 적용
+  - [x] 2.3: 변환된 코너들의 min/max로 AABB 계산
+  - [x] 2.4: 또는 바운딩 박스도 함께 회전 (OBB 표시)
 
-- [ ] **Task 3: 하이라이트 렌더링** (AC: 1, 2, 10)
-  - [ ] 3.1: `renderSelectionHighlight(entity, ctx)` 함수
-  - [ ] 3.2: 파란색(#0066ff) 점선 스타일 설정
-  - [ ] 3.3: ctx.setLineDash([5, 3]) 적용
-  - [ ] 3.4: strokeRect로 바운딩 박스 그리기
-  - [ ] 3.5: 도형 렌더링 후 하이라이트 렌더링 (위에 표시)
-  - [ ] 3.6: 선택 해제 시 하이라이트 제거 (AC2)
-    - [ ] 3.6.1: selection.json에서 selected_ids가 비어있으면 하이라이트 스킵
-    - [ ] 3.6.2: 매 렌더링 주기에 selection 상태 확인하여 동기화
+- [x] **Task 3: 하이라이트 렌더링** (AC: 1, 2, 10)
+  - [x] 3.1: `renderSelectionHighlight(entity, ctx)` 함수
+  - [x] 3.2: 파란색(#0066ff) 점선 스타일 설정
+  - [x] 3.3: ctx.setLineDash([5, 3]) 적용
+  - [x] 3.4: strokeRect로 바운딩 박스 그리기
+  - [x] 3.5: 도형 렌더링 후 하이라이트 렌더링 (위에 표시)
+  - [x] 3.6: 선택 해제 시 하이라이트 제거 (AC2)
+    - [x] 3.6.1: selection.json에서 selected_ids가 비어있으면 하이라이트 스킵
+    - [x] 3.6.2: 매 렌더링 주기에 selection 상태 확인하여 동기화
 
-- [ ] **Task 4: 다중 선택 처리** (AC: 3)
-  - [ ] 4.1: selection.json에서 selected_ids 배열 읽기
-  - [ ] 4.2: 각 선택된 entity에 대해 하이라이트 렌더링
+- [x] **Task 4: 다중 선택 처리** (AC: 3)
+  - [x] 4.1: selection.json에서 selected_ids 배열 읽기
+  - [x] 4.2: 각 선택된 entity에 대해 하이라이트 렌더링
 
-- [ ] **Task 5: 선택 핸들 (Optional)** (AC: 9)
-  - [ ] 5.1: 바운딩 박스 8개 지점(4코너 + 4중점)에 핸들 표시
-  - [ ] 5.2: 핸들 크기: 6x6 픽셀 흰색 사각형 + 파란 테두리
-  - [ ] 5.3: Note: MVP Stretch Goal
+- [x] **Task 5: 선택 핸들 (Optional)** (AC: 9)
+  - [x] 5.1: 바운딩 박스 8개 지점(4코너 + 4중점)에 핸들 표시
+  - [x] 5.2: 핸들 크기: 6x6 픽셀 흰색 사각형 + 파란 테두리
+  - [x] 5.3: Note: MVP Stretch Goal
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 10)
-  - [ ] 6.1: 수동 테스트 - Circle 선택 하이라이트
-  - [ ] 6.2: 수동 테스트 - Rect 선택 하이라이트
-  - [ ] 6.3: 수동 테스트 - Line 선택 하이라이트
-  - [ ] 6.4: 수동 테스트 - Arc 선택 하이라이트
-  - [ ] 6.5: 수동 테스트 - 변환된 도형 하이라이트
-  - [ ] 6.6: 수동 테스트 - 다중 선택
-  - [ ] 6.7: 수동 테스트 - 선택 해제 시 하이라이트 제거
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 10)
+  - [x] 6.1: 수동 테스트 - Circle 선택 하이라이트
+  - [x] 6.2: 수동 테스트 - Rect 선택 하이라이트
+  - [x] 6.3: 수동 테스트 - Line 선택 하이라이트
+  - [x] 6.4: 수동 테스트 - Arc 선택 하이라이트
+  - [x] 6.5: 수동 테스트 - 변환된 도형 하이라이트
+  - [x] 6.6: 수동 테스트 - 다중 선택
+  - [x] 6.7: 수동 테스트 - 선택 해제 시 하이라이트 제거
 
 ## Dev Notes
 

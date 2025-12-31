@@ -1,6 +1,6 @@
 # Story 4.4: Pivot 설정 기능
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -56,38 +56,38 @@ so that **팔꿈치 위치를 기준으로 팔을 구부릴 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Transform 구조 확장** (AC: 3, 7)
-  - [ ] 1.1: Transform struct에 `pivot: [f64; 2]` 필드 추가
-  - [ ] 1.2: Transform::default()에서 pivot = [0.0, 0.0] 설정
-  - [ ] 1.3: Serde 직렬화 테스트 (JSON 출력 확인)
+- [x] **Task 1: Transform 구조 확장** (AC: 3, 7)
+  - [x] 1.1: Transform struct에 `pivot: [f64; 2]` 필드 추가
+  - [x] 1.2: Transform::default()에서 pivot = [0.0, 0.0] 설정
+  - [x] 1.3: Serde 직렬화 테스트 (JSON 출력 확인)
 
-- [ ] **Task 2: set_pivot 함수 구현** (AC: 1, 4, 5, 6)
-  - [ ] 2.1: `set_pivot(name: &str, px: f64, py: f64) -> Result<bool, JsValue>` 시그니처
-  - [ ] 2.2: name으로 Entity 조회 (없으면 Ok(false))
-  - [ ] 2.3: Entity의 transform.pivot 업데이트
-  - [ ] 2.4: Ok(true) 반환
+- [x] **Task 2: set_pivot 함수 구현** (AC: 1, 4, 5, 6)
+  - [x] 2.1: `set_pivot(name: &str, px: f64, py: f64) -> Result<bool, JsValue>` 시그니처
+  - [x] 2.2: name으로 Entity 조회 (없으면 Ok(false))
+  - [x] 2.3: Entity의 transform.pivot 업데이트
+  - [x] 2.4: Ok(true) 반환
 
-- [ ] **Task 3: rotate 함수 수정 (Pivot 적용)** (AC: 2)
-  - [ ] 3.1: 기존 rotate 함수에서 pivot 고려
-  - [ ] 3.2: 회전 변환 시 pivot 오프셋 적용
-  - [ ] 3.3: Note: 실제 변환은 렌더러에서 수행, 여기서는 데이터만 저장
+- [x] **Task 3: rotate 함수 수정 (Pivot 적용)** (AC: 2)
+  - [x] 3.1: 기존 rotate 함수에서 pivot 고려
+  - [x] 3.2: 회전 변환 시 pivot 오프셋 적용
+  - [x] 3.3: Note: 실제 변환은 렌더러에서 수행, 여기서는 데이터만 저장
 
-- [ ] **Task 4: WASM 바인딩** (AC: 1)
-  - [ ] 4.1: `#[wasm_bindgen]` 매크로로 set_pivot 노출
-  - [ ] 4.2: px, py 파라미터는 f64로 직접 받기
+- [x] **Task 4: WASM 바인딩** (AC: 1)
+  - [x] 4.1: `#[wasm_bindgen]` 매크로로 set_pivot 노출
+  - [x] 4.2: px, py 파라미터는 f64로 직접 받기
 
-- [ ] **Task 5: CLI 통합** (AC: 1)
-  - [ ] 5.1: cad-cli.ts에 `set_pivot` 명령어 추가
-  - [ ] 5.2: JSON 파라미터 파싱: `'{\"name\":\"lower_arm\",\"px\":0,\"py\":50}'`
+- [x] **Task 5: CLI 통합** (AC: 1)
+  - [x] 5.1: cad-cli.ts에 `set_pivot` 명령어 추가
+  - [x] 5.2: JSON 파라미터 파싱: `'{\"name\":\"lower_arm\",\"px\":0,\"py\":50}'`
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
-  - [ ] 6.1: Rust 단위 테스트 - 기본 Pivot 설정
-  - [ ] 6.2: Rust 단위 테스트 - 기본 Pivot 값 확인
-  - [ ] 6.3: Rust 단위 테스트 - Pivot 초기화
-  - [ ] 6.4: Rust 단위 테스트 - 존재하지 않는 Entity
-  - [ ] 6.5: Rust 단위 테스트 - 그룹에 Pivot 설정
-  - [ ] 6.6: Rust 단위 테스트 - export_json에 pivot 포함
-  - [ ] 6.7: WASM 빌드 및 Node.js 통합 테스트
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
+  - [x] 6.1: Rust 단위 테스트 - 기본 Pivot 설정
+  - [x] 6.2: Rust 단위 테스트 - 기본 Pivot 값 확인
+  - [x] 6.3: Rust 단위 테스트 - Pivot 초기화
+  - [x] 6.4: Rust 단위 테스트 - 존재하지 않는 Entity
+  - [x] 6.5: Rust 단위 테스트 - 그룹에 Pivot 설정
+  - [x] 6.6: Rust 단위 테스트 - export_json에 pivot 포함
+  - [x] 6.7: WASM 빌드 및 Node.js 통합 테스트
 
 ## Dev Notes
 
