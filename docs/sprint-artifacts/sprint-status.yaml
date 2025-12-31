@@ -198,23 +198,23 @@ development_status:
 
   # Epic 5: Selection UI - 사용자가 클릭으로 도형을 선택하고 AI가 인식할 수 있다
   epic-5:
-    status: in-progress
+    status: done
     title: "Selection UI"
     stories:
       5-1-click-selection:
-        status: ready-for-dev
+        status: done
         title: "도형 클릭 선택"
         priority: P0
         depends_on: [2-2-canvas-2d-viewer]
         description: "Canvas에서 도형을 클릭하여 선택할 수 있다"
       5-2-selection-highlight:
-        status: drafted
+        status: done
         title: "선택 상태 시각적 표시"
         priority: P0
         depends_on: [5-1-click-selection]
         description: "선택된 도형이 시각적으로 구분된다"
       5-3-selection-info-to-ai:
-        status: drafted
+        status: done
         title: "선택 정보 AI 전달"
         priority: P0
         depends_on: [5-1-click-selection]

@@ -97,7 +97,7 @@ npx tsx cad-cli.ts status   # 현재 상태 확인
 
 - Scene은 `viewer/scene.json`에 자동 저장됩니다
 - 뷰어 실행:
-  - `node server.js` (권장) - selection.json 저장 지원
+  - `node server.cjs` (권장) - selection.json 저장 지원
   - `python -m http.server 8000` - 기본 뷰어만 (선택 저장 안됨)
 - 사용자가 도형을 클릭하면 선택 상태가 UI에 표시되고 selection.json에 저장
 - `get_selection` 명령어로 선택된 도형 조회 가능
