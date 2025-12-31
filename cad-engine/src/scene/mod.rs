@@ -843,6 +843,13 @@ impl Scene {
     /// pivot은 rotate/scale 변환의 중심점입니다.
     /// 기본값 [0, 0]은 엔티티의 로컬 원점입니다.
     pub fn set_pivot(&mut self, name: &str, px: f64, py: f64) -> Result<bool, JsValue> {
+        // Validate finite values
+        if !px.is_finite() || !py.is_finite() {
+            return Err(JsValue::from_str(
+                "Pivot coordinates must be finite numbers",
+            ));
+        }
+
         let entity = match self.find_by_name_mut(name) {
             Some(e) => e,
             None => return Ok(false),
@@ -874,7 +881,8 @@ impl Scene {
     /// 존재하지 않는 자식 이름은 무시하고 정상 생성
     pub fn create_group(&mut self, name: &str, children_json: &str) -> Result<String, JsValue> {
         // children JSON 파싱
-        let children_names: Vec<String> = serde_json::from_str(children_json).unwrap_or_default();
+        let children_names: Vec<String> = serde_json::from_str(children_json)
+            .map_err(|e| JsValue::from_str(&format!("Invalid children JSON: {}", e)))?;
 
         self.create_group_internal(name, children_names)
             .map_err(|e| JsValue::from_str(&e.to_string()))
@@ -1224,7 +1232,7 @@ mod tests {
 
         let result = scene.set_pivot("c1", 5.0, 10.0);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
 
         let entity = scene.find_by_name("c1").unwrap();
         assert_eq!(entity.transform.pivot, [5.0, 10.0]);
@@ -1237,7 +1245,7 @@ mod tests {
 
         let result = scene.set_pivot("nonexistent", 5.0, 10.0);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), false);
+        assert!(!result.unwrap());
     }
 
     #[test]
@@ -1248,7 +1256,7 @@ mod tests {
 
         let result = scene.set_pivot("c1", -5.0, -10.0);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
 
         let entity = scene.find_by_name("c1").unwrap();
         assert_eq!(entity.transform.pivot, [-5.0, -10.0]);
@@ -1263,7 +1271,7 @@ mod tests {
 
         let result = scene.set_pivot("c1", 0.0, 0.0);
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), true);
+        assert!(result.unwrap());
 
         let entity = scene.find_by_name("c1").unwrap();
         assert_eq!(entity.transform.pivot, [0.0, 0.0]);

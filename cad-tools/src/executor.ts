@@ -421,7 +421,11 @@ export class CADExecutor {
     if (error) return { success: false, error: `create_group: ${error}` };
 
     const name = input.name as string;
-    const children = input.children as string[] || [];
+    const rawChildren = input.children;
+    if (rawChildren !== undefined && !Array.isArray(rawChildren)) {
+      return { success: false, error: 'create_group: children must be an array' };
+    }
+    const children = (rawChildren as string[] | undefined) || [];
     const childrenJson = JSON.stringify(children);
 
     const result = this.scene.create_group(name, childrenJson);

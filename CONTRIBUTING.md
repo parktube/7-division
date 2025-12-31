@@ -564,11 +564,11 @@ npm run typecheck   # TypeScript 타입 검사
 ```typescript
 // src/__tests__/executor.test.ts
 import { describe, it, expect } from 'vitest';
-import { CADToolExecutor } from '../executor.js';
+import { CADExecutor } from '../executor.js';
 
-describe('CADToolExecutor', () => {
+describe('CADExecutor', () => {
   it('should create a circle', () => {
-    const executor = new CADToolExecutor();
+    const executor = new CADExecutor();
     const result = executor.exec('draw_circle', {
       name: 'test',
       x: 0,

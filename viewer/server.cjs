@@ -42,11 +42,14 @@ function handleStaticFile(req, res) {
   let filePath = req.url === '/' ? '/index.html' : req.url;
   // Remove query strings
   filePath = filePath.split('?')[0];
+  // Remove leading slash to prevent path.join ignoring VIEWER_DIR
+  filePath = filePath.replace(/^\/+/, '');
 
   const fullPath = path.join(VIEWER_DIR, filePath);
 
   // Security: prevent directory traversal
-  if (!fullPath.startsWith(VIEWER_DIR)) {
+  const normalizedPath = path.normalize(fullPath);
+  if (!normalizedPath.startsWith(VIEWER_DIR)) {
     sendResponse(res, 403, 'text/plain', 'Forbidden');
     return;
   }
@@ -64,9 +67,18 @@ function handleStaticFile(req, res) {
   });
 }
 
+const MAX_BODY_SIZE = 10 * 1024; // 10KB limit for selection data
+
 function handleSelectionPost(req, res) {
   let body = '';
+  let totalSize = 0;
   req.on('data', chunk => {
+    totalSize += chunk.length;
+    if (totalSize > MAX_BODY_SIZE) {
+      req.destroy();
+      sendResponse(res, 413, 'application/json', JSON.stringify({ error: 'Request body too large' }));
+      return;
+    }
     body += chunk.toString();
   });
   req.on('end', () => {

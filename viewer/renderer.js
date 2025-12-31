@@ -685,6 +685,7 @@ function getEntityBounds(entity, entitiesByName) {
 
 /**
  * Apply transform to a point (forward transform, not inverse)
+ * Order matches applyTransform: translate -> (pivot -> rotate -> scale -> unpivot)
  */
 function applyTransformToPoint(x, y, transform) {
   if (!transform) return { x, y };
@@ -698,15 +699,12 @@ function applyTransformToPoint(x, y, transform) {
   const px = pivot?.[0] || 0;
   const py = pivot?.[1] || 0;
 
-  // Apply transform: translate to pivot, scale, rotate, translate back, then translate
+  // Apply transform: translate -> (pivot -> rotate -> scale -> unpivot)
+  // 1. Translate to pivot
   let ox = x - px;
   let oy = y - py;
 
-  // Scale
-  ox *= sx;
-  oy *= sy;
-
-  // Rotate
+  // 2. Rotate (before scale, matching applyTransform order)
   if (r !== 0) {
     const cos = Math.cos(r);
     const sin = Math.sin(r);
@@ -716,7 +714,11 @@ function applyTransformToPoint(x, y, transform) {
     oy = ry;
   }
 
-  // Translate back from pivot and apply translation
+  // 3. Scale
+  ox *= sx;
+  oy *= sy;
+
+  // 4. Translate back from pivot and apply translation
   ox += px + tx;
   oy += py + ty;
 

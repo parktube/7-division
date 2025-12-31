@@ -45,9 +45,9 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       mkdirSync(outputDir, { recursive: true });
     }
 
-    // Launch headless browser
+    // Launch headless browser (use 'new' mode for modern headless)
     browser = await puppeteer.launch({
-      headless: true,
+      headless: 'new',
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
