@@ -3,6 +3,8 @@
 > **협업 리더**: @parktube
 > **Repository**: https://github.com/parktube/7-division
 
+**현재 상태**: Epic 1~5 완료, Epic 6 진행 중
+
 ## Quick Start
 
 ```bash
@@ -14,9 +16,67 @@ cd 7-division
 rustup target add wasm32-unknown-unknown
 cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
-# 3. 현재 스프린트 상태 확인
+# 3. WASM 빌드 & 도구 설치
+cd cad-engine && wasm-pack build --target nodejs --release && cd ..
+cd cad-tools && npm install && cd ..
+
+# 4. 뷰어 실행
+cd viewer && node server.cjs  # http://localhost:8000
+
+# 5. 현재 스프린트 상태 확인
 cat docs/sprint-artifacts/sprint-status.yaml
 ```
+
+---
+
+## CAD CLI 사용법
+
+AI 에이전트와 개발자 모두 `cad-tools/cad-cli.ts`를 통해 CAD 도형을 조작합니다.
+
+```bash
+cd cad-tools
+npx tsx cad-cli.ts <command> '<json_params>'
+```
+
+### 주요 명령어 요약
+
+| 카테고리 | 명령어 | 설명 |
+|---------|--------|------|
+| **Primitives** | `draw_circle`, `draw_rect`, `draw_line`, `draw_arc` | 도형 생성 |
+| **Style** | `set_fill`, `set_stroke` | 색상/선 스타일 |
+| **Transform** | `translate`, `rotate`, `scale`, `set_pivot`, `delete` | 변환 (rotate는 라디안) |
+| **Groups** | `create_group`, `ungroup`, `add_to_group`, `remove_from_group` | 그룹화 |
+| **Query** | `list_entities`, `get_entity`, `get_scene_info`, `get_selection` | 조회 |
+| **Export** | `export_json`, `export_svg`, `capture_viewport` | 출력/캡처 |
+| **Session** | `reset`, `status` | 세션 관리 |
+
+### 예시: 관절 캐릭터 생성
+
+```bash
+# 상체 도형 생성
+npx tsx cad-cli.ts draw_circle '{"name":"head","x":0,"y":100,"radius":15}'
+npx tsx cad-cli.ts draw_line '{"name":"spine","points":[0,85,0,50]}'
+npx tsx cad-cli.ts draw_line '{"name":"upper_arm","points":[0,80,30,80]}'
+npx tsx cad-cli.ts draw_line '{"name":"forearm","points":[30,80,50,80]}'
+
+# 팔꿈치 피봇 설정
+npx tsx cad-cli.ts set_pivot '{"name":"forearm","px":30,"py":80}'
+
+# 팔꿈치 구부리기 (라디안: -0.785 ≈ -45°)
+npx tsx cad-cli.ts rotate '{"name":"forearm","angle":-0.785}'
+
+# 팔 전체 그룹화
+npx tsx cad-cli.ts create_group '{"name":"arm_group","children":["upper_arm","forearm"]}'
+
+# 어깨 피봇으로 팔 전체 회전
+npx tsx cad-cli.ts set_pivot '{"name":"arm_group","px":0,"py":80}'
+npx tsx cad-cli.ts rotate '{"name":"arm_group","angle":0.5}'  # ≈29°
+
+# 뷰어 스크린샷 캡처 (Puppeteer)
+npx tsx cad-cli.ts capture_viewport
+```
+
+자세한 명령어는 `CLAUDE.md` 또는 `AGENTS.md` 참조.
 
 ---
 
@@ -532,30 +592,32 @@ node -e "const wasm = require('./pkg/cad_engine.js'); console.log(wasm);"
 node -e "const {Scene} = require('./pkg/cad_engine.js'); const s = new Scene('test'); console.log(s);"
 ```
 
-#### Story 2-3 완료 조건 (스켈레톤 테스트)
-```javascript
-// 스켈레톤 통합 테스트
-const scene = new Scene("skeleton");
+#### 관절 캐릭터 통합 테스트 (CLI 권장)
+```bash
+# cad-tools 디렉토리에서 실행
+cd cad-tools
 
-// 머리
-scene.add_circle(0, 100, 10);
+# 1. 새 씬 시작
+npx tsx cad-cli.ts reset
 
-// 몸통
-scene.add_line(new Float64Array([0, 90, 0, 50]));
+# 2. 스켈레톤 생성
+npx tsx cad-cli.ts draw_circle '{"name":"head","x":0,"y":100,"radius":15}'
+npx tsx cad-cli.ts draw_line '{"name":"spine","points":[0,85,0,50]}'
+npx tsx cad-cli.ts draw_line '{"name":"upper_arm","points":[0,80,30,80]}'
+npx tsx cad-cli.ts draw_line '{"name":"forearm","points":[30,80,50,80]}'
 
-// 팔
-scene.add_line(new Float64Array([0, 85, -20, 70, -25, 50]));
-scene.add_line(new Float64Array([0, 85, 20, 70, 25, 50]));
+# 3. 관절 설정 (피봇)
+npx tsx cad-cli.ts set_pivot '{"name":"forearm","px":30,"py":80}'
 
-// 다리
-scene.add_line(new Float64Array([0, 50, -15, 20, -15, 0]));
-scene.add_line(new Float64Array([0, 50, 15, 20, 15, 0]));
+# 4. 포즈 적용
+npx tsx cad-cli.ts rotate '{"name":"forearm","angle":-0.785}'
 
-// JSON 출력
-const json = scene.export_json();
-fs.writeFileSync('viewer/scene.json', json);
+# 5. 그룹화
+npx tsx cad-cli.ts create_group '{"name":"arm","children":["upper_arm","forearm"]}'
 
-// → 브라우저에서 viewer/index.html 열어서 스켈레톤 확인
+# 6. 뷰어에서 확인
+npx tsx cad-cli.ts capture_viewport
+# → viewer/capture.png 확인
 ```
 
 ### PR 전 체크리스트
@@ -686,4 +748,4 @@ claude
 
 ---
 
-*최종 업데이트: 2025-12-17*
+*최종 업데이트: 2025-12-31*
