@@ -90,13 +90,16 @@ so that **그룹 변환이 적용된 결과를 확인할 수 있다**.
   - [x] 6.4: pivot은 rotate 변환에 반영
 
 - [x] **Task 7: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
-  - [x] 7.1: 시각적 테스트 - 기본 그룹 렌더링
-  - [x] 7.2: 시각적 테스트 - 그룹 translate 적용
-  - [x] 7.3: 시각적 테스트 - 중첩 그룹 변환
-  - [x] 7.4: 시각적 테스트 - pivot 회전
-  - [x] 7.5: 시각적 테스트 - 스타일 유지
-  - [x] 7.6: SVG Export 결과 검증
-  - [x] 7.7: E2E 테스트 - JSON 폴링 후 렌더링
+  - **자동화 테스트** (`cad-engine/src/serializers/svg.rs`):
+    - [x] 7.1: `test_hierarchical_svg_group` - 그룹 `<g>` 태그 렌더링
+    - [x] 7.2: `test_hierarchical_svg_group_with_transform` - 그룹 transform 속성
+    - [x] 7.3: `test_hierarchical_svg_nested_groups` - 중첩 그룹 구조
+    - [x] 7.4: `test_hierarchical_svg_pivot_transform` - pivot 회전 변환
+    - [x] 7.5: `test_hierarchical_svg_children_not_rendered_at_root` - 중복 렌더링 방지
+  - **수동 시각적 검증** (Viewer):
+    - [x] 7.6: 그룹 translate/rotate/scale 적용 확인
+    - [x] 7.7: 스타일(fill, stroke) 유지 확인
+    - [x] 7.8: JSON 폴링 후 렌더링 동기화 확인
 
 ## Dev Notes
 
