@@ -37,6 +37,12 @@ interface SceneEntity {
     Arc?: { center: [number, number]; radius: number; start_angle: number; end_angle: number };
     Empty?: null;
   };
+  transform?: {
+    translate: [number, number];
+    rotate: number;
+    scale: [number, number];
+    pivot?: [number, number];
+  };
   style?: unknown;
   metadata?: { name?: string };
   children?: string[];
@@ -477,12 +483,13 @@ async function main(): Promise<void> {
  * Replay entity from saved scene
  */
 function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
-  const { entity_type, geometry, style, metadata } = entity;
+  const { entity_type, geometry, style, metadata, transform } = entity;
   const name = metadata?.name;
 
   if (!name) return;
 
   try {
+    // 1. Create the entity first
     switch (entity_type) {
       case 'Circle':
         if (geometry?.Circle) {
@@ -540,6 +547,44 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
           children: entity.children ?? [],
         });
         break;
+    }
+
+    // 2. Apply transforms if they exist (order matters: pivot, scale, rotate, translate)
+    if (transform) {
+      // Set pivot first (affects rotation center)
+      if (transform.pivot && (transform.pivot[0] !== 0 || transform.pivot[1] !== 0)) {
+        executor.exec('set_pivot', {
+          name,
+          px: transform.pivot[0],
+          py: transform.pivot[1],
+        });
+      }
+
+      // Apply scale
+      if (transform.scale[0] !== 1 || transform.scale[1] !== 1) {
+        executor.exec('scale', {
+          name,
+          sx: transform.scale[0],
+          sy: transform.scale[1],
+        });
+      }
+
+      // Apply rotation (stored in radians)
+      if (transform.rotate !== 0) {
+        executor.exec('rotate', {
+          name,
+          angle: transform.rotate,
+        });
+      }
+
+      // Apply translation
+      if (transform.translate[0] !== 0 || transform.translate[1] !== 0) {
+        executor.exec('translate', {
+          name,
+          dx: transform.translate[0],
+          dy: transform.translate[1],
+        });
+      }
     }
   } catch (err) {
     // Log but continue - don't fail entire replay for one bad entity
