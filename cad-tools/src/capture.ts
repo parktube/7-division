@@ -5,7 +5,7 @@
  */
 
 import puppeteer from 'puppeteer';
-import { existsSync, mkdirSync } from 'fs';
+import { promises as fs } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { logger } from './logger.js';
@@ -42,11 +42,9 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
   try {
     logger.debug('Starting viewport capture', { url, width, height, outputPath });
 
-    // Ensure output directory exists
+    // Ensure output directory exists (async to avoid blocking event loop)
     const outputDir = dirname(outputPath);
-    if (!existsSync(outputDir)) {
-      mkdirSync(outputDir, { recursive: true });
-    }
+    await fs.mkdir(outputDir, { recursive: true });
 
     // Launch headless browser (Puppeteer v22+ uses new headless mode by default)
     logger.debug('Launching headless browser');
@@ -74,17 +72,22 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
     await browser.close();
 
+    logger.debug('Viewport capture completed successfully', { outputPath });
+
     return {
       success: true,
       path: outputPath,
     };
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error('Viewport capture failed', { error: errorMessage });
+
     if (browser) {
       await browser.close();
     }
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage,
     };
   }
 }
