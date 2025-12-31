@@ -568,7 +568,8 @@ import { CADExecutor } from '../executor.js';
 
 describe('CADExecutor', () => {
   it('should create a circle', () => {
-    const executor = new CADExecutor();
+    // CADExecutor.create() 사용 (constructor는 private)
+    const executor = CADExecutor.create('test-scene');
     const result = executor.exec('draw_circle', {
       name: 'test',
       x: 0,
@@ -652,12 +653,12 @@ npx tsx cad-cli.ts capture_viewport
 
 Root에서 `npm install` 실행 시 husky가 자동 설정됩니다.
 
-**커밋 시 자동 실행되는 검사:**
+**커밋 시 자동 실행되는 검사 (lint-staged, package.json에 정의):**
 
-| 파일 타입 | 검사 내용 |
-|----------|----------|
-| `cad-engine/**/*.rs` | `cargo fmt` (자동 포맷) |
-| `cad-tools/src/**/*.ts` | `eslint --fix` (자동 수정) |
+| 파일 타입 | 실행 명령어 |
+|----------|------------|
+| `cad-engine/**/*.rs` | `cargo fmt --manifest-path cad-engine/Cargo.toml --` |
+| `cad-tools/src/**/*.ts` | `npx --prefix cad-tools eslint --fix` |
 
 ```bash
 # .husky/pre-commit 내용
