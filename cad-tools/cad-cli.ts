@@ -127,14 +127,16 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 - list_entities: 모든 엔티티 목록
 - get_entity [name]: 특정 엔티티 상세 정보
 - get_scene_info: 씬 전체 정보 (bounds, count, last_operation)
+- get_selection: 뷰어에서 선택된 도형 조회
 
 🎯 WORKFLOW
 1. 작업 시작 전: list_entities로 현재 상태 파악
-2. 작업 중: get_scene_info로 진행 상황 확인
+2. 사용자가 "이거"라고 말하면: get_selection으로 선택된 도형 확인
 3. 디버깅: get_entity로 특정 엔티티 검증
 
 💡 TIPS
 - 작업 전후로 list_entities 호출 권장
+- get_selection으로 사용자가 클릭한 도형 확인 가능
 - get_scene_info의 bounds로 뷰포트 계산 가능`,
 
   export: `💾 EXPORT - 내보내기
@@ -233,6 +235,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   list_entities: ['get_entity로 상세 정보 확인', 'get_scene_info로 전체 현황'],
   get_entity: ['translate/rotate/scale로 변환', 'set_fill/set_stroke로 스타일링'],
   get_scene_info: ['export_svg로 내보내기', 'list_entities로 상세 목록'],
+  get_selection: ['get_entity로 선택된 도형 상세 확인', 'translate/rotate/scale로 변환'],
   export_json: ['export_svg로 SVG도 내보내기'],
   export_svg: ['작업 완료!'],
   create_group: ['translate로 그룹 전체 이동', 'rotate로 그룹 전체 회전', 'list_entities로 확인'],
@@ -379,6 +382,36 @@ async function main(): Promise<void> {
       entities: state.entities,
       sceneFile: SCENE_FILE,
     }, null, 2));
+    return;
+  }
+
+  // Selection command - read selection.json (Story 5-3)
+  if (command === 'get_selection') {
+    const SELECTION_FILE = resolve(__dirname, '../viewer/selection.json');
+    if (existsSync(SELECTION_FILE)) {
+      try {
+        const selection = JSON.parse(readFileSync(SELECTION_FILE, 'utf-8'));
+        console.log(JSON.stringify({
+          success: true,
+          selection,
+          hint: selection.last_selected
+            ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
+            : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
+        }, null, 2));
+      } catch (e) {
+        console.log(JSON.stringify({
+          success: false,
+          error: '선택 정보를 읽을 수 없습니다',
+          hint: '뷰어에서 도형을 클릭하여 선택하세요',
+        }, null, 2));
+      }
+    } else {
+      console.log(JSON.stringify({
+        success: true,
+        selection: { selected_ids: [], last_selected: null, timestamp: null },
+        hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
+      }, null, 2));
+    }
     return;
   }
 

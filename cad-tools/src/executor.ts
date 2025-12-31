@@ -20,6 +20,8 @@ export interface ToolResult {
   type?: string;
   data?: string;
   error?: string;
+  pivot?: [number, number];
+  group?: string;
 }
 
 /**

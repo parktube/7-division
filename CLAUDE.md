@@ -78,6 +78,7 @@ npx tsx cad-cli.ts delete '{"name":"temp"}'
 npx tsx cad-cli.ts list_entities
 npx tsx cad-cli.ts get_entity '{"name":"head"}'
 npx tsx cad-cli.ts get_scene_info
+npx tsx cad-cli.ts get_selection     # 뷰어에서 선택된 도형 조회
 ```
 
 **Export**
@@ -95,7 +96,9 @@ npx tsx cad-cli.ts status   # 현재 상태 확인
 ### 결과 확인
 
 - Scene은 `viewer/scene.json`에 자동 저장됩니다
-- 뷰어: `http://localhost:8000/viewer/` (viewer/ 디렉토리에서 `python -m http.server 8000`)
+- 뷰어: `http://localhost:8000/` (viewer/ 디렉토리에서 `node server.js`)
+- 사용자가 도형을 클릭하면 `viewer/selection.json`에 선택 정보 저장
+- `get_selection` 명령어로 선택된 도형 조회 가능
 
 ### 색상 형식
 
