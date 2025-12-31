@@ -850,14 +850,18 @@ async function saveSelection() {
 
   // POST to server to save selection.json (for AI to read)
   try {
-    await fetch(SELECTION_FILE, {
+    const response = await fetch(SELECTION_FILE, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(selection),
     });
+    if (!response.ok && response.status !== 501) {
+      console.warn('[Selection] Failed to save:', response.status);
+    }
   } catch (e) {
-    // Silently fail if server doesn't support POST (e.g., python -m http.server)
-    console.debug('[Selection] Server POST not available:', e.message);
+    // Server doesn't support POST (python -m http.server)
+    // Selection still works via localStorage + UI display
+    // Use: node server.js for full selection.json support
   }
 
   // Log to console for debugging
