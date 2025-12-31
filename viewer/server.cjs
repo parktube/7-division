@@ -72,16 +72,30 @@ const MAX_BODY_SIZE = 10 * 1024; // 10KB limit for selection data
 function handleSelectionPost(req, res) {
   let body = '';
   let totalSize = 0;
+  let responded = false;
+
+  req.on('error', err => {
+    if (!responded) {
+      responded = true;
+      console.error('[Selection] Request error:', err.message);
+      sendResponse(res, 500, 'application/json', JSON.stringify({ error: 'Request error' }));
+    }
+  });
+
   req.on('data', chunk => {
+    if (responded) return;
     totalSize += chunk.length;
     if (totalSize > MAX_BODY_SIZE) {
+      responded = true;
       req.destroy();
       sendResponse(res, 413, 'application/json', JSON.stringify({ error: 'Request body too large' }));
       return;
     }
     body += chunk.toString();
   });
+
   req.on('end', async () => {
+    if (responded) return;
     try {
       // Validate JSON
       const selection = JSON.parse(body);
