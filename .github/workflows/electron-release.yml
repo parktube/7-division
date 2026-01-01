@@ -88,8 +88,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
+          set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          mapfile -t files < <(find dist -type f)
+          mapfile -t files < <(
+            find dist -type f \( \
+              -name "*.dmg" -o -name "*.dmg.blockmap" \
+              -o -name "*.exe" -o -name "*.exe.blockmap" \
+              -o -name "*.AppImage" -o -name "*.AppImage.blockmap" \
+            \)
+          )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release artifacts found under dist/"
+            exit 1
+          fi
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "${files[@]}" --clobber
           else
