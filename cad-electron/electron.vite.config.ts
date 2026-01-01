@@ -9,21 +9,16 @@ const viewerScenePath = resolve(viewerRoot, 'scene.json');
 const rendererDest = resolve(__dirname, 'src/renderer');
 const rendererOutDir = resolve(__dirname, 'out/renderer');
 
-const copyTargets = [
-  { src: viewerRendererPath, dest: rendererDest },
-];
+const createCopyTargets = (dest: string) => {
+  const targets = [{ src: viewerRendererPath, dest }];
+  if (existsSync(viewerScenePath)) {
+    targets.push({ src: viewerScenePath, dest });
+  }
+  return targets;
+};
 
-if (existsSync(viewerScenePath)) {
-  copyTargets.push({ src: viewerScenePath, dest: rendererDest });
-}
-
-const outputCopyTargets = [
-  { src: viewerRendererPath, dest: rendererOutDir },
-];
-
-if (existsSync(viewerScenePath)) {
-  outputCopyTargets.push({ src: viewerScenePath, dest: rendererOutDir });
-}
+const copyTargets = createCopyTargets(rendererDest);
+const outputCopyTargets = createCopyTargets(rendererOutDir);
 
 function serveSceneJson() {
   return {
@@ -66,15 +61,11 @@ export default defineConfig({
         copySync: true,
       }),
       serveSceneJson(),
-      ...(outputCopyTargets.length > 0
-        ? [
-          copy({
-            targets: outputCopyTargets,
-            hook: 'writeBundle',
-            copySync: true,
-          }),
-        ]
-        : []),
+      copy({
+        targets: outputCopyTargets,
+        hook: 'writeBundle',
+        copySync: true,
+      }),
     ],
     server: {
       host: '127.0.0.1',

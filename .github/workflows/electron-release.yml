@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: electron-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Build (${{ matrix.os }})
@@ -18,9 +22,9 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            script: build:mac
+            script: package:mac
           - os: windows-latest
-            script: build:win
+            script: package:win
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
@@ -45,6 +49,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: cad-engine -> target
 
       - name: Install wasm-pack (drager fork)
         run: |

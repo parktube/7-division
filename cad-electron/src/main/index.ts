@@ -108,14 +108,20 @@ function createWindow(): void {
   });
 }
 
+function resolveScenePath(): string {
+  if (process.env.CAD_SCENE_PATH) {
+    return process.env.CAD_SCENE_PATH;
+  }
+  const devScenePath = join(__dirname, '../../../viewer/scene.json');
+  if (process.env.ELECTRON_RENDERER_URL && existsSync(devScenePath)) {
+    return devScenePath;
+  }
+  return join(app.getPath('userData'), 'scene.json');
+}
+
 // App lifecycle
 app.whenReady().then(async () => {
-  const devScenePath = join(__dirname, '../../../viewer/scene.json');
-  const scenePath = process.env.CAD_SCENE_PATH
-    ? process.env.CAD_SCENE_PATH
-    : (process.env.ELECTRON_RENDERER_URL && existsSync(devScenePath))
-      ? devScenePath
-      : join(app.getPath('userData'), 'scene.json');
+  const scenePath = resolveScenePath();
 
   sceneUrl = await startSceneServer(scenePath);
   createWindow();
@@ -135,6 +141,10 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   if (sceneServer) {
-    sceneServer.close();
+    sceneServer.close((err) => {
+      if (err) {
+        console.error('Failed to close scene server:', err);
+      }
+    });
   }
 });

@@ -24,20 +24,12 @@ extraResources:
       - "**/*"
   - from: ../cad-tools/package.json
     to: cad-tools/package.json
-    filter:
-      - "**/*"
   - from: ../docs/claude-code-usage.md
     to: docs/claude-code-usage.md
-    filter:
-      - "**/*"
   - from: resources/cad-cli.sh
     to: cad-cli.sh
-    filter:
-      - "**/*"
   - from: resources/cad-cli.cmd
     to: cad-cli.cmd
-    filter:
-      - "**/*"
 mac:
   icon: resources/icon.icns
   target:

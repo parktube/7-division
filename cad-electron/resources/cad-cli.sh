@@ -15,7 +15,10 @@ fi
 if [ -n "${CAD_APP_PATH:-}" ]; then
   APP_PATH="${CAD_APP_PATH}"
 else
-  APP_PATH="/Applications/${APP_NAME}.app"
+  # Get the absolute path of the directory containing this script
+  SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+  # The app path is two levels up from the script's directory (e.g., /path/to/CADViewer.app)
+  APP_PATH=$(cd "${SCRIPT_DIR}/../.." && pwd)
 fi
 
 APP_EXEC="${APP_PATH}/Contents/MacOS/${APP_NAME}"

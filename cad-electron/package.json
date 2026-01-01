@@ -1,6 +1,7 @@
 {
   "name": "cad-electron",
   "version": "0.1.0",
+  "private": true,
   "description": "CADViewer - Electron app for real-time scene.json rendering",
   "main": "./out/main/index.js",
   "scripts": {
@@ -11,10 +12,7 @@
     "package": "npm run prepare:cad-tools && npm run build && electron-builder",
     "package:mac": "npm run prepare:cad-tools && npm run build && electron-builder --mac",
     "package:win": "npm run prepare:cad-tools && npm run build && electron-builder --win",
-    "package:linux": "npm run prepare:cad-tools && npm run build && electron-builder --linux",
-    "build:mac": "npm run prepare:cad-tools && npm run build && electron-builder --mac",
-    "build:win": "npm run prepare:cad-tools && npm run build && electron-builder --win",
-    "build:linux": "npm run prepare:cad-tools && npm run build && electron-builder --linux"
+    "package:linux": "npm run prepare:cad-tools && npm run build && electron-builder --linux"
   },
   "dependencies": {},
   "devDependencies": {
