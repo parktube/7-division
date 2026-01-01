@@ -37,8 +37,8 @@ npx tsx cad-cli.ts delete '{"name":"temp"}'
 ```bash
 npx tsx cad-cli.ts create_group '{"name":"arm_group","children":["upper_arm","forearm"]}'
 npx tsx cad-cli.ts ungroup '{"name":"arm_group"}'
-npx tsx cad-cli.ts add_to_group '{"group":"body_group","child":"spine"}'
-npx tsx cad-cli.ts remove_from_group '{"group":"body_group","child":"spine"}'
+npx tsx cad-cli.ts add_to_group '{"group_name":"body_group","entity_name":"spine"}'
+npx tsx cad-cli.ts remove_from_group '{"group_name":"body_group","entity_name":"spine"}'
 ```
 
 ### Query (조회)
