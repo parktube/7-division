@@ -459,7 +459,7 @@ Scene file:
   if (args[1]) {
     try {
       params = JSON.parse(args[1]);
-    } catch (_err) {
+    } catch {
       printError(`❌ Invalid JSON: ${args[1]}`);
       process.exit(1);
     }
