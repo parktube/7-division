@@ -2,7 +2,7 @@
 
 > **Scope**: Story 6.4는 앱 빌드/패키징, Story 6.5는 Claude Code 사용 가이드로 분리
 
-Status: in-progress
+Status: done
 
 Scope: macOS/Windows (Linux 제외)
 
@@ -72,12 +72,12 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
   - [x] 3.1: npm scripts 추가 (build:win, build:mac)
   - [x] 3.2: 빌드 결과물 경로 설정 (dist/)
 
-- [ ] **Task 4: CI/CD 파이프라인** (AC: 6)
+- [x] **Task 4: CI/CD 파이프라인** (AC: 6)
   - [x] 4.1: `.github/workflows/ci.yml` - PR 시 Electron 번들 빌드 포함
   - [x] 4.2: `.github/workflows/electron-release.yml` - 태그 푸시 시 Electron 빌드
   - [x] 4.3: Windows/macOS 매트릭스 빌드 설정
   - [x] 4.4: GitHub Releases 자동 업로드 설정
-  - [ ] 4.5: 워크플로우 테스트 (테스트 PR 및 태그 생성)
+  - [x] 4.5: 워크플로우 테스트 (태그 빌드/릴리즈 확인)
   - [x] 4.6: 태그 규칙 정리 (예: electron-v0.1.0)
 
 - [x] **Task 5: 렌더링 리소스 포함** (AC: 5)
@@ -86,12 +86,12 @@ so that **복잡한 설정 없이 AI-Native CAD를 사용할 수 있다**.
   - [x] 5.3: cad-tools/dist extraResources 포함
   - [x] 5.4: cad-cli 래퍼 스크립트 포함 (sh/cmd)
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6)
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6)
   - [x] 6.1: Windows 빌드 및 설치 테스트 (설치/실행 검증 완료)
   - [x] 6.2: macOS 빌드 및 설치 테스트
   - [x] 6.3: 아이콘 표시 확인 (placeholder)
   - [x] 6.4: CAD 기능 동작 확인
-  - [ ] 6.5: CI/CD 파이프라인 동작 확인
+  - [x] 6.5: CI/CD 파이프라인 동작 확인
 
 - [ ] **Task 7: 자동 업데이트 (Optional)** (AC: 7)
   - [ ] 7.1: electron-updater 설정

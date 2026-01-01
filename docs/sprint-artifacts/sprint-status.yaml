@@ -244,7 +244,7 @@ development_status:
         depends_on: [6-2-wasm-engine-integration]
         description: "기존 viewer를 Electron Renderer에 이식"
       6-4-app-build:
-        status: in-progress
+        status: done
         title: "앱 빌드 및 패키징"
         priority: P0
         depends_on: [6-3-viewer-port]
