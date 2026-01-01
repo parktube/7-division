@@ -20,6 +20,8 @@ export interface ToolResult {
   type?: string;
   data?: string;
   error?: string;
+  pivot?: [number, number];
+  group?: string;
 }
 
 /**
@@ -151,6 +153,22 @@ export class CADExecutor {
 
         case 'delete':
           return this.deleteEntity(input);
+
+        case 'set_pivot':
+          return this.setPivot(input);
+
+        // === group ===
+        case 'create_group':
+          return this.createGroup(input);
+
+        case 'ungroup':
+          return this.ungroupEntity(input);
+
+        case 'add_to_group':
+          return this.addToGroup(input);
+
+        case 'remove_from_group':
+          return this.removeFromGroup(input);
 
         // === registry ===
         case 'list_domains':
@@ -379,6 +397,92 @@ export class CADExecutor {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name };
+  }
+
+  private setPivot(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', px: 'number', py: 'number' });
+    if (error) return { success: false, error: `set_pivot: ${error}` };
+
+    const name = input.name as string;
+    const px = input.px as number;
+    const py = input.py as number;
+
+    const result = this.scene.set_pivot(name, px, py);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name, pivot: [px, py] };
+  }
+
+  // === Group implementations ===
+
+  private createGroup(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `create_group: ${error}` };
+
+    const name = input.name as string;
+    const rawChildren = input.children;
+    if (rawChildren !== undefined && !Array.isArray(rawChildren)) {
+      return { success: false, error: 'create_group: children must be an array' };
+    }
+    const children = (rawChildren as string[] | undefined) || [];
+    const childrenJson = JSON.stringify(children);
+
+    const result = this.scene.create_group(name, childrenJson);
+    return { success: true, entity: result, type: 'group' };
+  }
+
+  private ungroupEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `ungroup: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.ungroup(name);
+
+    if (!result) {
+      return { success: false, error: `Group not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private addToGroup(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, {
+      group_name: 'string',
+      entity_name: 'string',
+    });
+    if (error) return { success: false, error: `add_to_group: ${error}` };
+
+    const groupName = input.group_name as string;
+    const entityName = input.entity_name as string;
+    const result = this.scene.add_to_group(groupName, entityName);
+
+    if (!result) {
+      return {
+        success: false,
+        error: `add_to_group: Group or entity not found (group: ${groupName}, entity: ${entityName})`,
+      };
+    }
+    return { success: true, group: groupName, entity: entityName };
+  }
+
+  private removeFromGroup(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, {
+      group_name: 'string',
+      entity_name: 'string',
+    });
+    if (error) return { success: false, error: `remove_from_group: ${error}` };
+
+    const groupName = input.group_name as string;
+    const entityName = input.entity_name as string;
+    const result = this.scene.remove_from_group(groupName, entityName);
+
+    if (!result) {
+      return {
+        success: false,
+        error: `remove_from_group: Group not found or entity not in group (group: ${groupName}, entity: ${entityName})`,
+      };
+    }
+    return { success: true, group: groupName, entity: entityName };
   }
 
   // === Registry implementations ===

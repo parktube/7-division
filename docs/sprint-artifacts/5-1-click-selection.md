@@ -1,6 +1,6 @@
 # Story 5.1: 도형 클릭 선택
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -81,53 +81,53 @@ so that **"이거 더 길게" 같은 지시를 할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: selection.json 구조 정의** (AC: 1, 3)
-  - [ ] 1.1: selection.json 스키마 정의
-  - [ ] 1.2: 구조: `{ selected_ids: string[], last_selected: string | null, timestamp: number }`
-  - [ ] 1.3: 초기 빈 파일 생성
+- [x] **Task 1: selection.json 구조 정의** (AC: 1, 3)
+  - [x] 1.1: selection.json 스키마 정의
+  - [x] 1.2: 구조: `{ selected_ids: string[], last_selected: string | null, timestamp: number }`
+  - [x] 1.3: 초기 빈 파일 생성
 
-- [ ] **Task 2: Canvas 클릭 이벤트 핸들링** (AC: 1, 3)
-  - [ ] 2.1: canvas.addEventListener('click', handler) 추가
-  - [ ] 2.2: 클릭 좌표를 Canvas 좌표로 변환 (getBoundingClientRect)
-  - [ ] 2.3: Y축 뒤집기 고려 (CAD 좌표계 vs Canvas 좌표계)
+- [x] **Task 2: Canvas 클릭 이벤트 핸들링** (AC: 1, 3)
+  - [x] 2.1: canvas.addEventListener('click', handler) 추가
+  - [x] 2.2: 클릭 좌표를 Canvas 좌표로 변환 (getBoundingClientRect)
+  - [x] 2.3: Y축 뒤집기 고려 (CAD 좌표계 vs Canvas 좌표계)
 
-- [ ] **Task 3: Hit Test 알고리즘 구현** (AC: 4, 5, 6, 7)
-  - [ ] 3.1: `hitTestCircle(click, entity) -> bool`
-  - [ ] 3.2: `hitTestRect(click, entity) -> bool`
-  - [ ] 3.3: `hitTestLine(click, entity, tolerance) -> bool`
-  - [ ] 3.4: `hitTestArc(click, entity, tolerance) -> bool`
-  - [ ] 3.5: tolerance 상수 정의 (기본 5px)
+- [x] **Task 3: Hit Test 알고리즘 구현** (AC: 4, 5, 6, 7)
+  - [x] 3.1: `hitTestCircle(click, entity) -> bool`
+  - [x] 3.2: `hitTestRect(click, entity) -> bool`
+  - [x] 3.3: `hitTestLine(click, entity, tolerance) -> bool`
+  - [x] 3.4: `hitTestArc(click, entity, tolerance) -> bool`
+  - [x] 3.5: tolerance 상수 정의 (기본 5px)
 
-- [ ] **Task 4: Transform 고려 Hit Test** (AC: 8)
-  - [ ] 4.1: 클릭 좌표를 엔티티 로컬 좌표로 변환
-  - [ ] 4.2: 역변환 행렬 계산 (또는 단순 TRS 역변환)
-  - [ ] 4.3: 계층 구조 고려 (월드 → 로컬)
-  - [ ] 4.4: 역변환 순서: 역translate → 역rotate(pivot 기준) → 역scale
-    - [ ] 4.4.1: `localX = (worldX - translate[0]) / scale[0]`
-    - [ ] 4.4.2: `localY = (worldY - translate[1]) / scale[1]`
-    - [ ] 4.4.3: 회전 적용: pivot 기준 -angle 회전
-  - [ ] 4.5: 그룹 계층 시 재귀적 역변환 적용 (부모부터 자식 순)
-  - [ ] 4.6: `toLocalCoords(worldClick, entity)` 함수 구현
-  - [ ] 4.7: 변환된 로컬 좌표로 hit test 수행
+- [x] **Task 4: Transform 고려 Hit Test** (AC: 8)
+  - [x] 4.1: 클릭 좌표를 엔티티 로컬 좌표로 변환
+  - [x] 4.2: 역변환 행렬 계산 (또는 단순 TRS 역변환)
+  - [x] 4.3: 계층 구조 고려 (월드 → 로컬)
+  - [x] 4.4: 역변환 순서: 역translate → 역rotate(pivot 기준) → 역scale
+    - [x] 4.4.1: `localX = (worldX - translate[0]) / scale[0]`
+    - [x] 4.4.2: `localY = (worldY - translate[1]) / scale[1]`
+    - [x] 4.4.3: 회전 적용: pivot 기준 -angle 회전
+  - [x] 4.5: 그룹 계층 시 재귀적 역변환 적용 (부모부터 자식 순)
+  - [x] 4.6: `toLocalCoords(worldClick, entity)` 함수 구현
+  - [x] 4.7: 변환된 로컬 좌표로 hit test 수행
 
-- [ ] **Task 5: Z-order 기반 선택** (AC: 9)
-  - [ ] 5.1: entities를 역순으로 순회 (나중 렌더링 = 위에 있음)
-  - [ ] 5.2: 첫 번째 hit된 entity 반환
+- [x] **Task 5: Z-order 기반 선택** (AC: 9)
+  - [x] 5.1: entities를 역순으로 순회 (나중 렌더링 = 위에 있음)
+  - [x] 5.2: 첫 번째 hit된 entity 반환
 
-- [ ] **Task 6: selection.json 저장** (AC: 1, 3)
-  - [ ] 6.1: 선택 시 selection.json 업데이트
-  - [ ] 6.2: 빈 공간 클릭 시 선택 정보 비우기
-  - [ ] 6.3: viewer/ 디렉토리에 저장
+- [x] **Task 6: selection.json 저장** (AC: 1, 3)
+  - [x] 6.1: 선택 시 selection.json 업데이트
+  - [x] 6.2: 빈 공간 클릭 시 선택 정보 비우기
+  - [x] 6.3: viewer/ 디렉토리에 저장
 
-- [ ] **Task 7: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-  - [ ] 7.1: 수동 테스트 - Circle 클릭
-  - [ ] 7.2: 수동 테스트 - Rect 클릭
-  - [ ] 7.3: 수동 테스트 - Line 클릭 (tolerance 확인)
-  - [ ] 7.4: 수동 테스트 - Arc 클릭
-  - [ ] 7.5: 수동 테스트 - Transform 적용된 도형
-  - [ ] 7.6: 수동 테스트 - 겹친 도형 z-order
-  - [ ] 7.7: 수동 테스트 - 빈 공간 클릭 해제
-  - [ ] 7.8: 성능 테스트 - 100ms 이내 반응
+- [x] **Task 7: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+  - [x] 7.1: 수동 테스트 - Circle 클릭
+  - [x] 7.2: 수동 테스트 - Rect 클릭
+  - [x] 7.3: 수동 테스트 - Line 클릭 (tolerance 확인)
+  - [x] 7.4: 수동 테스트 - Arc 클릭
+  - [x] 7.5: 수동 테스트 - Transform 적용된 도형
+  - [x] 7.6: 수동 테스트 - 겹친 도형 z-order
+  - [x] 7.7: 수동 테스트 - 빈 공간 클릭 해제
+  - [x] 7.8: 성능 테스트 - 100ms 이내 반응
 
 ## Dev Notes
 

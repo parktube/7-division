@@ -33,7 +33,8 @@
     "src"
   ],
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.71.2"
+    "@anthropic-ai/sdk": "^0.71.2",
+    "puppeteer": "^24.34.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

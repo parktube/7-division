@@ -68,9 +68,18 @@ npx tsx cad-cli.ts set_stroke '{"name":"body","stroke":{"color":[0,0,1,1],"width
 **Transforms (변환)**
 ```bash
 npx tsx cad-cli.ts translate '{"name":"head","dx":10,"dy":20}'
-npx tsx cad-cli.ts rotate '{"name":"arm","angle":45,"cx":0,"cy":50}'
+npx tsx cad-cli.ts rotate '{"name":"arm","angle":0.785}'  # 라디안 (≈45°)
 npx tsx cad-cli.ts scale '{"name":"body","sx":1.5,"sy":1.5}'
+npx tsx cad-cli.ts set_pivot '{"name":"arm","px":0,"py":50}'  # 회전 중심점
 npx tsx cad-cli.ts delete '{"name":"temp"}'
+```
+
+**Groups (그룹화)**
+```bash
+npx tsx cad-cli.ts create_group '{"name":"arm_group","children":["upper_arm","forearm"]}'
+npx tsx cad-cli.ts ungroup '{"name":"arm_group"}'
+npx tsx cad-cli.ts add_to_group '{"group_name":"body_group","entity_name":"spine"}'
+npx tsx cad-cli.ts remove_from_group '{"group_name":"body_group","entity_name":"spine"}'
 ```
 
 **Query (조회)**
@@ -78,12 +87,14 @@ npx tsx cad-cli.ts delete '{"name":"temp"}'
 npx tsx cad-cli.ts list_entities
 npx tsx cad-cli.ts get_entity '{"name":"head"}'
 npx tsx cad-cli.ts get_scene_info
+npx tsx cad-cli.ts get_selection     # 뷰어에서 선택된 도형 조회
 ```
 
-**Export**
+**Export & Capture**
 ```bash
 npx tsx cad-cli.ts export_json
 npx tsx cad-cli.ts export_svg
+npx tsx cad-cli.ts capture_viewport  # 뷰어 스크린샷 캡처 (PNG)
 ```
 
 **Session**
@@ -95,7 +106,11 @@ npx tsx cad-cli.ts status   # 현재 상태 확인
 ### 결과 확인
 
 - Scene은 `viewer/scene.json`에 자동 저장됩니다
-- 뷰어: `http://localhost:8000/viewer/` (viewer/ 디렉토리에서 `python -m http.server 8000`)
+- 뷰어 실행:
+  - `node server.cjs` (권장) - selection.json 저장 지원
+  - `python -m http.server 8000` - 기본 뷰어만 (선택 저장 안됨)
+- 사용자가 도형을 클릭하면 선택 상태가 UI에 표시되고 selection.json에 저장
+- `get_selection` 명령어로 선택된 도형 조회 가능
 
 ### 색상 형식
 

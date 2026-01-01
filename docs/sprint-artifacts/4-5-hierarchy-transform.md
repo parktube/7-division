@@ -1,6 +1,6 @@
 # Story 4.5: 계층적 변환 구현
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -59,48 +59,48 @@ so that **어깨를 회전하면 팔 전체가 함께 회전한다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: get_world_transform 함수 구현** (AC: 5, 7)
-  - [ ] 1.1: `get_world_transform(name: &str) -> Result<JsValue, JsValue>` 시그니처
-  - [ ] 1.2: parent_id 체인을 따라 모든 조상 변환 수집
-  - [ ] 1.3: 변환 합성 로직 (translate 누적, rotate 누적, scale 곱셈)
-  - [ ] 1.4: 결과를 JSON 형식으로 반환
+- [x] **Task 1: get_world_transform 함수 구현** (AC: 5, 7)
+  - [x] 1.1: `get_world_transform(name: &str) -> Result<JsValue, JsValue>` 시그니처
+  - [x] 1.2: parent_id 체인을 따라 모든 조상 변환 수집
+  - [x] 1.3: 변환 합성 로직 (translate 누적, rotate 누적, scale 곱셈)
+  - [x] 1.4: 결과를 JSON 형식으로 반환
 
-- [ ] **Task 2: 변환 합성 유틸리티** (AC: 4, 6)
-  - [ ] 2.1: `compose_transforms(parent: &Transform, child: &Transform) -> Transform` 함수
-  - [ ] 2.2: translate: parent.translate + child.translate (parent 회전 적용 시 회전 후 더하기)
-  - [ ] 2.3: rotate: parent.rotate + child.rotate
-  - [ ] 2.4: scale: parent.scale * child.scale (원소별 곱셈)
-  - [ ] 2.5: pivot 처리 (로컬 pivot은 변환 순서에서 고려)
+- [x] **Task 2: 변환 합성 유틸리티** (AC: 4, 6)
+  - [x] 2.1: `compose_transforms(parent: &Transform, child: &Transform) -> Transform` 함수
+  - [x] 2.2: translate: parent.translate + child.translate (parent 회전 적용 시 회전 후 더하기)
+  - [x] 2.3: rotate: parent.rotate + child.rotate
+  - [x] 2.4: scale: parent.scale * child.scale (원소별 곱셈)
+  - [x] 2.5: pivot 처리 (로컬 pivot은 변환 순서에서 고려)
 
-- [ ] **Task 3: 아키텍처 결정 - TRS vs Matrix** (AC: 4, 8)
-  - [ ] 3.1: MVP에서는 TRS 구조 유지, 단순 합성 로직 사용
-  - [ ] 3.2: 변환 순서: Scale → Rotate (pivot 기준) → Translate
-  - [ ] 3.3: 문서화: 복잡한 변환 시 한계점 명시
+- [x] **Task 3: 아키텍처 결정 - TRS vs Matrix** (AC: 4, 8)
+  - [x] 3.1: MVP에서는 TRS 구조 유지, 단순 합성 로직 사용
+  - [x] 3.2: 변환 순서: Scale → Rotate (pivot 기준) → Translate
+  - [x] 3.3: 문서화: 복잡한 변환 시 한계점 명시
 
-- [ ] **Task 4: WASM 바인딩** (AC: 5)
-  - [ ] 4.1: `#[wasm_bindgen]` 매크로로 get_world_transform 노출
-  - [ ] 4.2: 반환값은 JSON 문자열 또는 JsValue
+- [x] **Task 4: WASM 바인딩** (AC: 5)
+  - [x] 4.1: `#[wasm_bindgen]` 매크로로 get_world_transform 노출
+  - [x] 4.2: 반환값은 JSON 문자열 또는 JsValue
 
-- [ ] **Task 5: CLI 통합** (AC: 5)
-  - [ ] 5.1: cad-cli.ts에 `get_world_transform` 명령어 추가
-  - [ ] 5.2: 결과를 사람이 읽기 좋은 형식으로 출력
+- [x] **Task 5: CLI 통합** (AC: 5)
+  - [x] 5.1: cad-cli.ts에 `get_world_transform` 명령어 추가
+  - [x] 5.2: 결과를 사람이 읽기 좋은 형식으로 출력
 
-- [ ] **Task 6: 렌더러 업데이트 (Viewer)** (AC: 1, 2, 3, 4, 8)
-  - [ ] 6.1: renderer.js에서 계층 구조 파싱 로직 추가
-  - [ ] 6.2: 렌더링 순서: 부모 먼저, 자식 나중 (Canvas context 상태 스택)
-  - [ ] 6.3: ctx.save() / ctx.restore()로 변환 상태 관리
-  - [ ] 6.4: Note: 상세 구현은 Story 4-6에서
+- [x] **Task 6: 렌더러 업데이트 (Viewer)** (AC: 1, 2, 3, 4, 8)
+  - [x] 6.1: renderer.js에서 계층 구조 파싱 로직 추가
+  - [x] 6.2: 렌더링 순서: 부모 먼저, 자식 나중 (Canvas context 상태 스택)
+  - [x] 6.3: ctx.save() / ctx.restore()로 변환 상태 관리
+  - [x] 6.4: Note: 상세 구현은 Story 4-6에서
 
-- [ ] **Task 7: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
-  - [ ] 7.1: Rust 단위 테스트 - 그룹 translate 전파
-  - [ ] 7.2: Rust 단위 테스트 - 그룹 rotate 전파
-  - [ ] 7.3: Rust 단위 테스트 - 그룹 scale 전파
-  - [ ] 7.4: Rust 단위 테스트 - 중첩 그룹 변환 합성
-  - [ ] 7.5: Rust 단위 테스트 - get_world_transform 정확성
-  - [ ] 7.6: Rust 단위 테스트 - 자식 개별 변환 + 부모 변환
-  - [ ] 7.7: Rust 단위 테스트 - export_json 로컬 변환 확인
-  - [ ] 7.8: WASM 빌드 및 Node.js 통합 테스트
-  - [ ] 7.9: Viewer에서 시각적 검증 테스트
+- [x] **Task 7: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
+  - [x] 7.1: Rust 단위 테스트 - 그룹 translate 전파
+  - [x] 7.2: Rust 단위 테스트 - 그룹 rotate 전파
+  - [x] 7.3: Rust 단위 테스트 - 그룹 scale 전파
+  - [x] 7.4: Rust 단위 테스트 - 중첩 그룹 변환 합성
+  - [x] 7.5: Rust 단위 테스트 - get_world_transform 정확성
+  - [x] 7.6: Rust 단위 테스트 - 자식 개별 변환 + 부모 변환
+  - [x] 7.7: Rust 단위 테스트 - export_json 로컬 변환 확인
+  - [x] 7.8: WASM 빌드 및 Node.js 통합 테스트
+  - [x] 7.9: Viewer에서 시각적 검증 테스트
 
 ## Dev Notes
 

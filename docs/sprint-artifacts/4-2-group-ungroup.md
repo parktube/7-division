@@ -1,6 +1,6 @@
 # Story 4.2: Group 해제 기능
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -62,40 +62,40 @@ so that **그룹 구조를 유연하게 변경할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: ungroup 함수 구현** (AC: 1, 2, 3, 5)
-  - [ ] 1.1: `ungroup(name: &str) -> Result<bool, JsValue>` 시그니처
-  - [ ] 1.2: name으로 Entity 조회 (has_entity 로직 재사용)
-  - [ ] 1.3: Entity가 존재하지 않으면 Ok(false) 반환
-  - [ ] 1.4: Entity가 Group 타입이 아니면 에러 반환
-  - [ ] 1.5: 그룹의 children 순회하여 각 자식의 parent_id를 None으로 설정
-  - [ ] 1.6: 그룹 Entity를 Scene.entities에서 제거 (remove_entity 로직)
-  - [ ] 1.7: Ok(true) 반환
+- [x] **Task 1: ungroup 함수 구현** (AC: 1, 2, 3, 5)
+  - [x] 1.1: `ungroup(name: &str) -> Result<bool, JsValue>` 시그니처
+  - [x] 1.2: name으로 Entity 조회 (has_entity 로직 재사용)
+  - [x] 1.3: Entity가 존재하지 않으면 Ok(false) 반환
+  - [x] 1.4: Entity가 Group 타입이 아니면 에러 반환
+  - [x] 1.5: 그룹의 children 순회하여 각 자식의 parent_id를 None으로 설정
+  - [x] 1.6: 그룹 Entity를 Scene.entities에서 제거 (remove_entity 로직)
+  - [x] 1.7: Ok(true) 반환
 
-- [ ] **Task 2: 중첩 그룹 처리** (AC: 4)
-  - [ ] 2.1: 직접 자식만 parent_id 해제 (재귀 없음)
-  - [ ] 2.2: 자식 그룹의 구조는 그대로 유지 확인
+- [x] **Task 2: 중첩 그룹 처리** (AC: 4)
+  - [x] 2.1: 직접 자식만 parent_id 해제 (재귀 없음)
+  - [x] 2.2: 자식 그룹의 구조는 그대로 유지 확인
 
-- [ ] **Task 3: 월드 변환 유지 (Optional)** (AC: 6)
-  - [ ] 3.1: get_world_transform 함수 구현 (부모 변환 합성)
-  - [ ] 3.2: ungroup 시 자식에 월드 변환 적용 옵션
+- [x] **Task 3: 월드 변환 유지 (Optional)** (AC: 6)
+  - [x] 3.1: get_world_transform 함수 구현 (부모 변환 합성)
+  - [x] 3.2: ungroup 시 자식에 월드 변환 적용 옵션
   - Note: MVP Stretch Goal - 시간 부족 시 스킵 가능
 
-- [ ] **Task 4: WASM 바인딩** (AC: 1, 2)
-  - [ ] 4.1: `#[wasm_bindgen]` 매크로로 ungroup 노출
-  - [ ] 4.2: name 파라미터는 `&str`로 직접 받기
+- [x] **Task 4: WASM 바인딩** (AC: 1, 2)
+  - [x] 4.1: `#[wasm_bindgen]` 매크로로 ungroup 노출
+  - [x] 4.2: name 파라미터는 `&str`로 직접 받기
 
-- [ ] **Task 5: CLI 통합** (AC: 1, 2)
-  - [ ] 5.1: cad-cli.ts에 `ungroup` 명령어 추가
-  - [ ] 5.2: JSON 파라미터 파싱: `'{\"name\":\"left_arm\"}'`
+- [x] **Task 5: CLI 통합** (AC: 1, 2)
+  - [x] 5.1: cad-cli.ts에 `ungroup` 명령어 추가
+  - [x] 5.2: JSON 파라미터 파싱: `'{\"name\":\"left_arm\"}'`
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 7)
-  - [ ] 6.1: Rust 단위 테스트 - 기본 그룹 해제
-  - [ ] 6.2: Rust 단위 테스트 - 존재하지 않는 그룹 ID
-  - [ ] 6.3: Rust 단위 테스트 - 그룹이 아닌 Entity에 호출
-  - [ ] 6.4: Rust 단위 테스트 - 중첩 그룹 해제
-  - [ ] 6.5: Rust 단위 테스트 - 빈 그룹 해제
-  - [ ] 6.6: Rust 단위 테스트 - export_json 반영 확인
-  - [ ] 6.7: WASM 빌드 및 Node.js 통합 테스트
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 7)
+  - [x] 6.1: Rust 단위 테스트 - 기본 그룹 해제
+  - [x] 6.2: Rust 단위 테스트 - 존재하지 않는 그룹 ID
+  - [x] 6.3: Rust 단위 테스트 - 그룹이 아닌 Entity에 호출
+  - [x] 6.4: Rust 단위 테스트 - 중첩 그룹 해제
+  - [x] 6.5: Rust 단위 테스트 - 빈 그룹 해제
+  - [x] 6.6: Rust 단위 테스트 - export_json 반영 확인
+  - [x] 6.7: WASM 빌드 및 Node.js 통합 테스트
 
 ## Dev Notes
 

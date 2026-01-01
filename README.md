@@ -6,14 +6,24 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 ## Project Status
 
-**현재 단계**: Phase 1 구현 준비 완료
+**현재 단계**: MVP 구현 완료 (Epic 1~5 done, Epic 6 진행 중)
 
-| 문서 | 상태 |
-|------|------|
-| [PRD](docs/prd.md) | ✅ 완료 |
-| [Architecture](docs/architecture.md) | ✅ 완료 |
-| [Epics & Stories](docs/epics.md) | ✅ 완료 |
-| Sprint Stories | ✅ 14개 ready-for-dev |
+| Epic | 상태 | 설명 |
+|------|------|------|
+| Epic 1 | ✅ 완료 | 기초 도형 생성 (Line, Circle, Rect, Arc + Style) |
+| Epic 2 | ✅ 완료 | 결과 확인 (JSON/SVG Export, Canvas 2D Viewer) |
+| Epic 3 | ✅ 완료 | 도형 편집 (Transform, Delete, Tool Use Foundation) |
+| Epic 4 | ✅ 완료 | 그룹화 및 피봇 (Group, Pivot, 계층적 변환) |
+| Epic 5 | ✅ 완료 | Selection UI (클릭 선택, 하이라이트, AI 전달) |
+| Epic 6 | 🚧 진행중 | Electron 통합 (앱 패키징) |
+
+### 주요 성과
+
+- **WASM CAD 엔진**: Rust로 작성된 고성능 CAD 커널
+- **Direct-First Architecture**: MCP 없이 Claude Code가 직접 WASM 호출 (< 1ms)
+- **실시간 뷰어**: Canvas 2D 기반 polling viewer + selection UI
+- **Viewport 캡처**: Puppeteer로 Claude가 직접 뷰어 상태 확인 가능
+- **계층적 그룹/피봇**: 복잡한 캐릭터 포즈 편집 지원
 
 ## Quick Start
 
@@ -42,17 +52,26 @@ git clone git@github.com:parktube/7-division.git
 cd 7-division
 ```
 
-### Build & Run (Phase 1 완료 후)
+### Build & Run
 
 ```bash
-# CAD Engine 빌드 (release)
+# 1. CAD Engine 빌드 (WASM)
 cd cad-engine
 wasm-pack build --target nodejs --release
 
-# Viewer 실행 (정적 서버)
+# 2. TypeScript 도구 설치
+cd ../cad-tools
+npm install
+
+# 3. Viewer 서버 실행 (selection 지원)
 cd ../viewer
-python -m http.server 8000
+node server.cjs
 # http://localhost:8000 접속
+
+# 4. CAD CLI 사용
+cd ../cad-tools
+npx tsx cad-cli.ts draw_circle '{"name":"test","x":0,"y":0,"radius":50}'
+npx tsx cad-cli.ts capture_viewport  # 뷰어 스크린샷 캡처
 ```
 
 ## Development Environment
@@ -129,12 +148,31 @@ Rust CAD 엔진
 - 브라우저는 순수 **뷰어** 역할만 (검증 UI)
 - **오프라인 우선** - 서버 의존 없음
 
-### Phase 1 Scope
+### MVP Scope (Phase 1)
 
-- 기초 도형: `line`, `circle`, `rect`
-- 변환: `translate`, `rotate`, `scale`, `delete`
-- 출력: `scene.json`, `SVG`
-- 뷰어: Canvas 2D + 500ms polling
+**도형 (Primitives)**
+- `line`, `circle`, `rect`, `arc`
+- Style: `stroke`, `fill` (RGBA)
+
+**변환 (Transforms)**
+- `translate`, `rotate`, `scale`, `delete`
+- `set_pivot` - 회전/스케일 중심점 설정
+
+**그룹화 (Groups)**
+- `create_group`, `ungroup`
+- `add_to_group`, `remove_from_group`
+- 계층적 변환 전파
+
+**출력 & 조회**
+- `export_json`, `export_svg`
+- `list_entities`, `get_entity`, `get_scene_info`
+- `get_selection` - 뷰어에서 선택된 도형
+- `capture_viewport` - 뷰어 스크린샷 캡처
+
+**뷰어**
+- Canvas 2D + 500ms polling
+- 클릭 선택 + 바운딩박스 하이라이트
+- 그룹 선택 지원
 
 ## Documentation
 
@@ -148,15 +186,18 @@ Rust CAD 엔진
 
 ## Sprint Status
 
-현재 스프린트: **Phase 1 Implementation**
+현재 스프린트 상태: `docs/sprint-artifacts/sprint-status.yaml`
 
-```
-docs/sprint-artifacts/sprint-status.yaml
-```
+| Epic | Stories | 상태 |
+|------|---------|------|
+| Epic 1 | 9 stories | ✅ done |
+| Epic 2 | 3 stories | ✅ done |
+| Epic 3 | 10 stories | ✅ done |
+| Epic 4 | 6 stories | ✅ done |
+| Epic 5 | 3 stories | ✅ done |
+| Epic 6 | 6 stories | 📝 drafted |
 
-**Epic 1** - 기초 도형 생성 (5 stories) - `in-progress`
-**Epic 2** - 결과 확인 (3 stories) - `backlog`
-**Epic 3** - 도형 편집 (6 stories) - `backlog`
+**총 31개 스토리 완료, 6개 대기 중**
 
 ## Contributing
 
@@ -173,4 +214,4 @@ TBD
 
 ---
 
-*작성: 2025-12-17*
+*작성: 2025-12-17 | 최종 업데이트: 2025-12-31*

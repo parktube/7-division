@@ -156,41 +156,41 @@ development_status:
 
   # Epic 4: 그룹화 및 피봇 - 도형들을 그룹화하고 피봇을 설정하여 포즈를 변경할 수 있다
   epic-4:
-    status: in-progress
+    status: done
     title: "그룹화 및 피봇"
     stories:
       4-1-group-creation:
-        status: ready-for-dev
+        status: done
         title: "Group 생성 기능"
         priority: P0
         depends_on: [1-2-scene-class]
         description: "여러 도형을 그룹으로 묶을 수 있다"
       4-2-group-ungroup:
-        status: drafted
+        status: done
         title: "Group 해제 기능"
         priority: P0
         depends_on: [4-1-group-creation]
         description: "그룹을 해제하여 자식들을 독립 엔티티로 만들 수 있다"
       4-3-group-child-management:
-        status: drafted
+        status: done
         title: "Group 자식 관리"
         priority: P0
         depends_on: [4-1-group-creation]
         description: "그룹에 자식을 추가하거나 제거할 수 있다"
       4-4-pivot-setting:
-        status: drafted
+        status: done
         title: "Pivot 설정 기능"
         priority: P0
         depends_on: [4-1-group-creation]
         description: "도형/그룹의 회전 중심점을 설정할 수 있다"
       4-5-hierarchy-transform:
-        status: drafted
+        status: done
         title: "계층적 변환 구현"
         priority: P0
         depends_on: [4-1-group-creation, 3-1-translate]
         description: "부모 그룹의 변환이 자식들에게 전파된다"
       4-6-group-rendering:
-        status: drafted
+        status: done
         title: "그룹화된 도형 렌더링"
         priority: P0
         depends_on: [4-5-hierarchy-transform, 2-3-rendering]
@@ -198,23 +198,23 @@ development_status:
 
   # Epic 5: Selection UI - 사용자가 클릭으로 도형을 선택하고 AI가 인식할 수 있다
   epic-5:
-    status: backlog
+    status: done
     title: "Selection UI"
     stories:
       5-1-click-selection:
-        status: drafted
+        status: done
         title: "도형 클릭 선택"
         priority: P0
         depends_on: [2-2-canvas-2d-viewer]
         description: "Canvas에서 도형을 클릭하여 선택할 수 있다"
       5-2-selection-highlight:
-        status: drafted
+        status: done
         title: "선택 상태 시각적 표시"
         priority: P0
         depends_on: [5-1-click-selection]
         description: "선택된 도형이 시각적으로 구분된다"
       5-3-selection-info-to-ai:
-        status: drafted
+        status: done
         title: "선택 정보 AI 전달"
         priority: P0
         depends_on: [5-1-click-selection]
