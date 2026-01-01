@@ -8,6 +8,7 @@
     "build": "wasm-pack build cad-engine --target nodejs",
     "build:release": "wasm-pack build cad-engine --target nodejs --release",
     "build:tools": "cd cad-tools && npm run build",
+    "capture:screen": "node scripts/capture-screen.js",
     "test": "cargo test --manifest-path cad-engine/Cargo.toml",
     "test:tools": "cd cad-tools && npm run test",
     "test:wasm": "npm run build:release && node test-wasm.mjs",

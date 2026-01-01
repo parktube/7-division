@@ -542,14 +542,14 @@ Entity
 
 ### Electron 앱
 
-> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소 (Story 6-4, 6-5 제거)
+> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소 (채팅 UI 제거, Claude Code 사용 가이드 포함)
 
 - [ ] Electron 프로젝트 구조
 - [ ] WASM 엔진 통합
 - [ ] Canvas 2D Viewer 이식
-- [ ] ~~채팅 UI~~ → Claude Code 사용 (CLAUDE.md 문서화 완료)
+- [ ] ~~채팅 UI~~ → Claude Code 사용 가이드 (Story 6-5)
 - [ ] ~~API 키 입력~~ → Claude Code가 관리
-- [ ] Windows/Mac/Linux 빌드
+- [ ] Windows/Mac 빌드 (Story 6-4, Linux 제외)
 
 ### 검증 시나리오 통과
 

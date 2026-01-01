@@ -165,6 +165,13 @@ export class CADExecutor {
         case 'request_tool':
           return this.requestToolHandler(input);
 
+        // === session ===
+        case 'reset':
+          return this.resetScene();
+
+        case 'status':
+          return this.getSceneInfo();
+
         // === export ===
         case 'export_json':
           return this.exportJson();
@@ -319,6 +326,29 @@ export class CADExecutor {
   private getSceneInfo(): ToolResult {
     const data = this.scene.get_scene_info();
     return { success: true, type: 'scene_info', data };
+  }
+
+  // === Session implementations ===
+
+  private resetScene(): ToolResult {
+    try {
+      const listJson = this.scene.list_entities();
+      let cleared = 0;
+      const list = JSON.parse(listJson);
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (item && typeof item.name === 'string') {
+            if (this.scene.delete(item.name)) {
+              cleared += 1;
+            }
+          }
+        }
+      }
+      return { success: true, type: 'reset', data: JSON.stringify({ cleared }) };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { success: false, error: `reset: ${message}` };
+    }
   }
 
   // === Transform implementations ===

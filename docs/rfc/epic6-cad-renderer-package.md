@@ -123,11 +123,12 @@ scene.json 인터페이스는 유지 (외부 Claude Code 연동 필요)
 | Story 6-1 | Electron + Vite 셋업 | renderer.js 복사 설정 포함 |
 | Story 6-2 | scene.json 파일 감시 | |
 | Story 6-3 | Canvas 렌더링 | 복사된 renderer.js 사용 |
-| Story 6-6 | 앱 빌드 및 패키징 | |
+| Story 6-4 | 앱 빌드 및 패키징 | |
+| Story 6-5 | Claude Code 사용 가이드 | |
 
-**삭제된 항목** (Option B-1 채택으로 불필요):
-- ~~Story 6-4: 채팅 UI~~
-- ~~Story 6-5: API 키 관리~~
+**범위 제외** (Option B-1 채택):
+- 채팅 UI
+- API 키 관리 UI
 
 ## 결론
 

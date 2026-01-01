@@ -1,0 +1,69 @@
+appId: com.7division.cad-viewer
+productName: CADViewer
+executableName: CADViewer
+copyright: Copyright © 2026 7division
+directories:
+  buildResources: resources
+  output: dist
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.*'
+  - '!{.eslintignore,.eslintrc.*,.prettierrc.*,tsconfig.*}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+asarUnpack:
+  - resources/**
+extraResources:
+  - from: ../cad-engine/pkg
+    to: cad-engine/pkg
+    filter:
+      - "**/*"
+  - from: ../cad-tools/dist
+    to: cad-tools/dist
+    filter:
+      - "**/*"
+  - from: ../cad-tools/package.json
+    to: cad-tools/package.json
+    filter:
+      - "**/*"
+  - from: ../docs/claude-code-usage.md
+    to: docs/claude-code-usage.md
+    filter:
+      - "**/*"
+  - from: resources/cad-cli.sh
+    to: cad-cli.sh
+    filter:
+      - "**/*"
+  - from: resources/cad-cli.cmd
+    to: cad-cli.cmd
+    filter:
+      - "**/*"
+mac:
+  icon: resources/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.graphics-design
+  entitlementsInherit: resources/entitlements.mac.plist
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  artifactName: ${productName}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  maintainer: 7division
+  category: Graphics
+  icon: resources/icon.png

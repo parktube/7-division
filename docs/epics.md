@@ -1313,7 +1313,7 @@ So that **"이거" 같은 지시어를 이해할 수 있다**.
 # Epic 6: "독립 실행 앱" - Electron 통합
 
 > **2025-12-30 추가**: MVP 범위 확장
-> **2025-12-30 범위 조정**: PR #12 논의 결과, Claude Code 통합 (Option B) 선택. Story 6-4, 6-5 범위 대폭 축소.
+> **2025-12-30 범위 조정**: PR #12 논의 결과, Claude Code 통합 (Option B) 선택. 채팅 UI 대신 Claude Code 사용 가이드로 전환.
 
 **Epic Goal**: WASM CAD 엔진 + 뷰어를 Electron 앱으로 패키징하고, Claude Code를 AI 인터페이스로 사용한다.
 
@@ -1330,8 +1330,8 @@ PR #12에서 parktube님 제안으로 두 옵션 비교 후 **Option B (Claude C
 |------|-------------------|--------------------------|
 | 대상 사용자 | 일반 사용자 | 개발자 |
 | 개발 비용 | 높음 | 낮음 |
-| Story 6-4 | 전체 구현 | CLAUDE.md 문서화만 |
-| Story 6-5 | 전체 구현 | Claude Code에 위임 |
+| Story 6-4 | 앱 빌드 및 패키징 | 앱 빌드 및 패키징 |
+| Story 6-5 | 채팅 UI + API 키 관리 | Claude Code 사용 가이드 |
 
 ### Feasibility & Risk Analysis
 
@@ -1361,7 +1361,7 @@ So that **WASM과 Viewer를 데스크톱 앱으로 빌드할 수 있다**.
 
 **Acceptance Criteria:**
 
-**Given** 빈 electron-app 디렉토리
+**Given** cad-electron 디렉토리
 **When** 프로젝트 셋업 완료
 **Then** `npm run dev`로 개발 모드 실행 가능
 **And** `npm run build`로 패키징 가능
@@ -1377,25 +1377,26 @@ So that **WASM과 Viewer를 데스크톱 앱으로 빌드할 수 있다**.
 
 ---
 
-## Story 6.2: WASM 엔진 통합
+## Story 6.2: scene.json 파일 감시
 
 As a **개발자**,
-I want **WASM CAD 엔진을 Electron Renderer에서 직접 로드하도록**,
-So that **채팅에서 CAD 명령을 실행할 수 있다**.
+I want **Electron Renderer가 scene.json을 폴링하도록**,
+So that **cad-cli 결과가 즉시 반영된다**.
 
 **Acceptance Criteria:**
 
-**Given** Electron 앱이 시작된 상태
-**When** WASM 로딩
-**Then** CAD 엔진이 정상적으로 초기화된다
-**And** 5초 이내에 앱이 시작된다 (NFR16)
+**Given** Electron 앱이 실행 중
+**When** `viewer/scene.json`이 갱신됨
+**Then** Renderer가 `/scene.json`을 주기적으로 읽는다
+**And** Canvas/Scene Info가 갱신된다
 
 **Technical Notes:**
 
-- Renderer에서 WASM 직접 로드 (웹 브라우저와 동일)
-- IPC 불필요 - 메모리에서 직접 렌더링
+- dev server에서 `/scene.json`을 `viewer/scene.json`으로 라우팅
+- renderer.js의 500ms polling 유지
+- IPC 불필요 (파일 기반 인터페이스 유지)
 
-**Requirements Fulfilled:** FR29 (부분), NFR16
+**Requirements Fulfilled:** FR29 (부분)
 
 ---
 
@@ -1410,33 +1411,21 @@ So that **CAD 결과를 앱 내에서 확인할 수 있다**.
 **Given** Electron 앱 실행
 **When** CAD 명령 실행 후
 **Then** Renderer의 Canvas에 도형이 렌더링된다
-**And** Selection UI가 동작한다
+**And** Scene Info 패널이 갱신된다
 
 **Technical Notes:**
 
-- 기존 viewer/ 코드 재사용
-- 메모리에서 직접 렌더링 (파일 폴링 불필요)
+- 기존 viewer/ 코드 재사용 (index.html + renderer.js)
+- 파일 폴링 기반 렌더링 유지 (Story 6.2)
 
 **Requirements Fulfilled:** FR29 (부분)
 
 ---
 
-## ~~Story 6.4, 6.5: 삭제됨~~
-
-> **2025-12-30**: PR #12 논의 결과, Claude Code 통합 방향으로 결정.
-> Story 6-4 (채팅 UI), 6-5 (API 키 관리)는 Claude Code에 위임되어 삭제됨.
->
-> - ✅ CLAUDE.md에 cad-cli.ts 사용법 문서화 완료
-> - ✅ cad-cli.ts 오프라인 동작 이미 가능
-
----
-
 ## Story 6.4: 앱 빌드 및 패키징
 
-> **번호 변경**: 기존 Story 6.6 → Story 6.4 (Story 6.4, 6.5 삭제로 인해)
-
 As a **개발자**,
-I want **Windows/Mac/Linux용 앱을 빌드하도록**,
+I want **Windows/Mac용 앱을 빌드하도록**,
 So that **사용자가 다운로드하여 실행할 수 있다**.
 
 **Acceptance Criteria:**
@@ -1444,7 +1433,7 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 **AC1:** 로컬 빌드
 **Given** 모든 기능 구현 완료 (Story 6.1 ~ 6.3)
 **When** `npm run build` 실행
-**Then** Windows (.exe), Mac (.dmg), Linux (.AppImage) 파일이 생성된다
+**Then** Windows (.exe), Mac (.dmg) 파일이 생성된다
 
 **AC2:** CI/CD 파이프라인
 **Given** GitHub Actions 워크플로우 설정 완료
@@ -1457,15 +1446,39 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 - WASM 파일을 리소스로 번들링
 - 앱 크기 목표: ~100MB (채팅 UI 제거로 축소됨)
 - CI/CD: GitHub Actions 기반 (ADR-MVP-010)
+- Linux 배포는 제외 (추후)
 
 **Requirements Fulfilled:** FR29
+
+---
+
+## Story 6.5: Claude Code 사용 가이드
+
+As a **개발자/사용자**,
+I want **Claude Code로 CAD CLI를 사용하는 방법을 문서화하도록**,
+So that **Electron 앱에서 scene.json 기반 렌더링을 쉽게 검증할 수 있다**.
+
+**Acceptance Criteria:**
+
+**Given** 배포용 가이드 문서
+**When** 사용자가 가이드를 확인
+**Then** `cad-cli` 실행 방법과 `scene.json` 경로가 명시된다
+**And** `help`/`describe`로 명령어를 확인하는 방법이 포함된다
+**And** Electron 앱 갱신 확인 절차가 포함된다
+
+**Technical Notes:**
+
+- 배포용 가이드에 사용자 CLAUDE.md 스니펫 제공
+- 수동 QA 로그를 참조하여 검증 흐름 제공
+
+**Requirements Fulfilled:** FR29 (부분)
 
 ---
 
 # Summary
 
 > **2025-12-30 업데이트**: MVP 범위 확장으로 Epic 4, 5, 6 추가
-> **2025-12-30 범위 조정**: Epic 6 Claude Code 통합 방향 선택 (PR #12). Story 6-4, 6-5 삭제.
+> **2025-12-30 범위 조정**: Epic 6 Claude Code 통합 방향 선택 (PR #12). 채팅 UI 대신 Claude Code 사용 가이드로 전환.
 
 ## Epic & Story 총괄
 
@@ -1476,8 +1489,8 @@ So that **사용자가 다운로드하여 실행할 수 있다**.
 | Epic 3: 변환과 Export | 7 | FR5, FR6, FR7, FR8, FR10, FR13, FR15 | Medium | ✅ 완료 |
 | Epic 4: 그룹화 및 피봇 | 6 | FR21, FR22, FR23, FR24, FR25 | High | ⬜ MVP |
 | Epic 5: Selection UI | 3 | FR26, FR27, FR28 | Medium | ⬜ MVP |
-| Epic 6: Electron 앱 | **4** | FR29 | Low (축소됨) | ⬜ MVP |
-| **Total** | **32** | **29 FRs** | | |
+| Epic 6: Electron 앱 | **5** | FR29 | Low (축소됨) | ⬜ MVP |
+| **Total** | **33** | **29 FRs** | | |
 
 ## FR Coverage 검증
 

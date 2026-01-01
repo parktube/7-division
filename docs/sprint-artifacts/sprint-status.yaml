@@ -220,47 +220,41 @@ development_status:
         depends_on: [5-1-click-selection]
         description: "사용자가 선택한 도형 정보를 AI가 받을 수 있다"
 
-  # Epic 6: Electron 통합 - WASM CAD 엔진 + 뷰어 + 채팅 UI를 단일 앱으로 패키징
+  # Epic 6: Electron 통합 - WASM CAD 엔진 + 뷰어 + Claude Code 사용 가이드
   epic-6:
     status: backlog
     title: "Electron 통합"
     stories:
       6-1-electron-project-setup:
-        status: drafted
+        status: done
         title: "Electron 프로젝트 셋업"
         priority: P0
         depends_on: []
         description: "Electron + Vite 프로젝트 구성"
       6-2-wasm-engine-integration:
-        status: drafted
-        title: "WASM 엔진 통합"
+        status: done
+        title: "scene.json 파일 감시"
         priority: P0
         depends_on: [6-1-electron-project-setup]
-        description: "WASM CAD 엔진을 Electron에서 로드"
+        description: "renderer가 scene.json을 폴링하여 상태를 갱신"
       6-3-viewer-port:
-        status: drafted
+        status: done
         title: "Canvas 2D Viewer 이식"
         priority: P0
         depends_on: [6-2-wasm-engine-integration]
         description: "기존 viewer를 Electron Renderer에 이식"
-      6-4-chat-ui:
-        status: drafted
-        title: "채팅 UI 구현"
-        priority: P0
-        depends_on: [6-3-viewer-port]
-        description: "앱 내에서 AI와 대화할 수 있다"
-      6-5-api-key-management:
-        status: drafted
-        title: "API 키 입력 및 관리"
-        priority: P0
-        depends_on: [6-4-chat-ui]
-        description: "사용자 API 키 입력 및 안전한 저장"
-      6-6-app-build:
-        status: drafted
+      6-4-app-build:
+        status: in-progress
         title: "앱 빌드 및 패키징"
         priority: P0
-        depends_on: [6-5-api-key-management]
-        description: "Windows/Mac/Linux용 앱 빌드"
+        depends_on: [6-3-viewer-port]
+        description: "Windows/Mac용 앱 빌드"
+      6-5-claude-code-usage:
+        status: done
+        title: "Claude Code 사용 가이드"
+        priority: P0
+        depends_on: [6-4-app-build]
+        description: "Claude Code로 CAD CLI를 사용하는 흐름 문서화"
 
 # Sprint Planning Notes
 notes:
