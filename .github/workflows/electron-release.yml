@@ -21,8 +21,6 @@ jobs:
             script: build:mac
           - os: windows-latest
             script: build:win
-          - os: ubuntu-latest
-            script: build:linux
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
@@ -67,7 +65,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cad-electron-${{ matrix.os }}
-          path: cad-electron/dist/**
+          path: |
+            cad-electron/dist/*.dmg
+            cad-electron/dist/*setup.exe
           if-no-files-found: error
 
   release:
@@ -90,13 +90,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
-          mapfile -t files < <(
-            find dist -type f \( \
-              -name "*.dmg" -o -name "*.dmg.blockmap" \
-              -o -name "*.exe" -o -name "*.exe.blockmap" \
-              -o -name "*.AppImage" -o -name "*.AppImage.blockmap" \
-            \)
-          )
+          mapfile -t files < <(find dist -type f \( -name "*.dmg" -o -name "*setup.exe" \))
           if [ "${#files[@]}" -eq 0 ]; then
             echo "No release artifacts found under dist/"
             exit 1
