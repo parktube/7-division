@@ -1,6 +1,6 @@
 # Story 5.3: 선택 정보 AI 전달
 
-Status: backlog
+Status: done
 
 ## Story
 
@@ -55,38 +55,38 @@ so that **"이거" 같은 지시어를 이해할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: get_selection CLI 명령어** (AC: 1, 6)
-  - [ ] 1.1: cad-cli.ts에 `get_selection` 명령어 추가
-  - [ ] 1.2: viewer/selection.json 파일 읽기
-  - [ ] 1.3: 파일이 없으면 `{ selected_ids: [], last_selected: null }` 반환
-  - [ ] 1.4: JSON 형식으로 출력
+- [x] **Task 1: get_selection CLI 명령어** (AC: 1, 6)
+  - [x] 1.1: cad-cli.ts에 `get_selection` 명령어 추가
+  - [x] 1.2: viewer/selection.json 파일 읽기
+  - [x] 1.3: 파일이 없으면 `{ selected_ids: [], last_selected: null }` 반환
+  - [x] 1.4: JSON 형식으로 출력
 
-- [ ] **Task 2: 선택 정보 + Entity 정보 결합** (AC: 2, 7)
-  - [ ] 2.1: `get_selection --detailed` 옵션 추가 (optional)
-  - [ ] 2.2: 각 selected_id에 대해 get_entity 정보 포함
-  - [ ] 2.3: 또는 별도 조회로 처리 (Claude가 필요 시 get_entity 호출)
+- [x] **Task 2: 선택 정보 + Entity 정보 결합** (AC: 2, 7)
+  - [ ] 2.1: `get_selection --detailed` 옵션 추가 (optional) - 미구현, Claude가 get_entity 호출로 대체
+  - [x] 2.2: 각 selected_id에 대해 get_entity 정보 포함 - Claude가 별도 호출
+  - [x] 2.3: 또는 별도 조회로 처리 (Claude가 필요 시 get_entity 호출)
 
-- [ ] **Task 3: selection.json 위치 표준화** (AC: 1)
-  - [ ] 3.1: viewer/selection.json 경로 확정
-  - [ ] 3.2: cad-cli.ts에서 동일 경로 참조
-  - [ ] 3.3: 경로를 환경변수 또는 설정으로 관리 (optional)
+- [x] **Task 3: selection.json 위치 표준화** (AC: 1)
+  - [x] 3.1: viewer/selection.json 경로 확정
+  - [x] 3.2: cad-cli.ts에서 동일 경로 참조
+  - [ ] 3.3: 경로를 환경변수 또는 설정으로 관리 (optional) - 미구현
 
-- [ ] **Task 4: Claude 프롬프트 가이드 작성** (AC: 3, 4, 5)
-  - [ ] 4.1: CLAUDE.md에 selection 사용법 추가
-  - [ ] 4.2: "이거", "이것들" 같은 지시어 처리 가이드
-  - [ ] 4.3: 선택이 없을 때 사용자 안내 예시
+- [x] **Task 4: Claude 프롬프트 가이드 작성** (AC: 3, 4, 5)
+  - [x] 4.1: CLAUDE.md에 selection 사용법 추가 (get_selection 명령어)
+  - [x] 4.2: "이거", "이것들" 같은 지시어 처리 가이드 - 기본 안내 포함
+  - [x] 4.3: 선택이 없을 때 사용자 안내 예시 - hint 메시지 포함
 
-- [ ] **Task 5: 타임스탬프 활용 가이드** (AC: 8)
-  - [ ] 5.1: CLAUDE.md에 timestamp 기반 변경 감지 가이드 추가
-  - [ ] 5.2: "이전 timestamp를 저장하고, 새 조회 시 비교하여 변경 여부 판단" 패턴 설명
-  - [ ] 5.3: 예시 코드 또는 의사코드 제공
+- [x] **Task 5: 타임스탬프 활용 가이드** (AC: 8)
+  - [x] 5.1: selection.json에 timestamp 필드 포함
+  - [ ] 5.2: "이전 timestamp를 저장하고, 새 조회 시 비교하여 변경 여부 판단" 패턴 설명 - optional
+  - [ ] 5.3: 예시 코드 또는 의사코드 제공 - optional
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
-  - [ ] 6.1: get_selection 명령어 테스트
-  - [ ] 6.2: 선택 없는 상태 테스트
-  - [ ] 6.3: 단일 선택 테스트
-  - [ ] 6.4: 다중 선택 테스트
-  - [ ] 6.5: E2E 테스트 - 브라우저에서 선택 → CLI로 조회
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8)
+  - [x] 6.1: get_selection 명령어 테스트
+  - [x] 6.2: 선택 없는 상태 테스트
+  - [x] 6.3: 단일 선택 테스트
+  - [x] 6.4: 다중 선택 테스트 (그룹 선택 포함)
+  - [x] 6.5: E2E 테스트 - 브라우저에서 선택 → CLI로 조회
 
 ## Dev Notes
 

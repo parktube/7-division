@@ -1,6 +1,6 @@
 # Story 4.1: Group 생성 기능
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -47,46 +47,46 @@ so that **팔, 다리 등의 신체 부위를 하나의 단위로 관리할 수 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: Entity 구조 확장** (AC: 1, 5, 6)
-  - [ ] 1.1: EntityType enum에 `Group` 추가
-  - [ ] 1.2: Entity struct에 `parent_id: Option<String>` 필드 추가
-  - [ ] 1.3: Entity struct에 `children: Vec<String>` 필드 추가
-  - [ ] 1.4: Default 구현에서 parent_id=None, children=vec![] 설정
-  - [ ] 1.5: Serde 직렬화 테스트 (JSON 출력 확인)
+- [x] **Task 1: Entity 구조 확장** (AC: 1, 5, 6)
+  - [x] 1.1: EntityType enum에 `Group` 추가
+  - [x] 1.2: Entity struct에 `parent_id: Option<String>` 필드 추가
+  - [x] 1.3: Entity struct에 `children: Vec<String>` 필드 추가
+  - [x] 1.4: Default 구현에서 parent_id=None, children=vec![] 설정
+  - [x] 1.5: Serde 직렬화 테스트 (JSON 출력 확인)
 
-- [ ] **Task 2: create_group 함수 구현** (AC: 1, 2, 3, 4, 5)
-  - [ ] 2.1: `create_group(name: &str, children: Vec<String>) -> Result<String, JsValue>` 시그니처
-  - [ ] 2.2: name 중복 검사 (기존 has_entity 로직 재사용)
-  - [ ] 2.3: children에서 존재하는 Entity만 필터링
-  - [ ] 2.4: Group Entity 생성 (EntityType::Group, geometry는 Empty 또는 None)
-  - [ ] 2.5: 각 자식의 parent_id를 그룹 ID로 설정
-  - [ ] 2.6: 자식이 이미 다른 그룹에 속한 경우 처리 (AC5 그룹 중첩/이동)
-    - [ ] 2.6.1: 자식 Entity의 기존 parent_id 확인
-    - [ ] 2.6.2: 기존 부모가 있으면 기존 부모의 children 배열에서 해당 자식 제거
-    - [ ] 2.6.3: 자식의 parent_id를 새 그룹으로 업데이트
-    - [ ] 2.6.4: 자식이 그룹인 경우 자식의 children은 유지 (계층 구조 보존)
+- [x] **Task 2: create_group 함수 구현** (AC: 1, 2, 3, 4, 5)
+  - [x] 2.1: `create_group(name: &str, children: Vec<String>) -> Result<String, JsValue>` 시그니처
+  - [x] 2.2: name 중복 검사 (기존 has_entity 로직 재사용)
+  - [x] 2.3: children에서 존재하는 Entity만 필터링
+  - [x] 2.4: Group Entity 생성 (EntityType::Group, geometry는 Empty 또는 None)
+  - [x] 2.5: 각 자식의 parent_id를 그룹 ID로 설정
+  - [x] 2.6: 자식이 이미 다른 그룹에 속한 경우 처리 (AC5 그룹 중첩/이동)
+    - [x] 2.6.1: 자식 Entity의 기존 parent_id 확인
+    - [x] 2.6.2: 기존 부모가 있으면 기존 부모의 children 배열에서 해당 자식 제거
+    - [x] 2.6.3: 자식의 parent_id를 새 그룹으로 업데이트
+    - [x] 2.6.4: 자식이 그룹인 경우 자식의 children은 유지 (계층 구조 보존)
       - 예: forearm이 원래 elbow, wrist를 자식으로 가진 경우
       - forearm이 left_arm의 자식이 되어도 elbow, wrist는 여전히 forearm의 자식
-  - [ ] 2.7: Scene.entities에 그룹 추가
+  - [x] 2.7: Scene.entities에 그룹 추가
 
-- [ ] **Task 3: Geometry 확장** (AC: 1)
-  - [ ] 3.1: Geometry enum에 `Empty` 또는 `Group` variant 추가 (그룹은 geometry 없음)
+- [x] **Task 3: Geometry 확장** (AC: 1)
+  - [x] 3.1: Geometry enum에 `Empty` 또는 `Group` variant 추가 (그룹은 geometry 없음)
 
-- [ ] **Task 4: WASM 바인딩** (AC: 1, 2)
-  - [ ] 4.1: `#[wasm_bindgen]` 매크로로 create_group 노출
-  - [ ] 4.2: children 파라미터는 `js_sys::Array` 또는 JSON 문자열로 받기
+- [x] **Task 4: WASM 바인딩** (AC: 1, 2)
+  - [x] 4.1: `#[wasm_bindgen]` 매크로로 create_group 노출
+  - [x] 4.2: children 파라미터는 `js_sys::Array` 또는 JSON 문자열로 받기
 
-- [ ] **Task 5: CLI 통합** (AC: 1, 2)
-  - [ ] 5.1: cad-cli.ts에 `create_group` 명령어 추가
-  - [ ] 5.2: JSON 파라미터 파싱: `'{"name":"left_arm","children":["a","b"]}'`
+- [x] **Task 5: CLI 통합** (AC: 1, 2)
+  - [x] 5.1: cad-cli.ts에 `create_group` 명령어 추가
+  - [x] 5.2: JSON 파라미터 파싱: `'{"name":"left_arm","children":["a","b"]}'`
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6)
-  - [ ] 6.1: Rust 단위 테스트 - 기본 그룹 생성
-  - [ ] 6.2: Rust 단위 테스트 - 존재하지 않는 자식 처리
-  - [ ] 6.3: Rust 단위 테스트 - 빈 children
-  - [ ] 6.4: Rust 단위 테스트 - 중복 name 에러
-  - [ ] 6.5: Rust 단위 테스트 - 그룹 중첩
-  - [ ] 6.6: WASM 빌드 및 Node.js 통합 테스트
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6)
+  - [x] 6.1: Rust 단위 테스트 - 기본 그룹 생성
+  - [x] 6.2: Rust 단위 테스트 - 존재하지 않는 자식 처리
+  - [x] 6.3: Rust 단위 테스트 - 빈 children
+  - [x] 6.4: Rust 단위 테스트 - 중복 name 에러
+  - [x] 6.5: Rust 단위 테스트 - 그룹 중첩
+  - [x] 6.6: WASM 빌드 및 Node.js 통합 테스트
 
 ## Dev Notes
 

@@ -10,6 +10,12 @@ pub struct Entity {
     pub transform: Transform,
     pub style: Style,
     pub metadata: Metadata,
+    /// 부모 그룹의 name (None이면 최상위)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<String>,
+    /// 자식 Entity들의 name 목록 (Group만 사용)
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub children: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -18,6 +24,7 @@ pub enum EntityType {
     Circle,
     Rect,
     Arc,
+    Group,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,6 +47,8 @@ pub enum Geometry {
         start_angle: f64, // 라디안, 0 = 3시 방향
         end_angle: f64,   // 라디안, 양수 = 반시계방향 (CCW)
     },
+    /// Group용 빈 geometry (자체 도형 없음)
+    Empty,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +56,14 @@ pub struct Transform {
     pub translate: [f64; 2],
     pub rotate: f64,
     pub scale: [f64; 2],
+    /// 회전/스케일 중심점 (로컬 좌표계). 기본값 [0, 0]
+    #[serde(default, skip_serializing_if = "is_zero_pivot")]
+    pub pivot: [f64; 2],
+}
+
+/// pivot이 기본값([0, 0])인지 확인하는 헬퍼
+fn is_zero_pivot(pivot: &[f64; 2]) -> bool {
+    pivot[0] == 0.0 && pivot[1] == 0.0
 }
 
 impl Default for Transform {
@@ -55,6 +72,7 @@ impl Default for Transform {
             translate: [0.0, 0.0],
             rotate: 0.0,
             scale: [1.0, 1.0],
+            pivot: [0.0, 0.0],
         }
     }
 }

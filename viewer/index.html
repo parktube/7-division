@@ -297,7 +297,16 @@
         <div class="canvas-overlay is-visible" id="canvas-overlay">Scene not loaded yet</div>
       </div>
       <aside class="panel">
-        <h2>Scene Info</h2>
+        <h2>Selection</h2>
+        <div class="panel-item">
+          <div class="label">Selected Entity</div>
+          <div class="value" id="selection-info" style="font-size: 12px; color: var(--accent); font-weight: 600;">None (click on canvas)</div>
+        </div>
+        <div class="panel-item">
+          <div class="label">Selection Details</div>
+          <div class="value" id="selection-details" style="font-size: 10px; max-height: 80px; overflow-y: auto; background: rgba(42,127,122,0.08); padding: 8px; border-radius: 6px; font-family: monospace;">-</div>
+        </div>
+        <h2 style="margin-top: 12px;">Scene Info</h2>
         <div class="panel-item">
           <div class="label">Bounds</div>
           <div class="value" id="scene-bounds">-</div>

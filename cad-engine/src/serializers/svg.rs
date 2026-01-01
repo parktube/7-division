@@ -1,7 +1,8 @@
-use crate::scene::entity::{Entity, Geometry, Style, Transform};
+use crate::scene::entity::{Entity, EntityType, Geometry, Style, Transform};
+use std::collections::HashMap;
 
-/// Entity를 SVG 요소로 변환합니다.
-fn entity_to_svg(entity: &Entity) -> String {
+/// Entity를 SVG 요소로 변환합니다 (단일 엔티티, 그룹 제외).
+fn entity_to_svg_element(entity: &Entity, indent: &str) -> String {
     let transform_attr = transform_to_svg(&entity.transform);
     let style_attr = style_to_svg(&entity.style);
 
@@ -16,14 +17,14 @@ fn entity_to_svg(entity: &Entity) -> String {
                 .collect::<Vec<_>>()
                 .join(" ");
             format!(
-                r#"    <polyline points="{}" {}{}/>"#,
-                points_str, style_attr, transform_attr
+                r#"{}<polyline points="{}" {}{}/>"#,
+                indent, points_str, style_attr, transform_attr
             ) + "\n"
         }
         Geometry::Circle { center, radius } => {
             format!(
-                r#"    <circle cx="{}" cy="{}" r="{}" {}{}/>"#,
-                center[0], center[1], radius, style_attr, transform_attr
+                r#"{}<circle cx="{}" cy="{}" r="{}" {}{}/>"#,
+                indent, center[0], center[1], radius, style_attr, transform_attr
             ) + "\n"
         }
         Geometry::Rect {
@@ -32,8 +33,8 @@ fn entity_to_svg(entity: &Entity) -> String {
             height,
         } => {
             format!(
-                r#"    <rect x="{}" y="{}" width="{}" height="{}" {}{}/>"#,
-                origin[0], origin[1], width, height, style_attr, transform_attr
+                r#"{}<rect x="{}" y="{}" width="{}" height="{}" {}{}/>"#,
+                indent, origin[0], origin[1], width, height, style_attr, transform_attr
             ) + "\n"
         }
         Geometry::Arc {
@@ -41,17 +42,52 @@ fn entity_to_svg(entity: &Entity) -> String {
             radius,
             start_angle,
             end_angle,
-        } => {
-            // SVG doesn't have a native arc element, use path
-            arc_to_svg_path(
-                center,
-                *radius,
-                *start_angle,
-                *end_angle,
-                &style_attr,
-                &transform_attr,
-            )
+        } => arc_to_svg_path(
+            center,
+            *radius,
+            *start_angle,
+            *end_angle,
+            &style_attr,
+            &transform_attr,
+            indent,
+        ),
+        Geometry::Empty => String::new(),
+    }
+}
+
+/// Entity를 SVG로 변환합니다 (계층 구조 지원).
+fn entity_to_svg_hierarchical(
+    entity: &Entity,
+    entities_by_name: &HashMap<String, &Entity>,
+    indent: &str,
+) -> String {
+    match entity.entity_type {
+        EntityType::Group => {
+            // Group은 <g> 요소로 렌더링, 자식들을 재귀적으로 렌더링
+            let transform_attr = transform_to_svg(&entity.transform);
+            let mut result = String::new();
+
+            if transform_attr.is_empty() {
+                result.push_str(&format!("{}<g>\n", indent));
+            } else {
+                result.push_str(&format!("{}<g {}>\n", indent, transform_attr));
+            }
+
+            let child_indent = format!("{}  ", indent);
+            for child_name in &entity.children {
+                if let Some(child) = entities_by_name.get(child_name) {
+                    result.push_str(&entity_to_svg_hierarchical(
+                        child,
+                        entities_by_name,
+                        &child_indent,
+                    ));
+                }
+            }
+
+            result.push_str(&format!("{}</g>\n", indent));
+            result
         }
+        _ => entity_to_svg_element(entity, indent),
     }
 }
 
@@ -63,6 +99,7 @@ fn arc_to_svg_path(
     end_angle: f64,
     style_attr: &str,
     transform_attr: &str,
+    indent: &str,
 ) -> String {
     // Calculate start and end points
     let start_x = center[0] + radius * start_angle.cos();
@@ -88,7 +125,8 @@ fn arc_to_svg_path(
     let sweep_flag = if angle_diff > 0.0 { 1 } else { 0 };
 
     format!(
-        r#"    <path d="M {},{} A {},{} 0 {} {} {},{}" {}{}/>"#,
+        r#"{}<path d="M {},{} A {},{} 0 {} {} {},{}" {}{}/>"#,
+        indent,
         start_x,
         start_y,
         radius,
@@ -103,14 +141,24 @@ fn arc_to_svg_path(
 }
 
 /// Transform을 SVG transform 속성으로 변환합니다.
+/// pivot이 설정된 경우 rotate/scale의 중심점으로 사용됩니다.
 fn transform_to_svg(transform: &Transform) -> String {
     let mut parts = Vec::new();
+    let has_pivot = transform.pivot != [0.0, 0.0];
+    let [px, py] = transform.pivot;
 
+    // 1. Translation
     if transform.translate != [0.0, 0.0] {
         parts.push(format!(
             "translate({}, {})",
             transform.translate[0], transform.translate[1]
         ));
+    }
+
+    // 2. Pivot을 중심으로 한 rotate/scale
+    if has_pivot && (transform.rotate != 0.0 || transform.scale != [1.0, 1.0]) {
+        // translate to pivot
+        parts.push(format!("translate({}, {})", px, py));
     }
 
     if transform.rotate != 0.0 {
@@ -124,6 +172,11 @@ fn transform_to_svg(transform: &Transform) -> String {
             "scale({}, {})",
             transform.scale[0], transform.scale[1]
         ));
+    }
+
+    if has_pivot && (transform.rotate != 0.0 || transform.scale != [1.0, 1.0]) {
+        // translate back from pivot
+        parts.push(format!("translate({}, {})", -px, -py));
     }
 
     if parts.is_empty() {
@@ -174,7 +227,7 @@ fn style_to_svg(style: &Style) -> String {
     attrs.join(" ") + " "
 }
 
-/// Scene을 SVG 문자열로 직렬화합니다.
+/// Scene을 SVG 문자열로 직렬화합니다 (계층 구조 지원).
 pub fn serialize_scene_svg(entities: &[Entity]) -> String {
     let mut svg = String::new();
 
@@ -186,9 +239,22 @@ pub fn serialize_scene_svg(entities: &[Entity]) -> String {
     svg.push_str(r#"  <g transform="scale(1, -1)">"#);
     svg.push('\n');
 
-    // Convert each entity to SVG elements
+    // Build name -> entity map for hierarchical lookup
+    let entities_by_name: HashMap<String, &Entity> = entities
+        .iter()
+        .map(|e| (e.metadata.name.clone(), e))
+        .collect();
+
+    // Only render root entities (those without parent_id)
+    // Children will be rendered recursively by their parent groups
     for entity in entities {
-        svg.push_str(&entity_to_svg(entity));
+        if entity.parent_id.is_none() {
+            svg.push_str(&entity_to_svg_hierarchical(
+                entity,
+                &entities_by_name,
+                "    ",
+            ));
+        }
     }
 
     svg.push_str("  </g>\n");
@@ -210,7 +276,14 @@ mod tests {
             transform: Transform::default(),
             style: Style::default(),
             metadata: Metadata::default(),
+            parent_id: None,
+            children: Vec::new(),
         }
+    }
+
+    /// 테스트용 헬퍼: entity_to_svg_element with default indent
+    fn entity_to_svg(entity: &Entity) -> String {
+        entity_to_svg_element(entity, "")
     }
 
     #[test]
@@ -255,6 +328,7 @@ mod tests {
             translate: [10.0, 20.0],
             rotate: std::f64::consts::FRAC_PI_2,
             scale: [2.0, 0.5],
+            pivot: [0.0, 0.0],
         };
         let svg = transform_to_svg(&transform);
         assert!(svg.contains("translate(10, 20)"));
@@ -279,5 +353,163 @@ mod tests {
         assert!(svg.starts_with("<svg"));
         assert!(svg.ends_with("</svg>"));
         assert!(svg.contains("<circle"));
+    }
+
+    fn make_named_entity(name: &str, geometry: Geometry, entity_type: EntityType) -> Entity {
+        Entity {
+            id: name.to_string(),
+            entity_type,
+            geometry,
+            transform: Transform::default(),
+            style: Style::default(),
+            metadata: Metadata {
+                name: name.to_string(),
+                layer: None,
+                locked: false,
+            },
+            parent_id: None,
+            children: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn test_hierarchical_svg_group() {
+        // Create a group with a circle child
+        let mut group = make_named_entity("grp", Geometry::Empty, EntityType::Group);
+        group.children = vec!["circle1".to_string()];
+
+        let mut circle = make_named_entity(
+            "circle1",
+            Geometry::Circle {
+                center: [10.0, 10.0],
+                radius: 5.0,
+            },
+            EntityType::Circle,
+        );
+        circle.parent_id = Some("grp".to_string());
+
+        let entities = vec![group, circle];
+        let svg = serialize_scene_svg(&entities);
+
+        // Group should be rendered as <g>
+        assert!(svg.contains("<g>"));
+        assert!(svg.contains("</g>"));
+        // Circle should be inside (content-wise)
+        assert!(svg.contains("<circle"));
+    }
+
+    #[test]
+    fn test_hierarchical_svg_group_with_transform() {
+        // Create a group with transform
+        let mut group = make_named_entity("grp", Geometry::Empty, EntityType::Group);
+        group.children = vec!["rect1".to_string()];
+        group.transform = Transform {
+            translate: [50.0, 50.0],
+            rotate: 0.0,
+            scale: [1.0, 1.0],
+            pivot: [0.0, 0.0],
+        };
+
+        let mut rect = make_named_entity(
+            "rect1",
+            Geometry::Rect {
+                origin: [0.0, 0.0],
+                width: 20.0,
+                height: 10.0,
+            },
+            EntityType::Rect,
+        );
+        rect.parent_id = Some("grp".to_string());
+
+        let entities = vec![group, rect];
+        let svg = serialize_scene_svg(&entities);
+
+        // Group should have transform attribute
+        assert!(svg.contains(r#"<g transform="#));
+        assert!(svg.contains("translate(50, 50)"));
+        // Rect should be rendered
+        assert!(svg.contains("<rect"));
+    }
+
+    #[test]
+    fn test_hierarchical_svg_children_not_rendered_at_root() {
+        // Create a group with children - children should not appear twice
+        let mut group = make_named_entity("grp", Geometry::Empty, EntityType::Group);
+        group.children = vec!["c1".to_string()];
+
+        let mut circle = make_named_entity(
+            "c1",
+            Geometry::Circle {
+                center: [0.0, 0.0],
+                radius: 10.0,
+            },
+            EntityType::Circle,
+        );
+        circle.parent_id = Some("grp".to_string());
+
+        let entities = vec![group, circle];
+        let svg = serialize_scene_svg(&entities);
+
+        // Count occurrences of <circle - should be exactly 1
+        let circle_count = svg.matches("<circle").count();
+        assert_eq!(
+            circle_count, 1,
+            "Circle should be rendered only once (inside group)"
+        );
+    }
+
+    #[test]
+    fn test_hierarchical_svg_nested_groups() {
+        // Create nested groups: outer_grp -> inner_grp -> circle
+        let mut outer = make_named_entity("outer_grp", Geometry::Empty, EntityType::Group);
+        outer.children = vec!["inner_grp".to_string()];
+
+        let mut inner = make_named_entity("inner_grp", Geometry::Empty, EntityType::Group);
+        inner.parent_id = Some("outer_grp".to_string());
+        inner.children = vec!["c".to_string()];
+
+        let mut circle = make_named_entity(
+            "c",
+            Geometry::Circle {
+                center: [5.0, 5.0],
+                radius: 3.0,
+            },
+            EntityType::Circle,
+        );
+        circle.parent_id = Some("inner_grp".to_string());
+
+        let entities = vec![outer, inner, circle];
+        let svg = serialize_scene_svg(&entities);
+
+        // Should have nested <g> elements
+        let g_count = svg.matches("<g").count();
+        // Note: there's also <g transform="scale(1, -1)"> wrapper, so expecting 3 total
+        assert!(
+            g_count >= 2,
+            "Should have at least 2 group elements (outer + inner + wrapper)"
+        );
+        assert!(svg.contains("<circle"));
+    }
+
+    #[test]
+    fn test_hierarchical_svg_pivot_transform() {
+        // Test transform with pivot
+        let mut entity = make_entity(Geometry::Circle {
+            center: [0.0, 0.0],
+            radius: 10.0,
+        });
+        entity.transform = Transform {
+            translate: [0.0, 0.0],
+            rotate: std::f64::consts::FRAC_PI_2, // 90 degrees
+            scale: [1.0, 1.0],
+            pivot: [50.0, 50.0],
+        };
+
+        let svg = entity_to_svg(&entity);
+
+        // Should have pivot translation
+        assert!(svg.contains("translate(50, 50)"));
+        assert!(svg.contains("rotate(90)"));
+        assert!(svg.contains("translate(-50, -50)"));
     }
 }

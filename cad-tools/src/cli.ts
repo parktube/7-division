@@ -12,6 +12,7 @@
 
 import '../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor, type ToolResult } from './executor.js';
+import { captureViewport } from './capture.js';
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -57,15 +58,23 @@ interface SceneState {
 
 /** Entity from scene.json for replay */
 interface SceneEntity {
-  entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc';
+  entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc' | 'Group';
   geometry: {
     Circle?: { center: [number, number]; radius: number };
     Rect?: { origin: [number, number]; width: number; height: number };
     Line?: { points: [number, number][] };
     Arc?: { center: [number, number]; radius: number; start_angle: number; end_angle: number };
+    Empty?: null;
+  };
+  transform?: {
+    translate?: [number, number];
+    rotate?: number;
+    scale?: [number, number];
+    pivot?: [number, number];
   };
   style?: unknown;
   metadata?: { name?: string };
+  children?: string[];
 }
 
 function ensureParentDir(targetPath: string): void {
@@ -154,6 +163,7 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 - translate [name, dx, dy]: 이동
 - rotate [name, angle, cx?, cy?]: 회전 (도 단위, 반시계방향)
 - scale [name, sx, sy, cx?, cy?]: 크기 조절
+- set_pivot [name, px, py]: 회전/스케일 중심점 설정
 - delete [name]: 삭제
 
 🎯 WORKFLOW
@@ -171,14 +181,16 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 - list_entities: 모든 엔티티 목록
 - get_entity [name]: 특정 엔티티 상세 정보
 - get_scene_info: 씬 전체 정보 (bounds, count, last_operation)
+- get_selection: 뷰어에서 선택된 도형 조회
 
 🎯 WORKFLOW
 1. 작업 시작 전: list_entities로 현재 상태 파악
-2. 작업 중: get_scene_info로 진행 상황 확인
+2. 사용자가 "이거"라고 말하면: get_selection으로 선택된 도형 확인
 3. 디버깅: get_entity로 특정 엔티티 검증
 
 💡 TIPS
 - 작업 전후로 list_entities 호출 권장
+- get_selection으로 사용자가 클릭한 도형 확인 가능
 - get_scene_info의 bounds로 뷰포트 계산 가능`,
 
   export: `💾 EXPORT - 내보내기
@@ -209,7 +221,31 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 
 💡 TIPS
 - reset은 되돌릴 수 없음
-- status로 현재 엔티티 수 확인`
+- status로 현재 엔티티 수 확인`,
+  group: `🗂️ GROUP - 그룹화
+
+📋 ACTIONS
+- create_group [name, children]: 여러 도형을 그룹으로 묶기
+
+🎯 WORKFLOW
+1. primitives로 개별 도형 그리기 (예: upper_arm, lower_arm, hand)
+2. create_group으로 그룹 생성 (예: left_arm)
+3. 그룹 단위로 변환 적용
+
+💡 TIPS
+- children: 그룹에 포함할 도형 이름 배열
+- 존재하지 않는 도형은 무시됨
+- 빈 children으로도 빈 그룹 생성 가능
+- 그룹도 다른 그룹의 자식이 될 수 있음 (중첩 그룹)
+- add_to_group: 기존 그룹에 엔티티 추가 (다른 그룹에서 자동 이동)
+- remove_from_group: 그룹에서 엔티티 제거 (독립 엔티티로)
+
+💡 EXAMPLES
+- create_group '{"name":"left_arm","children":["upper_arm","lower_arm","hand"]}'
+- create_group '{"name":"skeleton","children":["head","torso","left_arm","right_arm"]}'
+- ungroup '{"name":"left_arm"}' → 그룹 해제, 자식들은 독립 엔티티로
+- add_to_group '{"group_name":"left_arm","entity_name":"wrist"}' → 기존 그룹에 추가
+- remove_from_group '{"group_name":"left_arm","entity_name":"hand"}' → 그룹에서 제거`
 };
 
 function showDomains(): void {
@@ -220,6 +256,7 @@ Available domains:
   primitives  - 기본 도형 (circle, rect, line, arc)
   style       - 색상/스타일 (fill, stroke)
   transforms  - 변환 (translate, rotate, scale, delete)
+  group       - 그룹화 (create_group)
   query       - 조회 (list_entities, get_entity, get_scene_info)
   export      - 내보내기 (json, svg)
   session     - 세션 관리 (reset, status)
@@ -247,11 +284,17 @@ const ACTION_HINTS: Record<string, string[]> = {
   rotate: ['get_entity로 결과 확인', 'scale로 추가 변환'],
   scale: ['get_entity로 결과 확인', 'translate로 추가 변환'],
   delete: ['list_entities로 남은 엔티티 확인'],
+  set_pivot: ['rotate로 pivot 기준 회전', 'get_entity로 결과 확인'],
   list_entities: ['get_entity로 상세 정보 확인', 'get_scene_info로 전체 현황'],
   get_entity: ['translate/rotate/scale로 변환', 'set_fill/set_stroke로 스타일링'],
   get_scene_info: ['export_svg로 내보내기', 'list_entities로 상세 목록'],
+  get_selection: ['get_entity로 선택된 도형 상세 확인', 'translate/rotate/scale로 변환'],
   export_json: ['export_svg로 SVG도 내보내기'],
   export_svg: ['작업 완료!'],
+  create_group: ['translate로 그룹 전체 이동', 'rotate로 그룹 전체 회전', 'list_entities로 확인'],
+  ungroup: ['list_entities로 해제 결과 확인', 'create_group으로 다시 그룹화'],
+  add_to_group: ['get_entity로 추가 결과 확인', 'remove_from_group으로 제거'],
+  remove_from_group: ['list_entities로 결과 확인', 'add_to_group으로 다시 추가'],
 };
 
 function getActionHints(command: string): string[] {
@@ -265,11 +308,27 @@ function enrichResult(
 ): Record<string, unknown> {
   // Get scene info for context
   const sceneInfoResult = executor.exec('get_scene_info', {});
+  let sceneContext: Record<string, unknown> = {};
+
+  if (sceneInfoResult.success && sceneInfoResult.data) {
+    try {
+      const info = JSON.parse(sceneInfoResult.data as string);
+      sceneContext = {
+        entityCount: info.entity_count,
+        lastOperation: info.last_operation,
+        bounds: info.bounds,
+      };
+    } catch {
+      // ignore parsing errors
+    }
+  }
 
   return {
     ...result,
     scene_info: sceneInfoResult,
     hints: getActionHints(command),
+    scene: sceneContext,
+    actionHints: result.success ? getActionHints(command) : ['오류 확인 후 재시도'],
   };
 }
 
@@ -298,9 +357,17 @@ Commands by domain:
   ${CLI_NAME} describe primitives
   ${CLI_NAME} describe style
   ${CLI_NAME} describe transforms
+  ${CLI_NAME} describe group
   ${CLI_NAME} describe query
   ${CLI_NAME} describe export
   ${CLI_NAME} describe session
+
+Discovery:
+  ${CLI_NAME} domains
+
+Extra commands:
+  ${CLI_NAME} get_selection
+  ${CLI_NAME} capture_viewport
 
 Scene file:
   ${SCENE_FILE}
@@ -309,6 +376,11 @@ Scene file:
   }
 
   const command = args[0];
+
+  if (command === 'domains') {
+    showDomains();
+    return;
+  }
 
   // Handle domain description
   if (command === 'describe') {
@@ -328,12 +400,66 @@ Scene file:
     return;
   }
 
+  if (command === 'get_selection') {
+    const selectionFile = resolve(__dirname, '../../viewer/selection.json');
+    if (existsSync(selectionFile)) {
+      try {
+        const selection = JSON.parse(readFileSync(selectionFile, 'utf-8'));
+        print(JSON.stringify({
+          success: true,
+          selection,
+          hint: selection.last_selected
+            ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
+            : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
+        }, null, 2));
+      } catch {
+        print(JSON.stringify({
+          success: false,
+          error: '선택 정보를 읽을 수 없습니다',
+          hint: '뷰어에서 도형을 클릭하여 선택하세요',
+        }, null, 2));
+      }
+    } else {
+      print(JSON.stringify({
+        success: true,
+        selection: { selected_ids: [], last_selected: null, timestamp: null },
+        hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
+      }, null, 2));
+    }
+    return;
+  }
+
+  if (command === 'capture_viewport') {
+    const outputPath = resolve(__dirname, '../../viewer/capture.png');
+    const result = await captureViewport({
+      outputPath,
+      width: 800,
+      height: 600,
+      waitMs: 1000,
+    });
+    if (result.success) {
+      print(JSON.stringify({
+        success: true,
+        path: result.path,
+        message: 'Viewport captured. Use Read tool to view the image.',
+        hint: `Read file: ${result.path}`,
+      }, null, 2));
+    } else {
+      print(JSON.stringify({
+        success: false,
+        error: result.error,
+        hint: '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs)',
+      }, null, 2));
+    }
+    return;
+  }
+
   // Parse JSON params
   let params: Record<string, unknown> = {};
   if (args[1]) {
     try {
       params = JSON.parse(args[1]);
-    } catch (e) {
+    } catch (_err) {
       printError(`❌ Invalid JSON: ${args[1]}`);
       process.exit(1);
     }
@@ -362,6 +488,14 @@ Scene file:
 
   // Enrich result with context
   const enrichedResult = enrichResult(executor, command, result);
+  if (command === 'status') {
+    enrichedResult.state = {
+      sceneName: state.sceneName,
+      entityCount: state.entities.length,
+      entities: state.entities,
+      sceneFile: SCENE_FILE,
+    };
+  }
 
   // Output result
   print(JSON.stringify(enrichedResult, null, 2));
@@ -394,7 +528,7 @@ Scene file:
  * Replay entity from saved scene
  */
 function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
-  const { entity_type, geometry, style, metadata } = entity;
+  const { entity_type, geometry, style, metadata, transform, children } = entity;
   const name = metadata?.name;
 
   if (!name) return;
@@ -449,6 +583,51 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
           });
         }
         break;
+
+      case 'Group':
+        executor.exec('create_group', {
+          name,
+          children: children ?? [],
+        });
+        break;
+    }
+
+    if (transform) {
+      const pivot = transform.pivot;
+      const scale = transform.scale ?? [1, 1];
+      const rotate = transform.rotate ?? 0;
+      const translate = transform.translate ?? [0, 0];
+
+      if (pivot && (pivot[0] !== 0 || pivot[1] !== 0)) {
+        executor.exec('set_pivot', {
+          name,
+          px: pivot[0],
+          py: pivot[1],
+        });
+      }
+
+      if (scale[0] !== 1 || scale[1] !== 1) {
+        executor.exec('scale', {
+          name,
+          sx: scale[0],
+          sy: scale[1],
+        });
+      }
+
+      if (rotate !== 0) {
+        executor.exec('rotate', {
+          name,
+          angle: rotate,
+        });
+      }
+
+      if (translate[0] !== 0 || translate[1] !== 0) {
+        executor.exec('translate', {
+          name,
+          dx: translate[0],
+          dy: translate[1],
+        });
+      }
     }
   } catch (err) {
     // Log but continue - don't fail entire replay for one bad entity

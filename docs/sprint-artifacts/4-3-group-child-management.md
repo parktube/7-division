@@ -1,6 +1,6 @@
 # Story 4.3: Group 자식 관리
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -64,49 +64,49 @@ so that **그룹 구성을 동적으로 변경할 수 있다**.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: add_to_group 함수 구현** (AC: 1, 3, 4, 5, 6, 8)
-  - [ ] 1.1: `add_to_group(group_name: &str, child_name: &str) -> Result<bool, JsValue>` 시그니처
-  - [ ] 1.2: group_name으로 Entity 조회 및 Group 타입 검증
-  - [ ] 1.3: child_name으로 Entity 조회 (없으면 Ok(false))
-  - [ ] 1.4: 순환 참조 검사 (자식이 조상인지 확인)
-  - [ ] 1.5: 기존 parent_id가 있으면 기존 그룹에서 제거
-  - [ ] 1.6: 자식의 parent_id를 그룹 ID로 설정
-  - [ ] 1.7: 그룹의 children에 자식 추가
-  - [ ] 1.8: Ok(true) 반환
+- [x] **Task 1: add_to_group 함수 구현** (AC: 1, 3, 4, 5, 6, 8)
+  - [x] 1.1: `add_to_group(group_name: &str, child_name: &str) -> Result<bool, JsValue>` 시그니처
+  - [x] 1.2: group_name으로 Entity 조회 및 Group 타입 검증
+  - [x] 1.3: child_name으로 Entity 조회 (없으면 Ok(false))
+  - [x] 1.4: 순환 참조 검사 (자식이 조상인지 확인)
+  - [x] 1.5: 기존 parent_id가 있으면 기존 그룹에서 제거
+  - [x] 1.6: 자식의 parent_id를 그룹 ID로 설정
+  - [x] 1.7: 그룹의 children에 자식 추가
+  - [x] 1.8: Ok(true) 반환
 
-- [ ] **Task 2: remove_from_group 함수 구현** (AC: 2, 7)
-  - [ ] 2.1: `remove_from_group(group_name: &str, child_name: &str) -> Result<bool, JsValue>` 시그니처
-  - [ ] 2.2: group_name으로 Entity 조회 및 Group 타입 검증
-  - [ ] 2.3: 그룹의 children에 child_name이 없으면 Ok(false)
-  - [ ] 2.4: 자식의 parent_id를 None으로 설정
-  - [ ] 2.5: 그룹의 children에서 자식 제거
-  - [ ] 2.6: Ok(true) 반환
+- [x] **Task 2: remove_from_group 함수 구현** (AC: 2, 7)
+  - [x] 2.1: `remove_from_group(group_name: &str, child_name: &str) -> Result<bool, JsValue>` 시그니처
+  - [x] 2.2: group_name으로 Entity 조회 및 Group 타입 검증
+  - [x] 2.3: 그룹의 children에 child_name이 없으면 Ok(false)
+  - [x] 2.4: 자식의 parent_id를 None으로 설정
+  - [x] 2.5: 그룹의 children에서 자식 제거
+  - [x] 2.6: Ok(true) 반환
 
-- [ ] **Task 3: 순환 참조 검사 헬퍼** (AC: 8)
-  - [ ] 3.1: `is_ancestor(entity_id, potential_ancestor_id) -> bool` 헬퍼 함수
-  - [ ] 3.2: parent_id 체인을 따라 조상 확인
-  - [ ] 3.3: 무한 루프 방지 (최대 깊이 제한 또는 visited 집합)
+- [x] **Task 3: 순환 참조 검사 헬퍼** (AC: 8)
+  - [x] 3.1: `is_ancestor(entity_id, potential_ancestor_id) -> bool` 헬퍼 함수
+  - [x] 3.2: parent_id 체인을 따라 조상 확인
+  - [x] 3.3: 무한 루프 방지 (최대 깊이 제한 또는 visited 집합)
 
-- [ ] **Task 4: WASM 바인딩** (AC: 1, 2)
-  - [ ] 4.1: `#[wasm_bindgen]` 매크로로 add_to_group 노출
-  - [ ] 4.2: `#[wasm_bindgen]` 매크로로 remove_from_group 노출
+- [x] **Task 4: WASM 바인딩** (AC: 1, 2)
+  - [x] 4.1: `#[wasm_bindgen]` 매크로로 add_to_group 노출
+  - [x] 4.2: `#[wasm_bindgen]` 매크로로 remove_from_group 노출
 
-- [ ] **Task 5: CLI 통합** (AC: 1, 2)
-  - [ ] 5.1: cad-cli.ts에 `add_to_group` 명령어 추가
-  - [ ] 5.2: cad-cli.ts에 `remove_from_group` 명령어 추가
-  - [ ] 5.3: JSON 파라미터 파싱: `'{\"group\":\"left_arm\",\"child\":\"wrist\"}'`
+- [x] **Task 5: CLI 통합** (AC: 1, 2)
+  - [x] 5.1: cad-cli.ts에 `add_to_group` 명령어 추가
+  - [x] 5.2: cad-cli.ts에 `remove_from_group` 명령어 추가
+  - [x] 5.3: JSON 파라미터 파싱: `'{\"group\":\"left_arm\",\"child\":\"wrist\"}'`
 
-- [ ] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9)
-  - [ ] 6.1: Rust 단위 테스트 - 기본 자식 추가
-  - [ ] 6.2: Rust 단위 테스트 - 기본 자식 제거
-  - [ ] 6.3: Rust 단위 테스트 - 다른 그룹에서 이동
-  - [ ] 6.4: Rust 단위 테스트 - 존재하지 않는 그룹
-  - [ ] 6.5: Rust 단위 테스트 - 존재하지 않는 엔티티
-  - [ ] 6.6: Rust 단위 테스트 - 그룹이 아닌 Entity
-  - [ ] 6.7: Rust 단위 테스트 - 그룹에 없는 엔티티 제거
-  - [ ] 6.8: Rust 단위 테스트 - 순환 참조 방지
-  - [ ] 6.9: Rust 단위 테스트 - export_json 반영
-  - [ ] 6.10: WASM 빌드 및 Node.js 통합 테스트
+- [x] **Task 6: 테스트** (AC: 1, 2, 3, 4, 5, 6, 7, 8, 9)
+  - [x] 6.1: Rust 단위 테스트 - 기본 자식 추가
+  - [x] 6.2: Rust 단위 테스트 - 기본 자식 제거
+  - [x] 6.3: Rust 단위 테스트 - 다른 그룹에서 이동
+  - [x] 6.4: Rust 단위 테스트 - 존재하지 않는 그룹
+  - [x] 6.5: Rust 단위 테스트 - 존재하지 않는 엔티티
+  - [x] 6.6: Rust 단위 테스트 - 그룹이 아닌 Entity
+  - [x] 6.7: Rust 단위 테스트 - 그룹에 없는 엔티티 제거
+  - [x] 6.8: Rust 단위 테스트 - 순환 참조 방지
+  - [x] 6.9: Rust 단위 테스트 - export_json 반영
+  - [x] 6.10: WASM 빌드 및 Node.js 통합 테스트
 
 ## Dev Notes
 
