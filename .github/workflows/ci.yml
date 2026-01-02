@@ -99,6 +99,28 @@ jobs:
         working-directory: cad-tools
         run: npm run test
 
+  # Electron 빌드 확인
+  electron:
+    name: Electron Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: cad-electron/package-lock.json
+
+      - name: Install dependencies (cad-electron)
+        working-directory: cad-electron
+        run: npm ci
+
+      - name: Build Electron app (bundle only)
+        working-directory: cad-electron
+        run: npm run build
+
   # WASM 통합 테스트
   integration:
     name: WASM Integration Test

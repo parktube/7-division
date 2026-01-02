@@ -56,6 +56,9 @@ cad-engine/*.svg
 # MCP config
 .mcp.json
 
+# macOS
+.DS_Store
+
 # Claude Code (CLAUDE.md는 버전 관리 포함 - 프로젝트 컨텍스트 공유용)
 
 # ===================
@@ -74,3 +77,11 @@ cad-tools/.cad-state.json
 # Generated test files
 viewer/scene.svg
 viewer/test-*.html
+
+# Local QA notes (not committed)
+docs/qa/
+
+# Electron build outputs
+cad-electron/dist/
+cad-electron/out/
+cad-electron/node_modules/

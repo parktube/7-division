@@ -1,5 +1,7 @@
 const POLL_INTERVAL_MS = 500;
-const SOURCE_FILE = 'scene.json';
+const urlParams = new URLSearchParams(window.location.search);
+const sourceOverride = urlParams.get('scene');
+const SOURCE_FILE = sourceOverride || 'scene.json';
 const SELECTION_FILE = 'selection.json';
 const LINE_HIT_TOLERANCE = 5; // pixels tolerance for line hit testing
 const DEBUG = false; // Set to true for debug logging
@@ -517,8 +519,10 @@ async function fetchScene() {
 
           // Update log display (escaped to prevent XSS)
           if (operationLog) {
-            const logEntry = `<div style="margin-bottom: 4px;"><span style="color: var(--bg-muted);">${escapeHtml(timestamp)}</span> ${escapeHtml(scene.last_operation)}</div>`;
-            operationLog.innerHTML += logEntry;
+            const logEntry = document.createElement('div');
+            logEntry.style.marginBottom = '4px';
+            logEntry.innerHTML = `<span style="color: var(--bg-muted);">${escapeHtml(timestamp)}</span> ${escapeHtml(scene.last_operation)}`;
+            operationLog.appendChild(logEntry);
             operationLog.scrollTop = operationLog.scrollHeight;
           }
         }

@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI-Native CAD Viewer</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6efe3;
+      --bg-ink: #1b1a17;
+      --bg-muted: #6a6158;
+      --bg-soft: #fff9f0;
+      --accent: #d46a1c;
+      --accent-2: #2a7f7a;
+      --panel: rgba(255, 255, 255, 0.78);
+      --panel-ink: #26231f;
+      --panel-border: rgba(27, 26, 23, 0.12);
+      --shadow: 0 18px 45px rgba(26, 23, 20, 0.18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      color: var(--bg-ink);
+      background: radial-gradient(circle at 15% 20%, rgba(212, 106, 28, 0.2), transparent 45%),
+        radial-gradient(circle at 85% 15%, rgba(42, 127, 122, 0.18), transparent 40%),
+        linear-gradient(140deg, #f6efe3 0%, #f5f4f2 55%, #eef2f4 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+          120deg,
+          rgba(255, 255, 255, 0.2) 0,
+          rgba(255, 255, 255, 0.2) 1px,
+          transparent 1px,
+          transparent 28px
+        ),
+        repeating-linear-gradient(
+          30deg,
+          rgba(0, 0, 0, 0.035) 0,
+          rgba(0, 0, 0, 0.035) 1px,
+          transparent 1px,
+          transparent 34px
+        );
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px clamp(20px, 4vw, 48px) 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+      animation: riseIn 0.8s ease-out;
+    }
+
+    @keyframes riseIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(145deg, #f8d8b3, #f2b97e);
+      box-shadow: inset 0 0 0 1px rgba(27, 26, 23, 0.08);
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 32px);
+      letter-spacing: 0.02em;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      font-size: 14px;
+      color: var(--bg-muted);
+      font-family: "Courier Prime", "Courier New", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-radius: 18px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      font-family: "Courier Prime", "Courier New", monospace;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #c9b9a6;
+      box-shadow: 0 0 0 4px rgba(212, 106, 28, 0.12);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .status-dot.is-live {
+      background: var(--accent);
+      box-shadow: 0 0 0 6px rgba(212, 106, 28, 0.2);
+    }
+
+    .status-dot.is-error {
+      background: #b04c36;
+      box-shadow: 0 0 0 6px rgba(176, 76, 54, 0.2);
+    }
+
+    .status-text {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .status-meta {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--bg-muted);
+      display: flex;
+      gap: 12px;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 24px;
+    }
+
+    .canvas-shell {
+      position: relative;
+      min-height: 520px;
+      border-radius: 24px;
+      background: linear-gradient(180deg, #fff8f0 0%, #fdf7f1 100%);
+      border: 1px solid rgba(26, 23, 20, 0.12);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .canvas-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      color: var(--bg-muted);
+      font-family: "Courier Prime", "Courier New", monospace;
+      background: linear-gradient(
+        120deg,
+        rgba(255, 255, 255, 0.85) 0%,
+        rgba(255, 255, 255, 0.55) 100%
+      );
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .canvas-overlay.is-visible {
+      opacity: 1;
+    }
+
+    .panel {
+      padding: 20px;
+      border-radius: 20px;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      font-family: "Courier Prime", "Courier New", monospace;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 15px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--bg-muted);
+    }
+
+    .panel-item {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .panel-item .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--bg-muted);
+    }
+
+    .panel-item .value {
+      font-size: 13px;
+      color: var(--panel-ink);
+      line-height: 1.4;
+    }
+
+    .panel-item .value strong {
+      color: var(--accent-2);
+    }
+
+    @media (max-width: 980px) {
+      .stage {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        order: 2;
+      }
+
+      .canvas-shell {
+        min-height: 440px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .app {
+        animation: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">◎</div>
+        <div>
+          <h1>AI-Native CAD Viewer</h1>
+          <p>Scene Polling Console</p>
+        </div>
+      </div>
+      <div class="status" id="status">
+        <span class="status-dot" id="status-dot"></span>
+        <div>
+          <div class="status-text" id="status-text">Waiting for scene.json...</div>
+          <div class="status-meta">
+            <span id="entity-count">0 entities</span>
+            <span id="last-updated">--:--</span>
+          </div>
+          <div class="status-meta" id="last-operation" style="color: var(--accent-2); font-weight: 600;">-</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="stage">
+      <div class="canvas-shell">
+        <canvas id="canvas" aria-label="CAD scene viewer" role="img"></canvas>
+        <div class="canvas-overlay is-visible" id="canvas-overlay">Scene not loaded yet</div>
+      </div>
+      <aside class="panel">
+        <h2>Scene Info</h2>
+        <div class="panel-item">
+          <div class="label">Bounds</div>
+          <div class="value" id="scene-bounds">-</div>
+        </div>
+        <div class="panel-item">
+          <div class="label">Entities</div>
+          <div class="value" id="entity-list" style="font-size: 11px; max-height: 100px; overflow-y: auto;">-</div>
+        </div>
+        <div class="panel-item">
+          <div class="label">Operation Log</div>
+          <div class="value" id="operation-log" style="font-size: 10px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px; font-family: monospace;">-</div>
+        </div>
+        <div class="panel-item">
+          <div class="label">Last Error</div>
+          <div class="value" id="last-error">None</div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

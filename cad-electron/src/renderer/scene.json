@@ -1,0 +1,199 @@
+{
+  "name": "cad-scene",
+  "entities": [
+    {
+      "id": "8c23b81a-3142-457d-813c-2bab3e4d9d63",
+      "entity_type": "Circle",
+      "geometry": {
+        "Circle": {
+          "center": [
+            0.0,
+            100.0
+          ],
+          "radius": 30.0
+        }
+      },
+      "transform": {
+        "translate": [
+          0.0,
+          0.0
+        ],
+        "rotate": 0.0,
+        "scale": [
+          1.0,
+          1.0
+        ]
+      },
+      "style": {
+        "stroke": {
+          "width": 1.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dash": null,
+          "cap": "Butt",
+          "join": "Miter"
+        },
+        "fill": {
+          "color": [
+            1.0,
+            0.8,
+            0.6,
+            1.0
+          ]
+        }
+      },
+      "metadata": {
+        "name": "head",
+        "layer": null,
+        "locked": false
+      }
+    },
+    {
+      "id": "52b25ed6-b750-4fa6-9cb2-add46b75a548",
+      "entity_type": "Rect",
+      "geometry": {
+        "Rect": {
+          "origin": [
+            -25.0,
+            0.0
+          ],
+          "width": 50.0,
+          "height": 80.0
+        }
+      },
+      "transform": {
+        "translate": [
+          0.0,
+          0.0
+        ],
+        "rotate": 0.0,
+        "scale": [
+          1.0,
+          1.0
+        ]
+      },
+      "style": {
+        "stroke": {
+          "width": 2.0,
+          "color": [
+            0.15,
+            0.2,
+            0.3,
+            1.0
+          ],
+          "dash": null,
+          "cap": "Butt",
+          "join": "Miter"
+        },
+        "fill": {
+          "color": [
+            0.85,
+            0.9,
+            1.0,
+            1.0
+          ]
+        }
+      },
+      "metadata": {
+        "name": "body",
+        "layer": null,
+        "locked": false
+      }
+    },
+    {
+      "id": "ee4d410c-d9d5-43fc-a090-2eaf9ab56687",
+      "entity_type": "Arc",
+      "geometry": {
+        "Arc": {
+          "center": [
+            0.0,
+            85.0
+          ],
+          "radius": 12.0,
+          "start_angle": 3.141592653589793,
+          "end_angle": 6.283185307179586
+        }
+      },
+      "transform": {
+        "translate": [
+          0.0,
+          0.0
+        ],
+        "rotate": 0.0,
+        "scale": [
+          1.0,
+          1.0
+        ]
+      },
+      "style": {
+        "stroke": {
+          "width": 1.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dash": null,
+          "cap": "Butt",
+          "join": "Miter"
+        },
+        "fill": null
+      },
+      "metadata": {
+        "name": "smile",
+        "layer": null,
+        "locked": false
+      }
+    },
+    {
+      "id": "c12af2eb-3856-4a1f-91de-bdc6d62aee05",
+      "entity_type": "Circle",
+      "geometry": {
+        "Circle": {
+          "center": [
+            0.0,
+            80.0
+          ],
+          "radius": 12.0
+        }
+      },
+      "transform": {
+        "translate": [
+          0.0,
+          0.0
+        ],
+        "rotate": 0.0,
+        "scale": [
+          1.0,
+          1.0
+        ]
+      },
+      "style": {
+        "stroke": {
+          "width": 1.0,
+          "color": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "dash": null,
+          "cap": "Butt",
+          "join": "Miter"
+        },
+        "fill": null
+      },
+      "metadata": {
+        "name": "qa-circle",
+        "layer": null,
+        "locked": false
+      }
+    }
+  ],
+  "last_operation": "draw_circle(qa-circle)"
+}
