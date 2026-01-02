@@ -12,7 +12,7 @@
 
 import '../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor, type ToolResult } from './executor.js';
-import { captureViewport } from './capture.js';
+// captureViewport is dynamically imported only when needed (puppeteer not bundled in packaged app)
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -435,6 +435,8 @@ Scene file:
 
   if (command === 'capture_viewport') {
     const outputPath = resolve(__dirname, '../../viewer/capture.png');
+    // Dynamic import to avoid loading puppeteer at startup (not bundled in packaged app)
+    const { captureViewport } = await import('./capture.js');
     const result = await captureViewport({
       outputPath,
       width: 800,
