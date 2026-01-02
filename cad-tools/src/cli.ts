@@ -341,15 +341,19 @@ async function main(): Promise<void> {
     args[0] === '--help' ||
     args[0] === '-h'
   ) {
+    const isWindows = process.platform === 'win32';
+    const q = isWindows ? '"' : "'";
+    const esc = isWindows ? '\\"' : '"';
+
     print(`
 🎨 CAD CLI - Claude Code Friendly
 
 Usage:
-  ${CLI_NAME} <command> '<json_params>'
+  ${CLI_NAME} <command> ${q}{${esc}param${esc}:${esc}value${esc}}${q}
 
 Examples:
-  ${CLI_NAME} draw_circle '{"name":"head","x":0,"y":0,"radius":50}'
-  ${CLI_NAME} draw_rect '{"name":"body","x":-25,"y":0,"width":50,"height":80}'
+  ${CLI_NAME} draw_circle ${q}{${esc}name${esc}:${esc}head${esc},${esc}x${esc}:0,${esc}y${esc}:0,${esc}radius${esc}:50}${q}
+  ${CLI_NAME} draw_rect ${q}{${esc}name${esc}:${esc}body${esc},${esc}x${esc}:-25,${esc}y${esc}:0,${esc}width${esc}:50,${esc}height${esc}:80}${q}
   ${CLI_NAME} list_entities
   ${CLI_NAME} export_json
 

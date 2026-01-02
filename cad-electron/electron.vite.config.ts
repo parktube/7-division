@@ -1,6 +1,6 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
-import { existsSync, readFileSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync, readFileSync, copyFileSync, mkdirSync } from 'fs';
+import { resolve, dirname } from 'path';
 import copy from 'rollup-plugin-copy';
 
 const viewerRoot = resolve(__dirname, '../viewer');
@@ -18,7 +18,6 @@ const createCopyTargets = (dest: string) => {
 };
 
 const copyTargets = createCopyTargets(rendererDest);
-const outputCopyTargets = createCopyTargets(rendererOutDir);
 
 function serveSceneJson() {
   return {
@@ -37,6 +36,24 @@ function serveSceneJson() {
           res.end(JSON.stringify({ error: message }));
         }
       });
+    },
+  };
+}
+
+/**
+ * Copy viewer assets to output directory after build completes.
+ * Uses closeBundle hook to ensure files are copied AFTER Vite finishes,
+ * so electron-builder includes them in the asar package.
+ */
+function copyViewerAssets() {
+  return {
+    name: 'copy-viewer-assets',
+    closeBundle() {
+      mkdirSync(rendererOutDir, { recursive: true });
+      copyFileSync(viewerRendererPath, resolve(rendererOutDir, 'renderer.js'));
+      if (existsSync(viewerScenePath)) {
+        copyFileSync(viewerScenePath, resolve(rendererOutDir, 'scene.json'));
+      }
     },
   };
 }
@@ -61,11 +78,7 @@ export default defineConfig({
         copySync: true,
       }),
       serveSceneJson(),
-      copy({
-        targets: outputCopyTargets,
-        hook: 'writeBundle',
-        copySync: true,
-      }),
+      copyViewerAssets(),
     ],
     server: {
       host: '127.0.0.1',
