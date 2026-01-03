@@ -59,7 +59,8 @@ export async function runCadCode(
     });
 
     bindCadFunction(vm, 'drawArc', (name: string, cx: number, cy: number, radius: number, startAngle: number, endAngle: number) => {
-      return callCad('draw_arc', { name, cx, cy, radius, start_angle: startAngle, end_angle: endAngle });
+      // angle은 라디안
+      return callCad('draw_arc', { name, cx, cy, radius, start_angle: startAngle, end_angle: endAngle, angle_unit: 'radian' });
     });
 
     bindCadFunction(vm, 'drawPolygon', (name: string, points: number[]) => {
@@ -77,7 +78,7 @@ export async function runCadCode(
 
     bindCadFunction(vm, 'rotate', (name: string, angle: number) => {
       // angle은 라디안
-      return callCad('rotate', { name, angle, unit: 'radians' });
+      return callCad('rotate', { name, angle, angle_unit: 'radian' });
     });
 
     bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number) => {

@@ -156,8 +156,11 @@ impl Transform {
     }
 
     /// 두 행렬을 곱합니다 (a * b)
+    #[allow(clippy::needless_range_loop)]
     pub fn multiply_matrices(a: &Matrix3x3, b: &Matrix3x3) -> Matrix3x3 {
         let mut result = [[0.0; 3]; 3];
+        // 행렬 곱셈: result[i][j] = Σ a[i][k] * b[k][j]
+        // 인덱스 기반 접근이 수학 공식과 일치하여 가독성이 높음
         for i in 0..3 {
             for j in 0..3 {
                 for k in 0..3 {
