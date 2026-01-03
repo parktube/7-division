@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, clipboard } from 'electron';
+import { app, BrowserWindow, Menu, clipboard, dialog } from 'electron';
 import { createServer, type Server } from 'http';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
@@ -28,6 +28,14 @@ function copyClaudeSetup(): void {
 CLI: ${cliPath}
 \`--help\`로 사용법 확인`;
   clipboard.writeText(snippet);
+
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Claude Code Setup',
+    message: 'CLAUDE.md 스니펫이 클립보드에 복사되었습니다.',
+    detail: '프로젝트의 CLAUDE.md 파일에 붙여넣기 하세요.',
+    buttons: ['확인'],
+  });
 }
 
 /**
