@@ -7,14 +7,15 @@ app.setName('CADViewer');
 
 /**
  * Get CLI path based on app installation location.
- * Uses relative path from app location, so works for both per-user and per-machine installs.
+ * app.getAppPath() returns Resources/app.asar, so ../cad-cli accesses same directory.
+ * Works for both per-user and per-machine installs.
  */
 function getCliPath(): string {
   const appPath = app.getAppPath();
   if (process.platform === 'darwin') {
-    return join(appPath, '../Resources/cad-cli.sh');
+    return join(appPath, '../cad-cli.sh');
   }
-  return join(appPath, '../resources/cad-cli.cmd');
+  return join(appPath, '../cad-cli.cmd');
 }
 
 /**
