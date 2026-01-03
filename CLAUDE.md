@@ -182,6 +182,11 @@ setZOrder(name, zIndex)
 createGroup(name, children)
 addToGroup(groupName, entityName)
 
+// Query (월드 변환 조회)
+getWorldTransform(name)   // 부모 체인 변환 누적
+getWorldPoint(name, x, y) // 로컬→월드 좌표 변환
+getWorldBounds(name)      // 월드 좌표 기준 bounds
+
 // Utility
 deleteEntity(name)
 exists(name)

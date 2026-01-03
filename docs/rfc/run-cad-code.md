@@ -86,12 +86,22 @@ add_to_group(group_name, entity_name)
 set_fill(name, color)         // color: [r, g, b, a]
 set_stroke(name, color, width)
 
+// z-order (1)
+setZOrder(name, zIndex)  // 렌더링 순서
+
+// query (3) - Phase 2 월드 변환 조회
+getWorldTransform(name)
+getWorldPoint(name, x, y)
+getWorldBounds(name)
+
 // utility (2)
-delete_entity(name)
+deleteEntity(name)
 exists(name)
 ```
 
-**총 17개 함수** (primitives 7 + transforms 4 + groups 2 + style 2 + utility 2)
+**총 20개 함수** (primitives 7 + transforms 4 + groups 2 + style 2 + z-order 1 + query 3 + utility 2)
+
+> Note: `draw_bezier`는 primitives에 포함, 실제 구현된 primitives는 6개 (Bezier 제외 시)
 
 ### Code as Source of Truth
 
@@ -176,14 +186,14 @@ set_fill("center", [0.85, 0.92, 1.0, 1]);
 
 ### Phase 1: 기본 구현 ✅
 1. [x] QuickJS 통합 (`quickjs-emscripten` v0.31.0 설치)
-2. [x] CAD 함수 바인딩 (15개)
+2. [x] CAD 함수 바인딩 (20개)
 3. [x] `run_cad_code` 명령어 구현
 4. [x] `get_scene_code` 명령어 구현
 5. [x] 기어 예제 검증 (9개 엔티티)
 6. [x] 스노우플레이크 예제 검증 (55개 엔티티)
-7. [ ] CLI help 통합
-8. [ ] Electron 앱 통합 (도메인 분류, 배포 검증)
-9. [ ] 문서화 및 PR
+7. [x] CLI help 통합 (`describe sandbox`)
+8. [ ] Electron 앱 통합 → Epic 6
+9. [x] 문서화 (CLAUDE.md, RFC)
 
 ### Phase 2: 그룹 변환 상속 ✅
 10. [x] 월드 변환 계산 (`get_world_transform`)
@@ -204,7 +214,7 @@ set_fill("center", [0.85, 0.92, 1.0, 1]);
 21. [x] `overview` - 계층적 씬 요약
 22. [x] `list_groups`, `describe_group` - 그룹 단위 탐색
 23. [x] `where` - 간결한 위치 조회
-24. [x] `translate_scene`, `center_scene` - 전체 씬 조작
+24. [x] `translate_scene`, `scale_scene`, `center_scene` - 전체 씬 조작
 
 ### Phase 5: Z-Order / 레이어 ✅
 25. [x] `set_z_order` - 렌더링 순서 설정
@@ -249,69 +259,19 @@ drawBezier("curve", [
 
 ## MAMA Metrics
 
-| 메트릭 | 목적 | 연계 Task | 성공 기준 |
-|--------|------|----------|----------|
-| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 |
-| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 |
-| `cad:run_cad_code_final` | 최종 성공 | Task 8-9 | Electron 통합 및 문서화 완료 |
-| `cad:llm_friendly_coordinate_pattern` | LLM 친화적 패턴 검증 | Task 10-13 | 그룹 변환 상속으로 자연스러운 코딩 |
+| 메트릭 | 목적 | 연계 Task | 성공 기준 | 상태 |
+|--------|------|----------|----------|------|
+| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 | ✅ |
+| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 | ✅ |
+| `cad:llm_friendly_coordinate_pattern` | LLM 친화적 패턴 검증 | Phase 2-4 | 그룹 변환 상속 + 씬 탐색 | ✅ |
+| `cad:run_cad_code_final` | 최종 성공 | Task 8 | Electron 앱 통합 | ⏳ Epic 6 |
 
 ---
 
-## Phase 2: 그룹 변환 상속 (Scene Graph)
+## Appendix: Phase 설계 상세
 
-### 발견된 갭
-
-PoC 진행 중 발견된 문제:
-
-| 기능 | 일반 JS (Canvas/SVG/Three.js) | 우리 Sandbox |
-|------|------------------------------|--------------|
-| 좌표 공간 | 변환된 공간에서 작업 가능 | 항상 월드 좌표만 |
-| 계층 상속 | 자식이 부모 변환 상속 | ❌ 없음 |
-| 연속 그리기 | 현재 위치에서 계속 | 매번 절대 좌표 지정 |
-
-**결과:** LLM이 일반 JS 지식으로 코딩 → 실패 → 우회법 학습 필요
-
-### 현재 엔진 상태
-
-```
-SVG 렌더링: ✅ <g transform="">으로 계층 지원 (브라우저가 처리)
-Bounds 계산: ❌ transform 무시, 원본 좌표만 사용
-그룹 구조: ✅ parent_id, children 존재
-변환 상속: ❌ 구현 안 됨
-좌표 조회: ❌ API 없음
-```
-
-### 해결 방안: 그룹 변환 상속
-
-이미 `parent_id`, `children` 구조가 있으므로, 변환 상속만 구현하면 됨.
-
-**목표 패턴 (일반 JS와 동일):**
-```javascript
-create_group("branch", []);
-translate("branch", 0, 50);
-rotate("branch", angle);
-
-draw_line("stem", [0, 0, 0, 30]);
-add_to_group("branch", "stem");
-// stem이 branch 변환 상속 → 자연스럽게 위치됨
-```
-
-### 구현 단계 (Phase 2)
-
-10. [ ] 월드 변환 계산 함수 (`get_world_transform`)
-11. [ ] 좌표 조회 API (`get_world_point`, `get_world_bounds`)
-12. [ ] Bounds 계산에 월드 변환 적용
-13. [ ] 스노우플레이크 재검증 (변환 기반 코드)
-
-### 수정 파일
-
-| 파일 | 변경 내용 |
-|------|----------|
-| `cad-engine/src/scene/mod.rs` | `get_world_transform`, `get_world_bounds` |
-| `cad-engine/src/scene/entity.rs` | 변환 행렬 연산 헬퍼 |
-| `cad-tools/src/sandbox/index.ts` | 새 API 바인딩 |
-| `cad-tools/src/cli.ts` | 새 명령어 등록 |
+> 이하 섹션들은 각 Phase 구현 전 작성된 설계 문서입니다.
+> 구현 상태는 상단 "구현 단계" 섹션의 체크박스를 참조하세요.
 
 ---
 
@@ -434,65 +394,45 @@ LLM이 파일 시스템을 직접 조작하지 않고, CAD 도구가 모든 파�
 
 ---
 
-## Phase 4: LLM 친화적 응답 설계 (예정)
+## Phase 4: LLM 친화적 응답 설계 ✅
 
-### 발견된 문제
+### 해결된 문제
 
-테스트 중 발견된 LLM 사용성 문제:
+| 문제 | 해결 방법 | 구현 |
+|------|----------|------|
+| 복잡한 JSON 응답 | 텍스트 형식 출력 | `overview`, `where` ✅ |
+| 상태 추적 어려움 | 계층적 요약 제공 | `list_groups`, `describe_group` ✅ |
+| 전체 씬 조작 번거로움 | 씬 레벨 명령어 | `translate_scene`, `scale_scene`, `center_scene` ✅ |
 
-| 문제 | 현재 | 영향 |
-|------|------|------|
-| 복잡한 JSON 응답 | `{"data":"{\"bounds\":{...}}"` | LLM이 파싱 후 해석해야 함 |
-| 상태 추적 어려움 | 매번 get_entity 호출 필요 | 여러 단계 추론 필요 |
-| 뷰포트 인식 없음 | "화면에 뭐가 보이는지" 모름 | 시행착오 반복 |
-| 전체 씬 조작 번거로움 | 루트 그룹 수동 생성 필요 | 추가 작업 부담 |
+### 구현된 명령어
 
-### 설계 방향
+```bash
+# 씬 탐색
+overview                    # 그룹 계층 + 엔티티 수 + bounds
+list_groups                 # 그룹 목록
+describe_group <name>       # 그룹 상세 (children, bounds)
+where <entity>              # 간단한 위치 정보
 
-**원칙: 응답이 "해석된 정보"를 직접 제공**
-
-현재:
-```json
-{"success":true,"data":"{\"bounds\":{\"max\":[500,400],\"min\":[-500,-80]},...}"}
+# 씬 조작
+translate_scene <dx> <dy>   # 전체 루트 엔티티 이동
+scale_scene <factor>        # 전체 스케일
+center_scene                # 씬 중심을 원점으로
 ```
 
-개선:
+### 출력 예시
+
 ```
-✓ root moved by (0, -120)
+📊 Scene Overview (186 entities)
 
-State:
-- World bounds: (-500, -140) → (500, 340)
-- Viewport center: (0, 0)
-- ⚠️ Village is 140px below viewport
+📁 Groups:
+  └─ village (3 children, 3 subgroups)
+     └─ houses (5 children)
+     └─ trees (3 children)
+     └─ effects (1 children)
 
-Suggestion: translate root 0 140
+📐 Bounds: (-200, 0) → (200, 150)
+   Size: 400 x 150
 ```
-
-### 구현 항목
-
-21. **응답 형식 개선**
-    - Raw JSON → 해석된 텍스트
-    - 변경 사항 요약
-    - 다음 행동 제안
-
-22. **뷰포트 인식 정보**
-    - 엔티티가 뷰포트 안/밖 여부
-    - 뷰포트 기준 상대 위치
-    - 경고 메시지 (화면 밖일 때)
-
-23. **전체 씬 조작 명령어** (오브젝트 기준, 뷰포트 아님)
-    - `translate_scene dx dy` - 전체 씬 이동 (암묵적 root)
-    - `scale_scene sx sy` - 전체 씬 스케일
-    - `center_scene` - 씬을 원점 중심으로 이동
-    - `where entity` - 간단한 위치 조회
-
-### 기대 효과
-
-| 작업 | Before | After |
-|------|--------|-------|
-| 현재 위치 확인 | get_entity → JSON 파싱 | `where moon` → "(300, 320)" |
-| 전체 씬 이동 | create_group → add_to_group × N → translate | `translate_scene 100 50` |
-| 씬 원점 맞추기 | bounds 계산 → 수동 이동 | `center_scene` |
 
 ## References
 

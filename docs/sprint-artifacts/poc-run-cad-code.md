@@ -1,6 +1,6 @@
 # PoC: run_cad_code
 
-Status: Phase 1-7 완료 (Tasks 7-9 남음 - Electron 통합 및 최종 문서화)
+Status: Phase 1-7 완료 ✅ (Task 8.3 Electron 검증만 Epic 6 대기)
 
 ## Story
 
@@ -59,9 +59,9 @@ for (let i = 0; i < 8; i++) {
 ### AC2: CAD 함수 바인딩
 
 - Given: 샌드박스 내 코드
-- When: `draw_circle("test", 0, 0, 50)` 호출
+- When: `drawCircle("test", 0, 0, 50)` 호출
 - Then: 실제 CAD 엔진에 도형 생성됨
-- And: 15개 함수 바인딩 (primitives 5 + transforms 4 + groups 2 + style 2 + utility 2)
+- And: 20개 함수 바인딩 (primitives 6 + transforms 4 + groups 2 + style 3 + query 3 + utility 2)
 
 ### AC3: 기어 예제 검증
 
@@ -91,30 +91,29 @@ cad-tools/
 ├── package.json              # + quickjs-emscripten 의존성
 └── src/
     ├── sandbox/
-    │   ├── index.ts          # QuickJS 초기화, 코드 실행
-    │   ├── bindings.ts       # CAD 함수 → QuickJS 바인딩
-    │   └── types.ts          # 타입 정의
-    ├── executor.ts           # + run_cad_code, get_scene_code 명령어
-    └── cli.ts                # + CLI 명령어 등록
+    │   └── index.ts          # QuickJS 초기화, 바인딩, 코드 실행
+    ├── executor.ts           # CAD 명령어 실행 (WASM 래퍼)
+    └── cli.ts                # CLI 명령어 등록 + run_cad_code, 모듈 시스템
 
 viewer/
-└── scene.code.js             # 실행된 코드 저장 (런타임 생성)
-
-examples/
-├── gear.js                   # 기어 예제 코드
-└── snowflake.js              # 스노우플레이크 예제 코드
+├── scene.code.js             # 실행된 코드 저장 (런타임 생성)
+└── .cad-modules/             # 저장된 모듈 (런타임 생성)
+    ├── snowflake.js
+    └── gear-lib.js
 ```
+
+> 예제 코드는 PoC Task 5, 6에 인라인으로 포함됨
 
 ## Tasks / Subtasks
 
-### Task 1: 의존성 및 기본 구조 (AC: 1)
+### Task 1: 의존성 및 기본 구조 (AC: 1) ✅
 
-- [ ] 1.1: `quickjs-emscripten` 의존성 추가
+- [x] 1.1: `quickjs-emscripten` 의존성 추가
   ```bash
   cd cad-tools && npm install quickjs-emscripten
   ```
-- [ ] 1.2: `src/sandbox/` 디렉토리 생성
-- [ ] 1.3: 타입 정의
+- [x] 1.2: `src/sandbox/` 디렉토리 생성
+- [x] 1.3: 타입 정의
   ```typescript
   interface RunCodeResult {
     success: boolean;
@@ -124,23 +123,24 @@ examples/
   }
   ```
 
-### Task 2: QuickJS 샌드박스 구현 (AC: 1)
+### Task 2: QuickJS 샌드박스 구현 (AC: 1) ✅
 
-- [ ] 2.1: `runCadCode()` 함수 구현
+- [x] 2.1: `runCadCode()` 함수 구현
   ```typescript
   async function runCadCode(code: string): Promise<RunCodeResult>
   ```
-- [ ] 2.2: 코드 실행 및 에러 핸들링
-- [ ] 2.3: `console.log` 바인딩
+- [x] 2.2: 코드 실행 및 에러 핸들링
+- [x] 2.3: `console.log` 바인딩
 
-### Task 3: CAD 함수 바인딩 (AC: 2)
+### Task 3: CAD 함수 바인딩 (AC: 2) ✅
 
-- [x] 3.1: Primitives 바인딩 (5개)
-  - `draw_circle(name, x, y, radius)`
-  - `draw_rect(name, x, y, width, height)`
-  - `draw_line(name, points)`  // [x1, y1, x2, y2, ...]
-  - `draw_arc(name, cx, cy, radius, start_angle, end_angle)`
-  - `draw_polygon(name, points)`
+- [x] 3.1: Primitives 바인딩 (6개)
+  - `drawCircle(name, x, y, radius)`
+  - `drawRect(name, x, y, width, height)`
+  - `drawLine(name, points)`  // [x1, y1, x2, y2, ...]
+  - `drawArc(name, cx, cy, radius, start_angle, end_angle)`
+  - `drawPolygon(name, points)`
+  - `drawBezier(name, points, closed)`  // Phase 7에서 추가
 - [x] 3.2: Transforms 바인딩 (4개)
   - `translate(name, dx, dy)`
   - `rotate(name, angle)`  // 라디안
@@ -149,20 +149,25 @@ examples/
 - [x] 3.3: Groups 바인딩 (2개)
   - `create_group(name, children)`
   - `add_to_group(group_name, entity_name)`
-- [x] 3.4: Style 바인딩 (2개)
-  - `set_fill(name, color)`  // color: [r, g, b, a]
-  - `set_stroke(name, color, width)`
+- [x] 3.4: Style 바인딩 (3개)
+  - `setFill(name, color)`  // color: [r, g, b, a]
+  - `setStroke(name, color, width)`
+  - `setZOrder(name, zIndex)`  // Phase 5에서 추가
 - [x] 3.5: 유틸리티 바인딩 (2개)
-  - `delete_entity(name)`
+  - `deleteEntity(name)`
   - `exists(name)`
+- [x] 3.6: Query 바인딩 (3개) - Phase 2에서 추가
+  - `getWorldTransform(name)`
+  - `getWorldPoint(name, x, y)`
+  - `getWorldBounds(name)`
 
-### Task 4: CLI 통합 (AC: 1, 2)
+### Task 4: CLI 통합 (AC: 1, 2) ✅
 
 > 기본 명령어 구현 및 help 통합
 
-- [ ] 4.1: `run_cad_code` 명령어 추가
-- [ ] 4.2: `get_scene_code` 명령어 추가
-- [ ] 4.3: 기본 help 통합 (명령어명, 설명, 사용 예시)
+- [x] 4.1: `run_cad_code` 명령어 추가
+- [x] 4.2: `get_scene_code` 명령어 추가
+- [x] 4.3: 기본 help 통합 (명령어명, 설명, 사용 예시)
   ```
   run_cad_code   Execute JavaScript code in sandbox
   get_scene_code Get the last executed code
@@ -225,43 +230,42 @@ examples/
 - [x] 6.2: 프랙탈 패턴 확인 (55개 엔티티)
 - [x] 6.3: 뷰어에서 시각적 검증
 
-### Task 7: Code as Source of Truth (AC: 5)
+### Task 7: Code as Source of Truth (AC: 5) ✅
 
 > `run_cad_code` 실행 직후 코드를 파일로 저장, 이후 조회/수정 가능
 
-- [ ] 7.1: `run_cad_code` 실행 시 `viewer/scene.code.js` 저장
-  - `executor.ts`에서 코드 실행 성공 후 즉시 저장
+- [x] 7.1: `run_cad_code` 실행 시 `viewer/scene.code.js` 저장
+  - `cli.ts`에서 코드 실행 성공 후 즉시 저장
   - `viewer/` 디렉토리 없으면 생성
-  - 원자적 쓰기 (임시 파일 → rename)
-- [ ] 7.2: `get_scene_code` 명령어로 코드 조회
-- [ ] 7.3: 코드 수정 → 재실행 워크플로우 검증
+- [x] 7.2: `get_scene_code` 명령어로 코드 조회
+- [x] 7.3: 코드 수정 → 재실행 워크플로우 검증
 
-### Task 8: Electron 앱 통합
+### Task 8: Electron 앱 통합 (Epic 6으로 이관)
 
-> Story 6-6과 연계: CLI 도메인 분류 및 Electron 배포 검증
-> **의존성**: Task 4 완료 후 진행
+> Story 6-6에서 처리: Electron 패키징 및 CLI 번들링
+> **상태**: Epic 6 완료 후 검증 예정
 
-- [ ] 8.1: CLI 도메인 분류 구조 개선
+- [x] 8.1: CLI 도메인 분류 구조
   ```
-  Commands (code):
-    run_cad_code   JavaScript 코드 실행
-    get_scene_code 저장된 코드 조회
+  describe sandbox   # run_cad_code 샌드박스 함수 목록
+  describe code      # (향후) 코드 실행 도메인 설명
   ```
-- [ ] 8.2: `cad-cli describe code` 도메인 설명 추가
-- [ ] 8.3: Electron 앱에서 동작 검증
+- [x] 8.2: `cad-cli describe sandbox` 도메인 추가 (Phase 7에서 구현)
+- [ ] 8.3: Electron 앱에서 동작 검증 → Epic 6 참조
   ```bash
-  # macOS
-  /Applications/CADViewer.app/Contents/Resources/cad-cli.sh run_cad_code '{"code":"..."}'
-
-  # Windows
-  %LOCALAPPDATA%\Programs\CADViewer\resources\cad-cli.cmd run_cad_code '{"code":"..."}'
+  # Epic 6 완료 후 검증
+  # macOS: /Applications/CADViewer.app/Contents/Resources/cad-cli.sh
+  # Windows: %LOCALAPPDATA%\Programs\CADViewer\resources\cad-cli.cmd
   ```
 
-### Task 9: 문서 및 PR
+### Task 9: 문서 및 PR ✅
 
-- [ ] 9.1: CLAUDE.md에 run_cad_code 사용법 추가
-- [ ] 9.2: PR 생성 및 리뷰
-- [ ] 9.3: main 머지
+- [x] 9.1: CLAUDE.md에 run_cad_code 사용법 추가
+  - Sandbox 바인딩 20개 함수 문서화
+  - Bezier 커브 포맷 상세 설명
+  - Query 함수 (getWorld*) 추가
+- [x] 9.2: RFC 문서 완성 (`docs/rfc/run-cad-code.md`)
+- [ ] 9.3: PR 생성 및 main 머지
 
 ## Dev Notes
 
@@ -272,32 +276,39 @@ examples/
 - 완전한 샌드박스 (Node.js API 차단)
 - `quickjs-emscripten`: TypeScript 지원
 
-### 함수 시그니처 (총 15개)
+### 함수 시그니처 (총 20개)
 
 ```typescript
-// Primitives (5)
-draw_circle(name: string, x: number, y: number, radius: number): boolean
-draw_rect(name: string, x: number, y: number, width: number, height: number): boolean
-draw_line(name: string, points: number[]): boolean  // [x1, y1, x2, y2, ...]
-draw_arc(name: string, cx: number, cy: number, radius: number, startAngle: number, endAngle: number): boolean
-draw_polygon(name: string, points: number[]): boolean
+// Primitives (6)
+drawCircle(name: string, x: number, y: number, radius: number): boolean
+drawRect(name: string, x: number, y: number, width: number, height: number): boolean
+drawLine(name: string, points: number[]): boolean  // [x1, y1, x2, y2, ...]
+drawArc(name: string, cx: number, cy: number, radius: number, startAngle: number, endAngle: number): boolean
+drawPolygon(name: string, points: number[]): boolean
+drawBezier(name: string, points: number[], closed?: boolean): boolean  // Cubic Bezier
 
 // Transforms (4) - 이미 그린 도형 조정용
 translate(name: string, dx: number, dy: number): boolean
 rotate(name: string, angle: number): boolean  // 라디안
 scale(name: string, sx: number, sy: number): boolean
-set_pivot(name: string, px: number, py: number): boolean  // 회전/스케일 중심점
+setPivot(name: string, px: number, py: number): boolean  // 회전/스케일 중심점
 
 // Groups (2)
-create_group(name: string, children: string[]): boolean
-add_to_group(groupName: string, entityName: string): boolean
+createGroup(name: string, children: string[]): boolean
+addToGroup(groupName: string, entityName: string): boolean
 
-// Style (2) - color: RGBA (각 0.0~1.0 범위)
-set_fill(name: string, color: [number, number, number, number]): boolean
-set_stroke(name: string, color: [number, number, number, number], width?: number): boolean
+// Style (3) - color: RGBA (각 0.0~1.0 범위)
+setFill(name: string, color: [number, number, number, number]): boolean
+setStroke(name: string, color: [number, number, number, number], width?: number): boolean
+setZOrder(name: string, zIndex: number): boolean  // 렌더링 순서 (높을수록 앞)
+
+// Query (3) - Phase 2 월드 변환 조회
+getWorldTransform(name: string): { translate: [number, number], rotate: number, scale: [number, number] } | null
+getWorldPoint(name: string, x: number, y: number): [number, number] | null
+getWorldBounds(name: string): { min_x: number, min_y: number, max_x: number, max_y: number } | null
 
 // Utility (2)
-delete_entity(name: string): boolean
+deleteEntity(name: string): boolean
 exists(name: string): boolean
 ```
 
@@ -527,13 +538,17 @@ import 'utils';                  // 사이드 이펙트
   ```
   ✓ Centered scene. Moved 12 entities by (-5.0, -42.5)
   ```
+- [x] 24.3: `scale_scene <factor>` - 전체 루트 엔티티 스케일
+  ```
+  ✓ Scaled 12 root entities by 1.5x
+  ```
 
 ### Definition of Done (Phase 4) ✅
 
 - **계층 요약**: `overview`로 그룹 구조 한눈에 파악 ✅
 - **그룹 탐색**: `list_groups`, `describe_group`으로 drill-down ✅
 - **위치 조회**: `where`로 JSON 파싱 없이 위치 확인 ✅
-- **씬 조작**: `translate_scene`, `center_scene`으로 편리한 전체 이동 ✅
+- **씬 조작**: `translate_scene`, `scale_scene`, `center_scene`으로 편리한 전체 조작 ✅
 
 ---
 
@@ -674,13 +689,15 @@ points = [startX, startY,           // 시작점 (2개)
 
 ## MAMA Metrics
 
-| 메트릭 | 목적 | 연계 Task | 성공 기준 | 측정 방법 |
-|--------|------|----------|----------|----------|
-| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 | Task 5, 6 수동 테스트 |
-| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 | Task 7.3 워크플로우 테스트 |
-| `cad:run_cad_code_final` | 최종 성공 | Task 8-9 | Electron 통합 및 문서화 완료 | Task 8.3 Electron 앱 검증 |
-| `cad:polygon_primitive` | Polygon 지원 | Phase 6 | 삼각형 등 닫힌 도형 fill 가능 | 눈내리는 마을 예제 검증 |
-| `cad:bezier_and_sandbox_docs` | Bezier + CLI 문서화 | Phase 7 | Bezier 커브 + describe sandbox | 연기/곡선 예제 검증 |
+| 메트릭 | 목적 | 연계 Task | 성공 기준 | 상태 |
+|--------|------|----------|----------|------|
+| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 | ✅ |
+| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 | ✅ |
+| `cad:module_system` | 모듈 시스템 | Phase 3 | save/run_module + import 동작 | ✅ |
+| `cad:llm_friendly_navigation` | LLM 친화적 탐색 | Phase 4 | overview, where, translate_scene | ✅ |
+| `cad:polygon_primitive` | Polygon 지원 | Phase 6 | 삼각형 등 닫힌 도형 fill 가능 | ✅ |
+| `cad:bezier_and_sandbox_docs` | Bezier + CLI 문서화 | Phase 7 | Bezier 커브 + describe sandbox | ✅ |
+| `cad:run_cad_code_final` | 최종 성공 | Task 8.3 | Electron 앱 통합 | ⏳ Epic 6 |
 
 ## References
 
