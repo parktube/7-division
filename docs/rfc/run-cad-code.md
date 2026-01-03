@@ -43,21 +43,29 @@ for (let i = 0; i < 8; i++) {
 ### 바인딩할 CAD 함수
 
 ```typescript
-// primitives
+// primitives (5)
 draw_circle(name, x, y, radius)
 draw_rect(name, x, y, width, height)
 draw_line(name, points)
 draw_arc(name, cx, cy, radius, start_angle, end_angle)
 draw_polygon(name, points)
 
-// transforms
+// transforms (3)
 translate(name, dx, dy)
 rotate(name, angle)
 scale(name, sx, sy)
 
-// style
+// groups (2)
+create_group(name, children)
+add_to_group(group_name, entity_name)
+
+// style (2)
 set_fill(name, color)
 set_stroke(name, color, width)
+
+// utility (2)
+delete_entity(name)
+exists(name)
 ```
 
 ### Code as Source of Truth
@@ -84,7 +92,7 @@ draw_circle("gear_body", 0, 0, 40);
 for (let i = 0; i < 8; i++) {
   const angle = (i * 360) / 8;
   const name = "tooth_" + i;
-  draw_rect(name, 0, 40, 8, 15);
+  draw_rect(name, -4, 40, 8, 15);
   rotate(name, angle * Math.PI / 180);
 }
 ```
@@ -97,17 +105,27 @@ for (let i = 0; i < 8; i++) {
 
 ```javascript
 function drawBranch(name, length, depth) {
-  if (depth === 0) return;
+  if (depth <= 0) return;
 
-  draw_line(name, [0, 0, 0, length]);
+  // 각 가지를 그룹으로 관리하여 변환을 계층적으로 적용
+  create_group(name, []);
 
-  // 6방향 가지
+  const lineName = name + "_line";
+  draw_line(lineName, [0, 0, 0, length]);
+  add_to_group(name, lineName);
+
+  // 6개의 하위 가지 생성
   for (let i = 0; i < 6; i++) {
     const angle = (i * 60) * Math.PI / 180;
     const childName = name + "_" + i;
+
+    // 하위 가지를 재귀적으로 그림
     drawBranch(childName, length * 0.5, depth - 1);
+
+    // 하위 가지 그룹 변환 후 현재 그룹에 추가
     rotate(childName, angle);
     translate(childName, 0, length);
+    add_to_group(name, childName);
   }
 }
 
@@ -119,11 +137,14 @@ drawBranch("snow", 50, 3);
 ## 구현 단계
 
 1. [ ] QuickJS 통합 (`quickjs-emscripten` 설치)
-2. [ ] CAD 함수 바인딩 (10개)
+2. [ ] CAD 함수 바인딩 (14개)
 3. [ ] `run_cad_code` 명령어 구현
-4. [ ] 기어 예제 검증
-5. [ ] 스노우플레이크 예제 검증
-6. [ ] `get_scene_code` / `scene.code.js` 구현
+4. [ ] CLI 기본 help 통합
+5. [ ] 기어 예제 검증
+6. [ ] 스노우플레이크 예제 검증
+7. [ ] Code as Source of Truth (`get_scene_code`, `scene.code.js`)
+8. [ ] Electron 앱 통합 (도메인 분류, 배포 검증)
+9. [ ] 문서화 및 PR
 
 ## 기대 효과
 
@@ -133,8 +154,15 @@ drawBranch("snow", 50, 3);
 | 스노우플레이크 | 수백번 호출 | 1번 호출 |
 | LLM 코드 능력 | 억제됨 | 활용됨 |
 
+## MAMA Metrics
+
+| 메트릭 | 목적 | 성공 기준 |
+|--------|------|----------|
+| `cad:run_cad_code_poc_success` | PoC 완료 추적 | 기어/스노우플레이크 예제 동작 |
+| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | get_scene_code 워크플로우 완료 |
+| `cad:run_cad_code_final` | 최종 성공 | Electron 통합 및 문서화 완료 |
+
 ## References
 
-- MAMA: `cad:run_cad_code_poc_success`
-- MAMA: `cad:code_as_source_of_truth`
 - QuickJS: https://bellard.org/quickjs/
+- quickjs-emscripten: https://github.com/aspect-sh/aspect-quick

@@ -44,7 +44,7 @@ for (let i = 0; i < 8; i++) {
 - Given: 샌드박스 내 코드
 - When: `draw_circle("test", 0, 0, 50)` 호출
 - Then: 실제 CAD 엔진에 도형 생성됨
-- And: 10개 함수 바인딩 (primitives 5 + transforms 3 + style 2)
+- And: 14개 함수 바인딩 (primitives 5 + transforms 3 + groups 2 + style 2 + utility 2)
 
 ### AC3: 기어 예제 검증
 
@@ -128,18 +128,27 @@ examples/
   - `translate(name, dx, dy)`
   - `rotate(name, angle)`
   - `scale(name, sx, sy)`
-- [ ] 3.3: Style 바인딩 (2개)
+- [ ] 3.3: Groups 바인딩 (2개)
+  - `create_group(name, children)`
+  - `add_to_group(group_name, entity_name)`
+- [ ] 3.4: Style 바인딩 (2개)
   - `set_fill(name, color)`
   - `set_stroke(name, color, width)`
-- [ ] 3.4: 유틸리티 바인딩
+- [ ] 3.5: 유틸리티 바인딩 (2개)
   - `delete_entity(name)`
   - `exists(name)`
 
 ### Task 4: CLI 통합 (AC: 1, 2)
 
+> 기본 명령어 구현 및 help 통합
+
 - [ ] 4.1: `run_cad_code` 명령어 추가
 - [ ] 4.2: `get_scene_code` 명령어 추가
-- [ ] 4.3: CLI help에 명령어 설명 추가
+- [ ] 4.3: 기본 help 통합 (명령어명, 설명, 사용 예시)
+  ```
+  run_cad_code   Execute JavaScript code in sandbox
+  get_scene_code Get the last executed code
+  ```
 
 ### Task 5: 기어 예제 구현 및 검증 (AC: 3)
 
@@ -159,36 +168,55 @@ examples/
 
 ### Task 6: 스노우플레이크 예제 구현 및 검증 (AC: 4)
 
-- [ ] 6.1: `examples/snowflake.js` 작성
+- [ ] 6.1: `examples/snowflake.js` 작성 (재귀 버전)
   ```javascript
-  const branches = 6;
-  const mainLength = 80;
+  function drawBranch(name, length, depth) {
+    if (depth <= 0) return;
 
-  draw_circle("center", 0, 0, 8);
-  set_fill("center", [0.2, 0.6, 1, 1]);
+    // 각 가지를 그룹으로 관리하여 변환을 계층적으로 적용
+    create_group(name, []);
 
-  for (let i = 0; i < branches; i++) {
-    const angle = (i * 60) * Math.PI / 180;
-    const endX = Math.cos(angle) * mainLength;
-    const endY = Math.sin(angle) * mainLength;
-    draw_line("branch_" + i, [0, 0, endX, endY]);
-    set_stroke("branch_" + i, [0.1, 0.3, 0.8, 1], 3);
+    const lineName = name + "_line";
+    draw_line(lineName, [0, 0, 0, length]);
+    add_to_group(name, lineName);
+
+    // 6개의 하위 가지 생성
+    for (let i = 0; i < 6; i++) {
+      const angle = (i * 60) * Math.PI / 180;
+      const childName = name + "_" + i;
+
+      // 하위 가지를 재귀적으로 그림
+      drawBranch(childName, length * 0.5, depth - 1);
+
+      // 하위 가지 그룹 변환 후 현재 그룹에 추가
+      rotate(childName, angle);
+      translate(childName, 0, length);
+      add_to_group(name, childName);
+    }
   }
+
+  drawBranch("snow", 50, 3);
   ```
 - [ ] 6.2: 프랙탈 패턴 확인
 - [ ] 6.3: 뷰어에서 시각적 검증
 
 ### Task 7: Code as Source of Truth (AC: 5)
 
+> `run_cad_code` 실행 직후 코드를 파일로 저장, 이후 조회/수정 가능
+
 - [ ] 7.1: `run_cad_code` 실행 시 `viewer/scene.code.js` 저장
+  - `executor.ts`에서 코드 실행 성공 후 즉시 저장
+  - `viewer/` 디렉토리 없으면 생성
+  - 원자적 쓰기 (임시 파일 → rename)
 - [ ] 7.2: `get_scene_code` 명령어로 코드 조회
 - [ ] 7.3: 코드 수정 → 재실행 워크플로우 검증
 
 ### Task 8: Electron 앱 통합
 
-> Story 6-6과 연계: Electron 배포 시 CLI에 run_cad_code 포함
+> Story 6-6과 연계: CLI 도메인 분류 및 Electron 배포 검증
+> **의존성**: Task 4 완료 후 진행
 
-- [ ] 8.1: `cad-cli --help`에 run_cad_code 도메인 추가
+- [ ] 8.1: CLI 도메인 분류 구조 개선
   ```
   Commands (code):
     run_cad_code   JavaScript 코드 실행
@@ -225,24 +253,32 @@ examples/
 // Primitives
 draw_circle(name: string, x: number, y: number, radius: number): void
 draw_rect(name: string, x: number, y: number, width: number, height: number): void
-draw_line(name: string, points: number[]): void
+draw_line(name: string, points: number[]): void  // [x1, y1, x2, y2, ...] 평탄 배열
 draw_arc(name: string, cx: number, cy: number, radius: number, startAngle: number, endAngle: number): void
-draw_polygon(name: string, points: number[]): void
+draw_polygon(name: string, points: number[]): void  // [x1, y1, x2, y2, ...] 평탄 배열
 
 // Transforms
 translate(name: string, dx: number, dy: number): void
 rotate(name: string, angle: number): void  // 라디안
 scale(name: string, sx: number, sy: number): void
 
-// Style
+// Groups
+create_group(name: string, children: string[]): void
+add_to_group(groupName: string, entityName: string): void
+
+// Style - color: RGBA (각 0.0~1.0 범위)
 set_fill(name: string, color: [number, number, number, number]): void
 set_stroke(name: string, color: [number, number, number, number], width: number): void
+
+// Utility
+delete_entity(name: string): void
+exists(name: string): boolean
 ```
 
 ### 에러 처리
 
 ```javascript
-// 샌드박스 내 에러 → 사용자에게 명확한 피드백
+// 샌드박스 내 에러 → 사용자에게 명확한 피드백 (QuickJS 기본 포맷 + 라인 번호 파싱)
 {
   "success": false,
   "error": "ReferenceError: draw_circl is not defined (line 3)"
@@ -251,17 +287,28 @@ set_stroke(name: string, color: [number, number, number, number], width: number)
 
 ## Success Metrics
 
-| 지표 | 현재 | PoC 목표 |
-|------|------|----------|
-| 기어 8톱니 | 17번 호출 | 1번 호출 |
-| 스노우플레이크 | 수백번 호출 | 1번 호출 |
-| 코드 재사용 | 불가능 | get_scene_code로 가능 |
+| 지표 | 현재 | PoC 목표 | 측정 방법 |
+|------|------|----------|----------|
+| 기어 8톱니 | 17번 호출 | 1번 호출 | CLI 명령어 횟수 카운트 |
+| 스노우플레이크 | 수백번 호출 | 1번 호출 | CLI 명령어 횟수 카운트 |
+| 코드 재사용 | 불가능 | get_scene_code로 가능 | 워크플로우 테스트 |
+
+### Definition of Done
+
+- **기어 예제**: 9개 엔티티 생성 + 1번 호출
+- **스노우플레이크 예제**: 재귀적 패턴 생성 + 1번 호출 (depth=3)
+- **Code as Source of Truth**: 코드 수정 → 재실행 → 씬 업데이트 확인
+
+## MAMA Metrics
+
+| 메트릭 | 목적 | 연계 Task | 성공 기준 |
+|--------|------|----------|----------|
+| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 |
+| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 |
+| `cad:run_cad_code_final` | 최종 성공 | Task 8-9 | Electron 통합 및 문서화 완료 |
 
 ## References
 
 - RFC: `docs/rfc/run-cad-code.md`
-- MAMA: `cad:run_cad_code_poc_success`
-- MAMA: `cad:code_as_source_of_truth`
-- MAMA: `cad:run_cad_code_final`
 - QuickJS: https://bellard.org/quickjs/
 - quickjs-emscripten: https://github.com/aspect-sh/aspect-quick
