@@ -27,19 +27,19 @@ so that **CLAUDE.md에 수동으로 경로를 입력하지 않아도 된다**.
    - Given: Electron 앱 실행 중
    - When: Help > Setup Claude Code 클릭
    - Then: 최소한의 CLAUDE.md 스니펫이 클립보드에 복사됨
-   - And: 현재 OS에 맞는 CLI 경로가 자동 포함됨
+   - And: 현재 앱의 실제 설치 경로가 동적으로 포함됨
 
 2. **AC2: 불필요한 메뉴 제거**
    - Given: Electron 앱 실행 중
    - When: 메뉴 확인
    - Then: 사용하지 않는 기본 메뉴 항목이 제거됨
-   - And: 필요한 항목만 남음 (File, Edit, View, Help)
+   - And: macOS: CADViewer, File, Edit, View, Help
+   - And: Windows: File, Edit, View, Help
 
-3. **AC3: CLI help 자기완결성**
+3. **AC3: CLI help 완결성 검증**
    - Given: CLI 설치 완료
-   - When: `cad-cli --help` 실행
-   - Then: 모든 도메인 탐색 방법이 안내됨
-   - And: Claude가 추가 문서 없이 모든 기능 파악 가능
+   - When: `cad-cli --help`, `domains`, `describe <domain>` 실행
+   - Then: 모든 지원 명령어가 help에 포함됨
 
 ## Tasks / Subtasks
 
@@ -51,28 +51,30 @@ so that **CLAUDE.md에 수동으로 경로를 입력하지 않아도 된다**.
   - [ ] 1.5: app.whenReady()에서 메뉴 설정
 
 - [ ] **Task 2: 클립보드 복사 기능** (AC: 1)
-  - [ ] 2.1: OS별 CLI 경로 생성 함수
+  - [ ] 2.1: 앱 실제 경로에서 CLI 경로 동적 생성
   - [ ] 2.2: 스니펫 생성 및 복사
 
-- [ ] **Task 3: CLI help 자기완결성 검증** (AC: 3)
-  - [ ] 3.1: `--help` 출력 검토
-  - [ ] 3.2: 필요시 help 출력 개선
+- [ ] **Task 3: CLI help 검증** (AC: 3)
+  - [ ] 3.1: 모든 명령어가 help/describe에 포함되는지 확인
 
 ## Dev Notes
 
 ### 복사할 스니펫 (최소화)
 
-macOS:
+CLI 경로는 앱 실제 설치 위치에서 동적으로 생성:
+
+```typescript
+// main process에서 실제 경로 계산
+const appPath = app.getAppPath(); // 또는 app.getPath('exe')
+const cliPath = process.platform === 'darwin'
+  ? path.join(appPath, '../Resources/cad-cli.sh')
+  : path.join(appPath, '../resources/cad-cli.cmd');
+```
+
+결과 예시:
 ```markdown
 ## CADViewer
 CLI: /Applications/CADViewer.app/Contents/Resources/cad-cli.sh
-`--help`로 사용법 확인
-```
-
-Windows:
-```markdown
-## CADViewer
-CLI: %LOCALAPPDATA%\Programs\CADViewer\resources\cad-cli.cmd
 `--help`로 사용법 확인
 ```
 
