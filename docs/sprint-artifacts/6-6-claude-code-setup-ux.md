@@ -54,8 +54,8 @@ so that **CLAUDE.md에 수동으로 경로를 입력하지 않아도 된다**.
   - [ ] 2.1: 앱 실제 경로에서 CLI 경로 동적 생성
   - [ ] 2.2: 스니펫 생성 및 복사
 
-- [ ] **Task 3: CLI help 검증** (AC: 3)
-  - [ ] 3.1: 모든 명령어가 help/describe에 포함되는지 확인
+- [ ] **Task 3: CLI help 자기완결성 검증 (코드 변경 없음)** (AC: 3)
+  - [ ] 3.1: 현재 CLI의 `--help`, `domains`, `describe`가 모든 명령어를 포함하는지 확인
 
 ## Dev Notes
 
