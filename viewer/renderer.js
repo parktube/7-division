@@ -256,6 +256,73 @@ function renderLine(geometry, style) {
   applyStroke(stroke);
 }
 
+function renderPolygon(geometry, style) {
+  const points = geometry?.Polygon?.points;
+  if (!Array.isArray(points) || points.length < 3) {
+    return;
+  }
+  const validPoints = points.filter(
+    (point) =>
+      Array.isArray(point) &&
+      point.length >= 2 &&
+      Number.isFinite(point[0]) &&
+      Number.isFinite(point[1]),
+  );
+  if (validPoints.length < 3) {
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(validPoints[0][0], validPoints[0][1]);
+  for (let i = 1; i < validPoints.length; i += 1) {
+    ctx.lineTo(validPoints[i][0], validPoints[i][1]);
+  }
+  ctx.closePath();
+  applyFill(style?.fill);
+  const stroke = resolveStroke(style);
+  if (stroke) {
+    applyStroke(stroke);
+  }
+}
+
+function renderBezier(geometry, style) {
+  const bezier = geometry?.Bezier;
+  if (!bezier) {
+    return;
+  }
+  const { start, segments, closed } = bezier;
+  if (!Array.isArray(start) || start.length < 2 || !Array.isArray(segments) || segments.length === 0) {
+    return;
+  }
+  const [sx, sy] = start;
+  if (!Number.isFinite(sx) || !Number.isFinite(sy)) {
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+
+  for (const seg of segments) {
+    if (!Array.isArray(seg) || seg.length < 3) continue;
+    const [cp1, cp2, end] = seg;
+    if (!Array.isArray(cp1) || !Array.isArray(cp2) || !Array.isArray(end)) continue;
+    if (cp1.length < 2 || cp2.length < 2 || end.length < 2) continue;
+    if (!Number.isFinite(cp1[0]) || !Number.isFinite(cp1[1]) ||
+        !Number.isFinite(cp2[0]) || !Number.isFinite(cp2[1]) ||
+        !Number.isFinite(end[0]) || !Number.isFinite(end[1])) continue;
+    ctx.bezierCurveTo(cp1[0], cp1[1], cp2[0], cp2[1], end[0], end[1]);
+  }
+
+  if (closed) {
+    ctx.closePath();
+  }
+
+  applyFill(style?.fill);
+  const stroke = resolveStroke(style);
+  if (stroke) {
+    applyStroke(stroke);
+  }
+}
+
 function renderCircle(geometry, style) {
   const circle = geometry?.Circle;
   if (!circle) {
@@ -404,14 +471,23 @@ function renderEntity(entity, entitiesByName) {
     case 'Arc':
       renderArc(entity.geometry, entity.style);
       break;
+    case 'Polygon':
+      renderPolygon(entity.geometry, entity.style);
+      break;
+    case 'Bezier':
+      renderBezier(entity.geometry, entity.style);
+      break;
     case 'Group':
-      // Group의 변환이 적용된 상태에서 자식들을 렌더링 (계층적 변환)
+      // Group의 변환이 적용된 상태에서 자식들을 z-order 순으로 렌더링 (계층적 변환)
       if (Array.isArray(entity.children) && entitiesByName) {
-        for (const childName of entity.children) {
-          const child = entitiesByName[childName];
-          if (child) {
-            renderEntity(child, entitiesByName);
-          }
+        // children을 z-order로 정렬 (낮은 값이 먼저 = 뒤에 렌더링)
+        const sortedChildren = entity.children
+          .map(childName => entitiesByName[childName])
+          .filter(child => child != null)
+          .sort((a, b) => (a.metadata?.z_index || 0) - (b.metadata?.z_index || 0));
+
+        for (const child of sortedChildren) {
+          renderEntity(child, entitiesByName);
         }
       }
       break;
@@ -445,10 +521,13 @@ function renderScene(scene) {
 
   // Only render root-level entities (those without parent_id)
   // Children are rendered by their parent Group
-  for (const entity of scene.entities) {
-    if (!entity.parent_id) {
-      renderEntity(entity, entitiesByName);
-    }
+  // Sort by z_index (lower z_index renders first = behind)
+  const rootEntities = scene.entities
+    .filter(e => !e.parent_id)
+    .sort((a, b) => (a.metadata?.z_index || 0) - (b.metadata?.z_index || 0));
+
+  for (const entity of rootEntities) {
+    renderEntity(entity, entitiesByName);
   }
 
   // Render selection highlight for selected entities

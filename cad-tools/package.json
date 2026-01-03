@@ -34,7 +34,8 @@
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
-    "puppeteer": "^24.34.0"
+    "puppeteer": "^24.34.0",
+    "quickjs-emscripten": "^0.31.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -118,6 +118,12 @@ export class CADExecutor {
         case 'draw_arc':
           return this.drawArc(input);
 
+        case 'draw_polygon':
+          return this.drawPolygon(input);
+
+        case 'draw_bezier':
+          return this.drawBezier(input);
+
         // === style ===
         case 'set_stroke':
           return this.setStroke(input);
@@ -141,6 +147,18 @@ export class CADExecutor {
         case 'get_scene_info':
           return this.getSceneInfo();
 
+        case 'get_world_transform':
+          return this.getWorldTransform(input);
+
+        case 'get_world_point':
+          return this.getWorldPoint(input);
+
+        case 'get_world_bounds':
+          return this.getWorldBounds(input);
+
+        case 'exists':
+          return this.entityExists(input);
+
         // === transforms ===
         case 'translate':
           return this.translateEntity(input);
@@ -156,6 +174,12 @@ export class CADExecutor {
 
         case 'set_pivot':
           return this.setPivot(input);
+
+        case 'set_z_order':
+          return this.setZOrder(input);
+
+        case 'get_z_order':
+          return this.getZOrder(input);
 
         // === group ===
         case 'create_group':
@@ -276,6 +300,37 @@ export class CADExecutor {
     return { success: true, entity: result, type: 'arc' };
   }
 
+  private drawPolygon(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', points: 'number[]' });
+    if (error) return { success: false, error: `draw_polygon: ${error}` };
+
+    const name = input.name as string;
+    const points = new Float64Array(input.points as number[]);
+    const styleJson = this.toJson(input.style);
+
+    const result = this.scene.draw_polygon(name, points, styleJson);
+    return { success: true, entity: result, type: 'polygon' };
+  }
+
+  /**
+   * 베지어 커브를 그립니다.
+   * @param input.points - [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
+   *                       첫 세그먼트는 8개, 이후 세그먼트는 6개씩 (cp1, cp2, end)
+   * @param input.closed - 닫힌 경로 여부 (기본값 false)
+   */
+  private drawBezier(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', points: 'number[]' });
+    if (error) return { success: false, error: `draw_bezier: ${error}` };
+
+    const name = input.name as string;
+    const points = new Float64Array(input.points as number[]);
+    const closed = (input.closed as boolean) || false;
+    const styleJson = this.toJson(input.style);
+
+    const result = this.scene.draw_bezier(name, points, closed, styleJson);
+    return { success: true, entity: result, type: 'bezier' };
+  }
+
   // === Style implementations ===
 
   private setStroke(input: Record<string, unknown>): ToolResult {
@@ -344,6 +399,62 @@ export class CADExecutor {
   private getSceneInfo(): ToolResult {
     const data = this.scene.get_scene_info();
     return { success: true, type: 'scene_info', data };
+  }
+
+  // === World Transform implementations (Phase 2) ===
+
+  private getWorldTransform(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `get_world_transform: ${error}` };
+
+    const name = input.name as string;
+    const data = this.scene.get_world_transform(name);
+
+    if (data === undefined || data === null) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+
+    return { success: true, entity: name, type: 'world_transform', data };
+  }
+
+  private getWorldPoint(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', x: 'number', y: 'number' });
+    if (error) return { success: false, error: `get_world_point: ${error}` };
+
+    const name = input.name as string;
+    const x = input.x as number;
+    const y = input.y as number;
+    const data = this.scene.get_world_point(name, x, y);
+
+    if (data === undefined || data === null) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+
+    return { success: true, entity: name, type: 'world_point', data };
+  }
+
+  private getWorldBounds(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `get_world_bounds: ${error}` };
+
+    const name = input.name as string;
+    const data = this.scene.get_world_bounds(name);
+
+    if (data === undefined || data === null) {
+      return { success: false, error: `Entity not found or empty: ${name}` };
+    }
+
+    return { success: true, entity: name, type: 'world_bounds', data };
+  }
+
+  private entityExists(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `exists: ${error}` };
+
+    const name = input.name as string;
+    const exists = this.scene.exists(name);
+
+    return { success: true, entity: name, type: 'exists', data: JSON.stringify({ exists }) };
   }
 
   // === Session implementations ===
@@ -442,6 +553,33 @@ export class CADExecutor {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name, pivot: [px, py] };
+  }
+
+  private setZOrder(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', z_index: 'number' });
+    if (error) return { success: false, error: `set_z_order: ${error}` };
+
+    const name = input.name as string;
+    const zIndex = Math.round(input.z_index as number);  // i32로 변환
+
+    const result = this.scene.set_z_order(name, zIndex);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name, data: JSON.stringify({ z_index: zIndex }) };
+  }
+
+  private getZOrder(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `get_z_order: ${error}` };
+
+    const name = input.name as string;
+    const zIndex = this.scene.get_z_order(name);
+
+    if (zIndex === undefined || zIndex === null) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name, type: 'z_order', data: JSON.stringify({ z_index: zIndex }) };
   }
 
   // === Group implementations ===
