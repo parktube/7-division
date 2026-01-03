@@ -1,6 +1,6 @@
 # Story 6.6: Claude Code 설정 UX 개선
 
-Status: planning
+Status: done
 
 Scope: Electron app (macOS/Windows) - viewer 수정 없음
 
@@ -32,30 +32,30 @@ so that **CLAUDE.md에 수동으로 경로를 입력하지 않아도 된다**.
 2. **AC2: 불필요한 메뉴 제거**
    - Given: Electron 앱 실행 중
    - When: 메뉴 확인
-   - Then: 사용하지 않는 기본 메뉴 항목이 제거됨
+   - Then: 불필요한 기본 메뉴 항목이 제거되고, 다음 항목만 남음:
    - And: macOS: CADViewer, File, Edit, View, Help
    - And: Windows: File, Edit, View, Help
 
 3. **AC3: CLI help 완결성 검증**
    - Given: CLI 설치 완료
-   - When: `cad-cli --help`, `domains`, `describe <domain>` 실행
+   - When: `cad-cli --help`, `cad-cli domains`, `cad-cli describe <domain>` 실행
    - Then: 모든 지원 명령어가 help에 포함됨
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: 커스텀 메뉴 구현** (AC: 1, 2)
-  - [ ] 1.1: main/index.ts에 Menu, clipboard import 추가
-  - [ ] 1.2: createAppMenu() 함수 작성
-  - [ ] 1.3: 불필요한 기본 메뉴 제거
-  - [ ] 1.4: Help > Setup Claude Code 메뉴 항목 추가
-  - [ ] 1.5: app.whenReady()에서 메뉴 설정
+- [x] **Task 1: 커스텀 메뉴 구현** (AC: 1, 2)
+  - [x] 1.1: main/index.ts에 Menu, clipboard import 추가
+  - [x] 1.2: createAppMenu() 함수 작성
+  - [x] 1.3: 불필요한 기본 메뉴 제거
+  - [x] 1.4: Help > Setup Claude Code 메뉴 항목 추가
+  - [x] 1.5: app.whenReady()에서 메뉴 설정
 
-- [ ] **Task 2: 클립보드 복사 기능** (AC: 1) - Dev Notes 스니펫 형식(62-79줄) 따름
-  - [ ] 2.1: 앱 실제 경로에서 CLI 경로 동적 생성 (상대 경로로 per-user/per-machine 모두 지원)
-  - [ ] 2.2: 스니펫 생성 및 복사
+- [x] **Task 2: 클립보드 복사 기능** (AC: 1) - Dev Notes 스니펫 형식(67-80줄) 따름
+  - [x] 2.1: 앱 실제 경로에서 CLI 경로 동적 생성 (상대 경로로 per-user/per-machine 모두 지원)
+  - [x] 2.2: 스니펫 생성 및 복사
 
-- [ ] **Task 3: CLI help 자기완결성 검증 (코드 변경 없음)** (AC: 3)
-  - [ ] 3.1: 현재 CLI의 `--help`, `domains`, `describe`가 모든 명령어를 포함하는지 확인
+- [x] **Task 3: CLI help 자기완결성 검증 (코드 변경 없음)** (AC: 3)
+  - [x] 3.1: 현재 CLI의 `--help`, `domains`, `describe`가 모든 명령어를 포함하는지 확인
 
 ## Dev Notes
 
@@ -66,10 +66,11 @@ CLI 경로는 앱 실제 설치 위치에서 동적으로 생성.
 
 ```typescript
 // main process에서 실제 경로 계산
-const appPath = app.getAppPath(); // 또는 app.getPath('exe')
+// app.getAppPath()는 Resources/app.asar를 반환하므로 ../cad-cli.sh로 같은 디렉토리 접근
+const appPath = app.getAppPath();
 const cliPath = process.platform === 'darwin'
-  ? path.join(appPath, '../Resources/cad-cli.sh')
-  : path.join(appPath, '../resources/cad-cli.cmd');
+  ? path.join(appPath, '../cad-cli.sh')
+  : path.join(appPath, '../cad-cli.cmd');
 ```
 
 결과 예시:
