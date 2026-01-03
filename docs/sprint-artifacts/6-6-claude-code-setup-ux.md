@@ -50,8 +50,8 @@ so that **CLAUDE.md에 수동으로 경로를 입력하지 않아도 된다**.
   - [ ] 1.4: Help > Setup Claude Code 메뉴 항목 추가
   - [ ] 1.5: app.whenReady()에서 메뉴 설정
 
-- [ ] **Task 2: 클립보드 복사 기능** (AC: 1)
-  - [ ] 2.1: 앱 실제 경로에서 CLI 경로 동적 생성
+- [ ] **Task 2: 클립보드 복사 기능** (AC: 1) - Dev Notes 스니펫 형식(62-79줄) 따름
+  - [ ] 2.1: 앱 실제 경로에서 CLI 경로 동적 생성 (상대 경로로 per-user/per-machine 모두 지원)
   - [ ] 2.2: 스니펫 생성 및 복사
 
 - [ ] **Task 3: CLI help 자기완결성 검증 (코드 변경 없음)** (AC: 3)
@@ -61,7 +61,8 @@ so that **CLAUDE.md에 수동으로 경로를 입력하지 않아도 된다**.
 
 ### 복사할 스니펫 (최소화)
 
-CLI 경로는 앱 실제 설치 위치에서 동적으로 생성:
+CLI 경로는 앱 실제 설치 위치에서 동적으로 생성.
+상대 경로 방식이므로 Windows per-user/per-machine 설치 모두 지원:
 
 ```typescript
 // main process에서 실제 경로 계산
