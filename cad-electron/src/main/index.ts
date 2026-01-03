@@ -1,9 +1,90 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu, clipboard } from 'electron';
 import { createServer, type Server } from 'http';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
 app.setName('CADViewer');
+
+/**
+ * Get CLI path based on app installation location.
+ * Uses relative path from app location, so works for both per-user and per-machine installs.
+ */
+function getCliPath(): string {
+  const appPath = app.getAppPath();
+  if (process.platform === 'darwin') {
+    return join(appPath, '../Resources/cad-cli.sh');
+  }
+  return join(appPath, '../resources/cad-cli.cmd');
+}
+
+/**
+ * Copy Claude Code setup snippet to clipboard.
+ * Minimal snippet: CLI path + --help reference.
+ */
+function copyClaudeSetup(): void {
+  const cliPath = getCliPath();
+  const snippet = `## CADViewer
+CLI: ${cliPath}
+\`--help\`로 사용법 확인`;
+  clipboard.writeText(snippet);
+}
+
+/**
+ * Create custom application menu.
+ * Removes unused default items, adds "Setup Claude Code" in Help menu.
+ */
+function createAppMenu(): void {
+  const isMac = process.platform === 'darwin';
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac
+      ? [{
+          label: app.name,
+          submenu: [
+            { role: 'about' as const },
+            { type: 'separator' as const },
+            { role: 'quit' as const },
+          ],
+        }]
+      : []),
+    {
+      label: 'File',
+      submenu: [
+        isMac ? { role: 'close' as const } : { role: 'quit' as const },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        { role: 'selectAll' as const },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' as const },
+        { role: 'toggleDevTools' as const },
+        { type: 'separator' as const },
+        { role: 'resetZoom' as const },
+        { role: 'zoomIn' as const },
+        { role: 'zoomOut' as const },
+      ],
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'Setup Claude Code',
+          click: copyClaudeSetup,
+        },
+      ],
+    },
+  ];
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
 
 let mainWindow: BrowserWindow | null = null;
 let sceneServer: Server | null = null;
@@ -121,6 +202,8 @@ function resolveScenePath(): string {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  createAppMenu();
+
   const scenePath = resolveScenePath();
 
   sceneUrl = await startSceneServer(scenePath);
