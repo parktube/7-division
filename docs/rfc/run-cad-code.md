@@ -90,10 +90,10 @@ draw_circle("gear_body", 0, 0, 40);
 
 // 8개 톱니
 for (let i = 0; i < 8; i++) {
-  const angle = (i * 360) / 8;
+  const angle = (i * 45) * Math.PI / 180;
   const name = "tooth_" + i;
   draw_rect(name, -4, 40, 8, 15);
-  rotate(name, angle * Math.PI / 180);
+  rotate(name, angle);
 }
 ```
 
@@ -156,13 +156,13 @@ drawBranch("snow", 50, 3);
 
 ## MAMA Metrics
 
-| 메트릭 | 목적 | 성공 기준 |
-|--------|------|----------|
-| `cad:run_cad_code_poc_success` | PoC 완료 추적 | 기어/스노우플레이크 예제 동작 |
-| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | get_scene_code 워크플로우 완료 |
-| `cad:run_cad_code_final` | 최종 성공 | Electron 통합 및 문서화 완료 |
+| 메트릭 | 목적 | 연계 Task | 성공 기준 |
+|--------|------|----------|----------|
+| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 |
+| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 |
+| `cad:run_cad_code_final` | 최종 성공 | Task 8-9 | Electron 통합 및 문서화 완료 |
 
 ## References
 
 - QuickJS: https://bellard.org/quickjs/
-- quickjs-emscripten: https://github.com/aspect-sh/aspect-quick
+- quickjs-emscripten: https://github.com/justjake/quickjs-emscripten

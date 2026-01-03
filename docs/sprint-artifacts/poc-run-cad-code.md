@@ -301,14 +301,14 @@ exists(name: string): boolean
 
 ## MAMA Metrics
 
-| 메트릭 | 목적 | 연계 Task | 성공 기준 |
-|--------|------|----------|----------|
-| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 |
-| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 |
-| `cad:run_cad_code_final` | 최종 성공 | Task 8-9 | Electron 통합 및 문서화 완료 |
+| 메트릭 | 목적 | 연계 Task | 성공 기준 | 측정 방법 |
+|--------|------|----------|----------|----------|
+| `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 | Task 5, 6 수동 테스트 |
+| `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 | Task 7.3 워크플로우 테스트 |
+| `cad:run_cad_code_final` | 최종 성공 | Task 8-9 | Electron 통합 및 문서화 완료 | Task 8.3 Electron 앱 검증 |
 
 ## References
 
 - RFC: `docs/rfc/run-cad-code.md`
 - QuickJS: https://bellard.org/quickjs/
-- quickjs-emscripten: https://github.com/aspect-sh/aspect-quick
+- quickjs-emscripten: https://github.com/justjake/quickjs-emscripten
