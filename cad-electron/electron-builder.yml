@@ -42,7 +42,7 @@ mac:
   category: public.app-category.graphics-design
   entitlementsInherit: resources/entitlements.mac.plist
 win:
-  icon: resources/icon.png
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch:
