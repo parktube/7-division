@@ -1318,12 +1318,14 @@ Scene file:
       }
     }
 
-    // Get bounds
+    // Get bounds (format: { min: [x, y], max: [x, y] })
     const boundsResult = executor.exec('get_world_bounds', { name: groupName });
     if (boundsResult.success && boundsResult.data) {
       const b = JSON.parse(boundsResult.data);
-      if (typeof b.min_x === 'number') {
-        lines.push(`   Bounds: (${b.min_x.toFixed(0)}, ${b.min_y.toFixed(0)}) → (${b.max_x.toFixed(0)}, ${b.max_y.toFixed(0)})`);
+      if (Array.isArray(b.min) && Array.isArray(b.max)) {
+        const [minX, minY] = b.min;
+        const [maxX, maxY] = b.max;
+        lines.push(`   Bounds: (${minX.toFixed(0)}, ${minY.toFixed(0)}) → (${maxX.toFixed(0)}, ${maxY.toFixed(0)})`);
       }
     }
 
@@ -1677,15 +1679,17 @@ Scene file:
     const parentInfo = detail.parent_id ? ` (in group: ${detail.parent_id})` : ' (root level)';
     lines.push(`📍 ${entityName} [${detail.entity_type}]${parentInfo}`);
 
-    // World bounds
+    // World bounds (format: { min: [x, y], max: [x, y] })
     const boundsResult = executor.exec('get_world_bounds', { name: entityName });
     if (boundsResult.success && boundsResult.data) {
       const b = JSON.parse(boundsResult.data);
-      if (typeof b.min_x === 'number') {
-        const centerX = (b.min_x + b.max_x) / 2;
-        const centerY = (b.min_y + b.max_y) / 2;
+      if (Array.isArray(b.min) && Array.isArray(b.max)) {
+        const [minX, minY] = b.min;
+        const [maxX, maxY] = b.max;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
         lines.push(`   Center: (${centerX.toFixed(1)}, ${centerY.toFixed(1)})`);
-        lines.push(`   Size: ${(b.max_x - b.min_x).toFixed(1)} x ${(b.max_y - b.min_y).toFixed(1)}`);
+        lines.push(`   Size: ${(maxX - minX).toFixed(1)} x ${(maxY - minY).toFixed(1)}`);
       }
     }
 
