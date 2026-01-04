@@ -141,6 +141,27 @@ function computeBounds(entities) {
       minY = Math.min(minY, center[1] - radius);
       maxX = Math.max(maxX, center[0] + radius);
       maxY = Math.max(maxY, center[1] + radius);
+    } else if (geo.Polygon) {
+      for (const pt of geo.Polygon.points) {
+        minX = Math.min(minX, pt[0]);
+        minY = Math.min(minY, pt[1]);
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      }
+    } else if (geo.Bezier) {
+      const { start, segments } = geo.Bezier;
+      minX = Math.min(minX, start[0]);
+      minY = Math.min(minY, start[1]);
+      maxX = Math.max(maxX, start[0]);
+      maxY = Math.max(maxY, start[1]);
+      for (const seg of segments) {
+        for (const pt of seg) {
+          minX = Math.min(minX, pt[0]);
+          minY = Math.min(minY, pt[1]);
+          maxX = Math.max(maxX, pt[0]);
+          maxY = Math.max(maxY, pt[1]);
+        }
+      }
     }
   }
 
@@ -764,6 +785,34 @@ function getEntityBounds(entity, entitiesByName) {
       maxY: center[1] + radius,
     };
   }
+  if (geo.Polygon) {
+    const points = geo.Polygon.points;
+    if (!points || points.length < 3) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const pt of points) {
+      minX = Math.min(minX, pt[0]);
+      minY = Math.min(minY, pt[1]);
+      maxX = Math.max(maxX, pt[0]);
+      maxY = Math.max(maxY, pt[1]);
+    }
+    return { minX, minY, maxX, maxY };
+  }
+  if (geo.Bezier) {
+    const { start, segments } = geo.Bezier;
+    if (!start || !segments || segments.length === 0) return null;
+    let minX = start[0], minY = start[1], maxX = start[0], maxY = start[1];
+    // Include all control points and end points for accurate bounds
+    for (const seg of segments) {
+      // seg = [cp1, cp2, end] where each is [x, y]
+      for (const pt of seg) {
+        minX = Math.min(minX, pt[0]);
+        minY = Math.min(minY, pt[1]);
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      }
+    }
+    return { minX, minY, maxX, maxY };
+  }
   return null;
 }
 
@@ -908,10 +957,11 @@ function hitTestScene(scene, worldX, worldY) {
     }
   }
 
-  // Test entities in reverse order (last rendered = on top)
-  const rootEntities = scene.entities.filter(e => !e.parent_id);
-  for (let i = rootEntities.length - 1; i >= 0; i--) {
-    const entity = rootEntities[i];
+  // Sort root entities by z_index descending (highest z-order = visually on top = test first)
+  const rootEntities = scene.entities
+    .filter(e => !e.parent_id)
+    .sort((a, b) => (b.z_index || 0) - (a.z_index || 0));
+  for (const entity of rootEntities) {
     const hit = hitTestEntity(entity, worldX, worldY, entitiesByName, null);
     if (hit) return hit;
   }

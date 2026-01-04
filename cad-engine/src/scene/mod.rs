@@ -572,6 +572,13 @@ impl Scene {
 
         let coords = points.to_vec();
 
+        // NaN/Infinity 검증
+        if coords.iter().any(|v| !v.is_finite()) {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
         // 최소 8개 좌표 필요 (시작점 + 제어점1 + 제어점2 + 끝점)
         if coords.len() < 8 {
             return Err(JsValue::from_str(

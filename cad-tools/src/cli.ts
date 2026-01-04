@@ -721,10 +721,14 @@ Scene file:
       };
     };
 
-    // Helper: get imports from code
+    // Helper: get imports from code (same pattern as preprocessCode)
     const getImports = (code: string): string[] => {
       const imports: string[] = [];
-      const importRegex = /import\s+['"]([^'"]+)['"]/g;
+      // Match all import patterns:
+      // import { ... } from 'module'
+      // import * from 'module'
+      // import 'module'
+      const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+from\s+)?)?['"]([^'"]+)['"]/g;
       let match;
       while ((match = importRegex.exec(code)) !== null) {
         imports.push(match[1]);
