@@ -33,7 +33,7 @@ extraResources:
   - from: resources/CLAUDE.md
     to: CLAUDE.md
 mac:
-  icon: resources/robot-icon.png
+  icon: resources/icon.png
   target:
     - target: dmg
       arch:
@@ -42,7 +42,7 @@ mac:
   category: public.app-category.graphics-design
   entitlementsInherit: resources/entitlements.mac.plist
 win:
-  icon: resources/robot-icon.png
+  icon: resources/icon.png
   target:
     - target: nsis
       arch:
@@ -61,4 +61,4 @@ linux:
         - x64
   maintainer: 7division
   category: Graphics
-  icon: resources/robot-icon.png
+  icon: resources/icon.png
