@@ -1,6 +1,6 @@
 # PoC: run_cad_code
 
-Status: Phase 1-7 완료 ✅ (Task 8.3 Electron 검증만 Epic 6 대기)
+Status: Phase 1-8 완료 ✅ (Task 8.3 Electron 검증만 Epic 6 대기)
 
 ## Story
 
@@ -687,6 +687,98 @@ points = [startX, startY,           // 시작점 (2개)
 
 ---
 
+## Phase 8: 코드 에디터 인터페이스 ✅
+
+### 배경
+
+기존 `run_cad_code '코드'` 방식의 LLM 사용성 문제:
+- Windows 배치 파일에서 멀티라인 인자 전달 불가
+- 모듈 수정 시 전체 재작성 필요 (append 없음)
+- 모듈 삭제 기능 없음
+- 의존성 추적 어려움
+
+### Task 40-46: 코드 에디터 모드 ✅
+
+- [x] 40: 프로젝트 구조 모드 (인자 없음) → files, main, entities 요약
+- [x] 41: 파일 읽기 모드 (`run_cad_code <name>`)
+- [x] 42: 파일 쓰기 모드 (`run_cad_code <name> "code"`)
+- [x] 43: 코드 추가 모드 (`run_cad_code <name> +"code"`)
+- [x] 44: stdin 멀티라인 모드 (`run_cad_code <name> -`)
+- [x] 45: 파일 삭제 모드 (`run_cad_code --delete <name>`)
+- [x] 46: 의존성 그래프 (`run_cad_code --deps`)
+
+### 사용 예시
+
+```bash
+# 프로젝트 구조 보기
+cad-cli.cmd run_cad_code
+
+# 파일 읽기
+cad-cli.cmd run_cad_code main
+cad-cli.cmd run_cad_code my_module
+
+# 파일 쓰기 (덮어쓰기)
+cad-cli.cmd run_cad_code main "drawCircle('c1', 0, 0, 50)"
+
+# 파일에 코드 추가 (+ prefix)
+cad-cli.cmd run_cad_code main "+drawRect('r1', 10, 10, 30, 30)"
+
+# 멀티라인 코드 (stdin)
+echo "for (let i = 0; i < 5; i++) { drawCircle('c'+i, i*30, 0, 15); }" | cad-cli.cmd run_cad_code main -
+
+# PowerShell Here-String (복잡한 코드)
+$code = @"
+class House {
+  constructor(name, x, y) { this.name = name; this.x = x; this.y = y; }
+  build() {
+    drawRect(this.name + '_wall', this.x, this.y, 60, 50);
+    drawPolygon(this.name + '_roof', [this.x, this.y+50, this.x+30, this.y+80, this.x+60, this.y+50]);
+  }
+}
+new House('h1', 0, 0).build();
+"@
+$code | .\cad-cli.cmd run_cad_code main -
+
+# 모듈 삭제
+cad-cli.cmd run_cad_code --delete my_module
+
+# 의존성 확인
+cad-cli.cmd run_cad_code --deps
+```
+
+### 출력 예시
+
+**프로젝트 구조**
+```
+📁 Project Structure
+==================
+Files: house_lib, tree_lib, cloud_lib, main
+Main: 5 lines
+Entities: 42
+
+Tip: run_cad_code <name> to read a file
+```
+
+**의존성 그래프**
+```
+📊 Dependencies
+===============
+main
+  └─ house_lib
+  └─ tree_lib
+  └─ cloud_lib
+```
+
+### Definition of Done (Phase 8) ✅
+
+- **프로젝트 구조**: 인자 없이 실행 시 파일/엔티티 요약 ✅
+- **Append 모드**: `+"code"`로 기존 코드에 추가 ✅
+- **stdin 모드**: 멀티라인 코드 파이프 입력 ✅
+- **모듈 삭제**: `--delete`로 불필요한 모듈 정리 ✅
+- **의존성 추적**: `--deps`로 import 관계 시각화 ✅
+
+---
+
 ## MAMA Metrics
 
 | 메트릭 | 목적 | 연계 Task | 성공 기준 | 상태 |
@@ -697,6 +789,7 @@ points = [startX, startY,           // 시작점 (2개)
 | `cad:llm_friendly_navigation` | LLM 친화적 탐색 | Phase 4 | overview, where, translate_scene | ✅ |
 | `cad:polygon_primitive` | Polygon 지원 | Phase 6 | 삼각형 등 닫힌 도형 fill 가능 | ✅ |
 | `cad:bezier_and_sandbox_docs` | Bezier + CLI 문서화 | Phase 7 | Bezier 커브 + describe sandbox | ✅ |
+| `cad:run_cad_code_editor` | 코드 에디터 인터페이스 | Phase 8 | append, stdin, delete, deps | ✅ |
 | `cad:run_cad_code_final` | 최종 성공 | Task 8.3 | Electron 앱 통합 | ⏳ Epic 6 |
 
 ## References

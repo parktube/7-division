@@ -1,6 +1,6 @@
 # RFC: run_cad_code
 
-Status: draft
+Status: Phase 1-8 완료 ✅ (Electron 통합만 Epic 6 대기)
 
 ## 요약
 
@@ -237,6 +237,15 @@ set_fill("center", [0.85, 0.92, 1.0, 1]);
 38. [x] CLI `describe sandbox` 도메인 추가 (LLM이 함수 목록 조회 가능)
 39. [x] CLAUDE.md에 draw_bezier 사용법 문서화
 
+### Phase 8: 코드 에디터 인터페이스 ✅
+40. [x] 프로젝트 구조 모드 (인자 없음)
+41. [x] 파일 읽기 모드 (`run_cad_code <name>`)
+42. [x] 파일 쓰기 모드 (`run_cad_code <name> "code"`)
+43. [x] 코드 추가 모드 (`run_cad_code <name> +"code"`)
+44. [x] stdin 멀티라인 모드 (`run_cad_code <name> -`)
+45. [x] 파일 삭제 모드 (`run_cad_code --delete <name>`)
+46. [x] 의존성 그래프 (`run_cad_code --deps`)
+
 **Bezier 포맷:**
 ```javascript
 // points = [startX, startY, cp1X, cp1Y, cp2X, cp2Y, endX, endY, ...]
@@ -264,7 +273,8 @@ drawBezier("curve", [
 | `cad:run_cad_code_poc_success` | PoC 완료 추적 | Task 1-6 | 기어/스노우플레이크 예제 동작 | ✅ |
 | `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 | ✅ |
 | `cad:llm_friendly_coordinate_pattern` | LLM 친화적 패턴 검증 | Phase 2-4 | 그룹 변환 상속 + 씬 탐색 | ✅ |
-| `cad:run_cad_code_final` | 최종 성공 | Task 8 | Electron 앱 통합 | ⏳ Epic 6 |
+| `cad:run_cad_code_editor` | 코드 에디터 인터페이스 | Phase 8 | append, stdin, delete, deps | ✅ |
+| `cad:run_cad_code_final` | 최종 성공 | Task 8.3 | Electron 앱 통합 | ⏳ Epic 6 |
 
 ---
 
@@ -433,6 +443,106 @@ center_scene                # 씬 중심을 원점으로
 📐 Bounds: (-200, 0) → (200, 150)
    Size: 400 x 150
 ```
+
+---
+
+## Phase 8: 코드 에디터 인터페이스 ✅
+
+### 배경
+
+기존 `run_cad_code '코드'` 방식의 문제점:
+- Windows 배치 파일에서 멀티라인 인자 전달 불가
+- 모듈 삭제/추가 기능 없음
+- 의존성 추적 어려움
+
+### 설계: Progressive Disclosure
+
+```
+run_cad_code → 프로젝트 구조 (files, main, entities)
+run_cad_code <name> → 파일 읽기
+run_cad_code <name> "code" → 파일 쓰기 (덮어쓰기)
+run_cad_code <name> +"code" → 파일에 코드 추가
+run_cad_code <name> - → stdin에서 코드 읽기 (멀티라인)
+run_cad_code --delete <name> → 파일 삭제
+run_cad_code --deps → 의존성 그래프
+```
+
+### 사용 예시
+
+```bash
+# 프로젝트 구조 보기
+cad-cli.cmd run_cad_code
+
+# 파일 읽기
+cad-cli.cmd run_cad_code main
+cad-cli.cmd run_cad_code my_module
+
+# 파일 쓰기 (덮어쓰기)
+cad-cli.cmd run_cad_code main "drawCircle('c1', 0, 0, 50)"
+
+# 파일에 코드 추가 (+ prefix)
+cad-cli.cmd run_cad_code main "+drawRect('r1', 10, 10, 30, 30)"
+
+# 멀티라인 코드 (stdin)
+echo "for (let i = 0; i < 5; i++) { drawCircle('c'+i, i*30, 0, 15); }" | cad-cli.cmd run_cad_code main -
+
+# PowerShell Here-String (복잡한 코드)
+$code = @"
+class MyClass {
+  constructor(name) { this.name = name; }
+  build() { drawCircle(this.name, 0, 0, 50); }
+}
+new MyClass('c1').build();
+"@
+$code | .\cad-cli.cmd run_cad_code main -
+
+# 모듈 삭제
+cad-cli.cmd run_cad_code --delete my_module
+
+# 의존성 확인
+cad-cli.cmd run_cad_code --deps
+```
+
+### 출력 예시
+
+**프로젝트 구조 (`run_cad_code`)**
+```
+📁 Project Structure
+==================
+Files: house_lib, tree_lib, cloud_lib, main
+Main: 3 lines
+Entities: 42
+
+Tip: run_cad_code <name> to read a file
+```
+
+**의존성 그래프 (`run_cad_code --deps`)**
+```
+📊 Dependencies
+===============
+main
+  └─ house_lib
+  └─ tree_lib
+     └─ utils
+  └─ cloud_lib
+```
+
+### LLM 친화적 설계
+
+| 문제 | 해결 |
+|------|------|
+| Windows 멀티라인 | stdin 모드 (`-`) + PowerShell Here-String |
+| 코드 추가 | `+` prefix로 append |
+| 모듈 관리 | `--delete`, `--deps` 플래그 |
+| 탐색 용이성 | 인자 없으면 프로젝트 구조 출력 |
+
+### Definition of Done (Phase 8) ✅
+
+- **프로젝트 구조**: 인자 없이 실행 시 파일/엔티티 요약 ✅
+- **Append 모드**: `+"code"`로 기존 코드에 추가 ✅
+- **stdin 모드**: 멀티라인 코드 파이프 입력 ✅
+- **모듈 삭제**: `--delete`로 불필요한 모듈 정리 ✅
+- **의존성 추적**: `--deps`로 import 관계 시각화 ✅
 
 ## References
 

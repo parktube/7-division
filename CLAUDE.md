@@ -38,158 +38,119 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bmm/` - 워크플로우, 문서 템플릿, 테스트 아키텍처 지식
 - `core/` - 에이전트 설정, 브레인스토밍/파티모드 워크플로우
 
-## CAD Tools (cad-cli.ts)
+## CAD Tools (run_cad_code)
 
-CAD 도형을 그리거나 수정할 때 `cad-tools/cad-cli.ts`를 Bash로 직접 호출합니다.
+CAD 도형을 JavaScript 코드로 생성합니다. `run_cad_code`가 메인 인터페이스입니다.
 
-### 기본 사용법
+### run_cad_code (코드 에디터)
 
 ```bash
 cd cad-tools
-npx tsx cad-cli.ts <command> '<json_params>'
+
+# 프로젝트 구조 보기
+npx tsx cad-cli.ts run_cad_code
+
+# 파일 읽기
+npx tsx cad-cli.ts run_cad_code main
+npx tsx cad-cli.ts run_cad_code my_module
+
+# 파일 쓰기 (덮어쓰기)
+npx tsx cad-cli.ts run_cad_code main "drawCircle('c1', 0, 0, 50)"
+
+# 파일에 코드 추가 (+ prefix)
+npx tsx cad-cli.ts run_cad_code main "+drawRect('r1', 10, 10, 30, 30)"
+
+# 멀티라인 코드 (stdin)
+echo "for (let i = 0; i < 5; i++) { drawCircle('c'+i, i*30, 0, 15); }" | npx tsx cad-cli.ts run_cad_code main -
+
+# 모듈 삭제
+npx tsx cad-cli.ts run_cad_code --delete my_module
+
+# 의존성 확인
+npx tsx cad-cli.ts run_cad_code --deps
 ```
 
-### 주요 명령어
+**규칙**: JavaScript 문자열은 작은따옴표(`'`) 사용
 
-**Primitives (도형 그리기)**
-```bash
-npx tsx cad-cli.ts draw_circle '{"name":"head","x":0,"y":100,"radius":30}'
-npx tsx cad-cli.ts draw_rect '{"name":"body","x":-25,"y":0,"width":50,"height":80}'
-npx tsx cad-cli.ts draw_line '{"name":"arm","points":[0,50,50,30]}'
-npx tsx cad-cli.ts draw_arc '{"name":"smile","cx":0,"cy":90,"radius":10,"start_angle":180,"end_angle":360}'
-npx tsx cad-cli.ts draw_polygon '{"name":"roof","points":[-30,50, 0,80, 30,50]}'  # 닫힌 다각형 (fill 지원)
-```
+### Sandbox 함수 목록
 
-**Style (스타일 적용)**
-```bash
-npx tsx cad-cli.ts set_fill '{"name":"head","fill":{"color":[1,0.8,0.6,1]}}'
-npx tsx cad-cli.ts set_stroke '{"name":"body","stroke":{"color":[0,0,1,1],"width":2}}'
-```
-
-**Transforms (변환)**
-```bash
-npx tsx cad-cli.ts translate '{"name":"head","dx":10,"dy":20}'
-npx tsx cad-cli.ts rotate '{"name":"arm","angle":0.785}'  # 라디안 (≈45°)
-npx tsx cad-cli.ts scale '{"name":"body","sx":1.5,"sy":1.5}'
-npx tsx cad-cli.ts set_pivot '{"name":"arm","px":0,"py":50}'  # 회전 중심점
-npx tsx cad-cli.ts delete '{"name":"temp"}'
-```
-
-**Z-Order (렌더링 순서)**
-```bash
-npx tsx cad-cli.ts set_z_order '{"name":"snow","z_index":100}'  # 높을수록 앞에 렌더링
-npx tsx cad-cli.ts bring_to_front '{"name":"snow"}'             # 맨 앞으로
-npx tsx cad-cli.ts send_to_back '{"name":"background"}'         # 맨 뒤로
-```
-
-**Groups (그룹화 - 객체지향 씬 설계)**
-```bash
-# 기본 그룹 생성
-npx tsx cad-cli.ts create_group '{"name":"arm_group","children":["upper_arm","forearm"]}'
-npx tsx cad-cli.ts ungroup '{"name":"arm_group"}'
-npx tsx cad-cli.ts add_to_group '{"group_name":"body_group","entity_name":"spine"}'
-npx tsx cad-cli.ts remove_from_group '{"group_name":"body_group","entity_name":"spine"}'
-```
-
-**그룹 계층 설계 패턴:**
 ```javascript
-// 1. 개별 엔티티 생성 (네이밍 컨벤션: prefix_part)
-drawRect("h1_wall", ...);
-drawPolygon("h1_roof", ...);
-drawRect("h1_door", ...);
-
-// 2. 개체 단위로 그룹화
-createGroup("house_1", ["h1_wall", "h1_roof", "h1_door"]);
-
-// 3. 카테고리로 상위 그룹화
-createGroup("houses", ["house_1", "house_2", "house_3"]);
-
-// 4. 씬 레벨 그룹 (z-order 중요!)
-createGroup("village", ["houses", "trees", "smokes"]);
-createGroup("background", ["sky", "ground", "mountains"]);
-createGroup("effects", ["snowflakes"]);
-
-// 5. Root 그룹 z-order 설정 (필수!)
-setZOrder("background", 0);   // 가장 뒤
-setZOrder("village", 100);    // 중간
-setZOrder("effects", 200);    // 가장 앞
-```
-
-**그룹 사용 시 주의사항:**
-- 그룹 내 children도 개별 z-order로 정렬됨
-- 그룹에 transform 적용 시 모든 children에 계층적 적용
-- 그룹 이름 충돌 주의 (엔티티와 동일 네임스페이스)
-
-**Query (조회)**
-```bash
-npx tsx cad-cli.ts list_entities
-npx tsx cad-cli.ts get_entity '{"name":"head"}'
-npx tsx cad-cli.ts get_scene_info
-npx tsx cad-cli.ts get_selection     # 뷰어에서 선택된 도형 조회
-```
-
-**Export & Capture**
-```bash
-npx tsx cad-cli.ts export_json
-npx tsx cad-cli.ts export_svg
-npx tsx cad-cli.ts capture_viewport  # 뷰어 스크린샷 캡처 (PNG)
-```
-
-**Session**
-```bash
-npx tsx cad-cli.ts reset    # 새 scene 시작
-npx tsx cad-cli.ts status   # 현재 상태 확인
-```
-
-**Code Execution (JavaScript로 복잡한 패턴 생성)**
-```bash
-# 반복 패턴, 수학적 계산을 JavaScript로 작성
-npx tsx cad-cli.ts run_cad_code '
-for (let i = 0; i < 6; i++) {
-  const angle = i * Math.PI / 3;
-  drawLine("arm_" + i, [0, 0, Math.cos(angle) * 50, Math.sin(angle) * 50]);
-}
-'
-
-# 모듈 저장 및 재사용
-npx tsx cad-cli.ts save_module '{"name":"snowflake"}'
-npx tsx cad-cli.ts run_module '{"name":"snowflake"}'
-npx tsx cad-cli.ts list_modules
-```
-
-**Sandbox 바인딩 (run_cad_code 내에서 사용)**
-```javascript
-// Primitives
+// 도형
 drawCircle(name, x, y, radius)
 drawRect(name, x, y, width, height)
-drawLine(name, points)      // [x1, y1, x2, y2, ...]
+drawLine(name, points)           // [x1, y1, x2, y2, ...]
+drawPolygon(name, points)        // 닫힌 다각형
 drawArc(name, cx, cy, radius, startAngle, endAngle)
-drawPolygon(name, points)   // 닫힌 다각형
-drawBezier(name, points, closed)  // Cubic Bezier 커브
+drawBezier(name, points, closed)
 
-// Transforms
+// 스타일
+setFill(name, [r, g, b, a])      // 색상 0~1
+setStroke(name, [r, g, b, a], width)
+setZOrder(name, z)               // 높을수록 앞
+
+// 변환
 translate(name, dx, dy)
-rotate(name, angle)         // 라디안
+rotate(name, angle)              // 라디안
 scale(name, sx, sy)
 setPivot(name, px, py)
 
-// Style
-setFill(name, [r, g, b, a])
-setStroke(name, [r, g, b, a], width)
-setZOrder(name, zIndex)
+// 그룹
+createGroup(name, [children])
+addToGroup(group, entity)
 
-// Groups
-createGroup(name, children)
-addToGroup(groupName, entityName)
-
-// Query (월드 변환 조회)
-getWorldTransform(name)   // 부모 체인 변환 누적
-getWorldPoint(name, x, y) // 로컬→월드 좌표 변환
-getWorldBounds(name)      // 월드 좌표 기준 bounds
-
-// Utility
-deleteEntity(name)
+// 조회
 exists(name)
+getWorldBounds(name)
+
+// 삭제
+deleteEntity(name)
+```
+
+### 모듈 시스템
+
+```javascript
+// house_lib 모듈 생성
+run_cad_code house_lib "
+class House {
+  constructor(name, x, y) { this.name = name; this.x = x; this.y = y; this.parts = []; }
+  drawWall() { drawRect(this.name+'_wall', this.x-20, this.y, 40, 30); this.parts.push(this.name+'_wall'); }
+  drawRoof() { drawPolygon(this.name+'_roof', [this.x-25, this.y+30, this.x, this.y+50, this.x+25, this.y+30]); this.parts.push(this.name+'_roof'); }
+  build() { this.drawWall(); this.drawRoof(); createGroup(this.name, this.parts); return this; }
+}
+"
+
+// main에서 사용
+run_cad_code main "
+import 'house_lib';
+new House('h1', 0, 0).build();
+new House('h2', 100, 0).build();
+"
+```
+
+### 씬 관리
+
+```bash
+npx tsx cad-cli.ts status     # 현재 상태
+npx tsx cad-cli.ts reset      # 새 씬 시작
+npx tsx cad-cli.ts overview   # 전체 구조
+```
+
+### 레거시 명령어 (JSON 파라미터)
+
+개별 도형 조작 시 사용:
+```bash
+npx tsx cad-cli.ts draw_circle '{"name":"c1","x":0,"y":0,"radius":50}'
+npx tsx cad-cli.ts set_fill '{"name":"c1","fill":{"color":[1,0,0,1]}}'
+npx tsx cad-cli.ts translate '{"name":"c1","dx":10,"dy":20}'
+```
+
+### Query & Export
+
+```bash
+npx tsx cad-cli.ts list_entities
+npx tsx cad-cli.ts export_json
+npx tsx cad-cli.ts export_svg
+npx tsx cad-cli.ts capture_viewport  # 뷰어 스크린샷 (PNG)
 ```
 
 **Bezier 커브 포맷 (중요!):**

@@ -30,6 +30,8 @@ extraResources:
     to: cad-cli.sh
   - from: resources/cad-cli.cmd
     to: cad-cli.cmd
+  - from: resources/CLAUDE.md
+    to: CLAUDE.md
 mac:
   icon: resources/icon.icns
   target:
