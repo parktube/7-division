@@ -18,6 +18,7 @@ import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { runCadCode } from './sandbox/index.js';
+import { init as initLexer, parse as parseImports } from 'es-module-lexer';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,18 +32,30 @@ async function readStdin(): Promise<string> {
     }
 
     let data = '';
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let resolved = false;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      if (timeoutId) clearTimeout(timeoutId);
+      resolve(data.trim());
+    };
+
     process.stdin.setEncoding('utf8');
     process.stdin.on('readable', () => {
       let chunk;
       while ((chunk = process.stdin.read()) !== null) {
         data += chunk;
       }
+      // Reset timeout on each readable event
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(finish, 100);
     });
-    process.stdin.on('end', () => {
-      resolve(data.trim());
-    });
-    // Timeout to avoid hanging if no input
-    setTimeout(() => resolve(data.trim()), 100);
+    process.stdin.on('end', finish);
+
+    // Initial timeout for pipes with no data
+    timeoutId = setTimeout(finish, 100);
   });
 }
 const CLI_NAME = process.env.CAD_CLI_INVOKE || 'cad-cli';
@@ -142,11 +155,12 @@ function saveState(state: SceneState): void {
 
 /**
  * 코드 전처리: ES6 import 문을 모듈 코드로 치환
+ * es-module-lexer를 사용하여 주석/문자열 내 import 오인식 방지
  * 순환 참조 방지를 위해 이미 포함된 모듈 추적
  *
  * 지원 패턴:
  * - import { func1, func2 } from 'module-name';
- * - import * from 'module-name';
+ * - import * as X from 'module-name';
  * - import 'module-name';
  */
 interface PreprocessResult {
@@ -155,18 +169,75 @@ interface PreprocessResult {
   errors: string[];
 }
 
-function preprocessCode(code: string, importedModules: Set<string> = new Set()): PreprocessResult {
+// es-module-lexer initialization promise
+const lexerReady = initLexer;
+
+async function preprocessCode(code: string, importedModules: Set<string> = new Set()): Promise<PreprocessResult> {
   const errors: string[] = [];
   const newlyImported: string[] = [];
 
-  // ES6 import 패턴들
-  // import { ... } from 'module'
-  // import * from 'module'
-  // import 'module'
-  const importPattern = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+from\s+)?)?['"]([^'"]+)['"]\s*;?/g;
+  // Ensure lexer is initialized
+  await lexerReady;
+
+  try {
+    const [imports] = parseImports(code);
+
+    // Process imports in reverse order (to preserve positions while replacing)
+    const sortedImports = [...imports].sort((a, b) => b.ss - a.ss);
+
+    let processedCode = code;
+    for (const imp of sortedImports) {
+      const moduleName = imp.n;
+      if (!moduleName) continue;
+
+      let replacement: string;
+
+      if (importedModules.has(moduleName)) {
+        replacement = `// [import] '${moduleName}' already loaded`;
+      } else {
+        const modulePath = resolve(MODULES_DIR, `${moduleName}.js`);
+
+        if (!existsSync(modulePath)) {
+          errors.push(`Module '${moduleName}' not found`);
+          replacement = `// [import] ERROR: '${moduleName}' not found`;
+        } else {
+          // 모듈 코드 읽기
+          const moduleCode = readFileSync(modulePath, 'utf-8');
+          importedModules.add(moduleName);
+          newlyImported.push(moduleName);
+
+          // 모듈 내부의 import도 재귀적으로 처리
+          const nested = await preprocessCode(moduleCode, importedModules);
+          errors.push(...nested.errors);
+          newlyImported.push(...nested.importedModules);
+
+          replacement = `// ===== [import] ${moduleName} =====\n${nested.code}\n// ===== [/import] ${moduleName} =====\n`;
+        }
+      }
+
+      // Replace import statement (ss: statement start, se: statement end)
+      processedCode = processedCode.slice(0, imp.ss) + replacement + processedCode.slice(imp.se);
+    }
+
+    return {
+      code: processedCode,
+      importedModules: newlyImported,
+      errors,
+    };
+  } catch {
+    // Fallback to regex for non-standard syntax (e.g., "import * from 'module'")
+    return preprocessCodeFallback(code, importedModules);
+  }
+}
+
+/** Fallback preprocessor using regex (for non-standard import syntax) */
+function preprocessCodeFallback(code: string, importedModules: Set<string> = new Set()): PreprocessResult {
+  const errors: string[] = [];
+  const newlyImported: string[] = [];
+
+  const importPattern = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]\s*;?/g;
 
   const processedCode = code.replace(importPattern, (match, moduleName) => {
-    // 이미 임포트된 모듈이면 스킵
     if (importedModules.has(moduleName)) {
       return `// [import] '${moduleName}' already loaded`;
     }
@@ -178,13 +249,11 @@ function preprocessCode(code: string, importedModules: Set<string> = new Set()):
       return `// [import] ERROR: '${moduleName}' not found`;
     }
 
-    // 모듈 코드 읽기
     const moduleCode = readFileSync(modulePath, 'utf-8');
     importedModules.add(moduleName);
     newlyImported.push(moduleName);
 
-    // 모듈 내부의 import도 재귀적으로 처리
-    const nested = preprocessCode(moduleCode, importedModules);
+    const nested = preprocessCodeFallback(moduleCode, importedModules);
     errors.push(...nested.errors);
     newlyImported.push(...nested.importedModules);
 
@@ -195,6 +264,278 @@ function preprocessCode(code: string, importedModules: Set<string> = new Set()):
     code: processedCode,
     importedModules: newlyImported,
     errors,
+  };
+}
+
+// ============================================================================
+// run_cad_code Helper Functions
+// ============================================================================
+
+/** Get list of available modules */
+function getModuleList(): string[] {
+  if (!existsSync(MODULES_DIR)) return [];
+  return readdirSync(MODULES_DIR)
+    .filter(f => f.endsWith('.js'))
+    .map(f => f.replace('.js', ''));
+}
+
+/** Get current entities from scene */
+function getSceneEntities(): string[] {
+  if (!existsSync(SCENE_FILE)) return [];
+  try {
+    const scene = JSON.parse(readFileSync(SCENE_FILE, 'utf-8'));
+    return (scene.entities || []).map((e: SceneEntity) => e.metadata?.name).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/** Extract import statements from code */
+function getCodeImports(code: string): string[] {
+  const imports: string[] = [];
+  const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+from\s+)?)?['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = importRegex.exec(code)) !== null) {
+    imports.push(match[1]);
+  }
+  return imports;
+}
+
+/** Execute main code and update scene.json */
+async function executeMainCode(): Promise<{ success: boolean; error?: string; entities: string[] }> {
+  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+
+  const executor = CADExecutor.create('cad-scene');
+  let result: { success: boolean; error?: string; entitiesCreated?: string[] } = { success: true };
+
+  if (mainCode.trim()) {
+    const preprocessed = await preprocessCode(mainCode);
+    if (preprocessed.errors.length > 0) {
+      executor.free();
+      return { success: false, error: `Import errors: ${preprocessed.errors.join(', ')}`, entities: [] };
+    }
+    result = await runCadCode(executor, preprocessed.code);
+  }
+
+  // Always save scene (empty code = empty scene for Code-as-SoT consistency)
+  if (result.success) {
+    const jsonResult = executor.exec('export_json', {});
+    if (jsonResult.success && jsonResult.data) {
+      ensureParentDir(SCENE_FILE);
+      writeFileSync(SCENE_FILE, jsonResult.data);
+    }
+  }
+
+  executor.free();
+  return {
+    success: result.success,
+    error: result.error,
+    entities: result.entitiesCreated || [],
+  };
+}
+
+// ============================================================================
+// run_cad_code Mode Handlers
+// ============================================================================
+
+interface RunCadCodeResult {
+  handled: boolean;
+  output?: string;
+}
+
+/** Handle --deps mode: show dependency graph */
+function handleRunCadCodeDeps(): RunCadCodeResult {
+  const modules = getModuleList();
+  const deps: Record<string, string[]> = {};
+
+  // main dependencies
+  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+  deps['main'] = getCodeImports(mainCode);
+
+  // module dependencies
+  for (const mod of modules) {
+    const modPath = resolve(MODULES_DIR, `${mod}.js`);
+    const modCode = readFileSync(modPath, 'utf-8');
+    deps[mod] = getCodeImports(modCode);
+  }
+
+  return {
+    handled: true,
+    output: JSON.stringify({
+      success: true,
+      dependencies: deps,
+      hint: '각 파일이 import하는 모듈 목록',
+    }, null, 2),
+  };
+}
+
+/** Handle --delete mode: delete module */
+async function handleRunCadCodeDelete(target: string | undefined): Promise<RunCadCodeResult> {
+  if (!target) {
+    return {
+      handled: true,
+      output: JSON.stringify({
+        success: false,
+        error: '삭제할 파일명을 지정하세요.',
+        hint: 'run_cad_code --delete <name>',
+      }, null, 2),
+    };
+  }
+
+  if (target === 'main') {
+    // Clear main instead of deleting
+    writeFileSync(SCENE_CODE_FILE, '');
+    const result = await executeMainCode();
+    return {
+      handled: true,
+      output: JSON.stringify({
+        success: true,
+        file: 'main',
+        message: 'main 초기화 완료',
+        entities: result.entities,
+      }, null, 2),
+    };
+  }
+
+  const modulePath = resolve(MODULES_DIR, `${target}.js`);
+  if (!existsSync(modulePath)) {
+    return {
+      handled: true,
+      output: JSON.stringify({
+        success: false,
+        error: `'${target}' 모듈을 찾을 수 없습니다.`,
+      }, null, 2),
+    };
+  }
+
+  unlinkSync(modulePath);
+  return {
+    handled: true,
+    output: JSON.stringify({
+      success: true,
+      file: target,
+      message: `'${target}' 모듈 삭제 완료`,
+      files: ['main', ...getModuleList()],
+    }, null, 2),
+  };
+}
+
+/** Handle no-argument mode: show project structure */
+function handleRunCadCodeStructure(): RunCadCodeResult {
+  const modules = getModuleList();
+  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+  const entities = getSceneEntities();
+
+  return {
+    handled: true,
+    output: JSON.stringify({
+      success: true,
+      files: ['main', ...modules],
+      main: mainCode || '// 빈 프로젝트입니다. main에 코드를 작성하세요.',
+      entities,
+      hint: '읽기: run_cad_code <name>, 쓰기: run_cad_code <name> "code", 추가: run_cad_code <name> +"code"',
+    }, null, 2),
+  };
+}
+
+/** Handle read mode: read file contents */
+function handleRunCadCodeRead(target: string): RunCadCodeResult {
+  if (target === 'main') {
+    const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+    return {
+      handled: true,
+      output: JSON.stringify({
+        success: true,
+        file: 'main',
+        code: mainCode || '// 빈 main 파일입니다.',
+      }, null, 2),
+    };
+  }
+
+  // Read module
+  const modulePath = resolve(MODULES_DIR, `${target}.js`);
+  if (!existsSync(modulePath)) {
+    return {
+      handled: true,
+      output: JSON.stringify({
+        success: false,
+        error: `'${target}' 파일을 찾을 수 없습니다.`,
+        hint: `사용 가능: main, ${getModuleList().join(', ') || '(모듈 없음)'}`,
+      }, null, 2),
+    };
+  }
+
+  const moduleCode = readFileSync(modulePath, 'utf-8');
+  return {
+    handled: true,
+    output: JSON.stringify({
+      success: true,
+      file: target,
+      code: moduleCode,
+    }, null, 2),
+  };
+}
+
+/** Handle write mode: write code to file and execute */
+async function handleRunCadCodeWrite(target: string, newCode: string): Promise<RunCadCodeResult> {
+  const isAppendMode = newCode.startsWith('+');
+  const codeToWrite = isAppendMode ? newCode.slice(1) : newCode;
+
+  if (target === 'main') {
+    ensureParentDir(SCENE_CODE_FILE);
+
+    if (isAppendMode) {
+      const existingCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+      writeFileSync(SCENE_CODE_FILE, existingCode + '\n' + codeToWrite);
+    } else {
+      writeFileSync(SCENE_CODE_FILE, codeToWrite);
+    }
+
+    const result = await executeMainCode();
+
+    return {
+      handled: true,
+      output: JSON.stringify({
+        success: result.success,
+        file: 'main',
+        mode: isAppendMode ? 'append' : 'write',
+        entities: result.entities,
+        error: result.error,
+        hint: result.success
+          ? `main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`
+          : '실행 실패. 코드를 확인하세요.',
+      }, null, 2),
+    };
+  }
+
+  // Write module
+  if (!existsSync(MODULES_DIR)) {
+    mkdirSync(MODULES_DIR, { recursive: true });
+  }
+  const modulePath = resolve(MODULES_DIR, `${target}.js`);
+
+  if (isAppendMode) {
+    const existingCode = existsSync(modulePath) ? readFileSync(modulePath, 'utf-8') : '';
+    writeFileSync(modulePath, existingCode + '\n' + codeToWrite);
+  } else {
+    writeFileSync(modulePath, codeToWrite);
+  }
+
+  // Re-execute main (to pick up module changes)
+  const result = await executeMainCode();
+
+  return {
+    handled: true,
+    output: JSON.stringify({
+      success: result.success,
+      file: target,
+      mode: isAppendMode ? 'append' : 'write',
+      entities: result.entities,
+      error: result.error,
+      hint: result.success
+        ? `'${target}' 모듈 ${isAppendMode ? '추가' : '저장'} 후 main 재실행 완료.`
+        : 'main 실행 실패. 코드를 확인하세요.',
+    }, null, 2),
   };
 }
 
@@ -671,246 +1012,24 @@ Scene file:
       }
     }
 
-    // Helper: get list of modules
-    const getModuleList = (): string[] => {
-      if (!existsSync(MODULES_DIR)) return [];
-      return readdirSync(MODULES_DIR)
-        .filter(f => f.endsWith('.js'))
-        .map(f => f.replace('.js', ''));
-    };
+    // Dispatch to appropriate handler
+    let result: RunCadCodeResult;
 
-    // Helper: get current entities
-    const getEntities = (): string[] => {
-      if (!existsSync(SCENE_FILE)) return [];
-      try {
-        const scene = JSON.parse(readFileSync(SCENE_FILE, 'utf-8'));
-        return (scene.entities || []).map((e: SceneEntity) => e.metadata?.name).filter(Boolean);
-      } catch {
-        return [];
-      }
-    };
-
-    // Helper: execute main code and update scene
-    const executeMain = async (): Promise<{ success: boolean; error?: string; entities: string[] }> => {
-      const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
-      if (!mainCode.trim()) {
-        return { success: true, entities: [] };
-      }
-
-      const preprocessed = preprocessCode(mainCode);
-      if (preprocessed.errors.length > 0) {
-        return { success: false, error: `Import errors: ${preprocessed.errors.join(', ')}`, entities: [] };
-      }
-
-      const executor = CADExecutor.create('cad-scene');
-      const result = await runCadCode(executor, preprocessed.code);
-
-      if (result.success) {
-        const jsonResult = executor.exec('export_json', {});
-        if (jsonResult.success && jsonResult.data) {
-          ensureParentDir(SCENE_FILE);
-          writeFileSync(SCENE_FILE, jsonResult.data);
-        }
-      }
-
-      executor.free();
-      return {
-        success: result.success,
-        error: result.error,
-        entities: result.entitiesCreated || [],
-      };
-    };
-
-    // Helper: get imports from code (same pattern as preprocessCode)
-    const getImports = (code: string): string[] => {
-      const imports: string[] = [];
-      // Match all import patterns:
-      // import { ... } from 'module'
-      // import * from 'module'
-      // import 'module'
-      const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+from\s+)?)?['"]([^'"]+)['"]/g;
-      let match;
-      while ((match = importRegex.exec(code)) !== null) {
-        imports.push(match[1]);
-      }
-      return imports;
-    };
-
-    // Mode: --deps - 의존성 그래프
     if (isDepsMode) {
-      const modules = getModuleList();
-      const deps: Record<string, string[]> = {};
-
-      // main dependencies
-      const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
-      deps['main'] = getImports(mainCode);
-
-      // module dependencies
-      for (const mod of modules) {
-        const modPath = resolve(MODULES_DIR, `${mod}.js`);
-        const modCode = readFileSync(modPath, 'utf-8');
-        deps[mod] = getImports(modCode);
-      }
-
-      print(JSON.stringify({
-        success: true,
-        dependencies: deps,
-        hint: '각 파일이 import하는 모듈 목록',
-      }, null, 2));
-      return;
-    }
-
-    // Mode: --delete - 모듈 삭제
-    if (isDeleteMode) {
-      if (!target) {
-        print(JSON.stringify({
-          success: false,
-          error: '삭제할 파일명을 지정하세요.',
-          hint: 'run_cad_code --delete <name>',
-        }, null, 2));
-        return;
-      }
-
-      if (target === 'main') {
-        // Clear main instead of deleting
-        writeFileSync(SCENE_CODE_FILE, '');
-        const result = await executeMain();
-        print(JSON.stringify({
-          success: true,
-          file: 'main',
-          message: 'main 초기화 완료',
-          entities: result.entities,
-        }, null, 2));
-        return;
-      }
-
-      const modulePath = resolve(MODULES_DIR, `${target}.js`);
-      if (!existsSync(modulePath)) {
-        print(JSON.stringify({
-          success: false,
-          error: `'${target}' 모듈을 찾을 수 없습니다.`,
-        }, null, 2));
-        return;
-      }
-
-      unlinkSync(modulePath);
-      print(JSON.stringify({
-        success: true,
-        file: target,
-        message: `'${target}' 모듈 삭제 완료`,
-        files: ['main', ...getModuleList()],
-      }, null, 2));
-      return;
-    }
-
-    // Mode 1: 프로젝트 구조 반환 (인자 없음)
-    if (!target) {
-      const modules = getModuleList();
-      const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
-      const entities = getEntities();
-
-      print(JSON.stringify({
-        success: true,
-        files: ['main', ...modules],
-        main: mainCode || '// 빈 프로젝트입니다. main에 코드를 작성하세요.',
-        entities,
-        hint: '읽기: run_cad_code <name>, 쓰기: run_cad_code <name> "code", 추가: run_cad_code <name> +"code"',
-      }, null, 2));
-      return;
-    }
-
-    // Mode 2: 파일 읽기 (코드 인자 없음)
-    if (!newCode) {
-      if (target === 'main') {
-        const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
-        print(JSON.stringify({
-          success: true,
-          file: 'main',
-          code: mainCode || '// 빈 main 파일입니다.',
-        }, null, 2));
-        return;
-      }
-
-      // Read module
-      const modulePath = resolve(MODULES_DIR, `${target}.js`);
-      if (!existsSync(modulePath)) {
-        print(JSON.stringify({
-          success: false,
-          error: `'${target}' 파일을 찾을 수 없습니다.`,
-          hint: `사용 가능: main, ${getModuleList().join(', ') || '(모듈 없음)'}`,
-        }, null, 2));
-        return;
-      }
-
-      const moduleCode = readFileSync(modulePath, 'utf-8');
-      print(JSON.stringify({
-        success: true,
-        file: target,
-        code: moduleCode,
-      }, null, 2));
-      return;
-    }
-
-    // Mode 3: 파일 쓰기 + 실행
-    // Check for append mode (code starts with +)
-    const isAppendMode = newCode.startsWith('+');
-    const codeToWrite = isAppendMode ? newCode.slice(1) : newCode;
-
-    if (target === 'main') {
-      ensureParentDir(SCENE_CODE_FILE);
-
-      if (isAppendMode) {
-        // Append to existing code
-        const existingCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
-        writeFileSync(SCENE_CODE_FILE, existingCode + '\n' + codeToWrite);
-      } else {
-        // Overwrite
-        writeFileSync(SCENE_CODE_FILE, codeToWrite);
-      }
-
-      const result = await executeMain();
-
-      print(JSON.stringify({
-        success: result.success,
-        file: 'main',
-        mode: isAppendMode ? 'append' : 'write',
-        entities: result.entities,
-        error: result.error,
-        hint: result.success
-          ? `main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`
-          : '실행 실패. 코드를 확인하세요.',
-      }, null, 2));
-      return;
-    }
-
-    // Write module
-    if (!existsSync(MODULES_DIR)) {
-      mkdirSync(MODULES_DIR, { recursive: true });
-    }
-    const modulePath = resolve(MODULES_DIR, `${target}.js`);
-
-    if (isAppendMode) {
-      // Append to existing module
-      const existingCode = existsSync(modulePath) ? readFileSync(modulePath, 'utf-8') : '';
-      writeFileSync(modulePath, existingCode + '\n' + codeToWrite);
+      result = handleRunCadCodeDeps();
+    } else if (isDeleteMode) {
+      result = await handleRunCadCodeDelete(target);
+    } else if (!target) {
+      result = handleRunCadCodeStructure();
+    } else if (!newCode) {
+      result = handleRunCadCodeRead(target);
     } else {
-      // Overwrite
-      writeFileSync(modulePath, codeToWrite);
+      result = await handleRunCadCodeWrite(target, newCode);
     }
 
-    // Re-execute main (to pick up module changes)
-    const result = await executeMain();
-
-    print(JSON.stringify({
-      success: result.success,
-      file: target,
-      mode: isAppendMode ? 'append' : 'write',
-      entities: result.entities,
-      error: result.error,
-      hint: result.success
-        ? `'${target}' 모듈 ${isAppendMode ? '추가' : '저장'} 후 main 재실행 완료.`
-        : 'main 실행 실패. 코드를 확인하세요.',
-    }, null, 2));
+    if (result.output) {
+      print(result.output);
+    }
     return;
   }
 
@@ -1731,7 +1850,7 @@ Scene file:
     const code = readFileSync(modulePath, 'utf-8');
 
     // Preprocess: import 문 처리
-    const preprocessed = preprocessCode(code);
+    const preprocessed = await preprocessCode(code);
 
     if (preprocessed.errors.length > 0) {
       print(JSON.stringify({

@@ -175,14 +175,8 @@ export async function runCadCode(
       vm.dispose();
 
       // QuickJS 에러 객체에서 메시지 추출
-      let errorMessage: string;
-      if (typeof errorObj === 'object' && errorObj !== null) {
-        errorMessage = (errorObj as { message?: string; name?: string }).message
-          || (errorObj as { name?: string }).name
-          || JSON.stringify(errorObj);
-      } else {
-        errorMessage = String(errorObj);
-      }
+      const errAny = errorObj as { message?: string; name?: string } | null;
+      const errorMessage = errAny?.message || errAny?.name || String(errorObj);
 
       return {
         success: false,

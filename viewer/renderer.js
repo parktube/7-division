@@ -960,7 +960,7 @@ function hitTestScene(scene, worldX, worldY) {
   // Sort root entities by z_index descending (highest z-order = visually on top = test first)
   const rootEntities = scene.entities
     .filter(e => !e.parent_id)
-    .sort((a, b) => (b.z_index || 0) - (a.z_index || 0));
+    .sort((a, b) => (b.metadata?.z_index || 0) - (a.metadata?.z_index || 0));
   for (const entity of rootEntities) {
     const hit = hitTestEntity(entity, worldX, worldY, entitiesByName, null);
     if (hit) return hit;
