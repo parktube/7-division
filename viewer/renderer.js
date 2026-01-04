@@ -818,7 +818,8 @@ function getEntityBounds(entity, entitiesByName) {
 
 /**
  * Apply transform to a point (forward transform, not inverse)
- * Order matches applyTransform: translate -> (pivot -> rotate -> scale -> unpivot)
+ * Canvas2D order: translate -> pivot -> rotate -> scale -> unpivot
+ * Actual application: unpivot -> scale -> rotate -> pivot -> translate
  */
 function applyTransformToPoint(x, y, transform) {
   if (!transform) return { x, y };
@@ -832,12 +833,19 @@ function applyTransformToPoint(x, y, transform) {
   const px = pivot?.[0] || 0;
   const py = pivot?.[1] || 0;
 
-  // Apply transform: translate -> (pivot -> rotate -> scale -> unpivot)
-  // 1. Translate to pivot
+  // Apply transform matching Canvas2D reverse order:
+  // Canvas: translate -> pivot -> rotate -> scale -> unpivot
+  // Actual: unpivot -> scale -> rotate -> pivot -> translate
+
+  // 1. Translate to pivot (unpivot in canvas terms)
   let ox = x - px;
   let oy = y - py;
 
-  // 2. Rotate (before scale, matching applyTransform order)
+  // 2. Scale (applied before rotate in actual order)
+  ox *= sx;
+  oy *= sy;
+
+  // 3. Rotate
   if (r !== 0) {
     const cos = Math.cos(r);
     const sin = Math.sin(r);
@@ -846,10 +854,6 @@ function applyTransformToPoint(x, y, transform) {
     ox = rx;
     oy = ry;
   }
-
-  // 3. Scale
-  ox *= sx;
-  oy *= sy;
 
   // 4. Translate back from pivot and apply translation
   ox += px + tx;
@@ -914,17 +918,18 @@ function hitTestEntity(entity, worldX, worldY, entitiesByName, _parentTransform)
   // Transform the test point into local coordinates
   const local = transformPoint(worldX, worldY, transform);
 
-  // For groups, test children first (in reverse order for top-most first)
+  // For groups, test children sorted by z_index (highest first for top-most)
   if (entity.entity_type === 'Group' && Array.isArray(entity.children)) {
-    for (let i = entity.children.length - 1; i >= 0; i--) {
-      const childName = entity.children[i];
-      const child = entitiesByName?.[childName];
-      if (child) {
-        const hit = hitTestEntity(child, local.x, local.y, entitiesByName, transform);
-        if (hit) {
-          // Return the group if any child is hit (group selection mode)
-          return entity;
-        }
+    const childEntities = entity.children
+      .map(name => entitiesByName?.[name])
+      .filter(Boolean)
+      .sort((a, b) => (b.metadata?.z_index || 0) - (a.metadata?.z_index || 0));
+
+    for (const child of childEntities) {
+      const hit = hitTestEntity(child, local.x, local.y, entitiesByName, transform);
+      if (hit) {
+        // Return the group if any child is hit (group selection mode)
+        return entity;
       }
     }
     return null;

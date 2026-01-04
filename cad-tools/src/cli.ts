@@ -224,8 +224,9 @@ async function preprocessCode(code: string, importedModules: Set<string> = new S
       importedModules: newlyImported,
       errors,
     };
-  } catch {
+  } catch (err) {
     // Fallback to regex for non-standard syntax (e.g., "import * from 'module'")
+    logger.debug(`[preprocessCode] AST parse failed, using regex fallback: ${err instanceof Error ? err.message : String(err)}`);
     return preprocessCodeFallback(code, importedModules);
   }
 }
