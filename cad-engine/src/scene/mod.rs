@@ -20,6 +20,7 @@ pub(crate) enum SceneError {
     DuplicateEntityName(String, String), // (fn_name, entity_name)
     InvalidInput(String),
     NotAGroup(String, String), // (fn_name, entity_name)
+    InvalidOperation(String),  // 순환 참조 등 유효하지 않은 작업
 }
 
 impl fmt::Display for SceneError {
@@ -41,6 +42,9 @@ impl fmt::Display for SceneError {
                     "[{}] not_a_group: Entity '{}' is not a Group",
                     fn_name, name
                 )
+            }
+            SceneError::InvalidOperation(msg) => {
+                write!(f, "invalid_operation: {}", msg)
             }
         }
     }
@@ -1329,14 +1333,28 @@ impl Scene {
     // ========================================
 
     /// Entity의 부모 체인을 수집합니다 (루트부터 순서대로)
+    ///
+    /// 순환 참조 방지를 위해 최대 100단계까지만 탐색합니다.
     fn collect_parent_chain(&self, name: &str) -> Vec<&Entity> {
+        use std::collections::HashSet;
+        const MAX_DEPTH: usize = 100;
+
         let mut chain = Vec::new();
+        let mut visited = HashSet::new();
         let mut current_name = Some(name.to_string());
+        let mut depth = 0;
 
         while let Some(ref n) = current_name {
+            // 순환 참조 또는 깊이 제한 도달 시 중단
+            if visited.contains(n) || depth >= MAX_DEPTH {
+                break;
+            }
+            visited.insert(n.clone());
+
             if let Some(entity) = self.find_by_name(n) {
                 chain.push(entity);
                 current_name = entity.parent_id.clone();
+                depth += 1;
             } else {
                 break;
             }

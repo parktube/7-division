@@ -18,6 +18,7 @@ import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { runCadCode } from './sandbox/index.js';
+import { logger } from './logger.js';
 import { init as initLexer, parse as parseImports } from 'es-module-lexer';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
