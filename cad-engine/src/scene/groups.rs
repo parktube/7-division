@@ -10,6 +10,34 @@ use super::entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
 use super::{Scene, SceneError, generate_id};
 
 impl Scene {
+    /// 순환 참조 검사: ancestor가 descendant의 조상인지 확인
+    ///
+    /// parent_id 체인을 따라가며 ancestor가 있는지 확인합니다.
+    /// 최대 100단계까지만 탐색하여 무한루프를 방지합니다.
+    fn is_ancestor_of(&self, ancestor: &str, descendant: &str) -> bool {
+        const MAX_DEPTH: usize = 100;
+        let mut current = descendant.to_string();
+        let mut depth = 0;
+
+        while depth < MAX_DEPTH {
+            if let Some(entity) = self.find_by_name(&current) {
+                if let Some(ref parent_id) = entity.parent_id {
+                    if parent_id == ancestor {
+                        return true;
+                    }
+                    current = parent_id.clone();
+                    depth += 1;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        // 최대 깊이 도달 시 안전하게 true 반환 (순환으로 간주)
+        true
+    }
+
     /// 내부용 그룹 생성 함수 (테스트용)
     pub(crate) fn create_group_internal(
         &mut self,
@@ -136,6 +164,14 @@ impl Scene {
         // 추가할 Entity 존재 여부 확인
         if !self.has_entity(entity_name) {
             return Ok(false);
+        }
+
+        // 순환 참조 방지: entity_name이 group_name의 조상인지 확인
+        if self.is_ancestor_of(entity_name, group_name) {
+            return Err(SceneError::InvalidOperation(format!(
+                "Cannot add '{}' to '{}': would create circular reference",
+                entity_name, group_name
+            )));
         }
 
         // 자식의 기존 부모에서 제거

@@ -12,7 +12,7 @@ pub mod style;
 use crate::primitives::parse_line_points;
 use crate::serializers::json::serialize_scene;
 use crate::serializers::svg::serialize_scene_svg;
-use entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
+use entity::{Entity, EntityType, Geometry, Matrix3x3, Metadata, Style, Transform};
 use style::{FillStyle, LineCap, LineJoin, StrokeStyle};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +20,7 @@ pub(crate) enum SceneError {
     DuplicateEntityName(String, String), // (fn_name, entity_name)
     InvalidInput(String),
     NotAGroup(String, String), // (fn_name, entity_name)
+    InvalidOperation(String),  // 순환 참조 등 유효하지 않은 작업
 }
 
 impl fmt::Display for SceneError {
@@ -41,6 +42,9 @@ impl fmt::Display for SceneError {
                     "[{}] not_a_group: Entity '{}' is not a Group",
                     fn_name, name
                 )
+            }
+            SceneError::InvalidOperation(msg) => {
+                write!(f, "invalid_operation: {}", msg)
             }
         }
     }
@@ -476,6 +480,174 @@ impl Scene {
         Ok(name.to_string())
     }
 
+    /// 닫힌 다각형(Polygon)을 생성합니다. fill 지원.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "mountain") - Scene 내 unique
+    /// * `points` - Float64Array [x1, y1, x2, y2, ...] (최소 3점, 6개 값)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 3점 미만 시 에러
+    pub fn draw_polygon(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_polygon] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // 좌표 파싱
+        let point_pairs = parse_line_points(points.to_vec())
+            .map_err(|msg| JsValue::from_str(&format!("[draw_polygon] invalid_input: {}", msg)))?;
+
+        // 최소 3점 필요
+        if point_pairs.len() < 3 {
+            return Err(JsValue::from_str(
+                "[draw_polygon] invalid_input: Polygon requires at least 3 points",
+            ));
+        }
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Polygon,
+            geometry: Geometry::Polygon {
+                points: point_pairs,
+            },
+            transform: Transform::default(),
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_polygon({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 베지어 커브를 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "curve1") - Scene 내 unique
+    /// * `points` - 좌표 배열 [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
+    ///              첫 8개는 첫 세그먼트 (시작점, 제어점1, 제어점2, 끝점)
+    ///              이후 6개씩 추가 세그먼트 (제어점1, 제어점2, 끝점)
+    /// * `closed` - true면 닫힌 경로 (fill 적용 가능)
+    /// * `style_json` - 스타일 JSON
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 최소 8개 좌표 (4점) 필요
+    #[wasm_bindgen]
+    pub fn draw_bezier(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        closed: bool,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_bezier] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        let coords = points.to_vec();
+
+        // NaN/Infinity 검증
+        if coords.iter().any(|v| !v.is_finite()) {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 최소 8개 좌표 필요 (시작점 + 제어점1 + 제어점2 + 끝점)
+        if coords.len() < 8 {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: Bezier requires at least 8 values (4 points: start, cp1, cp2, end)",
+            ));
+        }
+
+        // 첫 세그먼트 이후 좌표는 6개씩 (cp1, cp2, end)
+        let remaining = coords.len() - 8;
+        if !remaining.is_multiple_of(6) {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: After first 8 values, additional values must be in groups of 6 (cp1, cp2, end)",
+            ));
+        }
+
+        // 시작점
+        let start = [coords[0], coords[1]];
+
+        // 세그먼트 파싱
+        let mut segments: Vec<[[f64; 2]; 3]> = Vec::new();
+
+        // 첫 세그먼트
+        segments.push([
+            [coords[2], coords[3]], // cp1
+            [coords[4], coords[5]], // cp2
+            [coords[6], coords[7]], // end
+        ]);
+
+        // 추가 세그먼트
+        let mut i = 8;
+        while i + 5 < coords.len() {
+            segments.push([
+                [coords[i], coords[i + 1]],     // cp1
+                [coords[i + 2], coords[i + 3]], // cp2
+                [coords[i + 4], coords[i + 5]], // end
+            ]);
+            i += 6;
+        }
+
+        // 스타일 파싱
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Bezier,
+            geometry: Geometry::Bezier {
+                start,
+                segments,
+                closed,
+            },
+            transform: Transform::default(),
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_bezier({})", name));
+        Ok(name.to_string())
+    }
+
     /// 스타일이 적용된 사각형(Rect)을 생성합니다.
     ///
     /// # Arguments
@@ -867,6 +1039,42 @@ impl Scene {
             .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
+    /// Entity의 z-order(렌더링 순서)를 설정합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    /// * `z_index` - z-order 값 (높을수록 앞에 렌더링)
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    ///
+    /// # Notes
+    /// z_index가 같으면 생성 순서대로 렌더링됩니다.
+    /// 음수 값도 허용됩니다.
+    pub fn set_z_order(&mut self, name: &str, z_index: i32) -> Result<bool, JsValue> {
+        let entity = match self.find_by_name_mut(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+
+        entity.metadata.z_index = z_index;
+        self.last_operation = Some(format!("set_z_order({}, {})", name, z_index));
+        Ok(true)
+    }
+
+    /// Entity의 z_index를 조회합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    ///
+    /// # Returns
+    /// * Some(z_index) - Entity의 z_index
+    /// * None - name 미발견
+    pub fn get_z_order(&self, name: &str) -> Option<i32> {
+        self.find_by_name(name).map(|e| e.metadata.z_index)
+    }
+
     // ========================================
     // Group Functions (Story 4.1~4.3)
     // Internal logic moved to groups.rs
@@ -1036,9 +1244,252 @@ impl Scene {
         }))
         .unwrap_or_else(|_| "{}".to_string())
     }
+
+    // ========================================
+    // World Transform API (Phase 2)
+    // ========================================
+
+    /// Entity의 월드 변환 행렬을 반환합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    ///
+    /// # Returns
+    /// * Some(JSON) - 3x3 행렬 JSON: [[a, b, tx], [c, d, ty], [0, 0, 1]]
+    /// * None - Entity가 없으면 None
+    ///
+    /// # 변환 상속
+    /// 부모 그룹의 변환이 자식에게 상속됩니다.
+    /// 반환되는 행렬은 모든 조상의 변환이 결합된 최종 월드 변환입니다.
+    pub fn get_world_transform(&self, name: &str) -> Option<String> {
+        let matrix = self.get_world_transform_internal(name)?;
+        Some(
+            serde_json::to_string(&matrix)
+                .unwrap_or_else(|_| "[[1,0,0],[0,1,0],[0,0,1]]".to_string()),
+        )
+    }
+
+    /// 로컬 좌표를 월드 좌표로 변환합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (이 엔티티의 좌표계 기준)
+    /// * `x` - 로컬 x 좌표
+    /// * `y` - 로컬 y 좌표
+    ///
+    /// # Returns
+    /// * Some(JSON) - 월드 좌표: {"x": ..., "y": ...}
+    /// * None - Entity가 없으면 None
+    pub fn get_world_point(&self, name: &str, x: f64, y: f64) -> Option<String> {
+        let matrix = self.get_world_transform_internal(name)?;
+        let world_point = Transform::transform_point(&matrix, [x, y]);
+        Some(
+            serde_json::to_string(&serde_json::json!({
+                "x": world_point[0],
+                "y": world_point[1]
+            }))
+            .unwrap_or_else(|_| "{}".to_string()),
+        )
+    }
+
+    /// Entity의 월드 좌표 바운딩 박스를 반환합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    ///
+    /// # Returns
+    /// * Some(JSON) - {"min": [x, y], "max": [x, y]}
+    /// * None - Entity가 없거나 빈 그룹이면 None
+    ///
+    /// # Notes
+    /// 변환(translate, rotate, scale)이 적용된 최종 월드 좌표 바운드입니다.
+    /// 그룹의 경우 모든 자식의 바운드를 포함합니다.
+    pub fn get_world_bounds(&self, name: &str) -> Option<String> {
+        let (min, max) = self.get_world_bounds_internal(name)?;
+        Some(
+            serde_json::to_string(&serde_json::json!({
+                "min": min,
+                "max": max
+            }))
+            .unwrap_or_else(|_| "{}".to_string()),
+        )
+    }
+
+    /// Entity가 존재하는지 확인합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    ///
+    /// # Returns
+    /// * true - Entity 존재
+    /// * false - Entity 없음
+    pub fn exists(&self, name: &str) -> bool {
+        self.has_entity(name)
+    }
 }
 
 impl Scene {
+    // ========================================
+    // World Transform Functions (Phase 2)
+    // ========================================
+
+    /// Entity의 부모 체인을 수집합니다 (루트부터 순서대로)
+    ///
+    /// 순환 참조 방지를 위해 최대 100단계까지만 탐색합니다.
+    fn collect_parent_chain(&self, name: &str) -> Vec<&Entity> {
+        use std::collections::HashSet;
+        const MAX_DEPTH: usize = 100;
+
+        let mut chain = Vec::new();
+        let mut visited = HashSet::new();
+        let mut current_name = Some(name.to_string());
+        let mut depth = 0;
+
+        while let Some(ref n) = current_name {
+            // 순환 참조 또는 깊이 제한 도달 시 중단
+            if visited.contains(n) || depth >= MAX_DEPTH {
+                break;
+            }
+            visited.insert(n.clone());
+
+            if let Some(entity) = self.find_by_name(n) {
+                chain.push(entity);
+                current_name = entity.parent_id.clone();
+                depth += 1;
+            } else {
+                break;
+            }
+        }
+
+        // 루트부터 순서대로 (현재 엔티티가 마지막)
+        chain.reverse();
+        chain
+    }
+
+    /// Entity의 월드 변환 행렬을 계산합니다 (내부용)
+    ///
+    /// 부모 체인의 모든 변환을 결합하여 최종 월드 변환을 반환합니다.
+    /// 변환은 루트부터 적용됩니다: parent1 * parent2 * ... * entity
+    fn get_world_transform_internal(&self, name: &str) -> Option<Matrix3x3> {
+        let chain = self.collect_parent_chain(name);
+        if chain.is_empty() {
+            return None;
+        }
+
+        // 루트부터 차례대로 변환 결합
+        let mut world_matrix = Transform::identity_matrix();
+        for entity in chain {
+            let local_matrix = entity.transform.to_matrix();
+            world_matrix = Transform::multiply_matrices(&world_matrix, &local_matrix);
+        }
+
+        Some(world_matrix)
+    }
+
+    /// Geometry의 로컬 정점들을 반환합니다
+    fn geometry_vertices(geometry: &Geometry) -> Vec<[f64; 2]> {
+        match geometry {
+            Geometry::Line { points } => points.clone(),
+            Geometry::Circle { center, radius } => {
+                // 원은 4개 극점으로 근사
+                vec![
+                    [center[0] - radius, center[1]],
+                    [center[0] + radius, center[1]],
+                    [center[0], center[1] - radius],
+                    [center[0], center[1] + radius],
+                ]
+            }
+            Geometry::Rect {
+                origin,
+                width,
+                height,
+            } => {
+                // 사각형 4개 꼭짓점
+                vec![
+                    [origin[0], origin[1]],
+                    [origin[0] + width, origin[1]],
+                    [origin[0] + width, origin[1] + height],
+                    [origin[0], origin[1] + height],
+                ]
+            }
+            Geometry::Arc { center, radius, .. } => {
+                // Arc도 보수적으로 원 극점 사용
+                vec![
+                    [center[0] - radius, center[1]],
+                    [center[0] + radius, center[1]],
+                    [center[0], center[1] - radius],
+                    [center[0], center[1] + radius],
+                ]
+            }
+            Geometry::Polygon { points } => points.clone(),
+            Geometry::Bezier {
+                start, segments, ..
+            } => {
+                // 베지어 커브는 모든 제어점과 끝점을 포함
+                let mut vertices = vec![*start];
+                for seg in segments {
+                    vertices.push(seg[0]); // cp1
+                    vertices.push(seg[1]); // cp2
+                    vertices.push(seg[2]); // end
+                }
+                vertices
+            }
+            Geometry::Empty => vec![],
+        }
+    }
+
+    /// Entity의 월드 좌표 바운딩 박스를 계산합니다 (내부용)
+    fn get_world_bounds_internal(&self, name: &str) -> Option<([f64; 2], [f64; 2])> {
+        let entity = self.find_by_name(name)?;
+        let world_matrix = self.get_world_transform_internal(name)?;
+
+        // Group인 경우 자식들의 바운드를 재귀적으로 계산
+        if matches!(entity.entity_type, EntityType::Group) {
+            if entity.children.is_empty() {
+                return None;
+            }
+
+            let mut min_x = f64::INFINITY;
+            let mut min_y = f64::INFINITY;
+            let mut max_x = f64::NEG_INFINITY;
+            let mut max_y = f64::NEG_INFINITY;
+
+            for child_name in &entity.children {
+                if let Some((child_min, child_max)) = self.get_world_bounds_internal(child_name) {
+                    min_x = min_x.min(child_min[0]);
+                    min_y = min_y.min(child_min[1]);
+                    max_x = max_x.max(child_max[0]);
+                    max_y = max_y.max(child_max[1]);
+                }
+            }
+
+            if min_x == f64::INFINITY {
+                return None;
+            }
+            return Some(([min_x, min_y], [max_x, max_y]));
+        }
+
+        // 일반 도형: 로컬 정점들을 월드 좌표로 변환
+        let local_vertices = Self::geometry_vertices(&entity.geometry);
+        if local_vertices.is_empty() {
+            return None;
+        }
+
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        for vertex in local_vertices {
+            let world_point = Transform::transform_point(&world_matrix, vertex);
+            min_x = min_x.min(world_point[0]);
+            min_y = min_y.min(world_point[1]);
+            max_x = max_x.max(world_point[0]);
+            max_y = max_y.max(world_point[1]);
+        }
+
+        Some(([min_x, min_y], [max_x, max_y]))
+    }
+
     /// Scene의 전체 bounding box를 계산합니다.
     ///
     /// # Returns
@@ -1102,6 +1553,41 @@ impl Scene {
                     [center[0] - radius, center[1] - radius],
                     [center[0] + radius, center[1] + radius],
                 )
+            }
+            Geometry::Polygon { points } => {
+                let mut min_x = f64::INFINITY;
+                let mut min_y = f64::INFINITY;
+                let mut max_x = f64::NEG_INFINITY;
+                let mut max_y = f64::NEG_INFINITY;
+
+                for point in points {
+                    min_x = min_x.min(point[0]);
+                    min_y = min_y.min(point[1]);
+                    max_x = max_x.max(point[0]);
+                    max_y = max_y.max(point[1]);
+                }
+
+                ([min_x, min_y], [max_x, max_y])
+            }
+            Geometry::Bezier {
+                start, segments, ..
+            } => {
+                // 베지어 커브: 모든 제어점과 끝점의 bounds
+                let mut min_x = start[0];
+                let mut min_y = start[1];
+                let mut max_x = start[0];
+                let mut max_y = start[1];
+
+                for seg in segments {
+                    for point in seg {
+                        min_x = min_x.min(point[0]);
+                        min_y = min_y.min(point[1]);
+                        max_x = max_x.max(point[0]);
+                        max_y = max_y.max(point[1]);
+                    }
+                }
+
+                ([min_x, min_y], [max_x, max_y])
             }
             Geometry::Empty => {
                 // Group은 자체 geometry가 없으므로 영점 반환 (자식 bounds는 별도 계산)
@@ -1338,5 +1824,171 @@ mod tests {
         // Valid values should still work
         let result = scene.set_pivot_internal("c1", 5.0, 10.0);
         assert!(result.is_ok());
+    }
+
+    // ========================================
+    // World Transform Tests (Phase 2)
+    // ========================================
+
+    fn approx_eq(a: f64, b: f64, eps: f64) -> bool {
+        (a - b).abs() < eps
+    }
+
+    #[test]
+    fn test_world_transform_no_parent() {
+        // 부모 없는 엔티티: 로컬 변환 = 월드 변환
+        let mut scene = Scene::new("test");
+        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 10.0).unwrap();
+        scene.find_by_name_mut("r1").unwrap().transform.translate = [5.0, 10.0];
+
+        let matrix = scene.get_world_transform_internal("r1").unwrap();
+        // translate만 있으면 tx=5, ty=10
+        assert!(approx_eq(matrix[0][2], 5.0, 1e-10));
+        assert!(approx_eq(matrix[1][2], 10.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_transform_with_parent() {
+        // 부모 그룹 변환이 자식에게 상속
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 5.0).unwrap();
+        scene
+            .create_group_internal("g1", vec!["c1".to_string()])
+            .unwrap();
+
+        // 그룹을 (10, 20)으로 이동
+        scene.find_by_name_mut("g1").unwrap().transform.translate = [10.0, 20.0];
+
+        // 자식의 월드 변환은 부모 변환을 상속
+        let matrix = scene.get_world_transform_internal("c1").unwrap();
+        assert!(approx_eq(matrix[0][2], 10.0, 1e-10));
+        assert!(approx_eq(matrix[1][2], 20.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_transform_nested_groups() {
+        // 중첩 그룹: grandparent -> parent -> child
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 5.0).unwrap();
+        scene
+            .create_group_internal("parent", vec!["c1".to_string()])
+            .unwrap();
+        scene
+            .create_group_internal("grandparent", vec!["parent".to_string()])
+            .unwrap();
+
+        // 각 그룹에 변환 적용
+        scene
+            .find_by_name_mut("grandparent")
+            .unwrap()
+            .transform
+            .translate = [100.0, 0.0];
+        scene
+            .find_by_name_mut("parent")
+            .unwrap()
+            .transform
+            .translate = [0.0, 50.0];
+
+        // c1의 월드 변환: grandparent(100, 0) + parent(0, 50) = (100, 50)
+        let matrix = scene.get_world_transform_internal("c1").unwrap();
+        assert!(approx_eq(matrix[0][2], 100.0, 1e-10));
+        assert!(approx_eq(matrix[1][2], 50.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_transform_with_rotation() {
+        use std::f64::consts::PI;
+
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 5.0).unwrap();
+        scene
+            .create_group_internal("g1", vec!["c1".to_string()])
+            .unwrap();
+
+        // 그룹을 90도 회전
+        scene.find_by_name_mut("g1").unwrap().transform.rotate = PI / 2.0;
+        // 자식을 (10, 0)으로 이동
+        scene.find_by_name_mut("c1").unwrap().transform.translate = [10.0, 0.0];
+
+        // 월드 좌표: (10, 0) 회전 90도 -> (0, 10)
+        let matrix = scene.get_world_transform_internal("c1").unwrap();
+        let world_origin = Transform::transform_point(&matrix, [0.0, 0.0]);
+        assert!(approx_eq(world_origin[0], 0.0, 1e-10));
+        assert!(approx_eq(world_origin[1], 10.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_bounds_simple() {
+        let mut scene = Scene::new("test");
+        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 20.0).unwrap();
+
+        let (min, max) = scene.get_world_bounds_internal("r1").unwrap();
+        assert!(approx_eq(min[0], 0.0, 1e-10));
+        assert!(approx_eq(min[1], 0.0, 1e-10));
+        assert!(approx_eq(max[0], 10.0, 1e-10));
+        assert!(approx_eq(max[1], 20.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_bounds_with_translate() {
+        let mut scene = Scene::new("test");
+        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 20.0).unwrap();
+        scene.find_by_name_mut("r1").unwrap().transform.translate = [5.0, 10.0];
+
+        let (min, max) = scene.get_world_bounds_internal("r1").unwrap();
+        assert!(approx_eq(min[0], 5.0, 1e-10));
+        assert!(approx_eq(min[1], 10.0, 1e-10));
+        assert!(approx_eq(max[0], 15.0, 1e-10));
+        assert!(approx_eq(max[1], 30.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_bounds_group() {
+        let mut scene = Scene::new("test");
+        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 10.0).unwrap();
+        scene.add_circle_internal("c1", 50.0, 50.0, 5.0).unwrap();
+        scene
+            .create_group_internal("g1", vec!["r1".to_string(), "c1".to_string()])
+            .unwrap();
+
+        // 그룹 바운드는 모든 자식 포함
+        let (min, max) = scene.get_world_bounds_internal("g1").unwrap();
+        assert!(approx_eq(min[0], 0.0, 1e-10)); // r1 min_x
+        assert!(approx_eq(min[1], 0.0, 1e-10)); // r1 min_y
+        assert!(approx_eq(max[0], 55.0, 1e-10)); // c1 center + radius
+        assert!(approx_eq(max[1], 55.0, 1e-10)); // c1 center + radius
+    }
+
+    #[test]
+    fn test_get_world_point() {
+        use std::f64::consts::PI;
+
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 5.0).unwrap();
+        scene
+            .create_group_internal("g1", vec!["c1".to_string()])
+            .unwrap();
+
+        // 그룹을 90도 회전하고 (10, 0) 이동
+        scene.find_by_name_mut("g1").unwrap().transform.rotate = PI / 2.0;
+        scene.find_by_name_mut("g1").unwrap().transform.translate = [10.0, 0.0];
+
+        // c1 로컬 좌표 (5, 0)을 월드 좌표로
+        let json = scene.get_world_point("c1", 5.0, 0.0).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let x = value.get("x").unwrap().as_f64().unwrap();
+        let y = value.get("y").unwrap().as_f64().unwrap();
+        // (5, 0) 회전 90도 -> (0, 5), translate (10, 0) -> (10, 5)
+        assert!(approx_eq(x, 10.0, 1e-10));
+        assert!(approx_eq(y, 5.0, 1e-10));
+    }
+
+    #[test]
+    fn test_exists() {
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 5.0).unwrap();
+
+        assert!(scene.exists("c1"));
+        assert!(!scene.exists("nonexistent"));
     }
 }

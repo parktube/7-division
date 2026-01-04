@@ -316,6 +316,43 @@ execute
 run
 ```
 
+### 패턴 5: LLM-Native 추상화 (OOP가 아님!)
+
+복잡한 시스템에서 추상화가 필요할 때, OOP(캡슐화/상속)보다 LLM 친화적 패턴을 선택한다.
+
+```
+❌ OOP 캡슐화 = 블랙박스 = LLM에 불리
+house.setWallColor(red)  // wall이 뭐지? 내부 상태는?
+
+✅ LLM-Native = 명시적 범위 + 탐색 가능
+enterScope("house_1");
+setFill("wall", red);     // 현재 스코프 내 명시적 타겟
+exitScope();
+```
+
+**LLM-Native 추상화 4요소:**
+
+| 요소 | 설명 | 예시 |
+|------|------|------|
+| **Scoped Context** | 작업 범위 제한 | `enterScope("room_12")` → 상대 경로 사용 |
+| **Query Language** | 조건 검색 | `find({ type: "chair", in: "room_*" })` |
+| **Progressive Disclosure** | 점진적 탐색 | `overview()` → `listChildren()` → drill-down |
+| **Batch Operations** | 일괄 처리 | `batch([{ target: "chair_*", op: "setFill" }])` |
+
+**규모별 적용:**
+
+```
+~500 엔티티:   플랫 + 네이밍 컨벤션
+~5,000 엔티티: Scoped Context + Progressive Disclosure
+~50,000 엔티티: Query + Batch Operations
+무제한:        LOD + Lazy Loading
+```
+
+**핵심 원칙**:
+- OOP의 "숨기기"가 아닌 "범위 제한"
+- 상속 계층이 아닌 "탐색 가능한 구조"
+- 암시적 상태가 아닌 "명시적 컨텍스트"
+
 ---
 
 ## 6. 설계 시 자문 체크리스트
@@ -527,8 +564,10 @@ AX는 더 불필요해지는 게 아니라
 - `spinelift:ax_progressive_exposure` - 점진적 지식 노출
 - `spinelift:mcp_vs_direct_wasm` - MCP vs 직접 호출
 - `mcp_tool_description_optimization` - description 최적화
+- `cad:llm_native_abstraction` - LLM-Native 추상화 (OOP가 아닌 대안)
+- `cad:phase4_llm_friendly_navigation` - LLM 친화적 씬 탐색
 
 ---
 
-*최종 수정: 2025-12-13*
-*출처: SpineLift 6개월 개발 경험 + MAMA 프로젝트*
+*최종 수정: 2026-01-03*
+*출처: SpineLift 6개월 개발 경험 + MAMA 프로젝트 + AI-Native CAD(도화지)*

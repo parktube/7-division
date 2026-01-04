@@ -21,6 +21,20 @@ fn entity_to_svg_element(entity: &Entity, indent: &str) -> String {
                 indent, points_str, style_attr, transform_attr
             ) + "\n"
         }
+        Geometry::Polygon { points } => {
+            if points.len() < 3 {
+                return String::new();
+            }
+            let points_str: String = points
+                .iter()
+                .map(|p| format!("{},{}", p[0], p[1]))
+                .collect::<Vec<_>>()
+                .join(" ");
+            format!(
+                r#"{}<polygon points="{}" {}{}/>"#,
+                indent, points_str, style_attr, transform_attr
+            ) + "\n"
+        }
         Geometry::Circle { center, radius } => {
             format!(
                 r#"{}<circle cx="{}" cy="{}" r="{}" {}{}/>"#,
@@ -51,6 +65,18 @@ fn entity_to_svg_element(entity: &Entity, indent: &str) -> String {
             &transform_attr,
             indent,
         ),
+        Geometry::Bezier {
+            start,
+            segments,
+            closed,
+        } => bezier_to_svg_path(
+            start,
+            segments,
+            *closed,
+            &style_attr,
+            &transform_attr,
+            indent,
+        ),
         Geometry::Empty => String::new(),
     }
 }
@@ -74,14 +100,21 @@ fn entity_to_svg_hierarchical(
             }
 
             let child_indent = format!("{}  ", indent);
-            for child_name in &entity.children {
-                if let Some(child) = entities_by_name.get(child_name) {
-                    result.push_str(&entity_to_svg_hierarchical(
-                        child,
-                        entities_by_name,
-                        &child_indent,
-                    ));
-                }
+
+            // 자식들을 z_index로 정렬 (낮은 값이 먼저 렌더링 = 뒤에 위치)
+            let mut sorted_children: Vec<_> = entity
+                .children
+                .iter()
+                .filter_map(|name| entities_by_name.get(name).map(|e| (name, *e)))
+                .collect();
+            sorted_children.sort_by_key(|(_, e)| e.metadata.z_index);
+
+            for (_, child) in sorted_children {
+                result.push_str(&entity_to_svg_hierarchical(
+                    child,
+                    entities_by_name,
+                    &child_indent,
+                ));
             }
 
             result.push_str(&format!("{}</g>\n", indent));
@@ -137,6 +170,39 @@ fn arc_to_svg_path(
         end_y,
         style_attr,
         transform_attr
+    ) + "\n"
+}
+
+/// Bezier 커브를 SVG path로 변환합니다.
+fn bezier_to_svg_path(
+    start: &[f64; 2],
+    segments: &[[[f64; 2]; 3]],
+    closed: bool,
+    style_attr: &str,
+    transform_attr: &str,
+    indent: &str,
+) -> String {
+    if segments.is_empty() {
+        return String::new();
+    }
+
+    let mut path_data = format!("M {},{}", start[0], start[1]);
+
+    for seg in segments {
+        let [cp1, cp2, end] = seg;
+        path_data.push_str(&format!(
+            " C {},{} {},{} {},{}",
+            cp1[0], cp1[1], cp2[0], cp2[1], end[0], end[1]
+        ));
+    }
+
+    if closed {
+        path_data.push_str(" Z");
+    }
+
+    format!(
+        r#"{}<path d="{}" {}{}/>"#,
+        indent, path_data, style_attr, transform_attr
     ) + "\n"
 }
 
@@ -366,6 +432,7 @@ mod tests {
                 name: name.to_string(),
                 layer: None,
                 locked: false,
+                z_index: 0,
             },
             parent_id: None,
             children: Vec::new(),

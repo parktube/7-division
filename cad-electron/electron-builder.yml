@@ -6,11 +6,11 @@ directories:
   buildResources: resources
   output: dist
 files:
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!electron.vite.config.*'
-  - '!{.eslintignore,.eslintrc.*,.prettierrc.*,tsconfig.*}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - "!**/.vscode/*"
+  - "!src/*"
+  - "!electron.vite.config.*"
+  - "!{.eslintignore,.eslintrc.*,.prettierrc.*,tsconfig.*}"
+  - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
 asarUnpack:
   - resources/**
 extraResources:
@@ -30,8 +30,10 @@ extraResources:
     to: cad-cli.sh
   - from: resources/cad-cli.cmd
     to: cad-cli.cmd
+  - from: resources/CLAUDE.md
+    to: CLAUDE.md
 mac:
-  icon: resources/icon.icns
+  icon: resources/icon.png
   target:
     - target: dmg
       arch:
@@ -40,6 +42,7 @@ mac:
   category: public.app-category.graphics-design
   entitlementsInherit: resources/entitlements.mac.plist
 win:
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch:

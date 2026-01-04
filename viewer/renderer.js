@@ -141,6 +141,27 @@ function computeBounds(entities) {
       minY = Math.min(minY, center[1] - radius);
       maxX = Math.max(maxX, center[0] + radius);
       maxY = Math.max(maxY, center[1] + radius);
+    } else if (geo.Polygon) {
+      for (const pt of geo.Polygon.points) {
+        minX = Math.min(minX, pt[0]);
+        minY = Math.min(minY, pt[1]);
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      }
+    } else if (geo.Bezier) {
+      const { start, segments } = geo.Bezier;
+      minX = Math.min(minX, start[0]);
+      minY = Math.min(minY, start[1]);
+      maxX = Math.max(maxX, start[0]);
+      maxY = Math.max(maxY, start[1]);
+      for (const seg of segments) {
+        for (const pt of seg) {
+          minX = Math.min(minX, pt[0]);
+          minY = Math.min(minY, pt[1]);
+          maxX = Math.max(maxX, pt[0]);
+          maxY = Math.max(maxY, pt[1]);
+        }
+      }
     }
   }
 
@@ -254,6 +275,73 @@ function renderLine(geometry, style) {
     ctx.lineTo(validPoints[i][0], validPoints[i][1]);
   }
   applyStroke(stroke);
+}
+
+function renderPolygon(geometry, style) {
+  const points = geometry?.Polygon?.points;
+  if (!Array.isArray(points) || points.length < 3) {
+    return;
+  }
+  const validPoints = points.filter(
+    (point) =>
+      Array.isArray(point) &&
+      point.length >= 2 &&
+      Number.isFinite(point[0]) &&
+      Number.isFinite(point[1]),
+  );
+  if (validPoints.length < 3) {
+    return;
+  }
+  ctx.beginPath();
+  ctx.moveTo(validPoints[0][0], validPoints[0][1]);
+  for (let i = 1; i < validPoints.length; i += 1) {
+    ctx.lineTo(validPoints[i][0], validPoints[i][1]);
+  }
+  ctx.closePath();
+  applyFill(style?.fill);
+  const stroke = resolveStroke(style);
+  if (stroke) {
+    applyStroke(stroke);
+  }
+}
+
+function renderBezier(geometry, style) {
+  const bezier = geometry?.Bezier;
+  if (!bezier) {
+    return;
+  }
+  const { start, segments, closed } = bezier;
+  if (!Array.isArray(start) || start.length < 2 || !Array.isArray(segments) || segments.length === 0) {
+    return;
+  }
+  const [sx, sy] = start;
+  if (!Number.isFinite(sx) || !Number.isFinite(sy)) {
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+
+  for (const seg of segments) {
+    if (!Array.isArray(seg) || seg.length < 3) continue;
+    const [cp1, cp2, end] = seg;
+    if (!Array.isArray(cp1) || !Array.isArray(cp2) || !Array.isArray(end)) continue;
+    if (cp1.length < 2 || cp2.length < 2 || end.length < 2) continue;
+    if (!Number.isFinite(cp1[0]) || !Number.isFinite(cp1[1]) ||
+        !Number.isFinite(cp2[0]) || !Number.isFinite(cp2[1]) ||
+        !Number.isFinite(end[0]) || !Number.isFinite(end[1])) continue;
+    ctx.bezierCurveTo(cp1[0], cp1[1], cp2[0], cp2[1], end[0], end[1]);
+  }
+
+  if (closed) {
+    ctx.closePath();
+  }
+
+  applyFill(style?.fill);
+  const stroke = resolveStroke(style);
+  if (stroke) {
+    applyStroke(stroke);
+  }
 }
 
 function renderCircle(geometry, style) {
@@ -404,14 +492,23 @@ function renderEntity(entity, entitiesByName) {
     case 'Arc':
       renderArc(entity.geometry, entity.style);
       break;
+    case 'Polygon':
+      renderPolygon(entity.geometry, entity.style);
+      break;
+    case 'Bezier':
+      renderBezier(entity.geometry, entity.style);
+      break;
     case 'Group':
-      // Group의 변환이 적용된 상태에서 자식들을 렌더링 (계층적 변환)
+      // Group의 변환이 적용된 상태에서 자식들을 z-order 순으로 렌더링 (계층적 변환)
       if (Array.isArray(entity.children) && entitiesByName) {
-        for (const childName of entity.children) {
-          const child = entitiesByName[childName];
-          if (child) {
-            renderEntity(child, entitiesByName);
-          }
+        // children을 z-order로 정렬 (낮은 값이 먼저 = 뒤에 렌더링)
+        const sortedChildren = entity.children
+          .map(childName => entitiesByName[childName])
+          .filter(child => child != null)
+          .sort((a, b) => (a.metadata?.z_index || 0) - (b.metadata?.z_index || 0));
+
+        for (const child of sortedChildren) {
+          renderEntity(child, entitiesByName);
         }
       }
       break;
@@ -445,10 +542,13 @@ function renderScene(scene) {
 
   // Only render root-level entities (those without parent_id)
   // Children are rendered by their parent Group
-  for (const entity of scene.entities) {
-    if (!entity.parent_id) {
-      renderEntity(entity, entitiesByName);
-    }
+  // Sort by z_index (lower z_index renders first = behind)
+  const rootEntities = scene.entities
+    .filter(e => !e.parent_id)
+    .sort((a, b) => (a.metadata?.z_index || 0) - (b.metadata?.z_index || 0));
+
+  for (const entity of rootEntities) {
+    renderEntity(entity, entitiesByName);
   }
 
   // Render selection highlight for selected entities
@@ -685,12 +785,41 @@ function getEntityBounds(entity, entitiesByName) {
       maxY: center[1] + radius,
     };
   }
+  if (geo.Polygon) {
+    const points = geo.Polygon.points;
+    if (!points || points.length < 3) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const pt of points) {
+      minX = Math.min(minX, pt[0]);
+      minY = Math.min(minY, pt[1]);
+      maxX = Math.max(maxX, pt[0]);
+      maxY = Math.max(maxY, pt[1]);
+    }
+    return { minX, minY, maxX, maxY };
+  }
+  if (geo.Bezier) {
+    const { start, segments } = geo.Bezier;
+    if (!start || !segments || segments.length === 0) return null;
+    let minX = start[0], minY = start[1], maxX = start[0], maxY = start[1];
+    // Include all control points and end points for accurate bounds
+    for (const seg of segments) {
+      // seg = [cp1, cp2, end] where each is [x, y]
+      for (const pt of seg) {
+        minX = Math.min(minX, pt[0]);
+        minY = Math.min(minY, pt[1]);
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      }
+    }
+    return { minX, minY, maxX, maxY };
+  }
   return null;
 }
 
 /**
  * Apply transform to a point (forward transform, not inverse)
- * Order matches applyTransform: translate -> (pivot -> rotate -> scale -> unpivot)
+ * Canvas2D order: translate -> pivot -> rotate -> scale -> unpivot
+ * Actual application: unpivot -> scale -> rotate -> pivot -> translate
  */
 function applyTransformToPoint(x, y, transform) {
   if (!transform) return { x, y };
@@ -704,12 +833,19 @@ function applyTransformToPoint(x, y, transform) {
   const px = pivot?.[0] || 0;
   const py = pivot?.[1] || 0;
 
-  // Apply transform: translate -> (pivot -> rotate -> scale -> unpivot)
-  // 1. Translate to pivot
+  // Apply transform matching Canvas2D reverse order:
+  // Canvas: translate -> pivot -> rotate -> scale -> unpivot
+  // Actual: unpivot -> scale -> rotate -> pivot -> translate
+
+  // 1. Translate to pivot (unpivot in canvas terms)
   let ox = x - px;
   let oy = y - py;
 
-  // 2. Rotate (before scale, matching applyTransform order)
+  // 2. Scale (applied before rotate in actual order)
+  ox *= sx;
+  oy *= sy;
+
+  // 3. Rotate
   if (r !== 0) {
     const cos = Math.cos(r);
     const sin = Math.sin(r);
@@ -718,10 +854,6 @@ function applyTransformToPoint(x, y, transform) {
     ox = rx;
     oy = ry;
   }
-
-  // 3. Scale
-  ox *= sx;
-  oy *= sy;
 
   // 4. Translate back from pivot and apply translation
   ox += px + tx;
@@ -775,6 +907,28 @@ function transformPoint(x, y, transform) {
 }
 
 /**
+ * Point-in-polygon test using ray casting algorithm
+ * @param {number} x - Test point x
+ * @param {number} y - Test point y
+ * @param {Array<[number, number]>} points - Polygon vertices
+ * @returns {boolean} True if point is inside polygon
+ */
+function pointInPolygon(x, y, points) {
+  if (!points || points.length < 3) return false;
+
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const xi = points[i][0], yi = points[i][1];
+    const xj = points[j][0], yj = points[j][1];
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
  * Hit test for a single entity
  */
 function hitTestEntity(entity, worldX, worldY, entitiesByName, _parentTransform) {
@@ -786,32 +940,43 @@ function hitTestEntity(entity, worldX, worldY, entitiesByName, _parentTransform)
   // Transform the test point into local coordinates
   const local = transformPoint(worldX, worldY, transform);
 
-  // For groups, test children first (in reverse order for top-most first)
+  // For groups, test children sorted by z_index (highest first for top-most)
   if (entity.entity_type === 'Group' && Array.isArray(entity.children)) {
-    for (let i = entity.children.length - 1; i >= 0; i--) {
-      const childName = entity.children[i];
-      const child = entitiesByName?.[childName];
-      if (child) {
-        const hit = hitTestEntity(child, local.x, local.y, entitiesByName, transform);
-        if (hit) {
-          // Return the group if any child is hit (group selection mode)
-          return entity;
-        }
+    const childEntities = entity.children
+      .map(name => entitiesByName?.[name])
+      .filter(Boolean)
+      .sort((a, b) => (b.metadata?.z_index || 0) - (a.metadata?.z_index || 0));
+
+    for (const child of childEntities) {
+      const hit = hitTestEntity(child, local.x, local.y, entitiesByName, transform);
+      if (hit) {
+        // Return the group if any child is hit (group selection mode)
+        return entity;
       }
     }
     return null;
   }
 
-  // Get bounds and test
+  // Get bounds first for quick rejection
   const bounds = getEntityBounds(entity);
   if (!bounds) return null;
 
-  if (local.x >= bounds.minX && local.x <= bounds.maxX &&
-      local.y >= bounds.minY && local.y <= bounds.maxY) {
-    return entity;
+  if (local.x < bounds.minX || local.x > bounds.maxX ||
+      local.y < bounds.minY || local.y > bounds.maxY) {
+    return null;
   }
 
-  return null;
+  // For Polygon, use precise point-in-polygon test
+  const geo = entity.geometry;
+  if (geo?.Polygon?.points) {
+    if (pointInPolygon(local.x, local.y, geo.Polygon.points)) {
+      return entity;
+    }
+    return null;
+  }
+
+  // For other shapes, bounding box is sufficient
+  return entity;
 }
 
 /**
@@ -829,10 +994,11 @@ function hitTestScene(scene, worldX, worldY) {
     }
   }
 
-  // Test entities in reverse order (last rendered = on top)
-  const rootEntities = scene.entities.filter(e => !e.parent_id);
-  for (let i = rootEntities.length - 1; i >= 0; i--) {
-    const entity = rootEntities[i];
+  // Sort root entities by z_index descending (highest z-order = visually on top = test first)
+  const rootEntities = scene.entities
+    .filter(e => !e.parent_id)
+    .sort((a, b) => (b.metadata?.z_index || 0) - (a.metadata?.z_index || 0));
+  for (const entity of rootEntities) {
     const hit = hitTestEntity(entity, worldX, worldY, entitiesByName, null);
     if (hit) return hit;
   }
