@@ -295,7 +295,8 @@ function getSceneEntities(): string[] {
 /** Extract import statements from code */
 function getCodeImports(code: string): string[] {
   const imports: string[] = [];
-  const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+from\s+)?)?['"]([^'"]+)['"]/g;
+  // Supports: import 'x', import { a } from 'x', import * from 'x', import * as y from 'x'
+  const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]/g;
   let match;
   while ((match = importRegex.exec(code)) !== null) {
     imports.push(match[1]);

@@ -907,6 +907,28 @@ function transformPoint(x, y, transform) {
 }
 
 /**
+ * Point-in-polygon test using ray casting algorithm
+ * @param {number} x - Test point x
+ * @param {number} y - Test point y
+ * @param {Array<[number, number]>} points - Polygon vertices
+ * @returns {boolean} True if point is inside polygon
+ */
+function pointInPolygon(x, y, points) {
+  if (!points || points.length < 3) return false;
+
+  let inside = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const xi = points[i][0], yi = points[i][1];
+    const xj = points[j][0], yj = points[j][1];
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
  * Hit test for a single entity
  */
 function hitTestEntity(entity, worldX, worldY, entitiesByName, _parentTransform) {
@@ -935,16 +957,26 @@ function hitTestEntity(entity, worldX, worldY, entitiesByName, _parentTransform)
     return null;
   }
 
-  // Get bounds and test
+  // Get bounds first for quick rejection
   const bounds = getEntityBounds(entity);
   if (!bounds) return null;
 
-  if (local.x >= bounds.minX && local.x <= bounds.maxX &&
-      local.y >= bounds.minY && local.y <= bounds.maxY) {
-    return entity;
+  if (local.x < bounds.minX || local.x > bounds.maxX ||
+      local.y < bounds.minY || local.y > bounds.maxY) {
+    return null;
   }
 
-  return null;
+  // For Polygon, use precise point-in-polygon test
+  const geo = entity.geometry;
+  if (geo?.Polygon?.points) {
+    if (pointInPolygon(local.x, local.y, geo.Polygon.points)) {
+      return entity;
+    }
+    return null;
+  }
+
+  // For other shapes, bounding box is sufficient
+  return entity;
 }
 
 /**
