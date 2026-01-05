@@ -73,26 +73,30 @@ export function readMainCode(): string {
 
 /**
  * 코드에서 클래스 정의 추출
+ * Matches: class Foo, export class Foo, const X = class Y
  */
 export function extractClasses(code: string): string[] {
-  const classRegex = /class\s+(\w+)/g;
+  const classRegex = /(?:export\s+)?(?:class\s+(\w+)|const\s+\w+\s*=\s*class\s+(\w+))/g;
   const classes: string[] = [];
   let match;
   while ((match = classRegex.exec(code)) !== null) {
-    classes.push(match[1]);
+    const name = match[1] || match[2];
+    if (name) classes.push(name);
   }
   return classes;
 }
 
 /**
  * 코드에서 함수 정의 추출
+ * Matches: function foo, export function foo, const bar = () => {}, const baz = function
  */
 export function extractFunctions(code: string): string[] {
-  const funcRegex = /function\s+(\w+)/g;
+  const funcRegex = /(?:export\s+)?(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))/g;
   const functions: string[] = [];
   let match;
   while ((match = funcRegex.exec(code)) !== null) {
-    functions.push(match[1]);
+    const name = match[1] || match[2];
+    if (name) functions.push(name);
   }
   return functions;
 }
