@@ -24,6 +24,10 @@ extraResources:
       - "**/*"
   - from: ../cad-tools/package.json
     to: cad-tools/package.json
+  - from: ../cad-tools/node_modules
+    to: cad-tools/node_modules
+    filter:
+      - "**/*"
   - from: ../docs/claude-code-usage.md
     to: docs/claude-code-usage.md
   - from: resources/cad-cli.sh
