@@ -46,29 +46,33 @@ CAD 도형을 JavaScript 코드로 생성합니다. `run_cad_code`가 메인 인
 
 ```bash
 cd cad-tools
-
-# 프로젝트 구조 보기
-npx tsx cad-cli.ts run_cad_code
-
-# 파일 읽기
-npx tsx cad-cli.ts run_cad_code main
-npx tsx cad-cli.ts run_cad_code my_module
-
-# 파일 쓰기 (덮어쓰기)
-npx tsx cad-cli.ts run_cad_code main "drawCircle('c1', 0, 0, 50)"
-
-# 파일에 코드 추가 (+ prefix)
-npx tsx cad-cli.ts run_cad_code main "+drawRect('r1', 10, 10, 30, 30)"
-
-# 멀티라인 코드 (stdin)
-echo "for (let i = 0; i < 5; i++) { drawCircle('c'+i, i*30, 0, 15); }" | npx tsx cad-cli.ts run_cad_code main -
-
-# 모듈 삭제
-npx tsx cad-cli.ts run_cad_code --delete my_module
-
-# 의존성 확인
-npx tsx cad-cli.ts run_cad_code --deps
 ```
+
+**기본 (읽기/쓰기)**
+```bash
+run_cad_code                              # 프로젝트 구조 보기
+run_cad_code main                         # main 읽기
+run_cad_code my_module                    # 모듈 읽기
+run_cad_code main "drawCircle('c', 0, 0, 50)"  # 덮어쓰기
+run_cad_code main "+drawRect('r', 0, 0, 30, 30)" # 추가 (+ prefix)
+echo "code" | run_cad_code main -         # stdin 멀티라인
+```
+
+**탐색 (Progressive Disclosure)**
+```bash
+run_cad_code --status                     # 프로젝트 요약 (파일/클래스/함수 수)
+run_cad_code --info house_lib             # 모듈 상세 (클래스, 함수, imports)
+run_cad_code --search drawCircle          # 패턴 검색 (모든 모듈)
+run_cad_code --lines house_lib 50-70      # 부분 읽기 (라인 범위)
+```
+
+**관리**
+```bash
+run_cad_code --deps                       # 의존성 그래프
+run_cad_code --delete my_module           # 모듈 삭제
+```
+
+> `run_cad_code` = `npx tsx cad-cli.ts run_cad_code`
 
 **규칙**: JavaScript 문자열은 작은따옴표(`'`) 사용
 

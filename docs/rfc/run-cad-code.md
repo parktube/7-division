@@ -1,6 +1,6 @@
 # RFC: run_cad_code
 
-Status: Phase 1-8 완료 ✅ (Electron 통합만 Epic 6 대기)
+Status: Phase 1-9 완료 ✅ (Electron 통합만 Epic 6 대기)
 
 ## 요약
 
@@ -246,6 +246,12 @@ set_fill("center", [0.85, 0.92, 1.0, 1]);
 45. [x] 파일 삭제 모드 (`run_cad_code --delete <name>`)
 46. [x] 의존성 그래프 (`run_cad_code --deps`)
 
+### Phase 9: AX Cross-Class Placement ✅
+47. [x] 크로스 클래스 배치 문제 분석 및 해결
+48. [x] Action Hints 시스템 구현 (`getWorldBounds()` 유도)
+49. [x] AGENTS.md에 크로스 클래스 배치 패턴 문서화
+50. [x] 복합 씬 테스트 (124개 엔티티: 빌딩, 나무, 사람, 산, 구름)
+
 **Bezier 포맷:**
 ```javascript
 // points = [startX, startY, cp1X, cp1Y, cp2X, cp2Y, endX, endY, ...]
@@ -274,6 +280,7 @@ drawBezier("curve", [
 | `cad:code_as_source_of_truth` | Code-as-Truth 검증 | Task 7 | get_scene_code 워크플로우 완료 | ✅ |
 | `cad:llm_friendly_coordinate_pattern` | LLM 친화적 패턴 검증 | Phase 2-4 | 그룹 변환 상속 + 씬 탐색 | ✅ |
 | `cad:run_cad_code_editor` | 코드 에디터 인터페이스 | Phase 8 | append, stdin, delete, deps | ✅ |
+| `cad:ax_cross_class_placement_pattern` | 크로스 클래스 배치 | Phase 9 | Action Hints + getWorldBounds | ✅ |
 | `cad:run_cad_code_final` | 최종 성공 | Task 8.3 | Electron 앱 통합 | ⏳ Epic 6 |
 
 ---
@@ -543,6 +550,88 @@ main
 - **stdin 모드**: 멀티라인 코드 파이프 입력 ✅
 - **모듈 삭제**: `--delete`로 불필요한 모듈 정리 ✅
 - **의존성 추적**: `--deps`로 import 관계 시각화 ✅
+
+---
+
+## Phase 9: AX Cross-Class Placement ✅
+
+### 배경
+
+LLM이 클래스/모듈 경계를 넘어 엔티티를 배치할 때 좌표를 잃어버리는 문제 발견.
+
+**문제 사례:**
+```javascript
+// Robot 클래스가 머리를 생성
+class Robot {
+  build() {
+    drawCircle(this.name + '_head', this.x, this.y + 45, 20);
+  }
+}
+
+// 외부에서 말풍선을 머리 위에 배치하려 할 때
+robot.build();
+// 머리의 실제 위치를 모름! → 추측으로 배치 → 틀림
+```
+
+**근본 원인:**
+- 클래스 경계에서 내부 좌표 정보가 캡슐화로 숨겨짐
+- LLM이 `getWorldBounds()` 사용을 잊거나 모름
+- OOP 캡슐화 = 블랙박스 = LLM에 불리 (추론 부담)
+
+### 해결: Action Hints
+
+**AX 철학:**
+> "모든 정보를 다 주는 게 아니라, 능동적으로 행동하게 만드는 것"
+
+정보 과잉은 오히려 놓치게 만듦. 필요한 순간에 힌트를 주어 능동적 행동 유도.
+
+**구현:**
+```typescript
+// cli.ts - run_cad_code 결과에 힌트 추가
+if (result.entities.length > 0) {
+  hints.push('외부 요소 배치 시 getWorldBounds(name)로 대상 위치 확인');
+}
+```
+
+### AGENTS.md 문서화
+
+```markdown
+### 크로스 클래스 배치 패턴 (Cross-Class Placement)
+
+**문제**: 클래스 A가 생성한 엔티티 위에 클래스 B의 요소를 배치할 때,
+A 내부의 좌표 정보가 B에 전달되지 않음
+
+**해결**: `getWorldBounds()`로 실제 위치 확인 후 배치
+
+```javascript
+// ✅ 올바른 방식 - 실제 위치 확인
+robot.build();
+const headBounds = getWorldBounds('robot_head');
+const bubbleY = headBounds.max[1] + 10;  // 머리 꼭대기 + 여백
+drawRect('bubble', headBounds.max[0], bubbleY, 60, 30);
+```
+```
+
+### 복합 씬 테스트 (124개 엔티티)
+
+5개 모듈로 구성된 복잡한 마을 씬 생성:
+- `building_lib`: Building, Shop 클래스
+- `tree_lib`: Tree, PineTree, FruitTree 클래스
+- `person_lib`: Person, Worker 클래스
+- `nature_lib`: Cloud, FluffyCloud, Mountain, MountainRange 클래스
+- `main`: 모든 모듈 조합 + 크로스 클래스 배치 (말풍선)
+
+**검증:**
+- `getWorldBounds()`로 Person 머리 위치 조회
+- 말풍선을 정확한 위치에 배치
+- Z-order로 배경(산) / 전경(건물, 나무) 분리
+
+### Definition of Done (Phase 9) ✅
+
+- **문제 분석**: 클래스 경계에서 좌표 정보 손실 원인 파악 ✅
+- **Action Hints**: 결과에 `getWorldBounds()` 사용 힌트 추가 ✅
+- **문서화**: AGENTS.md에 크로스 클래스 배치 패턴 추가 ✅
+- **복합 테스트**: 124개 엔티티 마을 씬 + 말풍선 배치 성공 ✅
 
 ## References
 

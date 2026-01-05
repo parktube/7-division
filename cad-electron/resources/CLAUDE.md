@@ -4,34 +4,27 @@ CAD 도형을 JavaScript 코드로 생성합니다.
 
 ## run_cad_code (코드 에디터)
 
-```bash
-# 프로젝트 구조 보기
-cad-cli.cmd run_cad_code
+**기본 (읽기/쓰기)**
+```powershell
+cad-cli.cmd run_cad_code                  # 프로젝트 구조
+cad-cli.cmd run_cad_code main             # main 읽기
+cad-cli.cmd run_cad_code main "drawCircle('c', 0, 0, 50)"  # 덮어쓰기
+cad-cli.cmd run_cad_code main "+drawRect('r', 0, 0, 30, 30)" # 추가
+echo "code" | cad-cli.cmd run_cad_code main -  # stdin
+```
 
-# 파일 읽기
-cad-cli.cmd run_cad_code main
-cad-cli.cmd run_cad_code my_module
+**탐색**
+```powershell
+cad-cli.cmd run_cad_code --status         # 프로젝트 요약
+cad-cli.cmd run_cad_code --info house_lib # 모듈 상세
+cad-cli.cmd run_cad_code --search drawCircle  # 패턴 검색
+cad-cli.cmd run_cad_code --lines house_lib 50-70  # 부분 읽기
+```
 
-# 파일 쓰기 (덮어쓰기)
-cad-cli.cmd run_cad_code main "drawCircle('c1', 0, 0, 50)"
-
-# 파일에 코드 추가 (+ prefix)
-cad-cli.cmd run_cad_code main "+drawRect('r1', 10, 10, 30, 30)"
-
-# 멀티라인 코드 (stdin)
-echo "for (let i = 0; i < 5; i++) { drawCircle('c'+i, i*30, 0, 15); }" | cad-cli.cmd run_cad_code main -
-
-# PowerShell Here-String (복잡한 코드)
-# $code = @"
-# class MyClass { ... }
-# "@
-# $code | .\cad-cli.cmd run_cad_code main -
-
-# 모듈 삭제
-cad-cli.cmd run_cad_code --delete my_module
-
-# 의존성 확인
-cad-cli.cmd run_cad_code --deps
+**관리**
+```powershell
+cad-cli.cmd run_cad_code --deps           # 의존성 그래프
+cad-cli.cmd run_cad_code --delete my_module  # 모듈 삭제
 ```
 
 **규칙**: 문자열은 작은따옴표(`'`) 사용

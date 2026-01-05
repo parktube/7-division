@@ -13,29 +13,31 @@ npx tsx cad-cli.ts <command> [args]
 
 JavaScript 코드로 CAD 도형을 생성하는 **코드 에디터**입니다.
 
+**기본 (읽기/쓰기)**
 ```bash
-# 프로젝트 구조 보기
-npx tsx cad-cli.ts run_cad_code
-
-# 파일 읽기
-npx tsx cad-cli.ts run_cad_code main
-npx tsx cad-cli.ts run_cad_code my_module
-
-# 파일 쓰기 (덮어쓰기)
-npx tsx cad-cli.ts run_cad_code main "drawCircle('c1', 0, 0, 50)"
-
-# 파일에 코드 추가 (+ prefix)
-npx tsx cad-cli.ts run_cad_code main "+drawRect('r1', 10, 10, 30, 30)"
-
-# 멀티라인 코드 (stdin)
-echo "for (let i = 0; i < 5; i++) { drawCircle('c'+i, i*30, 0, 15); }" | npx tsx cad-cli.ts run_cad_code main -
-
-# 모듈 삭제
-npx tsx cad-cli.ts run_cad_code --delete my_module
-
-# 의존성 확인
-npx tsx cad-cli.ts run_cad_code --deps
+run_cad_code                              # 프로젝트 구조 보기
+run_cad_code main                         # main 읽기
+run_cad_code my_module                    # 모듈 읽기
+run_cad_code main "drawCircle('c', 0, 0, 50)"  # 덮어쓰기
+run_cad_code main "+drawRect('r', 0, 0, 30, 30)" # 추가 (+ prefix)
+echo "code" | run_cad_code main -         # stdin 멀티라인
 ```
+
+**탐색 (Progressive Disclosure)**
+```bash
+run_cad_code --status                     # 프로젝트 요약 (파일/클래스/함수 수)
+run_cad_code --info house_lib             # 모듈 상세 (클래스, 함수, imports)
+run_cad_code --search drawCircle          # 패턴 검색 (모든 모듈)
+run_cad_code --lines house_lib 50-70      # 부분 읽기 (라인 범위)
+```
+
+**관리**
+```bash
+run_cad_code --deps                       # 의존성 그래프
+run_cad_code --delete my_module           # 모듈 삭제
+```
+
+> `run_cad_code` = `npx tsx cad-cli.ts run_cad_code`
 
 **규칙**: JavaScript 문자열은 작은따옴표(`'`) 사용
 
@@ -203,6 +205,37 @@ drawBezier(
 2. **Z-Order 관리**: 도형이 겹칠 경우 `hitTest` 등에서 의도치 않은 결과 발생 가능. `setZOrder` 사용
 3. **Bezier 데이터 검증**: `drawBezier` 사용 시 좌표값에 `NaN`이나 `Infinity` 포함 금지
 4. **Boundary 확인**: 복잡한 다각형이나 베지어는 `getWorldBounds(name)`로 실제 영역 확인
+
+### 크로스 클래스 배치 패턴 (Cross-Class Placement)
+
+**문제**: 클래스 A가 생성한 엔티티 위에 클래스 B의 요소를 배치할 때, A 내부의 좌표 정보가 B에 전달되지 않음
+
+**해결**: `getWorldBounds()`로 실제 위치 확인 후 배치
+
+```javascript
+// ❌ 잘못된 방식 - 내부 좌표를 추측
+class Robot { ... }  // 머리가 y + 45*s에 있다고 "기억"
+robot.build();
+// 말풍선을 y + 50*s에 배치 → 위치가 틀릴 수 있음
+
+// ✅ 올바른 방식 - 실제 위치 확인
+robot.build();
+const headBounds = getWorldBounds('robot_head');
+const bubbleY = headBounds.max[1] + 10;  // 머리 꼭대기 + 여백
+drawRect('bubble', headBounds.max[0], bubbleY, 60, 30);
+```
+
+**언제 사용?**
+- 모듈/클래스가 생성한 엔티티에 외부 요소 연결 시
+- 그룹 내부 엔티티 위치 기반으로 다른 엔티티 배치 시
+- 복잡한 객체의 특정 부분(머리, 손 등)에 요소 추가 시
+
+**반환값 형식**:
+```javascript
+getWorldBounds('entity_name')
+// → { min: [x1, y1], max: [x2, y2] }
+// min: 좌하단, max: 우상단
+```
 
 ## TypeScript (`cad-tools/`)
 

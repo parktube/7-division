@@ -20,6 +20,12 @@ import { homedir } from 'os';
 import { runCadCode } from './sandbox/index.js';
 import { logger } from './logger.js';
 import { init as initLexer, parse as parseImports } from 'es-module-lexer';
+import {
+  handleRunCadCodeSearch,
+  handleRunCadCodeInfo,
+  handleRunCadCodeLines,
+  handleRunCadCodeStatus,
+} from './run-cad-code/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -239,7 +245,7 @@ function preprocessCodeFallback(code: string, importedModules: Set<string> = new
 
   const importPattern = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]\s*;?/g;
 
-  const processedCode = code.replace(importPattern, (match, moduleName) => {
+  const processedCode = code.replace(importPattern, (_match, moduleName) => {
     if (importedModules.has(moduleName)) {
       return `// [import] '${moduleName}' already loaded`;
     }
@@ -436,7 +442,7 @@ function handleRunCadCodeStructure(): RunCadCodeResult {
       files: ['main', ...modules],
       main: mainCode || '// 빈 프로젝트입니다. main에 코드를 작성하세요.',
       entities,
-      hint: '읽기: run_cad_code <name>, 쓰기: run_cad_code <name> "code", 추가: run_cad_code <name> +"code"',
+      hint: '읽기: run_cad_code <name> | 쓰기: run_cad_code <name> "code" | 탐색: --status, --info, --search, --lines',
     }, null, 2),
   };
 }
@@ -496,6 +502,17 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
 
     const result = await executeMainCode();
 
+    // Build contextual hints
+    const hints: string[] = [];
+    if (result.success) {
+      hints.push(`main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`);
+      if (result.entities.length > 0) {
+        hints.push('외부 요소 배치 시 getWorldBounds(name)로 대상 위치 확인');
+      }
+    } else {
+      hints.push('실행 실패. 코드를 확인하세요.');
+    }
+
     return {
       handled: true,
       output: JSON.stringify({
@@ -504,9 +521,8 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
         mode: isAppendMode ? 'append' : 'write',
         entities: result.entities,
         error: result.error,
-        hint: result.success
-          ? `main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`
-          : '실행 실패. 코드를 확인하세요.',
+        hint: hints[0],
+        hints,
       }, null, 2),
     };
   }
@@ -527,6 +543,15 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
   // Re-execute main (to pick up module changes)
   const result = await executeMainCode();
 
+  // Build contextual hints for module write
+  const moduleHints: string[] = [];
+  if (result.success) {
+    moduleHints.push(`'${target}' 모듈 ${isAppendMode ? '추가' : '저장'} 후 main 재실행 완료.`);
+    moduleHints.push('모듈 클래스 사용 시 getWorldBounds()로 앵커 위치 확인');
+  } else {
+    moduleHints.push('main 실행 실패. 코드를 확인하세요.');
+  }
+
   return {
     handled: true,
     output: JSON.stringify({
@@ -535,9 +560,8 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
       mode: isAppendMode ? 'append' : 'write',
       entities: result.entities,
       error: result.error,
-      hint: result.success
-        ? `'${target}' 모듈 ${isAppendMode ? '추가' : '저장'} 후 main 재실행 완료.`
-        : 'main 실행 실패. 코드를 확인하세요.',
+      hint: moduleHints[0],
+      hints: moduleHints,
     }, null, 2),
   };
 }
@@ -809,10 +833,15 @@ const ACTION_HINTS: Record<string, string[]> = {
   remove_from_group: ['list_entities로 결과 확인', 'add_to_group으로 다시 추가'],
 
   // Code Execution
-  run_cad_code: ['save_module로 재사용 가능한 모듈로 저장', 'capture_viewport로 결과 확인'],
-  save_module: ['run_module로 모듈 실행', 'list_modules로 저장된 모듈 확인'],
+  run_cad_code: [
+    '외부 요소 배치 시 getWorldBounds()로 대상 위치 확인',
+    '--status로 프로젝트 현황 확인',
+    '--info로 모듈 상세 보기',
+    'capture_viewport로 결과 확인',
+  ],
+  save_module: ['run_cad_code로 모듈 코드 확인', 'list_modules로 저장된 모듈 확인'],
   run_module: ['capture_viewport로 결과 확인', 'create_group으로 그룹화'],
-  list_modules: ['run_module로 모듈 실행'],
+  list_modules: ['run_cad_code로 모듈 내용 확인'],
 };
 
 function getActionHints(command: string): string[] {
@@ -990,6 +1019,10 @@ Scene file:
   // - run_cad_code <name> -           → stdin에서 코드 읽기 (멀티라인)
   // - run_cad_code --delete <name>    → 파일 삭제
   // - run_cad_code --deps             → 의존성 그래프
+  // - run_cad_code --search <pattern> → 코드 검색
+  // - run_cad_code --info <name>      → 모듈 상세 정보
+  // - run_cad_code --lines <name> <range> → 부분 읽기
+  // - run_cad_code --status           → 프로젝트 상태 요약
   if (command === 'run_cad_code') {
     let target = args[1];  // main, module name, --delete, --deps, or undefined
     let newCode = args[2]; // code to write, '-' for stdin, or undefined
@@ -997,6 +1030,10 @@ Scene file:
     // Check for special flags
     const isDeleteMode = target === '--delete';
     const isDepsMode = target === '--deps';
+    const isSearchMode = target === '--search';
+    const isInfoMode = target === '--info';
+    const isLinesMode = target === '--lines';
+    const isStatusMode = target === '--status';
 
     if (isDeleteMode) {
       target = args[2]; // module name to delete
@@ -1018,7 +1055,15 @@ Scene file:
     // Dispatch to appropriate handler
     let result: RunCadCodeResult;
 
-    if (isDepsMode) {
+    if (isSearchMode) {
+      result = handleRunCadCodeSearch(args[2]);
+    } else if (isInfoMode) {
+      result = handleRunCadCodeInfo(args[2]);
+    } else if (isLinesMode) {
+      result = handleRunCadCodeLines(args[2], args[3]);
+    } else if (isStatusMode) {
+      result = handleRunCadCodeStatus();
+    } else if (isDepsMode) {
       result = handleRunCadCodeDeps();
     } else if (isDeleteMode) {
       result = await handleRunCadCodeDelete(target);

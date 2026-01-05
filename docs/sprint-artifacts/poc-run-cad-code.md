@@ -1,6 +1,6 @@
 # PoC: run_cad_code
 
-Status: Phase 1-8 완료 ✅ (Task 8.3 Electron 검증만 Epic 6 대기)
+Status: Phase 1-9 완료 ✅ (Task 8.3 Electron 검증만 Epic 6 대기)
 
 ## Story
 
@@ -779,6 +779,54 @@ main
 
 ---
 
+## Phase 9: AX Cross-Class Placement ✅
+
+### 배경
+
+LLM(Claude)이 클래스/모듈 경계를 넘어 엔티티를 배치할 때 좌표 정보를 잃어버리는 문제 발견.
+Robot 클래스로 캐릭터를 생성한 후 말풍선을 머리 위에 배치하려 했으나, 머리의 실제 위치를 알 수 없어 실패.
+
+**근본 원인:**
+- OOP 캡슐화가 내부 좌표 정보를 숨김
+- LLM이 `getWorldBounds()` API 존재를 잊거나 사용하지 않음
+- 정보 과잉은 오히려 중요 정보를 놓치게 만듦
+
+### Task 47-50: AX Cross-Class Placement ✅
+
+- [x] 47: 크로스 클래스 배치 문제 분석 (클래스 경계에서 좌표 손실)
+- [x] 48: Action Hints 시스템 구현
+  - `run_cad_code` 결과에 `getWorldBounds()` 사용 힌트 추가
+  - AX 철학: 정보를 다 주는 게 아니라 능동적 행동 유도
+- [x] 49: AGENTS.md에 크로스 클래스 배치 패턴 문서화
+- [x] 50: 복합 씬 테스트 (124개 엔티티)
+
+### 복합 씬 테스트
+
+5개 모듈로 구성된 마을 씬:
+- `building_lib`: Building, Shop 클래스
+- `tree_lib`: Tree, PineTree, FruitTree 클래스
+- `person_lib`: Person, Worker 클래스
+- `nature_lib`: Cloud, FluffyCloud, Mountain, MountainRange 클래스
+- `main`: 모든 모듈 조합 + 크로스 클래스 배치
+
+**크로스 클래스 배치 예시:**
+```javascript
+// Person 생성 후 말풍선을 머리 위에 배치
+const p = new Person('mayor', 0, 0).build();
+const headBounds = getWorldBounds('mayor_head');
+const bubbleY = headBounds.max[1] + 10;
+drawRect('speech_bubble', headBounds.max[0] - 20, bubbleY, 50, 25);
+```
+
+### Definition of Done (Phase 9) ✅
+
+- **문제 분석**: 클래스 경계에서 좌표 정보 손실 원인 파악 ✅
+- **Action Hints**: 결과에 `getWorldBounds()` 사용 힌트 추가 ✅
+- **문서화**: AGENTS.md에 크로스 클래스 배치 패턴 추가 ✅
+- **복합 테스트**: 124개 엔티티 마을 씬 + 말풍선 배치 성공 ✅
+
+---
+
 ## MAMA Metrics
 
 | 메트릭 | 목적 | 연계 Task | 성공 기준 | 상태 |
@@ -790,6 +838,7 @@ main
 | `cad:polygon_primitive` | Polygon 지원 | Phase 6 | 삼각형 등 닫힌 도형 fill 가능 | ✅ |
 | `cad:bezier_and_sandbox_docs` | Bezier + CLI 문서화 | Phase 7 | Bezier 커브 + describe sandbox | ✅ |
 | `cad:run_cad_code_editor` | 코드 에디터 인터페이스 | Phase 8 | append, stdin, delete, deps | ✅ |
+| `cad:ax_cross_class_placement_pattern` | 크로스 클래스 배치 | Phase 9 | Action Hints + getWorldBounds | ✅ |
 | `cad:run_cad_code_final` | 최종 성공 | Task 8.3 | Electron 앱 통합 | ⏳ Epic 6 |
 
 ## References
