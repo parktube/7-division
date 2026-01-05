@@ -36,6 +36,12 @@ extraResources:
     to: cad-cli.cmd
   - from: resources/CLAUDE.md
     to: CLAUDE.md
+  - from: ../viewer
+    to: viewer
+    filter:
+      - "index.html"
+      - "renderer.js"
+      - "server.cjs"
 mac:
   icon: resources/icon.png
   target:
