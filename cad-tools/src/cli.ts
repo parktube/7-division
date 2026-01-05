@@ -25,6 +25,9 @@ import {
   handleRunCadCodeInfo,
   handleRunCadCodeLines,
   handleRunCadCodeStatus,
+  getModuleList,
+  getCodeImports,
+  readFileOrEmpty,
 } from './run-cad-code/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -280,14 +283,6 @@ function preprocessCodeFallback(code: string, importedModules: Set<string> = new
 // run_cad_code Helper Functions
 // ============================================================================
 
-/** Get list of available modules */
-function getModuleList(): string[] {
-  if (!existsSync(MODULES_DIR)) return [];
-  return readdirSync(MODULES_DIR)
-    .filter(f => f.endsWith('.js'))
-    .map(f => f.replace('.js', ''));
-}
-
 /** Get current entities from scene */
 function getSceneEntities(): string[] {
   if (!existsSync(SCENE_FILE)) return [];
@@ -297,18 +292,6 @@ function getSceneEntities(): string[] {
   } catch {
     return [];
   }
-}
-
-/** Extract import statements from code */
-function getCodeImports(code: string): string[] {
-  const imports: string[] = [];
-  // Supports: import 'x', import { a } from 'x', import * from 'x', import * as y from 'x'
-  const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]/g;
-  let match;
-  while ((match = importRegex.exec(code)) !== null) {
-    imports.push(match[1]);
-  }
-  return imports;
 }
 
 /** Execute main code and update scene.json */
@@ -359,14 +342,19 @@ function handleRunCadCodeDeps(): RunCadCodeResult {
   const deps: Record<string, string[]> = {};
 
   // main dependencies
-  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+  const mainCode = readFileOrEmpty(SCENE_CODE_FILE);
   deps['main'] = getCodeImports(mainCode);
 
-  // module dependencies
+  // module dependencies (with defensive error handling)
   for (const mod of modules) {
     const modPath = resolve(MODULES_DIR, `${mod}.js`);
-    const modCode = readFileSync(modPath, 'utf-8');
-    deps[mod] = getCodeImports(modCode);
+    try {
+      const modCode = readFileSync(modPath, 'utf-8');
+      deps[mod] = getCodeImports(modCode);
+    } catch {
+      // File may have been deleted between getModuleList() and read
+      deps[mod] = [];
+    }
   }
 
   return {
