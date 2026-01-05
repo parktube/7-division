@@ -6,11 +6,11 @@ directories:
   buildResources: resources
   output: dist
 files:
-  - '!**/.vscode/*'
-  - '!src/*'
-  - '!electron.vite.config.*'
-  - '!{.eslintignore,.eslintrc.*,.prettierrc.*,tsconfig.*}'
-  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - "!**/.vscode/*"
+  - "!src/*"
+  - "!electron.vite.config.*"
+  - "!{.eslintignore,.eslintrc.*,.prettierrc.*,tsconfig.*}"
+  - "!{.env,.env.*,.npmrc,pnpm-lock.yaml}"
 asarUnpack:
   - resources/**
 extraResources:
@@ -24,14 +24,26 @@ extraResources:
       - "**/*"
   - from: ../cad-tools/package.json
     to: cad-tools/package.json
+  - from: ../cad-tools/node_modules
+    to: cad-tools/node_modules
+    filter:
+      - "**/*"
   - from: ../docs/claude-code-usage.md
     to: docs/claude-code-usage.md
   - from: resources/cad-cli.sh
     to: cad-cli.sh
   - from: resources/cad-cli.cmd
     to: cad-cli.cmd
+  - from: resources/CLAUDE.md
+    to: CLAUDE.md
+  - from: ../viewer
+    to: viewer
+    filter:
+      - "index.html"
+      - "renderer.js"
+      - "server.cjs"
 mac:
-  icon: resources/icon.icns
+  icon: resources/icon.png
   target:
     - target: dmg
       arch:
@@ -40,6 +52,7 @@ mac:
   category: public.app-category.graphics-design
   entitlementsInherit: resources/entitlements.mac.plist
 win:
+  icon: resources/icon.ico
   target:
     - target: nsis
       arch:

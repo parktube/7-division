@@ -74,9 +74,26 @@ cad-tools/demo-*.ts
 # CLI state file (regenerated per session)
 cad-tools/.cad-state.json
 
+# Test/example scripts (JS)
+cad-tools/test-*.js
+cad-tools/fractal-*.js
+
 # Generated test files
 viewer/scene.svg
 viewer/test-*.html
+
+# run_cad_code runtime files
+viewer/.cad-modules/
+viewer/.cad-state.json
+viewer/scene.code.js
+viewer/capture.png
+viewer/selection.json
+
+# Electron runtime files
+cad-electron/src/renderer/scene.json
+cad-electron/src/renderer/.cad-modules/
+cad-electron/src/renderer/scene.code.js
+cad-electron/src/renderer/selection.json
 
 # Local QA notes (not committed)
 docs/qa/
