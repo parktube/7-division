@@ -90,7 +90,7 @@ drawBezier(name, points, closed)
 // 스타일
 setFill(name, [r, g, b, a])      // 색상 0~1
 setStroke(name, [r, g, b, a], width)
-setZOrder(name, z)               // 높을수록 앞
+setZOrder(name, z)               // 높을수록 앞 (기본값: 0, get_entity로 확인)
 
 // 변환
 translate(name, dx, dy)

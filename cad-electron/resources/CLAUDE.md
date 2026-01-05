@@ -42,7 +42,7 @@ cad-cli.cmd run_cad_code --delete my_module  # 모듈 삭제
 **스타일**
 - `setFill(name, [r,g,b,a])` - 색상 0~1
 - `setStroke(name, [r,g,b,a], width)`
-- `setZOrder(name, z)` - 높을수록 앞
+- `setZOrder(name, z)` - 높을수록 앞 (기본값: 0)
 
 **변환**
 - `translate(name, dx, dy)`

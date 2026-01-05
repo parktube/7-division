@@ -792,13 +792,13 @@ Example:
 // ============================================================================
 
 const ACTION_HINTS: Record<string, string[]> = {
-  // Primitives
-  draw_circle: ['set_fill로 색상 추가', 'set_stroke로 선 스타일 변경', 'translate로 위치 이동'],
-  draw_rect: ['(x,y)는 좌하단 코너 기준', 'set_fill로 색상 추가', 'set_stroke로 선 스타일 변경'],
-  draw_line: ['set_stroke로 선 색상/두께 변경', 'translate로 위치 이동'],
-  draw_arc: ['set_stroke로 선 스타일 변경', 'rotate로 회전'],
-  draw_polygon: ['set_fill로 색상 추가', 'set_stroke로 테두리 설정'],
-  draw_bezier: ['set_fill로 색상 추가 (closed=true일 때)', 'set_stroke로 커브 스타일'],
+  // Primitives (z_index=0 기본값, 겹치면 setZOrder로 조정)
+  draw_circle: ['set_fill로 색상 추가', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
+  draw_rect: ['(x,y)는 좌하단 코너 기준', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
+  draw_line: ['set_stroke로 선 색상/두께 변경', 'z_index=0 기본값'],
+  draw_arc: ['set_stroke로 선 스타일 변경', 'z_index=0 기본값'],
+  draw_polygon: ['set_fill로 색상 추가', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
+  draw_bezier: ['set_fill로 색상 추가 (closed=true일 때)', 'z_index=0 기본값'],
 
   // Style
   set_fill: ['set_stroke로 선도 스타일링', 'list_entities로 확인'],
@@ -812,7 +812,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   set_pivot: ['rotate로 pivot 기준 회전', 'get_entity로 결과 확인'],
 
   // Z-Order
-  set_z_order: ['capture_viewport로 결과 확인', 'bring_to_front/send_to_back으로 조정'],
+  set_z_order: ['get_entity로 현재 z_index 확인', 'bring_to_front/send_to_back으로 조정'],
   bring_to_front: ['capture_viewport로 결과 확인'],
   send_to_back: ['capture_viewport로 결과 확인'],
 

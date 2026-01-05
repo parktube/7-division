@@ -55,7 +55,7 @@ drawBezier(name, points, closed)
 // 스타일
 setFill(name, [r, g, b, a])      // 색상 0~1
 setStroke(name, [r, g, b, a], width)
-setZOrder(name, z)               // 높을수록 앞
+setZOrder(name, z)               // 높을수록 앞 (기본값: 0)
 
 // 변환
 translate(name, dx, dy)
@@ -248,10 +248,36 @@ drawBezier(
 
 **주의**: 그룹 내 children은 개별 z-order로 정렬됨
 
+### Z-Order 가이드
+
+**기본 동작:**
+- 모든 엔티티는 `z_index = 0`으로 생성됨
+- 같은 z_index면 **생성 순서**로 정렬 (나중 생성 = 앞)
+- 높은 z_index = 앞에 표시
+
+**현재 z_index 확인:**
+```bash
+npx tsx cad-cli.ts get_entity '{"name":"my_entity"}'
+# → metadata.z_index 필드 확인
+```
+
+**사용 예시:**
+```javascript
+// 배경 → 건물 → UI 순으로 레이어링
+drawRect('background', ...);
+setZOrder('background', -100);   // 맨 뒤
+
+drawRect('building', ...);
+// z_index = 0 (기본값)
+
+drawRect('tooltip', ...);
+setZOrder('tooltip', 100);       // 맨 앞
+```
+
 ### 에이전트 주의사항 (AX Lessons Learned)
 
 1. **run_cad_code가 메인**: 레거시 JSON 명령어보다 run_cad_code 사용 권장
-2. **Z-Order 관리**: 도형이 겹칠 경우 `hitTest` 등에서 의도치 않은 결과 발생 가능. `setZOrder` 사용
+2. **Z-Order 확인**: 겹치는 도형이 있으면 `get_entity`로 z_index 확인 후 `setZOrder` 조정
 3. **Bezier 데이터 검증**: `drawBezier` 사용 시 좌표값에 `NaN`이나 `Infinity` 포함 금지
 4. **Boundary 확인**: 복잡한 다각형이나 베지어는 `getWorldBounds(name)`로 실제 영역 확인
 
