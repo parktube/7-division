@@ -6,6 +6,8 @@
 
 독립 실행 가능한 데스크톱 앱 필요. 채팅 UI 구현 비용 검토.
 
+**MCP-less 선택**: MCP(Model Context Protocol)는 Claude Desktop 등에서 도구를 서버로 노출하는 방식이나, Claude Code는 직접 CLI/스크립트 실행이 가능하여 MCP 없이도 cad-cli.ts를 직접 호출할 수 있음. 복잡도 감소 + 지연 시간 단축.
+
 ## Decision
 
 자체 채팅 UI/API 연동 대신 **Claude Code를 AI 인터페이스로 사용**.

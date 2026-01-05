@@ -77,22 +77,21 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 
 ### FR Coverage Map
 
-```
-FR31: Epic 7.1 - 3패널 레이아웃
-FR32: Epic 7.1 - 패널 리사이즈
-FR33: Epic 7.2 - 계층 트리뷰
-FR34: Epic 7.2 - 그룹 탐색
-FR35: Epic 7.2 - 다중 선택
-FR36: Epic 7.3 - Visible 토글
-FR37: Epic 7.3 - Lock 가드
-FR38: Epic 7.4 - 스케치 모드
-FR39: Epic 7.4 - 스케치 캡쳐
-FR40: Epic 7.1 - 단일 소스
-
-NFR18: Epic 7.1 - 60fps 성능
-NFR19: Epic 7.1 - 렌더링 동등성
-NFR20: Epic 7.1 - Web/Electron 동등성
-```
+| 요구사항 | Epic | 설명 |
+|----------|------|------|
+| FR31 | 7.1 | 3패널 레이아웃 |
+| FR32 | 7.1 | 패널 리사이즈 |
+| FR33 | 7.2 | 계층 트리뷰 |
+| FR34 | 7.2 | 그룹 탐색 |
+| FR35 | 7.2 | 다중 선택 |
+| FR36 | 7.3 | Visible 토글 |
+| FR37 | 7.3 | Lock 가드 |
+| FR38 | 7.4 | 스케치 모드 |
+| FR39 | 7.4 | 스케치 캡쳐 |
+| FR40 | 7.1 | 단일 소스 |
+| NFR18 | 7.1 | 60fps 성능 |
+| NFR19 | 7.1 | 렌더링 동등성 |
+| NFR20 | 7.1 | Web/Electron 동등성 |
 
 ---
 

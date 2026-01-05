@@ -1,20 +1,20 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-inputDocuments:
+title: UX Design Specification
+project: AI-Native CAD
+version: 1.0
+date: 2025-01-06
+related:
   - docs/prd.md
   - docs/architecture.md
-workflowType: 'ux-design'
-lastStep: 14
-project_name: 'AI-Native CAD'
-user_name: 'Hoons'
-date: '2025-01-06'
-completedAt: '2025-01-06'
+  - docs/adr/003-claude-code-integration.md
+  - docs/adr/004-llm-scene-understanding.md
 ---
 
 # UX Design Specification - AI-Native CAD
 
 **Author:** Hoons
 **Date:** 2025-01-06
+**Related ADRs:** [ADR-003](adr/003-claude-code-integration.md) (Claude Code Integration), [ADR-004](adr/004-llm-scene-understanding.md) (LLM Scene Understanding)
 
 ---
 

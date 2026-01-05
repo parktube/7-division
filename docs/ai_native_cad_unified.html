@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-Native CAD - Unified Interface</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.469.0"></script>
     <style>
         /* Theme Variables */
         .light-theme {
@@ -175,15 +175,14 @@
             position: relative;
         }
 
-        .model-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: none;
+        .model-preview {
+            background: linear-gradient(135deg, rgba(13, 153, 255, 0.05), rgba(13, 153, 255, 0.15));
+            font-size: 14px;
+            color: var(--text-secondary);
         }
-
-        .light-theme .model-preview img.light-img { display: block; }
-        .dark-theme .model-preview img.dark-img { display: block; }
+        .model-preview::after {
+            content: '3D Model Preview';
+        }
 
         /* Status Bar */
         .status-bar {
@@ -205,7 +204,7 @@
         .dark-theme .theme-toggle .moon { display: none; }
     </style>
 </head>
-<body class="light-theme">
+<body>
     <div class="top-bar">
         <div class="top-bar-left">
             <div class="logo">
@@ -275,10 +274,7 @@
             <div class="canvas-card">
                 <div class="card-header">Perspective View • Wireframe</div>
                 <div class="card-body">
-                    <div class="model-preview">
-                        <img src="ai_native_cad_white_version_si_an_1767632893587.png" class="light-img" alt="Light Mode SI-AN">
-                        <img src="ai_native_cad_page_draft_1767632715024.png" class="dark-img" alt="Dark Mode SI-AN">
-                    </div>
+                    <div class="model-preview"></div>
                 </div>
             </div>
         </div>
@@ -325,17 +321,11 @@
         lucide.createIcons();
 
         const themeToggle = document.getElementById('themeToggle');
-        const body = document.body;
         const html = document.documentElement;
 
         themeToggle.addEventListener('click', () => {
-            if (html.classList.contains('light-theme')) {
-                html.classList.replace('light-theme', 'dark-theme');
-                body.classList.replace('light-theme', 'dark-theme');
-            } else {
-                html.classList.replace('dark-theme', 'light-theme');
-                body.classList.replace('dark-theme', 'light-theme');
-            }
+            html.classList.toggle('light-theme');
+            html.classList.toggle('dark-theme');
         });
     </script>
 </body>

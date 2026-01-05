@@ -21,15 +21,19 @@ pub struct Transform {
 
 ## 렌더링 변환 순서 (SRT)
 
+**행렬 표기** (오른쪽에서 왼쪽으로 적용):
 ```
 M = T(dx,dy) * T(pivot) * R(angle) * S(sx,sy) * T(-pivot)
 ```
 
-1. translate(-pivot) - 피봇을 원점으로
-2. scale(sx, sy)
-3. rotate(angle)
-4. translate(pivot) - 피봇 위치 복원
-5. translate(dx, dy) - 최종 이동
+**적용 순서** (점 변환 시):
+1. `T(-pivot)`: 피봇을 원점으로 이동
+2. `S(sx,sy)`: 스케일 적용
+3. `R(angle)`: 회전 적용 (원점 기준)
+4. `T(pivot)`: 피봇 위치 복원
+5. `T(dx,dy)`: 최종 위치 이동
+
+> **참고**: 행렬 곱은 오른쪽→왼쪽 순서로 적용되므로, 수식의 가장 오른쪽 `T(-pivot)`이 먼저 적용됩니다.
 
 ## API
 

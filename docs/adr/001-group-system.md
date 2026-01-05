@@ -25,8 +25,14 @@ pub struct Entity {
 ## API
 
 ```typescript
-createGroup(name, children[])
-addToGroup(group, entity)
+// 그룹 생성 - children은 Entity ID 배열
+createGroup(name: string, children: string[]): void
+
+// 그룹에 엔티티 추가
+addToGroup(groupName: string, entityName: string): void
+
+// 그룹 해제 - 자식들을 최상위로 이동
+ungroup(groupName: string): string[]  // 반환: 해제된 자식 ID들
 ```
 
 ## Consequences
