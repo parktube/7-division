@@ -794,7 +794,7 @@ Example:
 const ACTION_HINTS: Record<string, string[]> = {
   // Primitives
   draw_circle: ['set_fill로 색상 추가', 'set_stroke로 선 스타일 변경', 'translate로 위치 이동'],
-  draw_rect: ['set_fill로 색상 추가', 'set_stroke로 선 스타일 변경', 'scale로 크기 조정'],
+  draw_rect: ['(x,y)는 좌하단 코너 기준', 'set_fill로 색상 추가', 'set_stroke로 선 스타일 변경'],
   draw_line: ['set_stroke로 선 색상/두께 변경', 'translate로 위치 이동'],
   draw_arc: ['set_stroke로 선 스타일 변경', 'rotate로 회전'],
   draw_polygon: ['set_fill로 색상 추가', 'set_stroke로 테두리 설정'],
@@ -828,7 +828,11 @@ const ACTION_HINTS: Record<string, string[]> = {
   capture_viewport: ['결과 이미지 확인', 'Read tool로 PNG 이미지 열기'],
 
   // Groups (객체지향 씬 설계)
-  create_group: ['setZOrder로 그룹 z-order 설정 (필수!)', 'translate로 그룹 전체 이동'],
+  create_group: [
+    '⚠️ 자식은 (0,0) 로컬 좌표로 생성했어야 함! 아니면 translate 시 위치 중첩',
+    'translate(groupName, x, y)로 그룹 전체 이동',
+    'setZOrder로 그룹 z-order 설정',
+  ],
   ungroup: ['list_entities로 해제 결과 확인', 'create_group으로 다시 그룹화'],
   add_to_group: ['get_entity로 추가 결과 확인', 'remove_from_group으로 제거'],
   remove_from_group: ['list_entities로 결과 확인', 'add_to_group으로 다시 추가'],

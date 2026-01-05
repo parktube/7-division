@@ -44,12 +44,12 @@ run_cad_code --delete my_module           # 모듈 삭제
 ### Sandbox 함수 목록
 
 ```javascript
-// 도형
-drawCircle(name, x, y, radius)
-drawRect(name, x, y, width, height)
-drawLine(name, points)           // [x1, y1, x2, y2, ...]
-drawPolygon(name, points)        // 닫힌 다각형
-drawArc(name, cx, cy, radius, startAngle, endAngle)
+// 도형 - 좌표 기준 주의!
+drawCircle(name, x, y, radius)            // (x, y) = 원의 중심
+drawRect(name, x, y, width, height)       // (x, y) = 좌하단 코너 (업계 표준)
+drawLine(name, points)                    // [x1, y1, x2, y2, ...]
+drawPolygon(name, points)                 // 닫힌 다각형, 좌표 배열
+drawArc(name, cx, cy, radius, startAngle, endAngle)  // (cx, cy) = 호의 중심
 drawBezier(name, points, closed)
 
 // 스타일
@@ -87,10 +87,28 @@ deleteEntity(name)
 # house_lib 모듈 생성
 npx tsx cad-cli.ts run_cad_code house_lib "
 class House {
-  constructor(name, x, y) { this.name = name; this.x = x; this.y = y; this.parts = []; }
-  drawWall() { drawRect(this.name+'_wall', this.x-20, this.y, 40, 30); this.parts.push(this.name+'_wall'); }
-  drawRoof() { drawPolygon(this.name+'_roof', [this.x-25, this.y+30, this.x, this.y+50, this.x+25, this.y+30]); this.parts.push(this.name+'_roof'); }
-  build() { this.drawWall(); this.drawRoof(); createGroup(this.name, this.parts); return this; }
+  constructor(name, x, y) {
+    this.name = name;
+    this.x = x;
+    this.y = y;
+    this.parts = [];
+  }
+  // ⚠️ 로컬 좌표 (0,0) 기준으로 부품 생성!
+  drawWall() {
+    drawRect(this.name+'_wall', -20, 0, 40, 30);  // 로컬 좌표
+    this.parts.push(this.name+'_wall');
+  }
+  drawRoof() {
+    drawPolygon(this.name+'_roof', [-25, 30, 0, 50, 25, 30]);  // 로컬 좌표
+    this.parts.push(this.name+'_roof');
+  }
+  build() {
+    this.drawWall();
+    this.drawRoof();
+    createGroup(this.name, this.parts);
+    translate(this.name, this.x, this.y);  // 그룹 전체를 최종 위치로 이동
+    return this;
+  }
 }
 "
 
@@ -103,6 +121,37 @@ new House('h2', 100, 0).build();
 ```
 
 **주의**: `import 'module'`은 단순 코드 치환 방식입니다. 모듈과 메인 스크립트 간에 `const`, `let` 식별자가 중복되면 오류가 발생하므로 전역 변수명에 주의하세요. (Class 사용 권장)
+
+### 그룹 로컬 좌표 패턴 (필수!)
+
+**핵심 원칙**: 클래스/모듈 내에서 부품은 **(0,0) 로컬 원점** 기준으로 생성하고, 그룹을 만든 후 `translate`로 최종 위치 이동.
+
+```javascript
+// ❌ 잘못된 패턴 - 좌표 중첩 발생
+class Robot {
+  constructor(name, x, y) { this.name = name; this.x = x; this.y = y; }
+  build() {
+    drawRect(this.name+'_body', this.x-10, this.y, 20, 40);  // 절대 좌표
+    createGroup(this.name, [...]);
+    translate(this.name, this.x, this.y);  // 이동 또 적용 → 2배 이동!
+  }
+}
+
+// ✅ 올바른 패턴 - 로컬 좌표 + 그룹 이동
+class Robot {
+  constructor(name, x, y) { this.name = name; this.x = x; this.y = y; }
+  build() {
+    drawRect(this.name+'_body', -10, 0, 20, 40);  // 로컬 좌표 (0,0 기준)
+    drawCircle(this.name+'_head', 0, 50, 10);     // 로컬 좌표
+    createGroup(this.name, [...]);
+    translate(this.name, this.x, this.y);  // 그룹 전체를 최종 위치로
+  }
+}
+```
+
+**왜?**
+- `createGroup` 후 `translate`하면 자식 좌표 + 그룹 이동이 합산됨
+- 부품에 `this.x`, `this.y`를 직접 더하면 이중 적용
 
 ### 씬 관리
 
