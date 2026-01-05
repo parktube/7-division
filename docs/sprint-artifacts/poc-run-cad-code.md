@@ -305,7 +305,7 @@ setZOrder(name: string, zIndex: number): boolean  // 렌더링 순서 (높을수
 // Query (3) - Phase 2 월드 변환 조회
 getWorldTransform(name: string): { translate: [number, number], rotate: number, scale: [number, number] } | null
 getWorldPoint(name: string, x: number, y: number): [number, number] | null
-getWorldBounds(name: string): { min_x: number, min_y: number, max_x: number, max_y: number } | null
+getWorldBounds(name: string): { min: [number, number], max: [number, number] } | null
 
 // Utility (2)
 deleteEntity(name: string): boolean

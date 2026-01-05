@@ -63,8 +63,9 @@ cad-cli.cmd run_cad_code --delete my_module  # 모듈 삭제
 
 ## 클래스 기반 모듈 예시
 
-```javascript
-// house_lib 모듈
+```powershell
+# house_lib 모듈 생성
+cad-cli.cmd run_cad_code house_lib "
 class House {
   constructor(name, x, y, config = {}) {
     this.name = name;
@@ -85,13 +86,14 @@ class House {
 class Cottage extends House {
   drawRoof() { /* 다른 지붕 스타일 */ }
 }
-```
+"
 
-```javascript
-// main에서 사용
+# main에서 사용
+cad-cli.cmd run_cad_code main "
 import 'house_lib';
 new House('h1', 0, 0).build();
 new Cottage('h2', 100, 0).build();
+"
 ```
 
 ## 씬 관리

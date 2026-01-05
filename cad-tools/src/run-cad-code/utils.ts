@@ -18,10 +18,11 @@ export function getModuleList(): string[] {
 
 /**
  * 코드에서 import 구문 추출
- * import 'module_name' 형태를 파싱
+ * ES6 import 문법 지원: import 'x', import { a } from 'x', import * as x from 'x'
  */
 export function getCodeImports(code: string): string[] {
-  const importRegex = /import\s+['"]([^'"]+)['"]/g;
+  // cli.ts와 동일한 패턴 사용
+  const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]/g;
   const imports: string[] = [];
   let match;
   while ((match = importRegex.exec(code)) !== null) {
