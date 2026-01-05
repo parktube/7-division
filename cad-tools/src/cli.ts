@@ -125,6 +125,7 @@ interface SceneEntity {
   style?: unknown;
   metadata?: { name?: string; z_index?: number };
   children?: string[];
+  parent_id?: string;
 }
 
 function ensureParentDir(targetPath: string): void {
@@ -1526,12 +1527,14 @@ Scene file:
     }
 
     const executor = CADExecutor.create('cad-scene');
+    let sceneEntities: SceneEntity[] = [];
 
     if (existsSync(SCENE_FILE)) {
       try {
         const sceneData = JSON.parse(readFileSync(SCENE_FILE, 'utf-8'));
         if (sceneData.entities && Array.isArray(sceneData.entities)) {
-          for (const entity of sceneData.entities) {
+          sceneEntities = sceneData.entities;
+          for (const entity of sceneEntities) {
             replayEntity(executor, entity);
           }
         }
@@ -1540,20 +1543,19 @@ Scene file:
       }
     }
 
-    // Get all root-level entities
-    const listResult = executor.exec('list_entities', {});
-    if (!listResult.success || !listResult.data) {
+    // Get root-level entities from scene.json (has parent_id field)
+    const rootEntities = sceneEntities.filter(e => !e.parent_id);
+    if (rootEntities.length === 0) {
       print('Scene is empty.');
       executor.free();
       return;
     }
 
-    const entities: Array<{ name: string; parent?: string }> = JSON.parse(listResult.data);
-    const rootEntities = entities.filter(e => !e.parent);
-
     let movedCount = 0;
     for (const e of rootEntities) {
-      const result = executor.exec('translate', { name: e.name, dx, dy });
+      const name = e.metadata?.name;
+      if (!name) continue;
+      const result = executor.exec('translate', { name, dx, dy });
       if (result.success) movedCount++;
     }
 
@@ -1579,12 +1581,14 @@ Scene file:
     }
 
     const executor = CADExecutor.create('cad-scene');
+    let sceneEntities: SceneEntity[] = [];
 
     if (existsSync(SCENE_FILE)) {
       try {
         const sceneData = JSON.parse(readFileSync(SCENE_FILE, 'utf-8'));
         if (sceneData.entities && Array.isArray(sceneData.entities)) {
-          for (const entity of sceneData.entities) {
+          sceneEntities = sceneData.entities;
+          for (const entity of sceneEntities) {
             replayEntity(executor, entity);
           }
         }
@@ -1593,20 +1597,19 @@ Scene file:
       }
     }
 
-    // Get all root-level entities
-    const listResult = executor.exec('list_entities', {});
-    if (!listResult.success || !listResult.data) {
+    // Get root-level entities from scene.json (has parent_id field)
+    const rootEntities = sceneEntities.filter(e => !e.parent_id);
+    if (rootEntities.length === 0) {
       print('Scene is empty.');
       executor.free();
       return;
     }
 
-    const entities: Array<{ name: string; parent?: string }> = JSON.parse(listResult.data);
-    const rootEntities = entities.filter(e => !e.parent);
-
     let scaledCount = 0;
     for (const e of rootEntities) {
-      const result = executor.exec('scale', { name: e.name, sx: factor, sy: factor });
+      const name = e.metadata?.name;
+      if (!name) continue;
+      const result = executor.exec('scale', { name, sx: factor, sy: factor });
       if (result.success) scaledCount++;
     }
 
@@ -1625,12 +1628,14 @@ Scene file:
   // center_scene: Center scene at origin
   if (command === 'center_scene') {
     const executor = CADExecutor.create('cad-scene');
+    let sceneEntities: SceneEntity[] = [];
 
     if (existsSync(SCENE_FILE)) {
       try {
         const sceneData = JSON.parse(readFileSync(SCENE_FILE, 'utf-8'));
         if (sceneData.entities && Array.isArray(sceneData.entities)) {
-          for (const entity of sceneData.entities) {
+          sceneEntities = sceneData.entities;
+          for (const entity of sceneEntities) {
             replayEntity(executor, entity);
           }
         }
@@ -1658,20 +1663,19 @@ Scene file:
     const centerX = (b.min[0] + b.max[0]) / 2;
     const centerY = (b.min[1] + b.max[1]) / 2;
 
-    // Get all root-level entities
-    const listResult = executor.exec('list_entities', {});
-    if (!listResult.success || !listResult.data) {
+    // Get root-level entities from scene.json (has parent_id field)
+    const rootEntities = sceneEntities.filter(e => !e.parent_id);
+    if (rootEntities.length === 0) {
       print('Scene is empty.');
       executor.free();
       return;
     }
 
-    const entities: Array<{ name: string; parent?: string }> = JSON.parse(listResult.data);
-    const rootEntities = entities.filter(e => !e.parent);
-
     let movedCount = 0;
     for (const e of rootEntities) {
-      const result = executor.exec('translate', { name: e.name, dx: -centerX, dy: -centerY });
+      const name = e.metadata?.name;
+      if (!name) continue;
+      const result = executor.exec('translate', { name, dx: -centerX, dy: -centerY });
       if (result.success) movedCount++;
     }
 
