@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Native CAD - Interface Draft (Light)</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-app: #f5f5f5;
+            --bg-panel: #ffffff;
+            --bg-canvas: #e8e8e8;
+            --border: #e0e0e0;
+            --text-primary: #1e1e1e;
+            --text-secondary: #717171;
+            --selection: #0d99ff;
+            --selection-bg: rgba(13, 153, 255, 0.1);
+            --lock: #ff9800;
+            --hover: rgba(0, 0, 0, 0.03);
+            --top-bar-h: 32px;
+            --status-bar-h: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            height: var(--top-bar-h);
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        .top-bar-left { display: flex; align-items: center; gap: 12px; }
+        .logo { font-weight: bold; color: var(--selection); letter-spacing: -0.5px; }
+        .filename { color: var(--text-secondary); }
+
+        .top-bar-center { display: flex; align-items: center; gap: 8px; }
+        .btn-toggle {
+            padding: 2px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+        .btn-toggle:hover { background-color: var(--hover); color: var(--text-primary); }
+        .btn-toggle.active { color: var(--selection); background-color: var(--selection-bg); }
+
+        .top-bar-right { display: flex; align-items: center; gap: 12px; }
+
+        /* Main Content */
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Panels */
+        .panel {
+            background-color: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 8px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .layer-panel { width: 240px; border-right: 1px solid var(--border); }
+        .info-panel { width: 280px; border-left: 1px solid var(--border); }
+
+        /* Layer Tree */
+        .tree-container { flex: 1; overflow-y: auto; padding: 4px 0; }
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 12px;
+            height: 28px;
+            cursor: pointer;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .tree-item:hover { background-color: var(--hover); }
+        .tree-item.selected { background-color: var(--selection-bg); border-left: 2px solid var(--selection); }
+        .tree-indent { width: 16px; flex-shrink: 0; }
+        .tree-icon { color: var(--text-secondary); flex-shrink: 0; }
+        .tree-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+        .tree-actions { display: flex; gap: 8px; opacity: 0; transition: opacity 0.15s ease; }
+        .tree-item:hover .tree-actions, .tree-item.selected .tree-actions { opacity: 1; }
+        .tree-action-btn { 
+            color: var(--text-secondary); 
+            cursor: pointer; 
+            padding: 2px;
+            border-radius: 2px;
+        }
+        .tree-action-btn:hover { color: var(--text-primary); background-color: rgba(0,0,0,0.05); }
+        .tree-action-btn.active-lock { color: var(--lock); opacity: 1; }
+        .tree-action-btn.active-hidden { color: var(--text-secondary); opacity: 0.4; }
+
+        /* Canvas */
+        .canvas-area {
+            flex: 1;
+            background-color: var(--bg-canvas);
+            position: relative;
+            background-image: 
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .canvas-content {
+            width: 400px;
+            height: 400px;
+            background-color: white;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .robot-placeholder {
+            width: 200px;
+            height: 200px;
+            background: linear-gradient(135deg, rgba(13, 153, 255, 0.05), rgba(13, 153, 255, 0.1));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--selection);
+            font-weight: bold;
+            font-size: 16px;
+            border: 1px dashed var(--selection);
+        }
+
+        /* Info Panel Sections */
+        .info-section { padding: 12px; border-bottom: 1px solid var(--border); }
+        .info-title { font-size: 11px; font-weight: bold; margin-bottom: 8px; color: var(--text-secondary); }
+        .prop-row { display: flex; margin-bottom: 6px; align-items: center; }
+        .prop-label { width: 80px; color: var(--text-secondary); font-size: 12px; }
+        .prop-value { flex: 1; font-family: 'Roboto Mono', monospace; font-size: 12px; }
+
+        /* Status Bar */
+        .status-bar {
+            height: var(--status-bar-h);
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            gap: 20px;
+        }
+
+        .status-item { display: flex; align-items: center; gap: 4px; }
+        .status-mode { color: var(--text-primary); font-weight: bold; text-transform: uppercase; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <span class="logo">AI-Native CAD</span>
+            <span class="filename">scene.json</span>
+        </div>
+        <div class="top-bar-center">
+            <div class="btn-toggle active">
+                <i data-lucide="grid-3x3" size="14"></i>
+                Grid
+            </div>
+            <div class="btn-toggle">
+                <i data-lucide="ruler" size="14"></i>
+                Rulers
+            </div>
+            <div class="btn-toggle" style="margin-left: 20px;">
+                <i data-lucide="pencil" size="14"></i>
+                Sketch Mode
+            </div>
+        </div>
+        <div class="top-bar-right">
+            <i data-lucide="moon" size="16" class="btn-toggle"></i>
+            <i data-lucide="settings" size="16" class="btn-toggle"></i>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="panel layer-panel">
+            <div class="panel-header">
+                Layers
+                <i data-lucide="plus" size="14"></i>
+            </div>
+            <div class="tree-container">
+                <div class="tree-item">
+                    <i data-lucide="chevron-down" size="14" class="tree-icon"></i>
+                    <i data-lucide="package" size="14" class="tree-icon"></i>
+                    <span class="tree-label">Assembly 01</span>
+                    <div class="tree-actions">
+                        <i data-lucide="eye" size="14" class="tree-action-btn"></i>
+                        <i data-lucide="unlock" size="14" class="tree-action-btn"></i>
+                    </div>
+                </div>
+                <div class="tree-item">
+                    <div class="tree-indent"></div>
+                    <i data-lucide="box" size="14" class="tree-icon"></i>
+                    <span class="tree-label">Robot Body</span>
+                    <div class="tree-actions">
+                        <i data-lucide="eye" size="14" class="tree-action-btn"></i>
+                        <i data-lucide="unlock" size="14" class="tree-action-btn"></i>
+                    </div>
+                </div>
+                <div class="tree-item selected">
+                    <div class="tree-indent"></div>
+                    <i data-lucide="box" size="14" class="tree-icon"></i>
+                    <span class="tree-label">Robot Arm</span>
+                    <div class="tree-actions">
+                        <i data-lucide="eye" size="14" class="tree-action-btn"></i>
+                        <i data-lucide="lock" size="14" class="tree-action-btn active-lock"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div class="canvas-content">
+                <div class="robot-placeholder">
+                    ROBOT ARM [LOCKED]
+                </div>
+            </div>
+        </div>
+
+        <div class="panel info-panel">
+            <div class="panel-header">Properties</div>
+            <div class="info-section">
+                <div class="info-title">TRANSFORM</div>
+                <div class="prop-row">
+                    <span class="prop-label">Position X</span>
+                    <span class="prop-value">120.00</span>
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Position Y</span>
+                    <span class="prop-value">-45.00</span>
+                </div>
+            </div>
+            <div class="info-section">
+                <div class="info-title">METADATA</div>
+                <div class="prop-row">
+                    <span class="prop-label">Name</span>
+                    <span class="prop-value">RobotArm_v3</span>
+                </div>
+                <div class="prop-row">
+                    <span class="prop-label">Selection</span>
+                    <span class="prop-value" style="color: var(--selection)">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            MODE: <span class="status-mode">Normal</span>
+        </div>
+        <div class="status-item">
+            <i data-lucide="layers" size="12"></i>
+            Entities: 47
+        </div>
+        <div class="status-item">
+            <i data-lucide="check-square" size="12"></i>
+            Selected: 1
+        </div>
+        <div style="flex: 1"></div>
+        <div class="status-item">
+            X: 120.00, Y: -45.00
+        </div>
+        <div class="status-item">
+            100%
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

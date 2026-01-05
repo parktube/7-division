@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Native CAD - Figma Style</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            /* Dark Theme - Figma-inspired */
+            --bg-app: #1e1e1e;
+            --bg-panel: #252526;
+            --bg-panel-header: #2d2d2d;
+            --bg-canvas: #1a1a1a;
+            --bg-input: #3c3c3c;
+            --border: #3c3c3c;
+            --border-subtle: #333333;
+            --text-primary: #e5e5e5;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            --selection: #0d99ff;
+            --selection-bg: rgba(13, 153, 255, 0.15);
+            --selection-border: rgba(13, 153, 255, 0.5);
+            --lock: #f59e0b;
+            --hidden: #6b7280;
+            --hover: rgba(255, 255, 255, 0.04);
+            --active: rgba(255, 255, 255, 0.08);
+            --success: #22c55e;
+            --error: #ef4444;
+
+            /* Spacing */
+            --top-bar-h: 40px;
+            --status-bar-h: 24px;
+            --panel-header-h: 36px;
+
+            /* Radius */
+            --radius-sm: 4px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+
+            /* Shadows */
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+            --shadow-panel: inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-app);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-size: 13px;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ===== TOP BAR ===== */
+        .top-bar {
+            height: var(--top-bar-h);
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 12px;
+            box-shadow: var(--shadow-panel);
+            z-index: 100;
+        }
+
+        .top-bar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 200px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .logo-icon {
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(135deg, var(--selection) 0%, #0066cc 100%);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-icon svg {
+            color: white;
+        }
+
+        .file-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--bg-input);
+            border-radius: var(--radius-md);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .file-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--success);
+            border-radius: 50%;
+        }
+
+        .top-bar-center {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 4px;
+            background: var(--bg-app);
+            border-radius: var(--radius-md);
+        }
+
+        .toolbar-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            border: none;
+            background: transparent;
+        }
+
+        .toolbar-btn:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+        }
+
+        .toolbar-btn.active {
+            background: var(--selection-bg);
+            color: var(--selection);
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            margin: 0 8px;
+        }
+
+        .sketch-btn {
+            background: transparent;
+            border: 1px solid var(--border);
+            margin-left: 12px;
+        }
+
+        .sketch-btn.active {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: var(--lock);
+            color: var(--lock);
+        }
+
+        .top-bar-right {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            min-width: 100px;
+            justify-content: flex-end;
+        }
+
+        .icon-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+
+        .icon-btn:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+        }
+
+        /* ===== MAIN LAYOUT ===== */
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ===== PANELS ===== */
+        .panel {
+            background: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            height: var(--panel-header-h);
+            padding: 0 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-subtle);
+            background: var(--bg-panel-header);
+        }
+
+        .panel-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .panel-action-btn {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.15s ease;
+        }
+
+        .panel-action-btn:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+        }
+
+        /* ===== LAYER PANEL ===== */
+        .layer-panel {
+            width: 260px;
+            border-right: 1px solid var(--border);
+        }
+
+        .layer-search {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 6px 10px 6px 32px;
+            background: var(--bg-input);
+            border: 1px solid transparent;
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 12px;
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .search-input:focus {
+            border-color: var(--selection);
+            background: var(--bg-app);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-wrapper svg {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .tree-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 0 8px 0 0;
+            height: 32px;
+            cursor: pointer;
+            gap: 0;
+            position: relative;
+            margin: 1px 4px;
+            border-radius: var(--radius-sm);
+            transition: background 0.1s ease;
+        }
+
+        .tree-item:hover {
+            background: var(--hover);
+        }
+
+        .tree-item.selected {
+            background: var(--selection-bg);
+        }
+
+        .tree-item.selected::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 4px;
+            bottom: 4px;
+            width: 2px;
+            background: var(--selection);
+            border-radius: 1px;
+        }
+
+        .tree-expand {
+            width: 24px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--text-muted);
+        }
+
+        .tree-expand:hover {
+            color: var(--text-primary);
+        }
+
+        .tree-indent {
+            width: 24px;
+            flex-shrink: 0;
+        }
+
+        .tree-icon-wrapper {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tree-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .tree-icon.group {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+
+        .tree-icon.shape {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .tree-label {
+            flex: 1;
+            font-size: 13px;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tree-item.selected .tree-label {
+            color: var(--selection);
+        }
+
+        .tree-actions {
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            padding-right: 4px;
+        }
+
+        .tree-item:hover .tree-actions,
+        .tree-item.selected .tree-actions {
+            opacity: 1;
+        }
+
+        .tree-action-btn {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.1s ease;
+        }
+
+        .tree-action-btn:hover {
+            background: var(--active);
+            color: var(--text-primary);
+        }
+
+        .tree-action-btn.locked {
+            color: var(--lock);
+        }
+
+        .tree-action-btn.hidden {
+            opacity: 0.4;
+        }
+
+        /* ===== CANVAS ===== */
+        .canvas-area {
+            flex: 1;
+            background: var(--bg-canvas);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .canvas-grid-major {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size: 100px 100px;
+        }
+
+        .canvas-origin {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .origin-x {
+            position: absolute;
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #ef4444 50%, transparent);
+            left: -30px;
+        }
+
+        .origin-y {
+            position: absolute;
+            width: 1px;
+            height: 60px;
+            background: linear-gradient(180deg, transparent, #22c55e 50%, transparent);
+            top: -30px;
+        }
+
+        .canvas-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Demo shapes */
+        .demo-group {
+            position: relative;
+        }
+
+        .demo-rect {
+            width: 120px;
+            height: 80px;
+            border: 2px solid var(--selection);
+            background: var(--selection-bg);
+            border-radius: var(--radius-sm);
+            position: relative;
+        }
+
+        .demo-rect::before {
+            content: 'Robot Body';
+            position: absolute;
+            top: -24px;
+            left: 0;
+            font-size: 11px;
+            color: var(--selection);
+            font-weight: 500;
+        }
+
+        .selection-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border: 1px solid var(--selection);
+            border-radius: 1px;
+        }
+
+        .selection-handle.nw { top: -4px; left: -4px; cursor: nwse-resize; }
+        .selection-handle.ne { top: -4px; right: -4px; cursor: nesw-resize; }
+        .selection-handle.sw { bottom: -4px; left: -4px; cursor: nesw-resize; }
+        .selection-handle.se { bottom: -4px; right: -4px; cursor: nwse-resize; }
+
+        .canvas-zoom-controls {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            display: flex;
+            gap: 4px;
+            background: var(--bg-panel);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+        }
+
+        .zoom-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+        }
+
+        .zoom-btn:hover {
+            background: var(--hover);
+            color: var(--text-primary);
+        }
+
+        .zoom-level {
+            padding: 0 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+        }
+
+        /* ===== INFO PANEL ===== */
+        .info-panel {
+            width: 280px;
+            border-left: 1px solid var(--border);
+        }
+
+        .info-section {
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .info-section-header {
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .info-section-header:hover {
+            background: var(--hover);
+        }
+
+        .info-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .info-section-content {
+            padding: 0 12px 12px;
+        }
+
+        .prop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .prop-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .prop-item.full {
+            grid-column: 1 / -1;
+        }
+
+        .prop-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .prop-input {
+            padding: 6px 8px;
+            background: var(--bg-input);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .prop-input:focus {
+            border-color: var(--selection);
+            background: var(--bg-app);
+        }
+
+        .prop-value-display {
+            padding: 6px 8px;
+            background: var(--bg-app);
+            border-radius: var(--radius-sm);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .prop-value-display.highlight {
+            color: var(--selection);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge.selected {
+            background: var(--selection-bg);
+            color: var(--selection);
+        }
+
+        .badge.locked {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--lock);
+        }
+
+        /* ===== STATUS BAR ===== */
+        .status-bar {
+            height: var(--status-bar-h);
+            background: var(--bg-panel-header);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            gap: 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-item svg {
+            opacity: 0.7;
+        }
+
+        .status-mode {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 2px 8px;
+            background: var(--bg-input);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .status-mode.sketch {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--lock);
+        }
+
+        .status-spacer {
+            flex: 1;
+        }
+
+        .status-coords {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+        }
+
+        /* ===== RESIZE HANDLE ===== */
+        .resize-handle {
+            width: 4px;
+            background: transparent;
+            cursor: col-resize;
+            transition: background 0.15s ease;
+            position: relative;
+        }
+
+        .resize-handle:hover,
+        .resize-handle:active {
+            background: var(--selection);
+        }
+
+        .resize-handle::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: -4px;
+            right: -4px;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="pen-tool" style="width: 12px; height: 12px;"></i>
+                </div>
+                AI-Native CAD
+            </div>
+            <div class="file-badge">
+                <span class="dot"></span>
+                scene.json
+            </div>
+        </div>
+
+        <div class="top-bar-center">
+            <div class="toolbar-group">
+                <button class="toolbar-btn active">
+                    <i data-lucide="grid-3x3" style="width: 14px; height: 14px;"></i>
+                    Grid
+                </button>
+                <button class="toolbar-btn">
+                    <i data-lucide="ruler" style="width: 14px; height: 14px;"></i>
+                    Rulers
+                </button>
+            </div>
+            <button class="toolbar-btn sketch-btn">
+                <i data-lucide="pencil" style="width: 14px; height: 14px;"></i>
+                Sketch
+            </button>
+        </div>
+
+        <div class="top-bar-right">
+            <div class="icon-btn">
+                <i data-lucide="sun" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="icon-btn">
+                <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-container">
+        <!-- LAYER PANEL -->
+        <div class="panel layer-panel">
+            <div class="panel-header">
+                <span class="panel-title">Layers</span>
+                <div class="panel-actions">
+                    <div class="panel-action-btn">
+                        <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                    </div>
+                    <div class="panel-action-btn">
+                        <i data-lucide="more-horizontal" style="width: 14px; height: 14px;"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="layer-search">
+                <div class="search-wrapper">
+                    <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+                    <input type="text" class="search-input" placeholder="Search layers...">
+                </div>
+            </div>
+            <div class="tree-container">
+                <!-- Group: Assembly -->
+                <div class="tree-item">
+                    <div class="tree-expand">
+                        <i data-lucide="chevron-down" style="width: 14px; height: 14px;"></i>
+                    </div>
+                    <div class="tree-icon-wrapper">
+                        <div class="tree-icon group">
+                            <i data-lucide="folder" style="width: 12px; height: 12px;"></i>
+                        </div>
+                    </div>
+                    <span class="tree-label">Assembly 01</span>
+                    <div class="tree-actions">
+                        <div class="tree-action-btn">
+                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                        </div>
+                        <div class="tree-action-btn">
+                            <i data-lucide="unlock" style="width: 14px; height: 14px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shape: Robot Body (selected) -->
+                <div class="tree-item selected">
+                    <div class="tree-indent"></div>
+                    <div class="tree-icon-wrapper">
+                        <div class="tree-icon shape">
+                            <i data-lucide="square" style="width: 10px; height: 10px;"></i>
+                        </div>
+                    </div>
+                    <span class="tree-label">Robot Body</span>
+                    <div class="tree-actions">
+                        <div class="tree-action-btn">
+                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                        </div>
+                        <div class="tree-action-btn locked">
+                            <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shape: Robot Arm -->
+                <div class="tree-item">
+                    <div class="tree-indent"></div>
+                    <div class="tree-icon-wrapper">
+                        <div class="tree-icon shape">
+                            <i data-lucide="square" style="width: 10px; height: 10px;"></i>
+                        </div>
+                    </div>
+                    <span class="tree-label">Robot Arm</span>
+                    <div class="tree-actions">
+                        <div class="tree-action-btn">
+                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                        </div>
+                        <div class="tree-action-btn">
+                            <i data-lucide="unlock" style="width: 14px; height: 14px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group: Sensor Array (collapsed, hidden) -->
+                <div class="tree-item">
+                    <div class="tree-indent"></div>
+                    <div class="tree-expand">
+                        <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+                    </div>
+                    <div class="tree-icon-wrapper">
+                        <div class="tree-icon group">
+                            <i data-lucide="folder" style="width: 12px; height: 12px;"></i>
+                        </div>
+                    </div>
+                    <span class="tree-label">Sensor Array</span>
+                    <div class="tree-actions">
+                        <div class="tree-action-btn hidden">
+                            <i data-lucide="eye-off" style="width: 14px; height: 14px;"></i>
+                        </div>
+                        <div class="tree-action-btn">
+                            <i data-lucide="unlock" style="width: 14px; height: 14px;"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shape: Base Plate -->
+                <div class="tree-item">
+                    <div class="tree-indent"></div>
+                    <div class="tree-icon-wrapper">
+                        <div class="tree-icon shape">
+                            <i data-lucide="circle" style="width: 10px; height: 10px;"></i>
+                        </div>
+                    </div>
+                    <span class="tree-label">Base Plate</span>
+                    <div class="tree-actions">
+                        <div class="tree-action-btn">
+                            <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+                        </div>
+                        <div class="tree-action-btn">
+                            <i data-lucide="unlock" style="width: 14px; height: 14px;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="resize-handle"></div>
+
+        <!-- CANVAS -->
+        <div class="canvas-area">
+            <div class="canvas-grid"></div>
+            <div class="canvas-grid-major"></div>
+            <div class="canvas-origin">
+                <div class="origin-x"></div>
+                <div class="origin-y"></div>
+            </div>
+            <div class="canvas-content">
+                <div class="demo-group">
+                    <div class="demo-rect">
+                        <div class="selection-handle nw"></div>
+                        <div class="selection-handle ne"></div>
+                        <div class="selection-handle sw"></div>
+                        <div class="selection-handle se"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="canvas-zoom-controls">
+                <div class="zoom-btn">
+                    <i data-lucide="minus" style="width: 14px; height: 14px;"></i>
+                </div>
+                <div class="zoom-level">100%</div>
+                <div class="zoom-btn">
+                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="resize-handle"></div>
+
+        <!-- INFO PANEL -->
+        <div class="panel info-panel">
+            <div class="panel-header">
+                <span class="panel-title">Properties</span>
+                <div class="panel-actions">
+                    <div class="panel-action-btn">
+                        <i data-lucide="more-horizontal" style="width: 14px; height: 14px;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selection -->
+            <div class="info-section">
+                <div class="info-section-header">
+                    <span class="info-section-title">Selection</span>
+                    <i data-lucide="chevron-down" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+                </div>
+                <div class="info-section-content">
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <span class="badge selected">
+                            <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                            Selected
+                        </span>
+                        <span class="badge locked">
+                            <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
+                            Locked
+                        </span>
+                    </div>
+                    <div class="prop-item full">
+                        <span class="prop-label">Name</span>
+                        <input type="text" class="prop-input" value="Robot Body" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transform -->
+            <div class="info-section">
+                <div class="info-section-header">
+                    <span class="info-section-title">Transform</span>
+                    <i data-lucide="chevron-down" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+                </div>
+                <div class="info-section-content">
+                    <div class="prop-grid">
+                        <div class="prop-item">
+                            <span class="prop-label">X</span>
+                            <input type="text" class="prop-input" value="120.00">
+                        </div>
+                        <div class="prop-item">
+                            <span class="prop-label">Y</span>
+                            <input type="text" class="prop-input" value="-45.00">
+                        </div>
+                        <div class="prop-item">
+                            <span class="prop-label">Width</span>
+                            <input type="text" class="prop-input" value="120.00">
+                        </div>
+                        <div class="prop-item">
+                            <span class="prop-label">Height</span>
+                            <input type="text" class="prop-input" value="80.00">
+                        </div>
+                        <div class="prop-item full">
+                            <span class="prop-label">Rotation</span>
+                            <input type="text" class="prop-input" value="0°">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bounds -->
+            <div class="info-section">
+                <div class="info-section-header">
+                    <span class="info-section-title">Bounds</span>
+                    <i data-lucide="chevron-down" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+                </div>
+                <div class="info-section-content">
+                    <div class="prop-grid">
+                        <div class="prop-item">
+                            <span class="prop-label">Min X</span>
+                            <div class="prop-value-display">60.00</div>
+                        </div>
+                        <div class="prop-item">
+                            <span class="prop-label">Min Y</span>
+                            <div class="prop-value-display">-85.00</div>
+                        </div>
+                        <div class="prop-item">
+                            <span class="prop-label">Max X</span>
+                            <div class="prop-value-display">180.00</div>
+                        </div>
+                        <div class="prop-item">
+                            <span class="prop-label">Max Y</span>
+                            <div class="prop-value-display">-5.00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div class="status-bar">
+        <div class="status-mode">
+            <i data-lucide="mouse-pointer" style="width: 12px; height: 12px;"></i>
+            Normal
+        </div>
+        <div class="status-item">
+            <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
+            47 entities
+        </div>
+        <div class="status-item">
+            <i data-lucide="square-check" style="width: 12px; height: 12px;"></i>
+            1 selected
+        </div>
+        <div class="status-spacer"></div>
+        <div class="status-coords">
+            X: 120.00 &nbsp; Y: -45.00
+        </div>
+        <div class="status-item">
+            100%
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
