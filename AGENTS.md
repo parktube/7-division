@@ -83,9 +83,9 @@ deleteEntity(name)
 
 ### 모듈 시스템
 
-```javascript
-// house_lib 모듈 생성
-run_cad_code house_lib "
+```bash
+# house_lib 모듈 생성
+npx tsx cad-cli.ts run_cad_code house_lib "
 class House {
   constructor(name, x, y) { this.name = name; this.x = x; this.y = y; this.parts = []; }
   drawWall() { drawRect(this.name+'_wall', this.x-20, this.y, 40, 30); this.parts.push(this.name+'_wall'); }
@@ -94,8 +94,8 @@ class House {
 }
 "
 
-// main에서 사용
-run_cad_code main "
+# main에서 사용
+npx tsx cad-cli.ts run_cad_code main "
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
