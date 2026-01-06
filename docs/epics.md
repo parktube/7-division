@@ -48,6 +48,8 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR38 | 스케치 모드 | Canvas에 그리기/지우기 UI, 투명 오버레이 |
 | FR39 | 스케치 캡쳐 | capture_viewport로 스케치 포함 캡쳐 → Vision 해석 |
 | FR40 | 단일 소스 | viewer/가 유일한 소스, 웹/Electron 동일 코드 |
+| FR41 | 좌표 정보 표시 | Info Panel에서 로컬/월드 좌표 토글 표시 |
+| FR42 | 이중 좌표 API | 변환 API에 space 옵션 ('world' \| 'local') 지원 |
 
 ### Non-Functional Requirements
 
@@ -92,6 +94,8 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | NFR18 | 7.1 | 60fps 성능 |
 | NFR19 | 7.1 | 렌더링 동등성 |
 | NFR20 | 7.1 | Web/Electron 동등성 |
+| FR41 | 7.5 | 좌표 정보 표시 |
+| FR42 | 7.5 | 이중 좌표 API |
 
 ---
 
@@ -117,6 +121,11 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 사용자가 캔버스에 스케치하여 LLM Vision에 의도를 전달할 수 있다
 
 **FRs covered:** FR38, FR39
+
+### Epic 7.5: 좌표 시스템 개선
+사용자/LLM이 로컬 좌표와 월드 좌표를 명시적으로 구분하여 혼란 없이 작업할 수 있다
+
+**FRs covered:** FR41 (신규), FR42 (신규)
 
 ---
 
@@ -493,6 +502,92 @@ So that **Vision 모델이 사용자 의도를 해석할 수 있다** (FR39).
 **When** LLM Vision이 이미지를 분석하면
 **Then** 빨간색 스케치 선을 "사용자 의도 표시"로 인식할 수 있다
 **And** "여기에 원 추가", "이 선 연장" 등의 의도를 해석할 수 있다
+
+---
+
+## Epic 7.5: 좌표 시스템 개선
+
+**목표**: 사용자/LLM이 로컬 좌표와 월드 좌표를 명시적으로 구분하여 혼란 없이 작업할 수 있다
+
+### 배경
+
+그룹 시스템에서 로컬 좌표만 노출되면 LLM이 혼란을 겪음:
+- 스케치는 World 좌표로 그려짐
+- 그룹 내 엔티티는 로컬 좌표로 저장됨
+- addToGroup 시 위치가 틀어지는 것처럼 보임
+
+해결: API에서 로컬/월드 좌표 둘 다 지원하고 명시적으로 선택 가능하게 함.
+
+### Story 7.5.1: Info Panel 좌표 토글
+
+As a **사용자**,
+I want **Info Panel에서 로컬 좌표와 월드 좌표를 토글하여 볼 수 있기를**,
+So that **엔티티의 실제 위치와 그룹 내 상대 위치를 모두 확인할 수 있다** (FR41).
+
+**Acceptance Criteria:**
+
+**Given** 엔티티가 선택되어 Info Panel에 정보가 표시될 때
+**When** "Local / World" 토글 버튼을 보면
+**Then** 현재 선택된 좌표계가 표시된다 (기본값: World)
+
+**Given** World 모드가 선택되어 있을 때
+**When** 좌표 정보를 보면
+**Then** 엔티티의 월드 좌표 (화면에 보이는 위치)가 표시된다
+**And** bounds: { min: [x, y], max: [x, y] } 형태로 표시된다
+
+**Given** Local 모드로 전환했을 때
+**When** 좌표 정보를 보면
+**Then** 엔티티의 로컬 좌표 (부모 그룹 기준 위치)가 표시된다
+**And** 부모 그룹 이름이 함께 표시된다
+
+---
+
+### Story 7.5.2: 이중 좌표 API
+
+As a **LLM**,
+I want **get_entity가 로컬/월드 좌표를 모두 반환하고, 변환 API에서 좌표계를 선택할 수 있기를**,
+So that **스케치 기반 작업과 그룹 내 상대적 조정을 명확히 구분할 수 있다** (FR42).
+
+**Acceptance Criteria:**
+
+**Given** 그룹에 속한 엔티티가 있을 때
+**When** get_entity('entity_name')을 호출하면
+**Then** 응답에 local과 world 좌표가 모두 포함된다:
+```json
+{
+  "local": { "bounds": {...}, "position": [...] },
+  "world": { "bounds": {...}, "position": [...] },
+  "parent": "group_name"
+}
+```
+
+**Given** 엔티티를 이동하려 할 때
+**When** translate('entity', 10, 0, { space: 'world' })를 호출하면
+**Then** 화면 기준으로 10만큼 이동한다
+
+**Given** 엔티티를 이동하려 할 때
+**When** translate('entity', 10, 0, { space: 'local' })를 호출하면
+**Then** 부모 그룹 기준으로 10만큼 이동한다
+
+**Given** space 옵션을 생략할 때
+**When** translate('entity', 10, 0)을 호출하면
+**Then** 기본값 'world'로 동작한다 (스케치 워크플로우에 자연스러움)
+
+---
+
+### Story 7.5.3: addToGroup 월드 위치 유지
+
+As a **LLM**,
+I want **addToGroup 시 엔티티의 월드 위치가 유지되기를**,
+So that **스케치 위치에 만든 엔티티를 그룹에 추가해도 위치가 틀어지지 않는다**.
+
+**Acceptance Criteria:**
+
+**Given** 월드 좌표 (100, 50)에 엔티티가 있을 때
+**When** addToGroup('house', 'entity')를 호출하면
+**Then** 엔티티가 house 그룹에 추가된다
+**And** 엔티티의 월드 위치는 여전히 (100, 50)이다
+**And** 시스템이 내부적으로 로컬 좌표를 자동 계산한다
 
 ---
 
