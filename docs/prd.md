@@ -19,7 +19,8 @@ date: '2025-12-14'
 # Product Requirements Document - AI-Native CAD
 
 **Author:** Hoons
-**Date:** 2025-12-17 (Updated)
+**Date:** 2025-01-06
+**Status:** MVP 완료, Epic 7 진행 중
 
 ---
 
@@ -128,73 +129,23 @@ interface DesignHints {
 
 ## Technical Architecture
 
-### Direct-First Architecture
+### 현재 구현 (MVP 완료)
 
 ```
-Claude Code CLI (Node.js)
-    ↓ WASM 직접 로드 & 실행
-Rust CAD 엔진
-    ↓ scene.json 출력
-브라우저 뷰어 (MVP: Canvas 2D / Post-MVP: wgpu)
+Claude Code CLI → cad-tools (WASM) → scene.json → Canvas 2D Viewer
 ```
 
-### 뷰어 전략
+- **CAD 엔진**: Rust → WASM, circle/rect/line/polygon/arc/bezier + group + pivot
+- **뷰어**: Canvas 2D (viewer/), Electron 앱 (cad-electron/)
+- **출력**: scene.json, SVG export
+- **CLI**: `run_cad_code` - JavaScript 코드로 도형 생성
 
-> MVP/Post-MVP 기준으로 명확히 구분
-> (상세: [Architecture - 렌더링 기술 선택](./architecture.md#렌더링-기술-선택))
-
-| 단계 | 렌더러 | 이유 |
-|------|--------|------|
-| **MVP** | HTML Canvas 2D | 가장 단순, 빠른 검증 |
-| **Post-MVP** | wgpu | 3D 확장, 성능 최적화 (Three.js 건너뜀) |
-
-- **MVP**: Canvas 2D로 2D 도형 렌더링 (line, circle, rect, arc)
-- **Post-MVP**: wgpu로 마이그레이션 (3D 확장, 성능 최적화)
-
-### CAD 엔진 (Rust → WASM)
-
-**Primitives** (JSCAD 참조):
-
-- `circle(radius)` / `ellipse(rx, ry)`
-- `rectangle(width, height)` / `square(size)`
-- `line(points)` / `polygon(points)`
-- `arc(radius, startAngle, endAngle)`
-
-**Transforms**:
-
-- `translate(x, y)` / `rotate(angle)` / `scale(sx, sy)`
-
-**Output**:
-
-- MVP: scene.json (Canvas 2D 뷰어용) + SVG export
-- Post-MVP: DXF export (2D 업계 표준)
-- Post-MVP (3D): STL (필수), STEP (옵션) - 3D 확장 시
-
-### Tool Use Foundation (에이전트 런타임)
-
-> **Story 3.0** - Claude가 CAD 도구를 tool_use 스키마로 직접 호출할 수 있는 기반
-> Epic 3 (도형 편집)의 전제조건
-
-**현재 문제**: Claude가 스크립트를 작성해서 WASM을 호출
-**목표 상태**: Claude가 tool_use로 도구를 직접 호출 (자기 몸처럼)
+### Epic 7에서 변경 예정
 
 ```
-현재: Claude → 스크립트 작성 → WASM 호출
-목표: Claude → tool_use 블록 → 에이전트 런타임 → WASM 호출
+viewer/ (React + Vite) → 단일 소스
+cad-electron/ → viewer/dist 직접 로드
 ```
-
-**핵심 컴포넌트**:
-
-- **도구 스키마**: 각 CAD 도구의 name, description, input_schema 정의
-- **WASM Executor**: 입력 변환 자동화 (배열 → Float64Array)
-- **에이전트 런타임**: LLM 호출 → tool_use 감지 → 실행 → 결과 반환 루프
-
-**Progressive Exposure 패턴**:
-
-- `listDomains()` → `listTools(domain)` → `getTool(name)` → `exec(name, input)`
-- LLM 컨텍스트 효율성: 전체 API ~2000토큰 → 필요한 것만 ~110토큰
-
-> 상세: [Architecture - Tool Use Foundation](./architecture.md#tool-use-foundation-에이전트-런타임)
 
 ---
 
@@ -232,355 +183,141 @@ Rust CAD 엔진
 
 ## Functional Requirements
 
-> **2025-12-30 업데이트**: MVP 범위에 맞춰 FR21~FR30 추가
+### 완료된 요구사항 (FR1~FR29) ✅
 
-### 기초 도형 및 스타일 (FR1~FR20) ✅
+기초 도형, 스타일, 변환, 그룹화, 피봇, Selection UI, Electron 앱 - 모두 완료. 상세는 [epics.md](./epics.md) 참조.
 
-*기존 Phase 1 요구사항 - 완료됨. 상세는 [epics.md](./epics.md) 참조*
-
-### 그룹화 및 피봇 (FR21~FR25)
+### 인간-LLM 협업 UI (FR31~FR40) - 진행 중
 
 | ID | 요구사항 | 설명 |
 |----|---------|------|
-| FR21 | Group 생성 | `create_group(name, children[])`으로 여러 도형을 그룹화할 수 있어야 한다 |
-| FR22 | Group 해제 | `ungroup(group_id)`으로 그룹을 해제하고 자식들을 독립 엔티티로 만들 수 있어야 한다 |
-| FR23 | Group 자식 관리 | `add_to_group(group_id, entity_id)`, `remove_from_group(group_id, entity_id)`로 그룹 구성원을 관리할 수 있어야 한다 |
-| FR24 | Pivot 설정 | `set_pivot(entity_id, px, py)`로 도형/그룹의 회전 중심점을 설정할 수 있어야 한다 |
-| FR25 | 계층적 변환 | 부모 그룹의 translate/rotate/scale이 모든 자식 엔티티에 전파되어야 한다 |
+| FR31 | 3패널 레이아웃 | Layer Panel / Canvas / Info Panel 구성 |
+| FR32 | 패널 리사이즈 | 드래그로 패널 너비 조절 |
+| FR33 | 계층 트리뷰 | JS 코드의 그룹/오브젝트를 트리로 표시 |
+| FR34 | 그룹 탐색 | 그룹 선택, 확장, 중첩 그룹 탐색 |
+| FR35 | 다중 선택 | Ctrl/Shift + 클릭으로 복수 선택 |
+| FR36 | Visible 토글 | 끄면 Canvas에서 숨김 |
+| FR37 | Lock 가드 | 잠긴 엔티티 수정 시 LLM에 경고 반환 |
+| FR38 | 스케치 모드 | Canvas에 그리기/지우기 UI, 투명 오버레이 |
+| FR39 | 스케치 캡쳐 | capture_viewport로 스케치 포함 캡쳐 → Vision 해석 |
+| FR40 | 단일 소스 | viewer/가 유일한 소스, 웹/Electron 동일 코드 |
 
-### Selection UI (FR26~FR28)
+## Non-Functional Requirements
 
-| ID | 요구사항 | 설명 |
-|----|---------|------|
-| FR26 | 도형 선택 | Canvas 클릭으로 해당 위치의 도형을 선택할 수 있어야 한다 |
-| FR27 | 선택 상태 표시 | 선택된 도형은 시각적으로 구분되어야 한다 (하이라이트, 바운딩 박스 등) |
-| FR28 | 선택 정보 전달 | 선택된 도형의 정보(id, type, geometry)를 AI에게 전달할 수 있어야 한다 |
+### 완료 (NFR1~NFR17) ✅
 
-### Electron 앱 (FR29)
+그룹 중첩, 선택 반응 100ms, 앱 시작 5초, 오프라인 동작 - 모두 충족.
 
-> **2025-12-30 업데이트**: PR #12 논의 결과, 자체 채팅 UI 대신 Claude Code 통합으로 결정. FR30 삭제.
-
-| ID | 요구사항 | 설명 |
-|----|---------|------|
-| FR29 | 통합 앱 | WASM CAD 엔진 + Canvas 2D Viewer가 Electron 앱으로 통합되어야 한다. AI 인터페이스는 Claude Code 사용. |
-| ~~FR30~~ | ~~API 키 입력~~ | ~~삭제됨 - Claude Code가 API 키 관리~~ |
-
-## Non-Functional Requirements (MVP 추가)
+### 진행 중 (NFR18~NFR20)
 
 | ID | 요구사항 | 설명 |
 |----|---------|------|
-| NFR14 | 그룹 중첩 | 그룹 안에 그룹을 포함할 수 있어야 한다 (최대 깊이 제한 가능) |
-| NFR15 | 선택 반응 속도 | 클릭 후 선택 피드백이 100ms 이내에 표시되어야 한다 |
-| NFR16 | 앱 시작 시간 | Electron 앱이 5초 이내에 시작되어야 한다 |
-| NFR17 | 오프라인 동작 | API 키 없이도 CAD 기능(도형 생성/편집)은 동작해야 한다 |
+| NFR18 | 패널 리사이즈 성능 | 60fps 유지 |
+| NFR19 | 렌더링 동등성 | React 전환 후 기존과 동일 품질 |
+| NFR20 | 웹/Electron 동등성 | 동일 기능 동작 |
 
 ---
 
 ## Product Scope
 
-### MVP: 완전한 AI-Native CAD 경험
+### MVP ✅ 완료
 
-> **2025-12-30 업데이트**: Phase 1~3을 MVP로 통합. "말하기 + 가리키기"로 캐릭터 리깅까지 가능한 완전한 경험 제공.
+기초 도형, 스타일, 변환, 그룹화, 피봇, Selection UI, Electron 앱 - 모두 완료.
 
-**목표**: AI와 대화하며 복잡한 형상을 만들고, 포즈를 변경할 수 있는 완전한 경험 검증
+### Epic 7: 인간-LLM 협업 UI - 진행 중
 
-#### 기초 도형 및 스타일 ✅
+**목적**: LLM이 만든 코드와 유저 인터랙션의 양방향 연결
 
-- 기초 도형: `line`, `circle`, `rect`, `arc`
-- 스타일: `stroke`, `fill` 적용
-- 변환: `translate`, `rotate`, `scale`, `delete`
-- 출력: scene.json + SVG export
+#### Layer Panel - LLM 코드 ↔ 유저 선택 연동
 
-#### 그룹화 및 피봇
+| 기능 | 설명 |
+|------|------|
+| 계층 표시 | JS 코드의 그룹/오브젝트가 트리로 표시 |
+| 그룹 선택 | 그룹 클릭 → 전체 선택 |
+| 그룹 확장 | 펼쳐서 내부 오브젝트 개별 선택 |
+| 중첩 그룹 | 그룹 안의 그룹 탐색 |
+| 다중 선택 | Ctrl/Shift + 클릭 |
+| Visible | 끄면 Canvas에서 숨김 |
+| Lock | **잠기면 LLM이 수정 불가** (경고 반환) |
 
-- **Group System**: `create_group`, `ungroup`, `add_to_group`, `remove_from_group`
-- **Pivot**: `set_pivot` - 각 도형/그룹의 회전 중심점 설정
-- **Hierarchy Transform**: 부모 변환이 자식에 전파
+#### Canvas - 유저 스케치 → 캡쳐 이미지 → LLM Vision
 
-#### Selection UI
+| 기능 | 설명 |
+|------|------|
+| 스케치 모드 | 그리기/지우기/전체삭제 툴바 |
+| 스케치 레이어 | CAD 씬 위 투명 오버레이 (휘발성) |
+| 캡쳐 전달 | capture_viewport로 스케치 포함 PNG → Vision 해석 |
+| Grid Overlay | 캡쳐 시 눈금자 포함 → Vision이 좌표 파악 |
 
-- 클릭으로 객체 선택
-- 선택 상태 시각적 표시
-- 선택된 객체 정보를 AI에 전달
+```
+┌─────────────┬──────────────────────┬─────────────┐
+│   Layer     │       Canvas         │    Info     │
+│   Panel     │                      │   Panel     │
+│             │  - 렌더링            │             │
+│  - 트리뷰   │  - Pan/Zoom          │  - 선택정보 │
+│  - Lock     │  - 스케치 모드       │  - Bounds   │
+│  - Visible  │  - capture → LLM    │             │
+└─────────────┴──────────────────────┴─────────────┘
+```
 
-#### Electron 앱
+**성공 지표**:
+- [ ] 유저가 레이어에서 선택 → LLM이 해당 엔티티 인식
+- [ ] Lock된 엔티티 수정 시도 → LLM에 경고 반환
+- [ ] 유저 스케치 + 캡쳐 → LLM Vision이 의도 해석
 
-> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소
-
-- WASM + Canvas 2D Viewer 통합
-- ~~채팅 UI~~ → Claude Code 사용
-- ~~API 키 입력~~ → Claude Code가 관리
-- 오프라인 우선 (CAD 기능은 API 없이 동작)
-
-**검증 시나리오**:
-
-1. "사람 스켈레톤을 그려줘"
-2. "팔을 구부린 포즈로 바꿔줘"
-3. [왼팔 클릭] + "이거 더 길게"
-
-### Post-MVP: 확장 기능
-
-> MVP 완성 후 필요에 따라 추가
+### Post-MVP
 
 | 항목 | 설명 |
 |------|------|
-| **ActionHints 확장** | DesignHints 포함한 완전한 협업 경험 |
-| **Three.js 뷰어** | 3D 준비를 위한 렌더러 마이그레이션 |
-| **Layer System** | 레이어별 도형 관리 |
-| **DXF 출력** | 2D 업계 표준 포맷 |
-| **Gateway + 채팅 UI** | 별도 서비스로 분리 |
-| **MCP 래퍼** | 외부 시스템 연동 |
-| **3D 확장** | STEP/STL 출력, 3D 뷰어 |
-| **wgpu** | 고성능 렌더링 (필요 시) |
+| ActionHints 확장 | DesignHints 포함 협업 경험 |
+| DXF 출력 | 2D 업계 표준 |
+| 3D 확장 | STEP/STL, wgpu |
+| Gateway + 채팅 UI | 별도 서비스 |
 
 ---
 
 ## Deployment Strategy
 
-> **리서치 기반 (2025-12-16)**: Cursor, Jan AI, LM Studio, Figma 등 실제 사례 분석
-
-### 배포 방식
-
-| Phase | 방식 | 상세 |
-|-------|------|------|
-| Phase 1-2 | **로컬 앱** | Electron 기반 데스크톱 앱 (~100MB) |
-| Phase 3+ | 로컬 + 웹 | 수요에 따라 웹 버전 추가 가능 |
-
-### 데스크톱 프레임워크: Electron
-
-> **결정: Electron** - WebGL/Three.js 기반 CAD 앱에서 Tauri는 치명적 리스크
-
-| 항목 | Electron | Tauri |
-|------|----------|-------|
-| **WebGL 성능** | Chromium (최고) | WebKit (4.5배 느림) |
-| **검증 사례** | Figma, VS Code | Jan AI (LLM 앱, WebGL 없음) |
-| **앱 크기** | ~100MB | ~10MB |
-
-**Tauri 부적합 이유**: WebGL2 미작동, Safari 4.5배 느림, 60Hz 고정 등
-**참고**: Tauri는 LLM 채팅앱 등 WebGL 없는 앱에만 적합
-
-### LLM 연결 옵션
-
-| 옵션 | 방식 | Phase |
-|------|------|-------|
-| A | 로컬 LLM (Ollama 등) | Phase 1+ |
-| B | 사용자 API 키 입력 | Phase 1+ |
-| C | 서비스 API 제공 | Phase 4+ (수요 시) |
-
-### 핵심 원칙
-
-1. **오프라인 우선**: Cursor와 달리 서버 의존 없이 완전 동작
-2. **클라우드 선택적**: 사용자가 원할 때만 클라우드 API 연결
-3. **Figma 모델 참조**: Electron + WebGL, 웹/데스크톱 동일 코드베이스
-
-> 상세: [Architecture - Deployment Strategy](./architecture.md#deployment-strategy)
+- **데스크톱**: Electron (~100MB), Windows/Mac/Linux
+- **AI 연결**: Claude Code 사용 (API 키 관리 위임)
+- **오프라인**: CAD 기능은 API 없이 동작
 
 ---
 
-## User Journey (MVP)
-
-### Step 1: 말하기 - 스켈레톤 생성
+## User Journey
 
 ```
-사용자: "사람 스켈레톤을 그려줘"
-    ↓
-Claude Code: WASM 엔진 호출 → scene.json 생성
-    ↓
-브라우저: Canvas 2D 렌더링 (polling으로 갱신)
-    ↓
-사용자: 결과 확인 → "팔을 더 길게"
-    ↓
-Claude Code: translate/scale 적용 → scene.json 업데이트
+"스켈레톤 그려줘" → Claude Code → WASM → scene.json → Viewer
+[Layer Panel에서 왼팔 선택] + "더 길게" → selection.json → Claude Code → 수정
+[스케치 모드에서 삼각형 그리기] + "이 모양으로" → capture_viewport → Vision 해석 → 생성
 ```
 
-### Step 2: 말하기 - 포즈 변경 (Group + Pivot)
-
-```
-사용자: "팔을 구부린 포즈로 바꿔줘"
-    ↓
-Claude Code: 그룹화된 엔티티 인식 → 관절(Pivot) 기준 회전 계산
-    ↓
-WASM: rotate + translate 조합 적용 → scene.json 업데이트
-    ↓
-브라우저: Canvas 2D 렌더링 갱신
-```
-
-### Step 3: 가리키기 + 말하기 (Selection UI)
-
-```
-사용자: [왼팔 클릭] + "이거 더 길게"
-    ↓
-브라우저: selection event {id: "left_arm", bounds: {...}}
-    ↓
-Claude Code: 선택된 객체 scale 적용 → scene.json 업데이트
-    ↓
-브라우저: Canvas 2D 렌더링 갱신
-```
-
-### Interaction Pattern (MVP)
-
-| 허용 | 불허 |
-|------|------|
-| 클릭/탭 (선택) | 드래그로 이동 |
-| 드래그 (범위 선택) | 직접 회전/스케일 |
-| 핀치/줌 (뷰 조작) | 파라미터 입력 |
-
-**원칙**: 선택/포인팅만 허용, 조작은 AI가 수행
+**원칙**: Layer Panel에서 선택, Canvas에서 스케치, 조작은 AI가 수행
 
 ---
 
-## Data Model
+## Risks
 
-### Scene 구조
-
-```
-Scene
-├── metadata: { name, created_at, modified_at }
-├── settings: { unit, grid_size, origin }
-└── entities: Entity[]
-```
-
-### Entity 구조
-
-```
-Entity
-├── id: string (uuid)
-├── type: "line" | "circle" | "rect" | "polygon" | "arc" | "group"
-├── geometry: Geometry (type별 상이)
-├── transform: { translate, rotate, scale }
-├── style: { stroke, fill, stroke_width }
-└── metadata: { name?, layer?, locked? }
-```
-
-### Geometry 예시
-
-```rust
-// Line
-{ points: [[x1, y1], [x2, y2], ...] }
-
-// Circle
-{ center: [x, y], radius: f64 }
-
-// Rect
-{ origin: [x, y], width: f64, height: f64 }
-```
-
-### 상태 관리
-
-- **History**: Command 패턴으로 Undo/Redo 지원
-- **Persistence**: JSON 직렬화 → 파일 저장
+| 리스크 | 완화 |
+|--------|------|
+| AI 의도 오해석 | 반복 수정, 피드백 루프 |
+| React 전환 시 렌더링 버그 | 기존 로직 정확 포팅 + 비교 테스트 |
+| Transform 로직 복잡도 | 단위 테스트 작성 |
 
 ---
 
-## Risks & Mitigations
+## Definition of Done
 
-| 리스크 | 영향 | 완화 전략 |
-|--------|------|-----------|
-| AI가 의도를 잘못 해석 | 높음 | 반복 수정으로 보완, 명확한 피드백 루프 |
-| WASM 성능 부족 | 중간 | MVP는 간단한 도형만, 복잡도 점진적 증가 |
-| 3D 확장 시 API 재설계 | 중간 | Point 타입을 처음부터 확장 가능하게 설계 |
-| **wasm-bindgen API 설계** | 높음 | 클래스 래퍼 방식 사용, struct 왕복 피함 |
-| **UUID/getrandom 호환성** | 중간 | `js_sys::Math::random()` 또는 `uuid` js feature |
-| **Selection 역방향 통신** | 중간 | selection.json 파일로 해결 (MVP) |
-| **DXF/STEP 복잡도 과소평가** | 중간 | Post-MVP로 미룸, "쉽다" 전제 금지 |
-| **Electron 앱 크기** | 낮음 | ~100MB 허용, Figma도 동일 전략 |
-| **rustwasm 조직 sunset** | 중간 | wasm-bindgen 새 조직 이전 완료, wasm-pack은 직접 빌드 대안 준비 |
-| **WASM 브라우저 호환성** | 낮음 | IE 미지원 (영향 없음), 92/100 호환성 점수, 83% 사용자 커버 |
+### MVP ✅ 완료
 
-### 기술 부채 방지
+WASM 엔진, 도형 6종, 그룹/피봇, Selection UI, Electron 앱 - 모두 완료.
 
-- `Serializer` trait로 출력 포맷 추상화
-- `Point<const N: usize>` 제네릭으로 2D/3D 통합
-- wasm-bindgen 클래스 래퍼 패턴으로 API 설계
-- `Float64Array` 등 명확한 타입 사용
+### Epic 7: 인간-LLM 협업 UI (진행 중)
 
----
-
-## Out of Scope (MVP)
-
-> **2025-12-30 업데이트**: MVP 완성 후 필요에 따라 추가
-
-| 항목 | 이유 | 예정 |
-|------|------|------|
-| **wgpu 마이그레이션** | Canvas 2D로 MVP 검증 후 | Post-MVP |
-| **MAMA Integration** | MVP 기능 우선. MAMA(Memory-Augmented Meta Agent)는 LLM의 의사결정 기록 및 컨텍스트 유지 도구로, CAD 프로젝트 히스토리 추적에 활용 예정 | Post-MVP |
-| **ActionHints 확장** | 기본 힌트는 구현됨, 확장은 후순위 | Post-MVP |
-| Layer System | 그룹화로 대부분 해결 | Post-MVP |
-| DXF/DWG 출력 | SVG로 충분 | Post-MVP |
-| 3D 기능 | 2D 먼저 검증 | Post-MVP |
-| MCP 래퍼 | Direct-First 검증 후 | Post-MVP |
-| 실시간 협업 | 단일 사용자 먼저 | Post-MVP |
-
----
-
-## Definition of Done (MVP)
-
-> **2025-12-30 업데이트**: 완전한 AI-Native CAD 경험을 위한 MVP 기준
-
-### 기초 도형 및 스타일 ✅
-
-- [x] Rust CAD 엔진 WASM 빌드 성공
-- [x] 기초 도형 4종: `line`, `circle`, `rect`, `arc`
-- [x] 스타일 시스템: `stroke`, `fill` 적용
-- [x] 변환 4종: `translate`, `rotate`, `scale`, `delete`
-- [x] scene.json 출력 정상 동작
-- [x] SVG export 정상 동작
-- [x] Canvas 2D 뷰어에서 scene.json 렌더링 (polling)
-- [x] **Tool Use Foundation**: Claude가 CLI로 도구 직접 호출
-
-### 그룹화 및 피봇
-
-- [ ] **Group System**: 그룹 생성/해제, 자식 추가/제거
-- [ ] **Pivot**: 도형/그룹의 회전 중심점 설정
-- [ ] **Hierarchy Transform**: 부모 변환이 자식에 전파
-
-### Selection UI
-
-- [ ] 클릭으로 객체 선택
-- [ ] 선택 상태 시각적 표시 (하이라이트)
-- [ ] 선택된 객체 정보를 AI에 전달
-
-### Electron 앱
-
-> **2025-12-30 업데이트**: Claude Code 통합으로 범위 축소 (채팅 UI 제거, Claude Code 사용 가이드 포함)
-
-- [ ] Electron 프로젝트 구조
-- [ ] WASM 엔진 통합
-- [ ] Canvas 2D Viewer 이식
-- [ ] ~~채팅 UI~~ → Claude Code 사용 가이드 (Story 6-5)
-- [ ] ~~API 키 입력~~ → Claude Code가 관리
-- [ ] Windows/Mac 빌드 (Story 6-4, Linux 제외)
-
-### 검증 시나리오 통과
-
-**시나리오 1: 스켈레톤 생성**
-
-```
-입력: "사람 스켈레톤을 그려줘"
-기대 결과:
-- 머리 (circle)
-- 몸통 (line 또는 rect)
-- 팔 2개 (line)
-- 다리 2개 (line)
-- 적절한 비율과 위치
-```
-
-**시나리오 2: 포즈 변경**
-
-```
-입력: "팔을 구부린 포즈로 바꿔줘"
-기대 결과:
-- 팔 그룹의 피봇 기준 회전
-- 자연스러운 관절 표현
-```
-
-**시나리오 3: Selection + 수정**
-
-```
-입력: [왼팔 클릭] + "이거 더 길게"
-기대 결과:
-- 선택된 객체 인식
-- 해당 entity의 scale 수정
-```
+- [ ] Layer Panel 트리뷰 + 그룹 탐색 + 다중 선택
+- [ ] Lock 가드 (잠긴 엔티티 수정 시 LLM 경고)
+- [ ] 스케치 모드 (그리기/지우기 UI + 캡쳐 전달)
+- [ ] Grid Overlay (Vision 좌표 감지용)
+- [ ] 웹/Electron 동일 동작
 
 ---
