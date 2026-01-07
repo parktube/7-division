@@ -850,7 +850,7 @@ Example:
 const ACTION_HINTS: Record<string, string[]> = {
   // Primitives (z-order 자동 할당, 겹치면 drawOrder로 조정)
   draw_circle: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
-  draw_rect: ['(x,y)는 좌하단 코너 기준', '겹치면 drawOrder 사용'],
+  draw_rect: ['(x,y)는 사각형 중심 기준', '겹치면 drawOrder 사용'],
   draw_line: ['set_stroke로 선 색상/두께 변경'],
   draw_arc: ['set_stroke로 선 스타일 변경'],
   draw_polygon: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
