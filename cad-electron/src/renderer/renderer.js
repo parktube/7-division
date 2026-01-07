@@ -387,7 +387,7 @@ function renderRect(geometry, style) {
   ) {
     return;
   }
-  // Convert center to bottom-left origin for canvas rect
+  // Convert center to top-left corner for canvas rect API
   const x = cx - width / 2;
   const y = cy - height / 2;
   ctx.beginPath();
