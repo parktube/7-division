@@ -560,7 +560,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
     if (result.success) {
       hints.push(`main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`);
       if (result.entities.length > 0) {
-        hints.push('수정 시 reset 대신 setZOrder/setFill/translate로 기존 엔티티 직접 수정');
+        hints.push('수정 시 reset 대신 drawOrder/setFill/translate로 기존 엔티티 직접 수정');
       }
     } else {
       hints.push('실행 실패. 코드를 확인하세요.');
@@ -782,7 +782,7 @@ run_cad_code로 JavaScript 코드를 실행할 때 사용 가능한 함수들입
 📋 STYLE (3개)
 - setFill(name, [r,g,b,a])          // 0.0~1.0
 - setStroke(name, [r,g,b,a], width?)
-- setZOrder(name, zIndex)            // 높을수록 앞
+- drawOrder(name, 'front'|'back'|N)  // 상대적 z-order 조정
 
 📋 GROUPS (2개)
 - createGroup(name, children[])
@@ -848,13 +848,13 @@ Example:
 // ============================================================================
 
 const ACTION_HINTS: Record<string, string[]> = {
-  // Primitives (z_index=0 기본값, 겹치면 setZOrder로 조정)
-  draw_circle: ['set_fill로 색상 추가', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
-  draw_rect: ['(x,y)는 좌하단 코너 기준', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
-  draw_line: ['set_stroke로 선 색상/두께 변경', 'z_index=0 기본값'],
-  draw_arc: ['set_stroke로 선 스타일 변경', 'z_index=0 기본값'],
-  draw_polygon: ['set_fill로 색상 추가', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
-  draw_bezier: ['set_fill로 색상 추가 (closed=true일 때)', 'z_index=0 기본값'],
+  // Primitives (z-order 자동 할당, 겹치면 drawOrder로 조정)
+  draw_circle: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
+  draw_rect: ['(x,y)는 좌하단 코너 기준', '겹치면 drawOrder 사용'],
+  draw_line: ['set_stroke로 선 색상/두께 변경'],
+  draw_arc: ['set_stroke로 선 스타일 변경'],
+  draw_polygon: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
+  draw_bezier: ['set_fill로 색상 추가 (closed=true일 때)'],
 
   // Style
   set_fill: ['set_stroke로 선도 스타일링', 'list_entities로 확인'],
@@ -897,7 +897,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   create_group: [
     '⚠️ 자식은 (0,0) 로컬 좌표로 생성했어야 함! 아니면 translate 시 위치 중첩',
     'translate(groupName, x, y)로 그룹 전체 이동',
-    'setZOrder로 그룹 z-order 설정',
+    'drawOrder로 그룹 z-order 설정',
   ],
   ungroup: ['list_entities로 해제 결과 확인', 'create_group으로 다시 그룹화'],
   add_to_group: ['get_entity로 추가 결과 확인', 'remove_from_group으로 제거'],
@@ -905,7 +905,7 @@ const ACTION_HINTS: Record<string, string[]> = {
 
   // Code Execution
   run_cad_code: [
-    '수정 시 reset 대신 setZOrder/setFill/translate 등으로 기존 엔티티 직접 수정',
+    '수정 시 reset 대신 drawOrder/setFill/translate 등으로 기존 엔티티 직접 수정',
     '외부 요소 배치 시 getWorldBounds()로 대상 위치 확인',
     '--status로 프로젝트 현황 확인',
     'capture_viewport로 결과 확인',
