@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'http';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join, resolve } from 'path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { join, resolve, sep } from 'path';
 import { URL } from 'url';
 
 app.setName('CADViewer');
@@ -58,8 +58,8 @@ function isAllowedCapturePath(requestedPath: string): boolean {
   const resourcesPath = resolve(app.getAppPath(), '..'); // app.asar -> resources folder
 
   // Check with path separator to prevent /app/data matching /app/data-evil
-  const isInUserData = resolved === userData || resolved.startsWith(userData + '/') || resolved.startsWith(userData + '\\');
-  const isInResources = resolved === resourcesPath || resolved.startsWith(resourcesPath + '/') || resolved.startsWith(resourcesPath + '\\');
+  const isInUserData = resolved === userData || resolved.startsWith(userData + sep);
+  const isInResources = resolved === resourcesPath || resolved.startsWith(resourcesPath + sep);
   return isInUserData || isInResources;
 }
 
@@ -100,7 +100,7 @@ function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerRespo
       res.end(JSON.stringify({ error: String(error) }));
     }
   } else if (req.method === 'POST') {
-    let body = '';
+    const chunks: Buffer[] = [];
     let bodySize = 0;
     let aborted = false;
     req.on('data', (chunk: Buffer) => {
@@ -114,11 +114,12 @@ function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerRespo
         req.destroy();
         return;
       }
-      body += chunk;
+      chunks.push(chunk);
     });
     req.on('end', () => {
       if (aborted || res.writableEnded) return;
       try {
+        const body = Buffer.concat(chunks).toString('utf-8');
         JSON.parse(body); // Validate JSON
         writeFileSync(filePath, body, 'utf-8');
         res.statusCode = 200;
@@ -260,7 +261,7 @@ app.on('before-quit', () => {
   const portFilePath = join(viewerPath, '.server-port');
   try {
     if (existsSync(portFilePath)) {
-      require('fs').unlinkSync(portFilePath);
+      unlinkSync(portFilePath);
     }
   } catch {
     // Ignore cleanup errors
