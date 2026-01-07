@@ -1,9 +1,10 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI-Native CAD Viewer</title>
+  <title>AI-Native CAD</title>
   <style>
     :root {
       color-scheme: light;
@@ -37,20 +38,16 @@
       content: "";
       position: fixed;
       inset: 0;
-      background-image: repeating-linear-gradient(
-          120deg,
+      background-image: repeating-linear-gradient(120deg,
           rgba(255, 255, 255, 0.2) 0,
           rgba(255, 255, 255, 0.2) 1px,
           transparent 1px,
-          transparent 28px
-        ),
-        repeating-linear-gradient(
-          30deg,
+          transparent 28px),
+        repeating-linear-gradient(30deg,
           rgba(0, 0, 0, 0.035) 0,
           rgba(0, 0, 0, 0.035) 1px,
           transparent 1px,
-          transparent 34px
-        );
+          transparent 34px);
       pointer-events: none;
       z-index: -1;
     }
@@ -70,6 +67,7 @@
         opacity: 0;
         transform: translateY(12px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -190,11 +188,9 @@
       font-size: 16px;
       color: var(--bg-muted);
       font-family: "Courier Prime", "Courier New", monospace;
-      background: linear-gradient(
-        120deg,
-        rgba(255, 255, 255, 0.85) 0%,
-        rgba(255, 255, 255, 0.55) 100%
-      );
+      background: linear-gradient(120deg,
+          rgba(255, 255, 255, 0.85) 0%,
+          rgba(255, 255, 255, 0.55) 100%);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.3s ease;
@@ -268,13 +264,14 @@
     }
   </style>
 </head>
+
 <body>
   <main class="app">
     <header class="topbar">
       <div class="brand">
         <div class="brand-mark">◎</div>
         <div>
-          <h1>AI-Native CAD Viewer</h1>
+          <h1>AI-Native CAD</h1>
           <p>Scene Polling Console</p>
         </div>
       </div>
@@ -300,11 +297,14 @@
         <h2>Selection</h2>
         <div class="panel-item">
           <div class="label">Selected Entity</div>
-          <div class="value" id="selection-info" style="font-size: 12px; color: var(--accent); font-weight: 600;">None (click on canvas)</div>
+          <div class="value" id="selection-info" style="font-size: 12px; color: var(--accent); font-weight: 600;">None
+            (click on canvas)</div>
         </div>
         <div class="panel-item">
           <div class="label">Selection Details</div>
-          <div class="value" id="selection-details" style="font-size: 10px; max-height: 80px; overflow-y: auto; background: rgba(42,127,122,0.08); padding: 8px; border-radius: 6px; font-family: monospace;">-</div>
+          <div class="value" id="selection-details"
+            style="font-size: 10px; max-height: 80px; overflow-y: auto; background: rgba(42,127,122,0.08); padding: 8px; border-radius: 6px; font-family: monospace;">
+            -</div>
         </div>
         <h2 style="margin-top: 12px;">Scene Info</h2>
         <div class="panel-item">
@@ -317,7 +317,9 @@
         </div>
         <div class="panel-item">
           <div class="label">Operation Log</div>
-          <div class="value" id="operation-log" style="font-size: 10px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px; font-family: monospace;">-</div>
+          <div class="value" id="operation-log"
+            style="font-size: 10px; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.03); padding: 8px; border-radius: 6px; font-family: monospace;">
+            -</div>
         </div>
         <div class="panel-item">
           <div class="label">Last Error</div>
@@ -329,4 +331,5 @@
 
   <script src="renderer.js"></script>
 </body>
+
 </html>

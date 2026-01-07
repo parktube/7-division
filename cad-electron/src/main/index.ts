@@ -3,7 +3,7 @@ import { createServer, type Server } from 'http';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
-app.setName('CADViewer');
+app.setName('AI-Native CAD');
 
 let mainWindow: BrowserWindow | null = null;
 let sceneServer: Server | null = null;
