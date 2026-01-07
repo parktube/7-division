@@ -1,30 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Scene } from '@/types/scene'
+import { getDataUrl } from '@/utils/dataUrl'
 
 const POLLING_INTERVAL = 1000 // ms
-
-/**
- * Get scene.json URL based on environment:
- * - Web: /scene.json (relative)
- * - Electron: Uses ?scene= query parameter passed from main process
- */
-function getSceneUrl(): string {
-  if (typeof window !== 'undefined') {
-    const params = new URLSearchParams(window.location.search)
-    const sceneUrl = params.get('scene')
-    if (sceneUrl) {
-      return sceneUrl // Electron: absolute URL from main process
-    }
-  }
-  return '/scene.json' // Web: relative path
-}
 
 export function useScene() {
   const [scene, setScene] = useState<Scene | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const lastModified = useRef<string | null>(null)
-  const sceneUrl = useRef(getSceneUrl())
 
   useEffect(() => {
     let mounted = true
@@ -32,7 +16,8 @@ export function useScene() {
     const fetchScene = async () => {
       try {
         // Cache-bust with timestamp to ensure fresh data
-        const url = `${sceneUrl.current}?t=${Date.now()}`
+        const baseUrl = getDataUrl('scene.json')
+        const url = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
         const res = await fetch(url, { cache: 'no-store' })
 
         if (!res.ok) {

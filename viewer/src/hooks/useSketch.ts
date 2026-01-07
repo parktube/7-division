@@ -1,11 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Stroke, Point, SketchTool } from '@/types/sketch'
+import { getDataUrl } from '@/utils/dataUrl'
 
 const DEFAULT_COLOR = '#ef4444' // red-500
 const DEFAULT_WIDTH = 2
 const MIN_DISTANCE = 2 // Minimum distance between points
 const ERASER_RADIUS = 15 // Eraser hit radius
-const SKETCH_FILE = '/sketch.json'
 
 // Calculate stroke bounding box for quick rejection
 function getStrokeBounds(stroke: Stroke) {
@@ -41,7 +41,7 @@ function strokeIntersectsEraser(stroke: Stroke, eraserPoint: Point, radius: numb
 // Save strokes to sketch.json
 async function saveStrokes(strokes: Stroke[]) {
   try {
-    await fetch(SKETCH_FILE, {
+    await fetch(getDataUrl('sketch.json'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ strokes }),
@@ -54,7 +54,7 @@ async function saveStrokes(strokes: Stroke[]) {
 // Load strokes from sketch.json
 async function loadStrokes(): Promise<Stroke[]> {
   try {
-    const res = await fetch(SKETCH_FILE, { cache: 'no-store' })
+    const res = await fetch(getDataUrl('sketch.json'), { cache: 'no-store' })
     if (!res.ok) return []
     const data = await res.json()
     return data.strokes || []

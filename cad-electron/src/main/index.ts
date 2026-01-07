@@ -149,12 +149,12 @@ function createWindow(): void {
   if (process.env.ELECTRON_RENDERER_URL) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL);
     if (serverBaseUrl) {
-      url.searchParams.set('scene', `${serverBaseUrl}/scene.json`);
+      url.searchParams.set('dataServer', serverBaseUrl);
     }
     mainWindow.loadURL(url.toString());
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'), {
-      query: serverBaseUrl ? { scene: `${serverBaseUrl}/scene.json` } : undefined,
+      query: serverBaseUrl ? { dataServer: serverBaseUrl } : undefined,
     });
   }
 

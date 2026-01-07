@@ -4,6 +4,10 @@ import { StatusBar } from '@/components/StatusBar'
 import { ViewportProvider } from '@/contexts/ViewportContext'
 import { UIProvider } from '@/contexts/UIContext'
 import { useSelectionSync } from '@/hooks/useSelectionSync'
+import { initDataServer } from '@/utils/dataUrl'
+
+// Initialize data server URL from query params (for Electron)
+initDataServer()
 
 // Component to sync selection with selection.json
 function SelectionSync() {
