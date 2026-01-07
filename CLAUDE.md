@@ -42,11 +42,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `bmm/` - 워크플로우, 문서 템플릿, 테스트 아키텍처 지식
 - `core/` - 에이전트 설정, 브레인스토밍/파티모드 워크플로우
 
-## CAD Tools (run_cad_code)
+## CAD Tools (코드 에디터)
 
-CAD 도형을 JavaScript 코드로 생성합니다. `run_cad_code`가 메인 인터페이스입니다.
+**run_cad_code = JavaScript IDE for CAD**
 
-### run_cad_code (코드 에디터)
+스케치가 주어지면:
+1. **구조 분석** - 몇 개의 면? 어떤 관계?
+2. **클래스 설계** - 재사용 가능한 구조
+3. **프로그램 작성** - 모듈로 저장
+
+```
+❌ 실행 사고: "drawRect 호출해서 사각형 그리기"
+✅ 구현 사고: "Cube 클래스 설계 → 3면 구현 → 인스턴스 생성"
+```
+
+### run_cad_code
 
 ```bash
 cd cad-tools
