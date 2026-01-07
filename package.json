@@ -27,7 +27,7 @@
   },
   "lint-staged": {
     "cad-engine/**/*.rs": [
-      "cargo fmt --manifest-path cad-engine/Cargo.toml --"
+      "bash -c 'cargo fmt --manifest-path cad-engine/Cargo.toml -- --check && cargo clippy --manifest-path cad-engine/Cargo.toml -- -D warnings'"
     ],
     "cad-tools/src/**/*.ts": [
       "npx --prefix cad-tools eslint --fix"

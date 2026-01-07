@@ -115,7 +115,8 @@ fn build_tree(entities: &[Entity]) -> Vec<TreeNode> {
                 })
                 .collect();
 
-            // Sort by z-order (higher first), then by index (later = higher)
+            // LayerPanel 표시 순서: 높은 z-order가 먼저 (위에 표시 = 앞에 그려짐)
+            // 동일 z-order면 나중에 추가된 것이 먼저 (index 역순)
             child_entities.sort_by(|a, b| {
                 let z_diff = get_z_order(b.1).cmp(&get_z_order(a.1));
                 if z_diff != std::cmp::Ordering::Equal {
@@ -155,7 +156,8 @@ fn build_tree(entities: &[Entity]) -> Vec<TreeNode> {
         .filter(|(_, e)| !child_ids.contains(e.id.as_str()))
         .collect();
 
-    // Sort by z-order (higher first), then by index (later = higher)
+    // LayerPanel 표시 순서: 높은 z-order가 먼저 (위에 표시 = 앞에 그려짐)
+    // 동일 z-order면 나중에 추가된 것이 먼저 (index 역순)
     root_entities.sort_by(|a, b| {
         let z_diff = get_z_order(b.1).cmp(&get_z_order(a.1));
         if z_diff != std::cmp::Ordering::Equal {

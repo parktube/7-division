@@ -117,6 +117,7 @@ export default function LayerPanel() {
           <div className="flex gap-1">
             <button
               type="button"
+              aria-label="Add layer"
               className="w-6 h-6 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
               style={{ color: 'var(--text-muted)' }}
             >
@@ -124,6 +125,7 @@ export default function LayerPanel() {
             </button>
             <button
               type="button"
+              aria-label="More options"
               className="w-6 h-6 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
               style={{ color: 'var(--text-muted)' }}
             >
@@ -143,6 +145,7 @@ export default function LayerPanel() {
             <input
               type="text"
               placeholder="Search layers..."
+              aria-label="Search layers"
               className="w-full py-1.5 pl-8 pr-2.5 text-xs rounded-md outline-none transition-all
                          border border-transparent focus:border-[var(--selection)] focus:bg-white focus:shadow-[0_0_0_3px_var(--selection-bg)]"
               style={{ backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
@@ -153,6 +156,8 @@ export default function LayerPanel() {
         {/* Tree */}
         <div
           ref={treeContainerRef}
+          role="tree"
+          aria-label="Layer tree"
           className="flex-1 overflow-y-auto py-1 outline-none"
           onClick={handleEmptyClick}
           onKeyDown={handleKeyDown}
