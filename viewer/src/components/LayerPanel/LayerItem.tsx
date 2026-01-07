@@ -55,13 +55,23 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
-      select(node.id)
+      if (e.shiftKey) {
+        rangeSelect(node.id)
+      } else if (isModifierKey(e)) {
+        toggleSelect(node.id)
+      } else {
+        select(node.id)
+      }
     }
   }
 
   return (
-    <div role="treeitem" aria-selected={selected} aria-expanded={isGroup ? expanded : undefined}>
+    <div>
       <div
+        role="treeitem"
+        aria-selected={selected}
+        aria-expanded={isGroup ? expanded : undefined}
+        aria-level={depth + 1}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         tabIndex={0}

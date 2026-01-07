@@ -403,7 +403,10 @@ impl Scene {
 
     /// Entity의 z-order(렌더링 순서)를 직접 설정합니다.
     ///
-    /// 주의: 대부분의 경우 draw_order 사용 권장
+    /// # Note
+    /// - 대부분의 경우 `draw_order` 사용 권장
+    /// - 이 함수는 정규화(normalize)를 호출하지 않으므로 z-index 갭이 발생할 수 있음
+    /// - 직접 제어가 필요한 고급 사용 사례용
     pub fn set_z_order(&mut self, name: &str, z_index: i32) -> Result<bool, JsValue> {
         let entity = match self.find_by_name_mut(name) {
             Some(e) => e,

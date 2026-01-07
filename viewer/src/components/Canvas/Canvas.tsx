@@ -330,9 +330,10 @@ export default function Canvas() {
       }
       // Sketch mode tool shortcuts
       if (sketchMode) {
-        if (e.key === 'p' || e.key === 'P') {
+        const key = e.key.toLowerCase()
+        if (key === 'p') {
           switchTool('pen')
-        } else if (e.key === 'e' || e.key === 'E') {
+        } else if (key === 'e') {
           switchTool('eraser')
         }
       }

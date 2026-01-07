@@ -28,7 +28,7 @@ impl Scene {
             .map(|e| {
                 serde_json::json!({
                     "name": e.metadata.name,
-                    "type": format!("{:?}", e.entity_type)
+                    "type": e.entity_type.as_str()
                 })
             })
             .collect();
@@ -203,7 +203,7 @@ impl Scene {
         // Build response
         let response = serde_json::json!({
             "name": entity.metadata.name,
-            "type": format!("{:?}", entity.entity_type),
+            "type": entity.entity_type.as_str(),
             "parent": entity.parent_id,
             "local": {
                 "geometry": entity.geometry,

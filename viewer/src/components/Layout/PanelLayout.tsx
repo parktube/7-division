@@ -72,6 +72,37 @@ export default function PanelLayout() {
     setDragging(null)
   }, [dragging, leftWidth, rightWidth])
 
+  const handleKeyDown = useCallback((side: 'left' | 'right', e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 50 : 10  // Shift로 큰 단위 이동
+    if (side === 'left') {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setLeftWidth(w => Math.max(LEFT_MIN, w - step))
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        setLeftWidth(w => Math.min(LEFT_MAX, w + step))
+      }
+    } else {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        setRightWidth(w => Math.min(RIGHT_MAX, w + step))
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        setRightWidth(w => Math.max(RIGHT_MIN, w - step))
+      }
+    }
+    // Home/End로 최소/최대로 이동
+    if (e.key === 'Home') {
+      e.preventDefault()
+      if (side === 'left') setLeftWidth(LEFT_MIN)
+      else setRightWidth(RIGHT_MIN)
+    } else if (e.key === 'End') {
+      e.preventDefault()
+      if (side === 'left') setLeftWidth(LEFT_MAX)
+      else setRightWidth(RIGHT_MAX)
+    }
+  }, [])
+
   return (
     <div
       ref={containerRef}
@@ -104,6 +135,7 @@ export default function PanelLayout() {
           backgroundColor: dragging === 'left' ? 'var(--selection)' : 'transparent',
         }}
         onMouseDown={() => handleMouseDown('left')}
+        onKeyDown={(e) => handleKeyDown('left', e)}
       >
         <div className="absolute inset-y-0 -left-1 -right-1" />
       </div>
@@ -127,6 +159,7 @@ export default function PanelLayout() {
           backgroundColor: dragging === 'right' ? 'var(--selection)' : 'transparent',
         }}
         onMouseDown={() => handleMouseDown('right')}
+        onKeyDown={(e) => handleKeyDown('right', e)}
       >
         <div className="absolute inset-y-0 -left-1 -right-1" />
       </div>

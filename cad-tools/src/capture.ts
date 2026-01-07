@@ -76,7 +76,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     await new Promise(resolve => setTimeout(resolve, waitMs));
 
     // Set zoom level (3x for better precision)
-    await page.evaluate(() => {
+    const zoomApplied = await page.evaluate(() => {
       // Dispatch wheel event to zoom in (zoom is centered on canvas)
       const canvas = document.querySelector('#cad-canvas canvas');
       if (canvas) {
@@ -84,9 +84,12 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         // For now, use window.__setZoom if available
         if ((window as unknown as { __setZoom?: (z: number) => void }).__setZoom) {
           (window as unknown as { __setZoom: (z: number) => void }).__setZoom(3);
+          return true;
         }
       }
+      return false;
     });
+    logger.debug('Zoom setting', { zoomApplied, targetZoom: 3 });
     await new Promise(resolve => setTimeout(resolve, 500)); // Wait for zoom to apply
 
     // Find the canvas container element

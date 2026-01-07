@@ -43,6 +43,9 @@ function ensureDataFiles(viewerPath: string): void {
   }
 }
 
+// Maximum body size for POST requests (1MB)
+const MAX_BODY_SIZE = 1024 * 1024;
+
 function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerResponse): void {
   if (req.method === 'GET') {
     try {
@@ -56,8 +59,19 @@ function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerRespo
     }
   } else if (req.method === 'POST') {
     let body = '';
-    req.on('data', (chunk) => (body += chunk));
+    let bodySize = 0;
+    req.on('data', (chunk: Buffer) => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY_SIZE) {
+        req.destroy();
+        res.statusCode = 413;
+        res.end('Payload too large');
+        return;
+      }
+      body += chunk;
+    });
     req.on('end', () => {
+      if (res.writableEnded) return;
       try {
         JSON.parse(body); // Validate JSON
         writeFileSync(filePath, body, 'utf-8');
@@ -180,6 +194,7 @@ app.on('before-quit', () => {
   if (dataServer) {
     dataServer.close((err) => {
       if (err) {
+        // Electron main process: console.error logs to stderr (appropriate for error reporting)
         console.error('Failed to close data server:', err);
       }
     });
