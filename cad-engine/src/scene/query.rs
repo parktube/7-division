@@ -1,7 +1,8 @@
+//! Scene Query 모듈
+//!
+//! 엔티티 조회 및 월드 좌표 변환 API를 제공합니다.
+
 use super::Scene;
-/// Scene Query 모듈
-///
-/// 엔티티 조회 및 월드 좌표 변환 API를 제공합니다.
 use super::entity::{EntityType, Transform};
 use wasm_bindgen::prelude::*;
 
