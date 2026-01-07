@@ -296,4 +296,73 @@ mod tests {
         );
         assert!(scene.set_pivot_internal("c1", 5.0, 10.0).is_ok());
     }
+
+    // ========================================
+    // Scale Auto-Correction Tests (PR #23)
+    // ========================================
+
+    #[test]
+    fn test_scale_positive_values() {
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        let result = scene.scale("c1", 2.0, 3.0);
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+
+        let entity = scene.find_by_name("c1").unwrap();
+        assert_eq!(entity.transform.scale, [2.0, 3.0]);
+    }
+
+    #[test]
+    fn test_scale_zero_corrected_to_minimum() {
+        // 0 이하의 스케일 값은 자동으로 양수(최소 0.001)로 보정됨
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        let result = scene.scale("c1", 0.0, 0.0);
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+
+        let entity = scene.find_by_name("c1").unwrap();
+        // 0은 abs().max(0.001) = 0.001로 보정됨
+        assert_eq!(entity.transform.scale, [0.001, 0.001]);
+    }
+
+    #[test]
+    fn test_scale_negative_corrected_to_absolute() {
+        // 음수 스케일은 절대값으로 보정됨
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        let result = scene.scale("c1", -2.0, -3.0);
+        assert!(result.is_ok());
+        assert!(result.unwrap());
+
+        let entity = scene.find_by_name("c1").unwrap();
+        // -2.0 → abs() = 2.0, -3.0 → abs() = 3.0
+        assert_eq!(entity.transform.scale, [2.0, 3.0]);
+    }
+
+    #[test]
+    fn test_scale_mixed_values() {
+        // 혼합 값: 양수는 그대로, 음수/0은 보정
+        let mut scene = Scene::new("test");
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+
+        let result = scene.scale("c1", 1.5, -2.0);
+        assert!(result.is_ok());
+
+        let entity = scene.find_by_name("c1").unwrap();
+        assert_eq!(entity.transform.scale, [1.5, 2.0]);
+    }
+
+    #[test]
+    fn test_scale_not_found() {
+        let mut scene = Scene::new("test");
+
+        let result = scene.scale("nonexistent", 2.0, 2.0);
+        assert!(result.is_ok());
+        assert!(!result.unwrap()); // false = not found
+    }
 }

@@ -75,6 +75,8 @@ export default function PanelLayout() {
   return (
     <div
       ref={containerRef}
+      role="group"
+      aria-label="Resizable panel layout"
       className="flex h-full w-full select-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
