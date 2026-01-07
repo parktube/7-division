@@ -130,10 +130,10 @@ impl Scene {
                 }
 
                 // 2. 부모의 children 목록에서 자신 제거
-                if let Some(ref parent_name) = parent_id {
-                    if let Some(parent) = self.find_by_name_mut(parent_name) {
-                        parent.children.retain(|c| c != name);
-                    }
+                if let Some(ref parent_name) = parent_id
+                    && let Some(parent) = self.find_by_name_mut(parent_name)
+                {
+                    parent.children.retain(|c| c != name);
                 }
 
                 // 3. 엔티티 삭제 (인덱스로 다시 찾아야 함 - 위에서 borrow 해제됨)
