@@ -16,8 +16,8 @@ pub enum LineCap {
 }
 
 impl LineCap {
-    /// 문자열에서 LineCap 파싱
-    pub fn from_str(s: &str) -> Self {
+    /// 문자열에서 LineCap 파싱 (실패 시 기본값 반환)
+    pub fn parse_str(s: &str) -> Self {
         match s {
             "Round" => LineCap::Round,
             "Square" => LineCap::Square,
@@ -36,8 +36,8 @@ pub enum LineJoin {
 }
 
 impl LineJoin {
-    /// 문자열에서 LineJoin 파싱
-    pub fn from_str(s: &str) -> Self {
+    /// 문자열에서 LineJoin 파싱 (실패 시 기본값 반환)
+    pub fn parse_str(s: &str) -> Self {
         match s {
             "Round" => LineJoin::Round,
             "Bevel" => LineJoin::Bevel,
@@ -156,10 +156,10 @@ impl Scene {
                 }
             }
             if let Some(cap) = json_value.get("cap").and_then(|v| v.as_str()) {
-                existing.cap = LineCap::from_str(cap);
+                existing.cap = LineCap::parse_str(cap);
             }
             if let Some(join) = json_value.get("join").and_then(|v| v.as_str()) {
-                existing.join = LineJoin::from_str(join);
+                existing.join = LineJoin::parse_str(join);
             }
         } else {
             // 새 stroke 생성 (기본값 + JSON 값)
@@ -195,12 +195,12 @@ impl Scene {
                 cap: json_value
                     .get("cap")
                     .and_then(|v| v.as_str())
-                    .map(LineCap::from_str)
+                    .map(LineCap::parse_str)
                     .unwrap_or(LineCap::Butt),
                 join: json_value
                     .get("join")
                     .and_then(|v| v.as_str())
-                    .map(LineJoin::from_str)
+                    .map(LineJoin::parse_str)
                     .unwrap_or(LineJoin::Miter),
             };
             entity.style.stroke = Some(new_stroke);

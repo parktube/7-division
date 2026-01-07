@@ -36,6 +36,7 @@ export function ViewportProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // pan: Y축 반전 (-dy) - CAD 좌표계(Y↑)를 화면 좌표계(Y↓)로 변환
   const pan = useCallback((dx: number, dy: number) => {
     setViewport((prev) => ({
       ...prev,

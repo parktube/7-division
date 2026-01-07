@@ -192,12 +192,13 @@ export default function InfoPanel() {
 
                 {/* Name */}
                 <div>
-                  <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>
+                  <label htmlFor="entity-name" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>
                     Name
                   </label>
                   <div className="flex items-center gap-2">
                     {Icon && <Icon size={14} style={{ color: 'var(--text-secondary)' }} />}
                     <input
+                      id="entity-name"
                       type="text"
                       value={selectedEntity.metadata?.name || selectedEntity.id.slice(0, 8)}
                       readOnly
@@ -329,8 +330,9 @@ export default function InfoPanel() {
             {/* Center */}
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Center X</label>
+                <label htmlFor="center-x" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Center X</label>
                 <input
+                  id="center-x"
                   type="text"
                   value={position.x.toFixed(2)}
                   readOnly
@@ -343,8 +345,9 @@ export default function InfoPanel() {
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Center Y</label>
+                <label htmlFor="center-y" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Center Y</label>
                 <input
+                  id="center-y"
                   type="text"
                   value={position.y.toFixed(2)}
                   readOnly
@@ -390,8 +393,9 @@ export default function InfoPanel() {
           <div className="px-3 pb-3">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rotation</label>
+                <label htmlFor="rotation" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Rotation</label>
                 <input
+                  id="rotation"
                   type="text"
                   value={selectedEntity ? `${(selectedEntity.transform.rotate * 180 / Math.PI).toFixed(1)}°` : '0°'}
                   readOnly
@@ -404,8 +408,9 @@ export default function InfoPanel() {
                 />
               </div>
               <div>
-                <label className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Z-Order</label>
+                <label htmlFor="z-order" className="text-[11px] font-medium block mb-1" style={{ color: 'var(--text-muted)' }}>Z-Order</label>
                 <input
+                  id="z-order"
                   type="text"
                   value={zOrder}
                   readOnly
