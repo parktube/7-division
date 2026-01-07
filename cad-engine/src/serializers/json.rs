@@ -60,6 +60,23 @@ struct SceneJson<'a> {
     last_operation: Option<&'a str>,
 }
 
+/// Find entity by ID or name from lookup maps
+fn find_entity_by_key<'a>(
+    key: &str,
+    entity_by_id: &HashMap<&str, &'a Entity>,
+    entity_by_name: &HashMap<&str, &'a Entity>,
+) -> Option<&'a Entity> {
+    entity_by_id
+        .get(key)
+        .copied()
+        .or_else(|| entity_by_name.get(key).copied())
+}
+
+/// Get z-order from entity
+fn get_z_order(entity: &Entity) -> i32 {
+    entity.metadata.z_index
+}
+
 /// Build tree structure for LayerPanel (Dumb View)
 fn build_tree(entities: &[Entity]) -> Vec<TreeNode> {
     // Build lookup maps by ID and name
@@ -70,29 +87,16 @@ fn build_tree(entities: &[Entity]) -> Vec<TreeNode> {
         .map(|e| (e.metadata.name.as_str(), e))
         .collect();
 
-    // Find entity by ID or name
-    let find_entity = |key: &str| -> Option<&Entity> {
-        entity_by_id
-            .get(key)
-            .copied()
-            .or_else(|| entity_by_name.get(key).copied())
-    };
-
     // Collect all child IDs (entities that belong to a group)
     let mut child_ids: HashSet<&str> = HashSet::new();
     for entity in entities {
         if entity.entity_type == EntityType::Group {
             for child_key in &entity.children {
-                if let Some(child) = find_entity(child_key) {
+                if let Some(child) = find_entity_by_key(child_key, &entity_by_id, &entity_by_name) {
                     child_ids.insert(&child.id);
                 }
             }
         }
-    }
-
-    // Get z-order from entity
-    fn get_z_order(entity: &Entity) -> i32 {
-        entity.metadata.z_index
     }
 
     // Recursively convert Entity to TreeNode
@@ -101,19 +105,14 @@ fn build_tree(entities: &[Entity]) -> Vec<TreeNode> {
         entity_by_id: &HashMap<&str, &Entity>,
         entity_by_name: &HashMap<&str, &Entity>,
     ) -> TreeNode {
-        let find_entity = |key: &str| -> Option<&Entity> {
-            entity_by_id
-                .get(key)
-                .copied()
-                .or_else(|| entity_by_name.get(key).copied())
-        };
-
         let children = if entity.entity_type == EntityType::Group && !entity.children.is_empty() {
             let mut child_entities: Vec<(usize, &Entity)> = entity
                 .children
                 .iter()
                 .enumerate()
-                .filter_map(|(idx, key)| find_entity(key).map(|e| (idx, e)))
+                .filter_map(|(idx, key)| {
+                    find_entity_by_key(key, entity_by_id, entity_by_name).map(|e| (idx, e))
+                })
                 .collect();
 
             // Sort by z-order (higher first), then by index (later = higher)

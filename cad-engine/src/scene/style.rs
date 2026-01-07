@@ -15,6 +15,17 @@ pub enum LineCap {
     Square,
 }
 
+impl LineCap {
+    /// 문자열에서 LineCap 파싱
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "Round" => LineCap::Round,
+            "Square" => LineCap::Square,
+            _ => LineCap::Butt,
+        }
+    }
+}
+
 /// 선의 꺾임 모양
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum LineJoin {
@@ -22,6 +33,17 @@ pub enum LineJoin {
     Miter,
     Round,
     Bevel,
+}
+
+impl LineJoin {
+    /// 문자열에서 LineJoin 파싱
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "Round" => LineJoin::Round,
+            "Bevel" => LineJoin::Bevel,
+            _ => LineJoin::Miter,
+        }
+    }
 }
 
 /// 선(stroke) 스타일
@@ -134,18 +156,10 @@ impl Scene {
                 }
             }
             if let Some(cap) = json_value.get("cap").and_then(|v| v.as_str()) {
-                existing.cap = match cap {
-                    "Round" => LineCap::Round,
-                    "Square" => LineCap::Square,
-                    _ => LineCap::Butt,
-                };
+                existing.cap = LineCap::from_str(cap);
             }
             if let Some(join) = json_value.get("join").and_then(|v| v.as_str()) {
-                existing.join = match join {
-                    "Round" => LineJoin::Round,
-                    "Bevel" => LineJoin::Bevel,
-                    _ => LineJoin::Miter,
-                };
+                existing.join = LineJoin::from_str(join);
             }
         } else {
             // 새 stroke 생성 (기본값 + JSON 값)
@@ -181,20 +195,12 @@ impl Scene {
                 cap: json_value
                     .get("cap")
                     .and_then(|v| v.as_str())
-                    .map(|s| match s {
-                        "Round" => LineCap::Round,
-                        "Square" => LineCap::Square,
-                        _ => LineCap::Butt,
-                    })
+                    .map(LineCap::from_str)
                     .unwrap_or(LineCap::Butt),
                 join: json_value
                     .get("join")
                     .and_then(|v| v.as_str())
-                    .map(|s| match s {
-                        "Round" => LineJoin::Round,
-                        "Bevel" => LineJoin::Bevel,
-                        _ => LineJoin::Miter,
-                    })
+                    .map(LineJoin::from_str)
                     .unwrap_or(LineJoin::Miter),
             };
             entity.style.stroke = Some(new_stroke);

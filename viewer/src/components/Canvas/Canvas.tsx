@@ -369,7 +369,7 @@ export default function Canvas() {
 
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', handleWheel)
-  }, [zoomAt, scene]) // scene 의존성 추가 - 로딩 완료 후 재실행
+  }, [zoomAt]) // zoomAt만 의존성으로 (scene 제거 - 매 씬 변경마다 리스너 재등록 불필요)
 
 
   // Mouse handlers for panning (Space + left-click drag)
