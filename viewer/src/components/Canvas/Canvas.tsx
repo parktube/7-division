@@ -358,22 +358,23 @@ export default function Canvas() {
   }, [sketchMode, setSketchMode, clearSelection, switchTool])
 
   // Wheel zoom handler (native listener for non-passive)
+  // Note: Must be on container, not canvas - SketchOverlay with z-10 would block canvas wheel events
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const container = containerRef.current
+    if (!container) return
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
 
-      const rect = canvas.getBoundingClientRect()
+      const rect = container.getBoundingClientRect()
       const cursorX = e.clientX - rect.left - rect.width / 2
       const cursorY = -(e.clientY - rect.top - rect.height / 2) // Y-up
 
       zoomAt(cursorX, cursorY, e.deltaY)
     }
 
-    canvas.addEventListener('wheel', handleWheel, { passive: false })
-    return () => canvas.removeEventListener('wheel', handleWheel)
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
   }, [zoomAt]) // zoomAt만 의존성으로 (scene 제거 - 매 씬 변경마다 리스너 재등록 불필요)
 
 
