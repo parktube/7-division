@@ -58,8 +58,6 @@ pub struct Scene {
     entities: Vec<Entity>,
     /// 마지막 실행된 작업 (LLM 작업 추적용)
     last_operation: Option<String>,
-    /// 다음 엔티티에 할당할 z_order (auto-increment)
-    next_z_order: i32,
 }
 
 fn generate_id() -> String {
@@ -157,7 +155,6 @@ impl Scene {
             name: name.to_string(),
             entities: Vec::new(),
             last_operation: None,
-            next_z_order: 0,
         }
     }
 

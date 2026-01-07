@@ -42,16 +42,14 @@ impl Scene {
                 self.normalize_scope_z_indices(parent_id.as_deref());
             }
             return Ok(result);
-        } else if mode_lower.starts_with("above:") {
-            let target = &mode_lower[6..];
+        } else if let Some(target) = mode_lower.strip_prefix("above:") {
             let result = self.move_above_internal(name, target)?;
             if result {
                 let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
                 self.normalize_scope_z_indices(parent_id.as_deref());
             }
             return Ok(result);
-        } else if mode_lower.starts_with("below:") {
-            let target = &mode_lower[6..];
+        } else if let Some(target) = mode_lower.strip_prefix("below:") {
             let result = self.move_below_internal(name, target)?;
             if result {
                 let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
