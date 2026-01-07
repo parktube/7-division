@@ -62,16 +62,16 @@ export default function TopBar() {
           className="flex items-center gap-0.5 p-1 rounded-md"
           style={{ backgroundColor: 'var(--bg-input)' }}
         >
-          <button className={toolbarBtnClass(gridEnabled)} onClick={() => setGridEnabled(!gridEnabled)}>
+          <button type="button" className={toolbarBtnClass(gridEnabled)} onClick={() => setGridEnabled(!gridEnabled)}>
             <Grid3x3 size={14} />
             Grid
           </button>
-          <button className={toolbarBtnClass(rulersEnabled)} onClick={() => setRulersEnabled(!rulersEnabled)}>
+          <button type="button" className={toolbarBtnClass(rulersEnabled)} onClick={() => setRulersEnabled(!rulersEnabled)}>
             <Ruler size={14} />
             Rulers
           </button>
         </div>
-        <button className={sketchBtnClass} onClick={() => setSketchMode(!sketchMode)}>
+        <button type="button" className={sketchBtnClass} onClick={() => setSketchMode(!sketchMode)}>
           <Pencil size={14} />
           Sketch
         </button>
@@ -80,6 +80,7 @@ export default function TopBar() {
       {/* Right: Theme, Settings */}
       <div className="flex items-center gap-1 min-w-[100px] justify-end">
         <button
+          type="button"
           onClick={toggle}
           className="w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
           style={{ color: 'var(--text-secondary)' }}
@@ -87,6 +88,7 @@ export default function TopBar() {
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
         <button
+          type="button"
           className="w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
           style={{ color: 'var(--text-secondary)' }}
         >

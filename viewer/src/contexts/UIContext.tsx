@@ -134,7 +134,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
     return Array.from(selectedIds)
   }, [selectedIds])
 
-  const selectedCount = selectedIds.size
+  const selectedCount = useMemo(() => selectedIds.size, [selectedIds])
 
   // Visibility functions
   const toggleHidden = useCallback((id: string) => {

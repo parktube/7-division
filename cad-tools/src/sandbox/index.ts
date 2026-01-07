@@ -19,7 +19,8 @@ const MODIFY_COMMANDS = new Set([
   'translate', 'rotate', 'scale', 'set_pivot',
   'set_fill', 'set_stroke', 'set_z_order',
   'delete', 'add_to_group',
-  // z-order 상대 명령어들
+  // z-order 명령어들
+  'draw_order',  // 통합 z-order API
   'bring_to_front', 'send_to_back',
   'bring_forward', 'send_backward',
   'move_above', 'move_below'

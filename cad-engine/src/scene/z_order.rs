@@ -26,7 +26,7 @@ impl Scene {
     /// * Ok(true) - 성공
     /// * Ok(false) - name 미발견 또는 이동 불가
     pub fn draw_order(&mut self, name: &str, mode: &str) -> Result<bool, JsValue> {
-        let mode_lower = mode.trim();
+        let mode_lower = mode.trim().to_lowercase();
 
         if mode_lower == "front" {
             let result = self.bring_to_front_internal(name)?;
@@ -58,6 +58,10 @@ impl Scene {
             return Ok(result);
         } else if let Some(stripped) = mode_lower.strip_prefix('+') {
             if let Ok(steps) = stripped.parse::<i32>() {
+                // zero-step은 no-op
+                if steps == 0 {
+                    return Ok(false);
+                }
                 for _ in 0..steps {
                     if !self.bring_forward_internal(name)? {
                         break;
@@ -69,6 +73,10 @@ impl Scene {
             }
         } else if let Some(stripped) = mode_lower.strip_prefix('-') {
             if let Ok(steps) = stripped.parse::<i32>() {
+                // zero-step은 no-op
+                if steps == 0 {
+                    return Ok(false);
+                }
                 for _ in 0..steps {
                     if !self.send_backward_internal(name)? {
                         break;
@@ -79,13 +87,17 @@ impl Scene {
                 return Ok(true);
             }
         } else if let Ok(steps) = mode_lower.parse::<i32>() {
+            // zero-step은 no-op
+            if steps == 0 {
+                return Ok(false);
+            }
             if steps > 0 {
                 for _ in 0..steps {
                     if !self.bring_forward_internal(name)? {
                         break;
                     }
                 }
-            } else if steps < 0 {
+            } else {
                 for _ in 0..steps.abs() {
                     if !self.send_backward_internal(name)? {
                         break;
@@ -292,36 +304,67 @@ impl Scene {
 
     // ========================================
     // Z-Order 레거시 명령어들 (draw_order 사용 권장)
+    // 참고: draw_order와 동일하게 정규화를 수행합니다.
     // ========================================
 
     /// [Deprecated] draw_order(name, "front") 사용 권장
     pub fn bring_to_front(&mut self, name: &str) -> Result<bool, JsValue> {
-        self.bring_to_front_internal(name)
+        let result = self.bring_to_front_internal(name)?;
+        if result {
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
+        }
+        Ok(result)
     }
 
     /// [Deprecated] draw_order(name, "back") 사용 권장
     pub fn send_to_back(&mut self, name: &str) -> Result<bool, JsValue> {
-        self.send_to_back_internal(name)
+        let result = self.send_to_back_internal(name)?;
+        if result {
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
+        }
+        Ok(result)
     }
 
     /// [Deprecated] draw_order(name, "+1") 사용 권장
     pub fn bring_forward(&mut self, name: &str) -> Result<bool, JsValue> {
-        self.bring_forward_internal(name)
+        let result = self.bring_forward_internal(name)?;
+        if result {
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
+        }
+        Ok(result)
     }
 
     /// [Deprecated] draw_order(name, "-1") 사용 권장
     pub fn send_backward(&mut self, name: &str) -> Result<bool, JsValue> {
-        self.send_backward_internal(name)
+        let result = self.send_backward_internal(name)?;
+        if result {
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
+        }
+        Ok(result)
     }
 
     /// [Deprecated] draw_order(name, "above:target") 사용 권장
     pub fn move_above(&mut self, name: &str, target: &str) -> Result<bool, JsValue> {
-        self.move_above_internal(name, target)
+        let result = self.move_above_internal(name, target)?;
+        if result {
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
+        }
+        Ok(result)
     }
 
     /// [Deprecated] draw_order(name, "below:target") 사용 권장
     pub fn move_below(&mut self, name: &str, target: &str) -> Result<bool, JsValue> {
-        self.move_below_internal(name, target)
+        let result = self.move_below_internal(name, target)?;
+        if result {
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
+        }
+        Ok(result)
     }
 
     /// Entity의 z-order(렌더링 순서)를 직접 설정합니다.

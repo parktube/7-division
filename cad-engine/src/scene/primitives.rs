@@ -83,8 +83,8 @@ impl Scene {
     ///
     /// # Arguments
     /// * `name` - Entity 이름 (예: "torso", "background") - Scene 내 unique
-    /// * `x` - 원점 x 좌표 (Y-up 중심 좌표계)
-    /// * `y` - 원점 y 좌표 (Y-up 중심 좌표계)
+    /// * `x` - 중심점 x 좌표
+    /// * `y` - 중심점 y 좌표
     /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
     /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
     ///

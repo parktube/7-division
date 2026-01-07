@@ -33,6 +33,7 @@ export default function SketchToolbar({
     >
       {/* Pen tool */}
       <button
+        type="button"
         onClick={() => onToolChange('pen')}
         className={toolBtnClass('pen')}
         title="Pen (P)"
@@ -42,6 +43,7 @@ export default function SketchToolbar({
 
       {/* Eraser tool */}
       <button
+        type="button"
         onClick={() => onToolChange('eraser')}
         className={toolBtnClass('eraser')}
         title="Eraser (E)"
@@ -54,9 +56,10 @@ export default function SketchToolbar({
 
       {/* Clear All */}
       <button
+        type="button"
         onClick={onClearAll}
         className="w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
-        style={{ color: '#ef4444' }}
+        style={{ color: 'var(--error, #ef4444)' }}
         title="Clear All"
       >
         <Trash2 size={16} />

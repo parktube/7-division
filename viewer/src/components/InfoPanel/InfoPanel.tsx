@@ -147,6 +147,7 @@ export default function InfoPanel() {
           Properties
         </span>
         <button
+          type="button"
           className="w-6 h-6 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
           style={{ color: 'var(--text-muted)' }}
         >
@@ -244,6 +245,7 @@ export default function InfoPanel() {
             {/* World/Local Toggle */}
             <div className="flex items-center gap-1 p-0.5 rounded" style={{ backgroundColor: 'var(--bg-input)' }}>
               <button
+                type="button"
                 onClick={() => setCoordinateSpace('world')}
                 className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-medium rounded transition-colors"
                 style={{
@@ -255,6 +257,7 @@ export default function InfoPanel() {
                 World
               </button>
               <button
+                type="button"
                 onClick={() => setCoordinateSpace('local')}
                 className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 text-[11px] font-medium rounded transition-colors"
                 style={{

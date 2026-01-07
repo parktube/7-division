@@ -529,6 +529,13 @@ export class CADExecutor {
     return { success: true, entity: name };
   }
 
+  /**
+   * 엔티티를 회전합니다.
+   *
+   * Note: space 옵션은 API 일관성을 위해 허용되지만, 회전에는 영향을 미치지 않습니다.
+   * 회전 델타는 스칼라값이므로 world/local 구분이 무의미합니다.
+   * (부모의 회전과 관계없이 동일한 각도만큼 회전)
+   */
   private rotateEntity(input: Record<string, unknown>): ToolResult {
     const error = this.validateInput(input, { name: 'string', angle: 'number' });
     if (error) return { success: false, error: `rotate: ${error}` };
@@ -536,9 +543,9 @@ export class CADExecutor {
     const name = input.name as string;
     const angleUnit = (input.angle_unit as AngleUnit) || 'radian';
     const angle = normalizeAngle(input.angle as number, angleUnit);
-    // space option accepted for API consistency, but rotation delta is identical
-    // in both world and local coordinates (angle is a scalar, unaffected by parent rotation)
-    // const space = (input.space as 'world' | 'local') || 'world';
+    // space option accepted for API consistency but has no effect on rotation
+    // Rotation delta is a scalar - world/local distinction is not applicable
+    void input.space; // Explicitly read to acknowledge API consistency
 
     const result = this.scene.rotate(name, angle);
     if (!result) {
@@ -625,6 +632,9 @@ export class CADExecutor {
   private getDrawOrder(input: Record<string, unknown>): ToolResult {
     const groupName = (input.group_name as string) || '';
     const result = this.scene.get_draw_order(groupName);
+    if (result === undefined || result === null) {
+      return { success: false, error: `Draw order not found${groupName ? ` for group: ${groupName}` : ''}` };
+    }
     return { success: true, data: result };
   }
 

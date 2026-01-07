@@ -76,6 +76,7 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
         <div className="w-6 h-8 flex items-center justify-center flex-shrink-0">
           {isGroup && hasChildren && (
             <button
+              type="button"
               onClick={handleChevronClick}
               className="p-0.5 rounded hover:bg-[var(--hover-strong)] transition-colors"
             >
@@ -110,6 +111,7 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
 
         {/* Lock toggle */}
         <button
+          type="button"
           onClick={handleLockClick}
           className={`w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--hover-strong)] transition-all flex-shrink-0
             ${locked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
@@ -120,6 +122,7 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
 
         {/* Visibility toggle */}
         <button
+          type="button"
           onClick={handleVisibilityClick}
           className={`w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--hover-strong)] transition-all flex-shrink-0
             ${hidden ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}

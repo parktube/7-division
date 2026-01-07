@@ -104,6 +104,9 @@ impl Scene {
 
     /// Entity를 삭제합니다.
     ///
+    /// Group 삭제 시 자식들의 parent_id를 정리하고,
+    /// 부모가 있는 경우 부모의 children 목록에서 제거합니다.
+    ///
     /// # Arguments
     /// * `name` - 삭제할 Entity의 이름
     ///
@@ -115,7 +118,31 @@ impl Scene {
 
         match idx {
             Some(i) => {
-                self.entities.remove(i);
+                // 삭제 전에 parent_id와 children 정보 저장
+                let parent_id = self.entities[i].parent_id.clone();
+                let children = self.entities[i].children.clone();
+
+                // 1. 자식들의 parent_id를 None으로 설정 (고아가 됨)
+                for child_name in &children {
+                    if let Some(child) = self.find_by_name_mut(child_name) {
+                        child.parent_id = None;
+                    }
+                }
+
+                // 2. 부모의 children 목록에서 자신 제거
+                if let Some(ref parent_name) = parent_id {
+                    if let Some(parent) = self.find_by_name_mut(parent_name) {
+                        parent.children.retain(|c| c != name);
+                    }
+                }
+
+                // 3. 엔티티 삭제 (인덱스로 다시 찾아야 함 - 위에서 borrow 해제됨)
+                let idx = self
+                    .entities
+                    .iter()
+                    .position(|e| e.metadata.name == name)
+                    .unwrap();
+                self.entities.remove(idx);
                 self.last_operation = Some(format!("delete({})", name));
                 Ok(true)
             }

@@ -131,4 +131,5 @@ export interface Scene {
   name?: string
   entities: Entity[]
   tree?: SceneTreeNode[] // Pre-computed tree from WASM (Dumb View)
+  last_operation?: string | null // 마지막 실행된 작업 (LLM 작업 추적용)
 }

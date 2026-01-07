@@ -10,6 +10,7 @@ interface ToggleButtonProps {
 export default function ToggleButton({ icon: Icon, label, active, onClick }: ToggleButtonProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`
         flex items-center gap-1 px-2 py-1 rounded text-xs

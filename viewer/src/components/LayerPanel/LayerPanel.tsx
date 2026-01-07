@@ -116,12 +116,14 @@ export default function LayerPanel() {
           </span>
           <div className="flex gap-1">
             <button
+              type="button"
               className="w-6 h-6 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
               style={{ color: 'var(--text-muted)' }}
             >
               <Plus size={14} />
             </button>
             <button
+              type="button"
               className="w-6 h-6 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
               style={{ color: 'var(--text-muted)' }}
             >
