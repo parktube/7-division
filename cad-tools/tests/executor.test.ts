@@ -601,9 +601,9 @@ describe('CADExecutor', () => {
       expect(result.data).toBeDefined();
 
       const entity = JSON.parse(result.data!);
-      expect(entity.entity_type).toBe('Circle');
-      expect(entity.geometry.Circle.center).toEqual([50, 75]);
-      expect(entity.geometry.Circle.radius).toBe(25);
+      expect(entity.type).toBe('Circle');
+      expect(entity.local.geometry.Circle.center).toEqual([50, 75]);
+      expect(entity.local.geometry.Circle.radius).toBe(25);
     });
 
     it('should return error for non-existent entity', () => {
@@ -624,10 +624,11 @@ describe('CADExecutor', () => {
       expect(info.name).toBe('test-scene');
       expect(info.entity_count).toBe(2);
       expect(info.bounds).toBeDefined();
-      // wall: (0,0) to (100,50), head: (25,50) to (75,100)
-      // bounds should be: min(0,0), max(100,100)
-      expect(info.bounds.min).toEqual([0, 0]);
-      expect(info.bounds.max).toEqual([100, 100]);
+      // wall: center (0,0) with 100x50 → (-50,-25) to (50,25)
+      // head: center (50,75) with radius 25 → (25,50) to (75,100)
+      // Combined bounds: min(-50,-25), max(75,100)
+      expect(info.bounds.min).toEqual([-50, -25]);
+      expect(info.bounds.max).toEqual([75, 100]);
     });
 
     it('should return null bounds for empty scene', () => {
