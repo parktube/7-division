@@ -1,8 +1,8 @@
 {
-  "name": "cad-electron",
+  "name": "ai-native-cad",
   "version": "0.1.0",
   "private": true,
-  "description": "CADViewer - Electron app for real-time scene.json rendering",
+  "description": "AI-Native CAD - Electron app for real-time scene.json rendering",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "cross-env ELECTRON_RENDERER_URL=http://localhost:5173 node scripts/run-electron-vite.cjs dev",

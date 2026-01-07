@@ -1,4 +1,4 @@
-# CADViewer CLI
+# AI-Native CAD CLI
 
 CAD 도형을 JavaScript 코드로 생성합니다.
 

@@ -1,6 +1,6 @@
-appId: com.7division.cad-viewer
-productName: CADViewer
-executableName: CADViewer
+appId: com.7division.ai-native-cad
+productName: AI-Native CAD
+executableName: AINativeCAD
 copyright: Copyright © 2026 7division
 directories:
   buildResources: resources
