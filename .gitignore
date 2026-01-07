@@ -102,3 +102,4 @@ docs/qa/
 cad-electron/dist/
 cad-electron/out/
 cad-electron/node_modules/
+viewer/sketch.json
