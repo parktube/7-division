@@ -13,6 +13,7 @@ export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const sketchRef = useRef<SketchOverlayRef>(null)
+  const wheelListenerRef = useRef<((e: WheelEvent) => void) | null>(null)
   const { scene, isLoading, error } = useScene()
   const { viewport, zoomAt, pan } = useViewportContext()
   const { setMousePosition, gridEnabled, rulersEnabled, sketchMode, setSketchMode, selectedIds, hiddenIds, lockedIds, clearSelection } = useUIContext()
@@ -357,26 +358,34 @@ export default function Canvas() {
     }
   }, [sketchMode, setSketchMode, clearSelection, switchTool])
 
-  // Wheel zoom handler (capture phase to intercept before SketchOverlay)
-  // Using capture: true ensures we handle wheel before any child element (like SketchOverlay with pointerEvents: auto)
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+  // Wheel zoom handler - using callback ref to ensure listener is attached when DOM is ready
+  // Store zoomAt in ref to avoid re-attaching listener when zoomAt changes
+  const zoomAtRef = useRef(zoomAt)
+  zoomAtRef.current = zoomAt
 
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-
-      const rect = container.getBoundingClientRect()
-      const cursorX = e.clientX - rect.left - rect.width / 2
-      const cursorY = -(e.clientY - rect.top - rect.height / 2) // Y-up
-
-      zoomAt(cursorX, cursorY, e.deltaY)
+  // Callback ref for container - attaches wheel listener when mounted
+  const containerCallbackRef = useCallback((node: HTMLDivElement | null) => {
+    // Cleanup previous listener
+    if (containerRef.current && wheelListenerRef.current) {
+      containerRef.current.removeEventListener('wheel', wheelListenerRef.current, { capture: true })
     }
 
-    // capture: true - handle during capture phase (parent → child), not bubble phase (child → parent)
-    container.addEventListener('wheel', handleWheel, { passive: false, capture: true })
-    return () => container.removeEventListener('wheel', handleWheel, { capture: true })
-  }, [zoomAt])
+    containerRef.current = node
+
+    if (node) {
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault()
+        const rect = node.getBoundingClientRect()
+        const cursorX = e.clientX - rect.left - rect.width / 2
+        const cursorY = -(e.clientY - rect.top - rect.height / 2) // Y-up
+        zoomAtRef.current(cursorX, cursorY, e.deltaY)
+      }
+
+      wheelListenerRef.current = handleWheel
+      // capture: true - handle during capture phase before SketchOverlay
+      node.addEventListener('wheel', handleWheel, { passive: false, capture: true })
+    }
+  }, [])
 
 
   // Mouse handlers for panning (Space + left-click drag)
@@ -450,7 +459,7 @@ export default function Canvas() {
       : 'cursor-default'
 
   return (
-    <div ref={containerRef} id="cad-canvas" className="h-full relative" style={{ backgroundColor: 'var(--bg-canvas)' }}>
+    <div ref={containerCallbackRef} id="cad-canvas" className="h-full relative" style={{ backgroundColor: 'var(--bg-canvas)' }}>
       <canvas
         ref={canvasRef}
         className={`absolute inset-0 ${cursorClass}`}
