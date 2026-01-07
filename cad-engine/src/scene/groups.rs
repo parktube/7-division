@@ -78,6 +78,9 @@ impl Scene {
             }
         }
 
+        // Auto-increment z_order for groups too
+        let z_order = self.allocate_z_order();
+
         // Group Entity 생성
         let group_entity = Entity {
             id: generate_id(),
@@ -87,6 +90,7 @@ impl Scene {
             style: Style::default(),
             metadata: Metadata {
                 name: name.to_string(),
+                z_index: z_order,
                 ..Default::default()
             },
             parent_id: None,
@@ -290,6 +294,95 @@ impl Scene {
             group_name, entity_name
         ));
         Ok(true)
+    }
+}
+
+// ========================================
+// WASM Bindings for Group Functions
+// ========================================
+
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+impl Scene {
+    /// 여러 Entity를 그룹으로 묶습니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `name` - 그룹 이름 (예: "left_arm") - Scene 내 unique
+    /// * `children_json` - 자식 Entity 이름들의 JSON 배열 (예: '["upper_arm", "lower_arm"]')
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 그룹 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    ///
+    /// # 입력 보정 (AC2)
+    /// 존재하지 않는 자식 이름은 무시하고 정상 생성
+    pub fn create_group(&mut self, name: &str, children_json: &str) -> Result<String, JsValue> {
+        // children JSON 파싱
+        let children_names: Vec<String> = serde_json::from_str(children_json)
+            .map_err(|e| JsValue::from_str(&format!("Invalid children JSON: {}", e)))?;
+
+        self.create_group_internal(name, children_names)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 그룹을 해제하여 자식들을 독립 엔티티로 만듭니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `name` - 해제할 그룹 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 그룹 해제 성공
+    /// * Ok(false) - name이 존재하지 않음
+    ///
+    /// # Errors
+    /// * name이 Group 타입이 아니면 에러
+    pub fn ungroup(&mut self, name: &str) -> Result<bool, JsValue> {
+        self.ungroup_internal(name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 그룹에 Entity를 추가합니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `group_name` - 그룹 이름
+    /// * `entity_name` - 추가할 Entity 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 추가 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음
+    ///
+    /// # Errors
+    /// * group_name이 Group 타입이 아니면 에러
+    ///
+    /// # Notes
+    /// 이미 다른 그룹에 속한 Entity는 기존 그룹에서 제거 후 추가됩니다.
+    pub fn add_to_group(&mut self, group_name: &str, entity_name: &str) -> Result<bool, JsValue> {
+        self.add_to_group_internal(group_name, entity_name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 그룹에서 Entity를 제거합니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `group_name` - 그룹 이름
+    /// * `entity_name` - 제거할 Entity 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 제거 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음, 또는 해당 그룹의 자식이 아님
+    ///
+    /// # Errors
+    /// * group_name이 Group 타입이 아니면 에러
+    pub fn remove_from_group(
+        &mut self,
+        group_name: &str,
+        entity_name: &str,
+    ) -> Result<bool, JsValue> {
+        self.remove_from_group_internal(group_name, entity_name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
     }
 }
 

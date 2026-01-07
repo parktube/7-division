@@ -1,13 +1,18 @@
-//! 기본 도형 생성 내부 로직
+//! 기본 도형 생성 모듈
 //!
 //! Epic 1에서 구현된 기본 도형들:
 //! - Line: 선분/폴리라인
 //! - Circle: 원
 //! - Rect: 사각형
 //! - Arc: 호
+//! - Polygon: 다각형
+//! - Bezier: 베지어 커브
 
-use super::entity::{EntityType, Geometry};
-use super::{Scene, SceneError};
+use js_sys::Float64Array;
+use wasm_bindgen::prelude::*;
+
+use super::entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
+use super::{Scene, SceneError, generate_id};
 use crate::primitives::parse_line_points;
 
 impl Scene {
@@ -175,6 +180,642 @@ impl Scene {
                 end_angle,
             },
         )
+    }
+}
+
+// ========================================
+// WASM Bindings for Primitives
+// ========================================
+
+#[wasm_bindgen]
+impl Scene {
+    /// 선분(Line) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "spine", "left_arm") - Scene 내 unique
+    /// * `points` - [x1, y1, x2, y2, ...] 형태의 Float64Array
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    /// * Err - name 중복 또는 잘못된 입력
+    ///
+    /// # 입력 보정 (AC3)
+    /// 홀수 개 좌표가 주어지면 마지막 좌표를 무시하고 정상 처리
+    pub fn add_line(&mut self, name: &str, points: Float64Array) -> Result<String, JsValue> {
+        self.add_line_internal(name, points.to_vec())
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 원(Circle) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "head", "joint_elbow") - Scene 내 unique
+    /// * `x` - 중심점 x 좌표
+    /// * `y` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * x, y, radius 중 NaN 또는 Infinity 입력 시 에러
+    ///
+    /// # 입력 보정 (AC2)
+    /// 음수/0 반지름은 abs().max(0.001)로 양수 변환
+    pub fn add_circle(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+    ) -> Result<String, JsValue> {
+        self.add_circle_internal(name, x, y, radius)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 사각형(Rect) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "torso", "background") - Scene 내 unique
+    /// * `x` - 원점 x 좌표 (Y-up 중심 좌표계)
+    /// * `y` - 원점 y 좌표 (Y-up 중심 좌표계)
+    /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
+    /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * x, y, width, height 중 NaN 또는 Infinity 입력 시 에러
+    ///
+    /// # 입력 보정 (AC2)
+    /// 음수/0 크기는 abs().max(0.001)로 양수 변환
+    pub fn add_rect(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+    ) -> Result<String, JsValue> {
+        self.add_rect_internal(name, x, y, width, height)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 호(Arc) 도형을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "shoulder_arc") - Scene 내 unique
+    /// * `cx` - 중심점 x 좌표
+    /// * `cy` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `start_angle` - 시작 각도 (라디안, 0 = 3시 방향)
+    /// * `end_angle` - 끝 각도 (라디안, 양수 = CCW)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    ///
+    /// # 입력 보정
+    /// 음수/0 반지름은 abs().max(0.001)로 양수 변환
+    pub fn add_arc(
+        &mut self,
+        name: &str,
+        cx: f64,
+        cy: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+    ) -> Result<String, JsValue> {
+        self.add_arc_internal(name, cx, cy, radius, start_angle, end_angle)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    /// 스타일이 적용된 호(Arc)를 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "shoulder_arc") - Scene 내 unique
+    /// * `cx` - 중심점 x 좌표
+    /// * `cy` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `start_angle` - 시작 각도 (라디안, 0 = 3시 방향)
+    /// * `end_angle` - 끝 각도 (라디안, 양수 = CCW)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_arc(
+        &mut self,
+        name: &str,
+        cx: f64,
+        cy: f64,
+        radius: f64,
+        start_angle: f64,
+        end_angle: f64,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_arc] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // NaN/Infinity 검증
+        if !cx.is_finite()
+            || !cy.is_finite()
+            || !radius.is_finite()
+            || !start_angle.is_finite()
+            || !end_angle.is_finite()
+        {
+            return Err(JsValue::from_str(
+                "[draw_arc] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 관대한 입력 보정: 음수/0 반지름은 abs().max(0.001)로 변환
+        let radius = if radius <= 0.0 {
+            radius.abs().max(0.001)
+        } else {
+            radius
+        };
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        // Arc center is the natural pivot point
+        let pivot = [cx, cy];
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Arc,
+            geometry: Geometry::Arc {
+                center: [cx, cy],
+                radius,
+                start_angle,
+                end_angle,
+            },
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_arc({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 원(Circle)을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "head") - Scene 내 unique
+    /// * `x` - 중심점 x 좌표
+    /// * `y` - 중심점 y 좌표
+    /// * `radius` - 반지름 (음수/0 → abs().max(0.001)로 보정)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    pub fn draw_circle(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        radius: f64,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_circle] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // NaN/Infinity 검증
+        if !x.is_finite() || !y.is_finite() || !radius.is_finite() {
+            return Err(JsValue::from_str(
+                "[draw_circle] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 관대한 입력 보정
+        let radius = if radius <= 0.0 {
+            radius.abs().max(0.001)
+        } else {
+            radius
+        };
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        // Circle center is the natural pivot point
+        let pivot = [x, y];
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Circle,
+            geometry: Geometry::Circle {
+                center: [x, y],
+                radius,
+            },
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_circle({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 선분(Line)을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "spine") - Scene 내 unique
+    /// * `points` - [x1, y1, x2, y2, ...] 형태의 Float64Array
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 좌표에 NaN/Infinity 포함 시 에러
+    /// * 최소 2점 미만 시 에러
+    pub fn draw_line(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_line] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // 좌표 파싱
+        let point_pairs = parse_line_points(points.to_vec())
+            .map_err(|msg| JsValue::from_str(&format!("[draw_line] invalid_input: {}", msg)))?;
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Line {
+            points: point_pairs,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Line,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_line({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 닫힌 다각형(Polygon)을 생성합니다. fill 지원.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "mountain") - Scene 내 unique
+    /// * `points` - Float64Array [x1, y1, x2, y2, ...] (최소 3점, 6개 값)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 3점 미만 시 에러
+    pub fn draw_polygon(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_polygon] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // 좌표 파싱
+        let point_pairs = parse_line_points(points.to_vec())
+            .map_err(|msg| JsValue::from_str(&format!("[draw_polygon] invalid_input: {}", msg)))?;
+
+        // 최소 3점 필요
+        if point_pairs.len() < 3 {
+            return Err(JsValue::from_str(
+                "[draw_polygon] invalid_input: Polygon requires at least 3 points",
+            ));
+        }
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Polygon {
+            points: point_pairs,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Polygon,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_polygon({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 베지어 커브를 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "curve1") - Scene 내 unique
+    /// * `points` - 좌표 배열 [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
+    ///              첫 8개는 첫 세그먼트 (시작점, 제어점1, 제어점2, 끝점)
+    ///              이후 6개씩 추가 세그먼트 (제어점1, 제어점2, 끝점)
+    /// * `closed` - true면 닫힌 경로 (fill 적용 가능)
+    /// * `style_json` - 스타일 JSON
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 최소 8개 좌표 (4점) 필요
+    pub fn draw_bezier(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        closed: bool,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_bezier] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        let coords = points.to_vec();
+
+        // NaN/Infinity 검증
+        if coords.iter().any(|v| !v.is_finite()) {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 최소 8개 좌표 필요 (시작점 + 제어점1 + 제어점2 + 끝점)
+        if coords.len() < 8 {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: Bezier requires at least 8 values (4 points: start, cp1, cp2, end)",
+            ));
+        }
+
+        // 첫 세그먼트 이후 좌표는 6개씩 (cp1, cp2, end)
+        let remaining = coords.len() - 8;
+        if remaining % 6 != 0 {
+            return Err(JsValue::from_str(
+                "[draw_bezier] invalid_input: After first 8 values, additional values must be in groups of 6 (cp1, cp2, end)",
+            ));
+        }
+
+        // 시작점
+        let start = [coords[0], coords[1]];
+
+        // 세그먼트 파싱
+        let mut segments: Vec<[[f64; 2]; 3]> = Vec::new();
+
+        // 첫 세그먼트
+        segments.push([
+            [coords[2], coords[3]], // cp1
+            [coords[4], coords[5]], // cp2
+            [coords[6], coords[7]], // end
+        ]);
+
+        // 추가 세그먼트
+        let mut i = 8;
+        while i + 5 < coords.len() {
+            segments.push([
+                [coords[i], coords[i + 1]],     // cp1
+                [coords[i + 2], coords[i + 3]], // cp2
+                [coords[i + 4], coords[i + 5]], // end
+            ]);
+            i += 6;
+        }
+
+        // 스타일 파싱
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Bezier {
+            start,
+            segments,
+            closed,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Bezier,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_bezier({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 스타일이 적용된 사각형(Rect)을 생성합니다.
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름 (예: "torso") - Scene 내 unique
+    /// * `x` - 중심 x 좌표
+    /// * `y` - 중심 y 좌표
+    /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
+    /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
+    /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * NaN 또는 Infinity 입력 시 에러
+    pub fn draw_rect(
+        &mut self,
+        name: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_rect] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // NaN/Infinity 검증
+        if !x.is_finite() || !y.is_finite() || !width.is_finite() || !height.is_finite() {
+            return Err(JsValue::from_str(
+                "[draw_rect] invalid_input: NaN or Infinity not allowed",
+            ));
+        }
+
+        // 관대한 입력 보정
+        let width = if width <= 0.0 {
+            width.abs().max(0.001)
+        } else {
+            width
+        };
+        let height = if height <= 0.0 {
+            height.abs().max(0.001)
+        } else {
+            height
+        };
+
+        // 스타일 파싱 (실패 시 기본 스타일)
+        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+
+        // x, y는 중심 좌표, pivot도 동일
+        let center = [x, y];
+        let pivot = center;
+
+        let geometry = Geometry::Rect {
+            center,
+            width,
+            height,
+        };
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Rect,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_rect({})", name));
+        Ok(name.to_string())
     }
 }
 
