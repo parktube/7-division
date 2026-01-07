@@ -14,14 +14,13 @@ so that **Epic 7 구현을 위한 기반이 마련된다**.
 2. **AC2**: TailwindCSS가 적용된 기본 스타일 확인 가능
 3. **AC3**: `npm run typecheck` 통과 (TypeScript 에러 없음)
 4. **AC4**: 기존 파일 (scene.json, selection.json, .cad-modules/) 그대로 유지
-5. **AC5**: 레거시 파일 (index.html, renderer.js) → legacy/ 폴더로 백업
+5. **AC5**: 레거시 파일 (index.html, renderer.js) 정리 완료 (React 전환으로 불필요)
 
 ## Tasks / Subtasks
 
-- [x] Task 1: 레거시 파일 백업 (AC: #5)
-  - [x] viewer/legacy/ 디렉토리 생성
-  - [x] index.html, renderer.js → legacy/로 이동
-  - [x] server.cjs, test-query.html → legacy/로 이동
+- [x] Task 1: 레거시 파일 정리 (AC: #5)
+  - [x] index.html → React 진입점으로 대체
+  - [x] renderer.js, server.cjs, test-query.html 제거 (React 전환으로 불필요)
 
 - [x] Task 2: package.json 생성 (AC: #1)
   - [x] npm init -y 실행
@@ -65,14 +64,14 @@ viewer/
 ├── .cad-modules/     # 유지 (cad-tools 모듈)
 ├── .cad-state.json   # 유지
 ├── capture.png       # 유지 (runtime 생성)
-├── index.html        # → legacy/로 이동
-├── renderer.js       # → legacy/로 이동 (포팅 참고용)
+├── index.html        # → React 진입점으로 대체
+├── renderer.js       # 제거됨 (React 전환으로 불필요)
 ├── scene.code.js     # 유지 (runtime 생성)
 ├── scene.json        # 유지 (WASM 출력)
 ├── scene.svg         # 유지 (runtime 생성)
 ├── selection.json    # 유지 (선택 상태)
-├── server.cjs        # → legacy/로 이동
-└── test-query.html   # → legacy/로 이동
+├── server.cjs        # 제거됨 (Vite dev server로 대체)
+└── test-query.html   # 제거됨 (불필요)
 ```
 
 ### 기술 스택 버전 (필수 준수)
@@ -121,11 +120,7 @@ viewer/
 │   ├── App.tsx
 │   └── styles/
 │       └── globals.css
-├── legacy/              # 백업 (삭제 예정)
-│   ├── index.html
-│   ├── renderer.js
-│   ├── server.cjs
-│   └── test-query.html
+├── # 레거시 파일들은 React 전환으로 삭제됨
 ├── .cad-modules/        # 기존 유지
 ├── scene.json           # 기존 유지
 ├── selection.json       # 기존 유지

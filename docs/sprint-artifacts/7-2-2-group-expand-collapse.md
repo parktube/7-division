@@ -159,7 +159,7 @@ export function LayerItem({ node, depth, isExpanded, onToggle }: LayerItemProps)
               key={child.id}
               node={child}
               depth={depth + 1}
-              isExpanded={/* pass from context */}
+              isExpanded={isExpanded(child.id)}
               onToggle={onToggle}
             />
           ))}

@@ -58,56 +58,29 @@ impl Scene {
             return Ok(result);
         } else if let Some(stripped) = mode_lower.strip_prefix('+') {
             if let Ok(steps) = stripped.parse::<i32>() {
-                // zero-step은 no-op
-                if steps == 0 {
-                    return Ok(false);
+                let result = self.move_by_steps_internal(name, steps)?;
+                if result {
+                    let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                    self.normalize_scope_z_indices(parent_id.as_deref());
                 }
-                for _ in 0..steps {
-                    if !self.bring_forward_internal(name)? {
-                        break;
-                    }
-                }
-                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
-                self.normalize_scope_z_indices(parent_id.as_deref());
-                return Ok(true);
+                return Ok(result);
             }
         } else if let Some(stripped) = mode_lower.strip_prefix('-') {
             if let Ok(steps) = stripped.parse::<i32>() {
-                // zero-step은 no-op
-                if steps == 0 {
-                    return Ok(false);
+                let result = self.move_by_steps_internal(name, -steps)?;
+                if result {
+                    let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                    self.normalize_scope_z_indices(parent_id.as_deref());
                 }
-                for _ in 0..steps {
-                    if !self.send_backward_internal(name)? {
-                        break;
-                    }
-                }
-                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
-                self.normalize_scope_z_indices(parent_id.as_deref());
-                return Ok(true);
+                return Ok(result);
             }
         } else if let Ok(steps) = mode_lower.parse::<i32>() {
-            // zero-step은 no-op
-            if steps == 0 {
-                return Ok(false);
+            let result = self.move_by_steps_internal(name, steps)?;
+            if result {
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
             }
-            if steps > 0 {
-                for _ in 0..steps {
-                    if !self.bring_forward_internal(name)? {
-                        break;
-                    }
-                }
-            } else {
-                for _ in 0..steps.abs() {
-                    if !self.send_backward_internal(name)? {
-                        break;
-                    }
-                }
-            }
-            // 스코프별 z-index 정규화
-            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
-            self.normalize_scope_z_indices(parent_id.as_deref());
-            return Ok(true);
+            return Ok(result);
         }
 
         // 위 분기에서 처리 안된 경우
@@ -244,6 +217,67 @@ impl Scene {
             }
             None => Ok(false),
         }
+    }
+
+    /// 엔티티를 steps만큼 앞이나 뒤로 이동 (최적화 버전)
+    ///
+    /// O(N) 복잡도로 steps만큼 이동 (루프 대신 직접 계산)
+    /// steps > 0: 앞으로 (z-index 증가 방향)
+    /// steps < 0: 뒤로 (z-index 감소 방향)
+    pub(crate) fn move_by_steps_internal(
+        &mut self,
+        name: &str,
+        steps: i32,
+    ) -> Result<bool, JsValue> {
+        if steps == 0 {
+            return Ok(false);
+        }
+
+        let entity = match self.find_by_name(name) {
+            Some(e) => e,
+            None => return Ok(false),
+        };
+        let parent_id = entity.parent_id.clone();
+
+        // 같은 스코프의 siblings를 z-index로 정렬
+        let mut siblings: Vec<(String, i32)> = self
+            .entities
+            .iter()
+            .filter(|e| e.parent_id == parent_id)
+            .map(|e| (e.metadata.name.clone(), e.metadata.z_index))
+            .collect();
+        siblings.sort_by_key(|(_, z)| *z);
+
+        // 현재 엔티티의 위치 찾기
+        let current_idx = match siblings.iter().position(|(n, _)| n == name) {
+            Some(idx) => idx as i32,
+            None => return Ok(false),
+        };
+
+        // 목표 위치 계산 (범위 제한)
+        let target_idx = (current_idx + steps).clamp(0, siblings.len() as i32 - 1) as usize;
+
+        // 같은 위치면 no-op
+        if target_idx == current_idx as usize {
+            return Ok(false);
+        }
+
+        // 목표 위치의 엔티티 z-index를 기준으로 새 z-index 설정
+        // normalize가 호출되므로 정확한 값보다 상대적 순서만 중요
+        let (_, target_z) = siblings[target_idx];
+        let new_z = if steps > 0 {
+            target_z + 1 // 앞으로 이동: 목표보다 하나 더 큰 값
+        } else {
+            target_z - 1 // 뒤로 이동: 목표보다 하나 더 작은 값
+        };
+
+        if let Some(e) = self.find_by_name_mut(name) {
+            e.metadata.z_index = new_z;
+        }
+
+        let direction = if steps > 0 { "+" } else { "" };
+        self.last_operation = Some(format!("draw_order({}, {}{})", name, direction, steps));
+        Ok(true)
     }
 
     pub(crate) fn move_above_internal(

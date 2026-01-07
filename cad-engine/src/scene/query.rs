@@ -185,7 +185,6 @@ impl Scene {
     ///   }
     /// }
     /// ```
-    #[wasm_bindgen]
     pub fn get_entity_detailed(&self, name: &str) -> Option<String> {
         let entity = self.find_by_name(name)?;
 
@@ -291,7 +290,7 @@ impl Scene {
         let matrix = self.get_world_transform_internal(name)?;
         Some(
             serde_json::to_string(&matrix)
-                .unwrap_or_else(|_| "[[1,0,0],[0,1,0],[0,0,1]]".to_string()),
+                .unwrap_or_else(|e| format!(r#"{{"error":"serialization failed: {}"}}"#, e)),
         )
     }
 
@@ -313,7 +312,7 @@ impl Scene {
                 "x": world_point[0],
                 "y": world_point[1]
             }))
-            .unwrap_or_else(|_| "{}".to_string()),
+            .unwrap_or_else(|e| format!(r#"{{"error":"serialization failed: {}"}}"#, e)),
         )
     }
 

@@ -130,7 +130,7 @@ getDrawOrder(groupName?);       // 드로우 오더 조회 (Progressive Disclosu
 
 // 변환 (space 옵션: 'world' | 'local', 기본값 'world')
 translate(name, dx, dy, options?);       // options: { space: 'world' | 'local' }
-rotate(name, angle, options?);           // 라디안, options: { space: 'world' | 'local' }
+rotate(name, angle, options?);           // 라디안 (space 옵션 허용되나 회전은 스칼라값이라 효과 없음)
 scale(name, sx, sy, options?);           // options: { space: 'world' | 'local' }
 setPivot(name, px, py);
 

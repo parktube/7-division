@@ -33,8 +33,16 @@ interface SelectionData {
   timestamp?: number;
 }
 
+function resolveSelectionFile(): string {
+  if (process.env.CAD_SELECTION_PATH) {
+    return resolve(process.env.CAD_SELECTION_PATH);
+  }
+  // Default: viewer/selection.json relative to repo root
+  return resolve(__dirname, '../../../viewer/selection.json');
+}
+
 function loadLockedEntities(): Set<string> {
-  const selectionFile = resolve(__dirname, '../../../viewer/selection.json');
+  const selectionFile = resolveSelectionFile();
   if (existsSync(selectionFile)) {
     try {
       const data: SelectionData = JSON.parse(readFileSync(selectionFile, 'utf-8'));

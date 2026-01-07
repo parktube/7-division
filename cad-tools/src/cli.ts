@@ -104,6 +104,61 @@ const STATE_FILE = process.env.CAD_STATE_PATH
 const SCENE_CODE_FILE = resolve(STATE_DIR, 'scene.code.js');
 const MODULES_DIR = resolve(STATE_DIR, '.cad-modules');
 
+// Selection file path for get_selection and --selection
+const SELECTION_FILE = resolve(__dirname, '../../viewer/selection.json');
+
+/** Helper: Get selection result (used by both get_selection command and --selection flag) */
+function getSelectionResult(): { success: boolean; selection?: unknown; error?: string; hint: string } {
+  if (existsSync(SELECTION_FILE)) {
+    try {
+      const selection = JSON.parse(readFileSync(SELECTION_FILE, 'utf-8'));
+      return {
+        success: true,
+        selection,
+        hint: selection.last_selected
+          ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
+          : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
+      };
+    } catch {
+      return {
+        success: false,
+        error: '선택 정보를 읽을 수 없습니다',
+        hint: '뷰어에서 도형을 클릭하여 선택하세요',
+      };
+    }
+  }
+  return {
+    success: true,
+    selection: { selected_ids: [], last_selected: null, timestamp: null },
+    hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
+  };
+}
+
+/** Helper: Capture viewport result (used by both capture_viewport command and --capture flag) */
+async function captureViewportResult(): Promise<{ success: boolean; path?: string; error?: string; message?: string; hint: string }> {
+  const outputPath = resolve(__dirname, '../../viewer/capture.png');
+  const { captureViewport } = await import('./capture.js');
+  const result = await captureViewport({
+    outputPath,
+    width: 1600,
+    height: 1000,
+    waitMs: 2000,
+  });
+  if (result.success) {
+    return {
+      success: true,
+      path: result.path,
+      message: 'Viewport captured. Use Read tool to view the image.',
+      hint: `Read file: ${result.path}`,
+    };
+  }
+  return {
+    success: false,
+    error: result.error,
+    hint: '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs)',
+  };
+}
+
 interface SceneState {
   sceneName: string;
   entities: string[];
@@ -972,58 +1027,12 @@ Scene file:
   }
 
   if (command === 'get_selection') {
-    const selectionFile = resolve(__dirname, '../../viewer/selection.json');
-    if (existsSync(selectionFile)) {
-      try {
-        const selection = JSON.parse(readFileSync(selectionFile, 'utf-8'));
-        print(JSON.stringify({
-          success: true,
-          selection,
-          hint: selection.last_selected
-            ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
-            : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
-        }, null, 2));
-      } catch {
-        print(JSON.stringify({
-          success: false,
-          error: '선택 정보를 읽을 수 없습니다',
-          hint: '뷰어에서 도형을 클릭하여 선택하세요',
-        }, null, 2));
-      }
-    } else {
-      print(JSON.stringify({
-        success: true,
-        selection: { selected_ids: [], last_selected: null, timestamp: null },
-        hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
-      }, null, 2));
-    }
+    print(JSON.stringify(getSelectionResult(), null, 2));
     return;
   }
 
   if (command === 'capture_viewport') {
-    const outputPath = resolve(__dirname, '../../viewer/capture.png');
-    // Dynamic import to avoid loading puppeteer at startup (not bundled in packaged app)
-    const { captureViewport } = await import('./capture.js');
-    const result = await captureViewport({
-      outputPath,
-      width: 1600,
-      height: 1000,
-      waitMs: 2000,
-    });
-    if (result.success) {
-      print(JSON.stringify({
-        success: true,
-        path: result.path,
-        message: 'Viewport captured. Use Read tool to view the image.',
-        hint: `Read file: ${result.path}`,
-      }, null, 2));
-    } else {
-      print(JSON.stringify({
-        success: false,
-        error: result.error,
-        hint: '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs)',
-      }, null, 2));
-    }
+    print(JSON.stringify(await captureViewportResult(), null, 2));
     return;
   }
 
@@ -1084,47 +1093,9 @@ Scene file:
     } else if (isDepsMode) {
       result = handleRunCadCodeDeps();
     } else if (isCaptureMode) {
-      // Re-use capture_viewport logic
-      const outputPath = resolve(__dirname, '../../viewer/capture.png');
-      const { captureViewport } = await import('./capture.js');
-      const captureResult = await captureViewport({
-        outputPath,
-        width: 1600,
-        height: 1000,
-        waitMs: 2000,
-      });
-      result = {
-        handled: true,
-        output: JSON.stringify({
-          success: captureResult.success,
-          path: captureResult.path,
-          error: captureResult.error,
-          message: captureResult.success ? 'Viewport captured. Use Read tool to view the image.' : undefined,
-          hint: captureResult.success ? `Read file: ${captureResult.path}` : '뷰어 서버가 실행 중인지 확인하세요',
-        }, null, 2),
-      };
+      result = { handled: true, output: JSON.stringify(await captureViewportResult(), null, 2) };
     } else if (isSelectionMode) {
-      // Re-use get_selection logic
-      const selectionFile = resolve(__dirname, '../../viewer/selection.json');
-      let selectData: { success: boolean; error: string | undefined; selection: { selected_ids: string[]; last_selected: string | null; timestamp: number | null } | null; hint: string } = { success: false, error: '파일 없음', selection: null, hint: '' };
-      if (existsSync(selectionFile)) {
-        try {
-          const selection = JSON.parse(readFileSync(selectionFile, 'utf-8'));
-          selectData = {
-            success: true,
-            error: undefined,
-            selection,
-            hint: selection.last_selected
-              ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
-              : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
-          };
-        } catch {
-          selectData = { success: false, error: '선택 정보를 읽을 수 없습니다', selection: null, hint: '뷰어에서 도형을 클릭하여 선택하세요' };
-        }
-      } else {
-        selectData = { success: true, error: undefined, selection: { selected_ids: [], last_selected: null, timestamp: null }, hint: '아직 선택된 도형이 없습니다.' };
-      }
-      result = { handled: true, output: JSON.stringify(selectData, null, 2) };
+      result = { handled: true, output: JSON.stringify(getSelectionResult(), null, 2) };
     } else if (isDeleteMode) {
       result = await handleRunCadCodeDelete(target);
     } else if (!target) {
