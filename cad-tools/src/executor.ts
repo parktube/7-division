@@ -181,6 +181,31 @@ export class CADExecutor {
         case 'get_z_order':
           return this.getZOrder(input);
 
+        case 'get_draw_order':
+          return this.getDrawOrder(input);
+
+        case 'draw_order':
+          return this.drawOrder(input);
+
+        // Legacy z-order commands (use draw_order instead)
+        case 'bring_to_front':
+          return this.bringToFront(input);
+
+        case 'send_to_back':
+          return this.sendToBack(input);
+
+        case 'bring_forward':
+          return this.bringForward(input);
+
+        case 'send_backward':
+          return this.sendBackward(input);
+
+        case 'move_above':
+          return this.moveAbove(input);
+
+        case 'move_below':
+          return this.moveBelow(input);
+
         // === group ===
         case 'create_group':
           return this.createGroup(input);
@@ -595,6 +620,111 @@ export class CADExecutor {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name, type: 'z_order', data: JSON.stringify({ z_index: zIndex }) };
+  }
+
+  private getDrawOrder(input: Record<string, unknown>): ToolResult {
+    const groupName = (input.group_name as string) || '';
+    const result = this.scene.get_draw_order(groupName);
+    return { success: true, data: result };
+  }
+
+  /**
+   * 통합 Z-Order 명령어
+   * mode:
+   *   - 'front': 맨 앞으로
+   *   - 'back': 맨 뒤로
+   *   - '+N' or N: N단계 앞으로
+   *   - '-N': N단계 뒤로
+   *   - 'above:target': target 위로
+   *   - 'below:target': target 아래로
+   */
+  private drawOrder(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', mode: 'string' });
+    if (error) return { success: false, error: `draw_order: ${error}` };
+
+    const name = input.name as string;
+    const mode = input.mode as string;
+
+    const result = this.scene.draw_order(name, mode);
+    if (!result) {
+      return { success: false, error: `draw_order failed: entity not found or invalid mode (${mode})` };
+    }
+    return { success: true, entity: name, data: JSON.stringify({ mode }) };
+  }
+
+  // Legacy Z-Order Methods (use drawOrder instead)
+  private bringToFront(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `bring_to_front: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.bring_to_front(name);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private sendToBack(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `send_to_back: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.send_to_back(name);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private bringForward(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `bring_forward: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.bring_forward(name);
+    if (!result) {
+      return { success: false, error: `Entity not found or already at front: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private sendBackward(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `send_backward: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.send_backward(name);
+    if (!result) {
+      return { success: false, error: `Entity not found or already at back: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private moveAbove(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', target: 'string' });
+    if (error) return { success: false, error: `move_above: ${error}` };
+
+    const name = input.name as string;
+    const target = input.target as string;
+    const result = this.scene.move_above(name, target);
+    if (!result) {
+      return { success: false, error: `Entity not found or different levels: ${name}, ${target}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private moveBelow(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', target: 'string' });
+    if (error) return { success: false, error: `move_below: ${error}` };
+
+    const name = input.name as string;
+    const target = input.target as string;
+    const result = this.scene.move_below(name, target);
+    if (!result) {
+      return { success: false, error: `Entity not found or different levels: ${name}, ${target}` };
+    }
+    return { success: true, entity: name };
   }
 
   // === Group implementations ===

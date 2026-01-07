@@ -1,4 +1,4 @@
-# generated: 2026-01-06
+# generated: 2026-01-07
 # project: r2-7f-division
 # tracking_system: file-system
 # story_location: docs/sprint-artifacts
@@ -29,7 +29,7 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-06
+generated: 2026-01-07
 project: r2-7f-division
 tracking_system: file-system
 story_location: docs/sprint-artifacts
@@ -54,8 +54,8 @@ development_status:
   epic-6: done
   epic-6-retrospective: completed
 
-  # Epic 7: Human-LLM Collaboration UI (In Progress)
-  epic-7: in-progress
+  # Epic 7: Human-LLM Collaboration UI (Complete)
+  epic-7: done
 
   # Epic 7.1: Basic Viewer Framework
   7-1-1-react-project-init: done
@@ -63,7 +63,7 @@ development_status:
   7-1-3-top-bar-status-bar: done
   7-1-4-canvas-scene-rendering: done
   7-1-5-canvas-pan-zoom: done
-  7-1-6-electron-integration: ready-for-dev
+  7-1-6-electron-integration: done
   epic-7-1-retrospective: optional
 
   # Epic 7.2: Layer Navigation and Selection
@@ -89,8 +89,8 @@ development_status:
 
   # Epic 7.5: Coordinate System Improvement
   7-5-1-coordinate-info-panel: done
-  7-5-2-dual-coordinate-api: ready-for-dev
-  7-5-3-addtogroup-preserve-world: ready-for-dev
+  7-5-2-dual-coordinate-api: done
+  7-5-3-addtogroup-preserve-world: done
   epic-7-5-retrospective: optional
 
   epic-7-retrospective: optional

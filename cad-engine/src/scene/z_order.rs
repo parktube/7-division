@@ -29,15 +29,35 @@ impl Scene {
         let mode_lower = mode.trim();
 
         if mode_lower == "front" {
-            return self.bring_to_front_internal(name);
+            let result = self.bring_to_front_internal(name)?;
+            if result {
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
+            }
+            return Ok(result);
         } else if mode_lower == "back" {
-            return self.send_to_back_internal(name);
+            let result = self.send_to_back_internal(name)?;
+            if result {
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
+            }
+            return Ok(result);
         } else if mode_lower.starts_with("above:") {
             let target = &mode_lower[6..];
-            return self.move_above_internal(name, target);
+            let result = self.move_above_internal(name, target)?;
+            if result {
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
+            }
+            return Ok(result);
         } else if mode_lower.starts_with("below:") {
             let target = &mode_lower[6..];
-            return self.move_below_internal(name, target);
+            let result = self.move_below_internal(name, target)?;
+            if result {
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
+            }
+            return Ok(result);
         } else if let Some(stripped) = mode_lower.strip_prefix('+') {
             if let Ok(steps) = stripped.parse::<i32>() {
                 for _ in 0..steps {
@@ -45,6 +65,8 @@ impl Scene {
                         break;
                     }
                 }
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
                 return Ok(true);
             }
         } else if let Some(stripped) = mode_lower.strip_prefix('-') {
@@ -54,6 +76,8 @@ impl Scene {
                         break;
                     }
                 }
+                let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+                self.normalize_scope_z_indices(parent_id.as_deref());
                 return Ok(true);
             }
         } else if let Ok(steps) = mode_lower.parse::<i32>() {
@@ -70,10 +94,36 @@ impl Scene {
                     }
                 }
             }
+            // 스코프별 z-index 정규화
+            let parent_id = self.find_by_name(name).and_then(|e| e.parent_id.clone());
+            self.normalize_scope_z_indices(parent_id.as_deref());
             return Ok(true);
         }
 
+        // 위 분기에서 처리 안된 경우
         Ok(false)
+    }
+
+    /// 특정 스코프의 z-index를 0, 1, 2...로 정규화
+    ///
+    /// parent_id가 None이면 root level, Some이면 해당 그룹의 children을 정규화
+    fn normalize_scope_z_indices(&mut self, parent_id: Option<&str>) {
+        // 해당 스코프의 엔티티 인덱스와 z-index 수집
+        let mut scope_entities: Vec<(usize, i32)> = self
+            .entities
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.parent_id.as_deref() == parent_id)
+            .map(|(idx, e)| (idx, e.metadata.z_index))
+            .collect();
+
+        // 현재 z_index 순으로 정렬 (상대 순서 유지)
+        scope_entities.sort_by_key(|(_, z)| *z);
+
+        // 0, 1, 2...로 재할당
+        for (new_z, (idx, _)) in scope_entities.iter().enumerate() {
+            self.entities[*idx].metadata.z_index = new_z as i32;
+        }
     }
 
     // ========================================

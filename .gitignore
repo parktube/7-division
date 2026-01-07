@@ -86,7 +86,7 @@ viewer/test-*.html
 viewer/.cad-modules/
 viewer/.cad-state.json
 viewer/scene.code.js
-viewer/capture.png
+viewer/*.png
 viewer/selection.json
 
 # Electron runtime files

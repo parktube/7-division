@@ -58,8 +58,19 @@ impl Scene {
             .filter(|child_name| self.has_entity(child_name))
             .collect();
 
-        // 자식의 기존 부모에서 제거 + parent_id 설정
-        for child_name in &valid_children {
+        // 자식들의 현재 z_index를 수집하여 상대 순서 유지
+        let mut children_with_z: Vec<(String, i32)> = valid_children
+            .iter()
+            .filter_map(|child_name| {
+                self.find_by_name(child_name)
+                    .map(|e| (child_name.clone(), e.metadata.z_index))
+            })
+            .collect();
+        // z_index 순으로 정렬하여 상대 순서 보존
+        children_with_z.sort_by_key(|(_, z)| *z);
+
+        // 자식의 기존 부모에서 제거 + parent_id 설정 + z_index 정규화
+        for (new_z, (child_name, _old_z)) in children_with_z.iter().enumerate() {
             // 자식의 현재 parent_id 확인
             let old_parent = self
                 .find_by_name(child_name)
@@ -72,14 +83,25 @@ impl Scene {
                 old_parent_entity.children.retain(|c| c != child_name);
             }
 
-            // 자식의 parent_id를 새 그룹으로 설정
+            // 자식의 parent_id를 새 그룹으로 설정 + z_index 정규화 (0, 1, 2, ...)
             if let Some(child_entity) = self.find_by_name_mut(child_name) {
                 child_entity.parent_id = Some(name.to_string());
+                child_entity.metadata.z_index = new_z as i32;
             }
         }
 
-        // Auto-increment z_order for groups too
-        let z_order = self.allocate_z_order();
+        // 그룹의 z-index: 임시로 max + 1 할당 (나중에 정규화됨)
+        let max_root_z = self
+            .entities
+            .iter()
+            .filter(|e| e.parent_id.is_none())
+            .map(|e| e.metadata.z_index)
+            .max()
+            .unwrap_or(-1);
+        let z_order = max_root_z + 1;
+
+        // 정렬된 순서로 children 목록 생성
+        let sorted_children: Vec<String> = children_with_z.iter().map(|(n, _)| n.clone()).collect();
 
         // Group Entity 생성
         let group_entity = Entity {
@@ -94,12 +116,38 @@ impl Scene {
                 ..Default::default()
             },
             parent_id: None,
-            children: valid_children,
+            children: sorted_children,
         };
 
         self.entities.push(group_entity);
+
+        // Root level z-index 정규화 (갭과 중복 제거)
+        self.normalize_root_z_indices();
+
         self.last_operation = Some(format!("create_group({})", name));
         Ok(name.to_string())
+    }
+
+    /// Root level 엔티티들의 z-index를 0, 1, 2...로 정규화
+    ///
+    /// 갭이나 중복 없이 순서대로 재정렬합니다.
+    fn normalize_root_z_indices(&mut self) {
+        // Root level 엔티티의 (index, z_index) 수집
+        let mut roots: Vec<(usize, i32)> = self
+            .entities
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.parent_id.is_none())
+            .map(|(idx, e)| (idx, e.metadata.z_index))
+            .collect();
+
+        // 현재 z_index 순으로 정렬 (상대 순서 유지)
+        roots.sort_by_key(|(_, z)| *z);
+
+        // 0, 1, 2...로 재할당
+        for (new_z, (idx, _)) in roots.iter().enumerate() {
+            self.entities[*idx].metadata.z_index = new_z as i32;
+        }
     }
 
     /// 내부용 그룹 해제 함수 (테스트용)
@@ -232,7 +280,24 @@ impl Scene {
             }
         }
 
-        // 그룹의 children에 추가
+        // 그룹의 children에 추가 + z_index 정규화
+        // 기존 자식들 중 최대 z_index를 찾아 +1로 설정 (로컬 스코프)
+        let max_child_z = self
+            .find_by_name(group_name)
+            .map(|g| {
+                g.children
+                    .iter()
+                    .filter_map(|c| self.find_by_name(c).map(|e| e.metadata.z_index))
+                    .max()
+                    .unwrap_or(-1)
+            })
+            .unwrap_or(-1);
+
+        // 새 자식의 z_index를 그룹 내 최대값 + 1로 설정
+        if let Some(child) = self.find_by_name_mut(entity_name) {
+            child.metadata.z_index = max_child_z + 1;
+        }
+
         if let Some(group) = self.find_by_name_mut(group_name)
             && !group.children.contains(&entity_name.to_string())
         {
@@ -431,6 +496,41 @@ mod tests {
 
         // last_operation 확인
         assert_eq!(scene.last_operation, Some("create_group(grp)".to_string()));
+    }
+
+    #[test]
+    fn test_create_group_normalizes_z_index() {
+        let mut scene = Scene::new("test");
+
+        // 여러 엔티티 생성 (z_index가 순서대로 0, 1, 2, 3 부여됨)
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 10.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c3", 20.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c4", 30.0, 0.0, 10.0).unwrap();
+
+        // 그룹화 전 z_index 확인
+        let c3_before = scene.find_by_name("c3").unwrap().metadata.z_index;
+        let c4_before = scene.find_by_name("c4").unwrap().metadata.z_index;
+        println!("BEFORE: c3={}, c4={}", c3_before, c4_before);
+
+        // c3, c4를 그룹화 (원래 z=2, z=3)
+        scene
+            .create_group_internal("grp", vec!["c3".to_string(), "c4".to_string()])
+            .unwrap();
+
+        // 그룹화 후 z_index 확인
+        let c3 = scene.find_by_name("c3").unwrap();
+        let c4 = scene.find_by_name("c4").unwrap();
+        println!(
+            "AFTER: c3={}, c4={}",
+            c3.metadata.z_index, c4.metadata.z_index
+        );
+
+        assert_eq!(c3.metadata.z_index, 0, "c3 should be normalized to z=0");
+        assert_eq!(c4.metadata.z_index, 1, "c4 should be normalized to z=1");
+
+        // 상대 순서 유지 확인 (c3 < c4)
+        assert!(c3.metadata.z_index < c4.metadata.z_index);
     }
 
     #[test]
@@ -767,6 +867,37 @@ mod tests {
         // children에 중복 없어야 함
         let grp = scene.find_by_name("grp").expect("grp not found");
         assert_eq!(grp.children.len(), 1);
+    }
+
+    #[test]
+    fn test_add_to_group_normalizes_z_index() {
+        let mut scene = Scene::new("test");
+
+        // 그룹 생성 (c1, c2 포함 → 그룹 내 z=0, z=1)
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 10.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("grp", vec!["c1".to_string(), "c2".to_string()])
+            .unwrap();
+
+        // 새 오브젝트 생성 (root level에서 grp 다음 z-index)
+        scene.add_circle_internal("c3", 20.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c4", 30.0, 0.0, 10.0).unwrap();
+
+        // 그룹에 추가
+        scene.add_to_group_internal("grp", "c3").unwrap();
+        scene.add_to_group_internal("grp", "c4").unwrap();
+
+        // 추가 후 z_index가 그룹 내에서 정규화되어야 함
+        let c1 = scene.find_by_name("c1").unwrap();
+        let c2 = scene.find_by_name("c2").unwrap();
+        let c3 = scene.find_by_name("c3").unwrap();
+        let c4 = scene.find_by_name("c4").unwrap();
+
+        assert_eq!(c1.metadata.z_index, 0, "c1 should be z=0");
+        assert_eq!(c2.metadata.z_index, 1, "c2 should be z=1");
+        assert_eq!(c3.metadata.z_index, 2, "c3 should be normalized to z=2");
+        assert_eq!(c4.metadata.z_index, 3, "c4 should be normalized to z=3");
     }
 
     // ========================================

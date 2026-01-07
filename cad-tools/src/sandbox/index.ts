@@ -18,7 +18,11 @@ const __dirname = dirname(__filename);
 const MODIFY_COMMANDS = new Set([
   'translate', 'rotate', 'scale', 'set_pivot',
   'set_fill', 'set_stroke', 'set_z_order',
-  'delete', 'add_to_group'
+  'delete', 'add_to_group',
+  // z-order 상대 명령어들
+  'bring_to_front', 'send_to_back',
+  'bring_forward', 'send_backward',
+  'move_above', 'move_below'
 ]);
 
 interface SelectionData {
@@ -161,9 +165,18 @@ export async function runCadCode(
       return callCad('set_stroke', { name, stroke: { color, width: width || 1 } });
     });
 
-    // === Z-Order (1) ===
-    bindCadFunction(vm, 'setZOrder', (name: string, zIndex: number) => {
-      return callCad('set_z_order', { name, z_index: zIndex });
+    // === Z-Order (통합 API) ===
+    // drawOrder(name, mode): 단일 함수로 모든 z-order 조작
+    // mode:
+    //   - 'front': 맨 앞으로
+    //   - 'back': 맨 뒤로
+    //   - '+N' 또는 N: N단계 앞으로 (예: '+1', 1)
+    //   - '-N': N단계 뒤로 (예: '-1', -1)
+    //   - 'above:target': target 위로
+    //   - 'below:target': target 아래로
+    bindCadFunction(vm, 'drawOrder', (name: string, mode: string | number) => {
+      const modeStr = typeof mode === 'number' ? String(mode) : mode;
+      return callCad('draw_order', { name, mode: modeStr });
     });
 
     // === Utility (2) ===
@@ -209,6 +222,16 @@ export async function runCadCode(
     // get_entity: returns local/world coordinates for dual coordinate workflow
     bindCadQueryFunction(vm, 'get_entity', (name: string) => {
       const result = executor.exec('get_entity', { name });
+      if (result.success && result.data) {
+        return JSON.parse(result.data);
+      }
+      return null;
+    });
+
+    // getDrawOrder: 계층적 드로우 오더 조회 (Progressive Disclosure)
+    // group_name이 빈 문자열이면 root level, 그룹 이름이면 해당 그룹의 자식들
+    bindCadQueryFunction(vm, 'getDrawOrder', (groupName?: string) => {
+      const result = executor.exec('get_draw_order', { group_name: groupName || '' });
       if (result.success && result.data) {
         return JSON.parse(result.data);
       }

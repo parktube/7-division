@@ -42,7 +42,13 @@ cad-cli.cmd run_cad_code --delete my_module  # 모듈 삭제
 **스타일**
 - `setFill(name, [r,g,b,a])` - 색상 0~1
 - `setStroke(name, [r,g,b,a], width)`
-- `setZOrder(name, z)` - 높을수록 앞 (기본값: 0)
+
+**Z-Order** (스코프별 자동 할당, 상대적 조정)
+- `drawOrder(name, 'front')` - 맨 앞으로
+- `drawOrder(name, 'back')` - 맨 뒤로
+- `drawOrder(name, 1)` or `drawOrder(name, -1)` - 단계 이동
+- `drawOrder(name, 'above:target')` - target 위로
+- `getDrawOrder(groupName?)` - 순서 조회
 
 **변환 (space 옵션: 'world' | 'local', 기본값 'world')**
 - `translate(name, dx, dy, options?)` - options: { space: 'world' | 'local' }
@@ -164,7 +170,7 @@ cad-cli.cmd reset
 cad-cli.cmd run_cad_code main "... 전체 다시 그리기 ..."
 
 # ✅ 올바른 패턴: 기존 엔티티 직접 수정
-cad-cli.cmd run_cad_code main "+setZOrder('arm_r', -100)"
+cad-cli.cmd run_cad_code main "+drawOrder('arm_r', 'back')"
 cad-cli.cmd run_cad_code main "+setFill('head', [1,0,0,1])"
 cad-cli.cmd run_cad_code main "+translate('robot', 10, 0)"
 ```

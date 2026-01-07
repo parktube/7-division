@@ -161,11 +161,19 @@ impl Scene {
         }
     }
 
-    /// 다음 z_order 값을 반환하고 증가시킴
+    /// 다음 z_order 값을 반환 (root level max + 1 기준)
+    ///
+    /// 기존 global counter 대신 현재 root level의 최대 z-index + 1을 반환합니다.
+    /// 이렇게 하면 그룹 생성 시 정규화와 일관성을 유지하고 갭 발생을 최소화합니다.
     fn allocate_z_order(&mut self) -> i32 {
-        let z = self.next_z_order;
-        self.next_z_order += 1;
-        z
+        let max_root_z = self
+            .entities
+            .iter()
+            .filter(|e| e.parent_id.is_none())
+            .map(|e| e.metadata.z_index)
+            .max()
+            .unwrap_or(-1);
+        max_root_z + 1
     }
 
     pub fn get_name(&self) -> String {

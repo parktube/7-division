@@ -31,20 +31,23 @@ export function useScene() {
 
     const fetchScene = async () => {
       try {
-        const res = await fetch(sceneUrl.current, { cache: 'no-store' })
+        // Cache-bust with timestamp to ensure fresh data
+        const url = `${sceneUrl.current}?t=${Date.now()}`
+        const res = await fetch(url, { cache: 'no-store' })
 
         if (!res.ok) {
           throw new Error(`Failed to fetch scene.json: ${res.status}`)
         }
 
-        const modified = res.headers.get('Last-Modified')
+        const data = await res.json()
+        // Hash includes last_operation (captures all changes including z-order)
+        const newHash = data.last_operation || ''
 
-        // Only update if file changed
-        if (modified !== lastModified.current) {
-          const data = await res.json()
+        // Only update if content actually changed
+        if (newHash !== lastModified.current) {
           if (mounted) {
             setScene(data)
-            lastModified.current = modified
+            lastModified.current = newHash
             setIsLoading(false)
             setError(null)
           }

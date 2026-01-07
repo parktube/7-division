@@ -428,7 +428,7 @@ const zOrder = entity.z_order ?? 0;
 entities.sort((a, b) => (a.z_order ?? 0) - (b.z_order ?? 0));
 ```
 
-[Source: CLAUDE.md - setZOrder 섹션]
+[Source: CLAUDE.md - drawOrder 섹션]
 
 ### Anti-Patterns (금지)
 

@@ -93,7 +93,7 @@ run_cad_code reset
 run_cad_code main "... 전체 다시 그리기 ..."
 
 # ✅ 올바른 패턴: 기존 엔티티 직접 수정
-run_cad_code main "+setZOrder('arm_r', -100)"      # z-order 변경
+run_cad_code main "+drawOrder('arm_r', 'back')"    # z-order 변경
 run_cad_code main "+setFill('head', [1,0,0,1])"    # 색상 변경
 run_cad_code main "+translate('robot', 10, 0)"     # 위치 이동
 run_cad_code main "+rotate('arm', 0.5)"            # 회전
@@ -116,7 +116,17 @@ drawBezier(name, points, closed);
 // 스타일
 setFill(name, [r, g, b, a]); // 색상 0~1
 setStroke(name, [r, g, b, a], width);
-setZOrder(name, z); // 높을수록 앞 (기본값: 0, get_entity로 확인)
+
+// Z-Order (drawOrder 단일 API)
+// 스코프별 z_index 자동 할당 (root: max+1, 그룹 내부: 0,1,2...)
+// drawOrder 후 자동 정규화 (갭/중복 없이 연속적)
+drawOrder(name, 'front');       // 맨 앞으로
+drawOrder(name, 'back');        // 맨 뒤로
+drawOrder(name, 1);             // 한 단계 앞으로 (+N 또는 숫자)
+drawOrder(name, -1);            // 한 단계 뒤로 (-N 또는 음수)
+drawOrder(name, 'above:target');// target 바로 위로
+drawOrder(name, 'below:target');// target 바로 아래로
+getDrawOrder(groupName?);       // 드로우 오더 조회 (Progressive Disclosure)
 
 // 변환 (space 옵션: 'world' | 'local', 기본값 'world')
 translate(name, dx, dy, options?);       // options: { space: 'world' | 'local' }
@@ -213,6 +223,37 @@ scale('icon', 2, 2, { space: 'local' });  // 부모 기준
 ```
 
 **주의**: 기본값이 `'world'`이므로 그룹 내 상대적 배치 시 `{ space: 'local' }` 명시 필요.
+
+### Z-Order 관리 (drawOrder)
+
+**스코프 기반 할당**:
+- **Root level**: 엔티티 생성 시 `max(root_z) + 1`로 할당
+- **그룹 내부**: `createGroup`/`addToGroup` 시 0, 1, 2...로 정규화
+- **정규화**: `drawOrder` 후 해당 스코프의 z-index가 자동으로 연속 정렬 (갭/중복 없음)
+- **스코프 독립**: 그룹 내부 z-order는 root level에 영향 없음
+
+LLM은 숫자를 알 필요 없이 상대적 명령어만 사용합니다.
+
+**drawOrder** - 통합 Z-Order API:
+```javascript
+drawOrder('circle', 'front');       // 맨 앞으로
+drawOrder('circle', 'back');        // 맨 뒤로
+drawOrder('circle', 1);             // 한 단계 앞으로
+drawOrder('circle', -2);            // 두 단계 뒤로
+drawOrder('circle', 'above:rect');  // rect 위로
+drawOrder('circle', 'below:rect');  // rect 아래로
+```
+
+**getDrawOrder** - 순서 조회 (z_index 숫자 노출 안함):
+```javascript
+// Root level
+getDrawOrder();  // { "level": "root", "order": ["bg", "robot", "fg"], "details": {...} }
+
+// 그룹 drill-down
+getDrawOrder('robot');  // { "level": "group:robot", "order": ["body", "arm_l", "arm_r"], "details": {...} }
+```
+
+**Convention**: `order` 배열에서 왼쪽 = 뒤(먼저 그림), 오른쪽 = 앞(나중 그림)
 
 ### 그룹 로컬 좌표 패턴 (필수!)
 

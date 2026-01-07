@@ -1,4 +1,4 @@
-import { useMemo, createContext, useContext } from 'react'
+import { useMemo, createContext, useContext, useCallback, useRef } from 'react'
 import { Search, Plus, MoreHorizontal } from 'lucide-react'
 import { useScene } from '@/hooks/useScene'
 import { useTreeExpansion } from '@/hooks/useTreeExpansion'
@@ -15,6 +15,18 @@ function flattenTree(nodes: TreeNode[]): string[] {
   }
   nodes.forEach(traverse)
   return result
+}
+
+/** Find a node in tree by ID */
+function findNode(nodes: TreeNode[], id: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children) {
+      const found = findNode(node.children, id)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 interface LayerContextValue {
@@ -40,8 +52,9 @@ export function useLayerContext() {
 
 export default function LayerPanel() {
   const { scene, isLoading } = useScene()
-  const { isExpanded, toggle } = useTreeExpansion()
-  const { isSelected, select, toggleSelect, rangeSelect, clearSelection, isHidden, toggleHidden, isLocked, toggleLocked } = useUIContext()
+  const { isExpanded, toggle, expand, collapse } = useTreeExpansion()
+  const { isSelected, select, toggleSelect, rangeSelect, clearSelection, isHidden, toggleHidden, isLocked, toggleLocked, selectedArray } = useUIContext()
+  const treeContainerRef = useRef<HTMLDivElement>(null)
 
   // Dumb View: read pre-computed tree from scene.json
   const tree = useMemo(() => {
@@ -59,6 +72,33 @@ export default function LayerPanel() {
   const handleEmptyClick = () => {
     clearSelection()
   }
+
+  // Keyboard navigation for expand/collapse (Story 7-2-2 Task 5)
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Only handle arrow keys
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+
+    // Need at least one selected item
+    if (selectedArray.length === 0) return
+
+    const selectedId = selectedArray[0]
+    const node = findNode(tree, selectedId)
+    if (!node) return
+
+    // Only groups can be expanded/collapsed
+    const hasChildren = node.children && node.children.length > 0
+    if (!hasChildren) return
+
+    e.preventDefault()
+
+    if (e.key === 'ArrowRight') {
+      // Expand
+      expand(selectedId)
+    } else if (e.key === 'ArrowLeft') {
+      // Collapse
+      collapse(selectedId)
+    }
+  }, [selectedArray, tree, expand, collapse])
 
   return (
     <LayerContext.Provider value={{ isExpanded, toggle, isSelected, select, toggleSelect, rangeSelect: handleRangeSelect, isHidden, toggleHidden, isLocked, toggleLocked }}>
@@ -109,7 +149,13 @@ export default function LayerPanel() {
         </div>
 
         {/* Tree */}
-        <div className="flex-1 overflow-y-auto py-1" onClick={handleEmptyClick}>
+        <div
+          ref={treeContainerRef}
+          className="flex-1 overflow-y-auto py-1 outline-none"
+          onClick={handleEmptyClick}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+        >
           {isLoading ? (
             <p className="px-3 py-2 text-xs" style={{ color: 'var(--text-muted)' }}>
               Loading...
