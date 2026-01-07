@@ -163,10 +163,14 @@ async function captureViewportResult(): Promise<{ success: boolean; path?: strin
       hint: `Read file: ${result.path}`,
     };
   }
+  // Provide method-specific hint for troubleshooting
+  const hint = result.method === 'electron'
+    ? 'CADViewer 앱이 실행 중인지 확인하세요 (userData/.server-port 파일 확인)'
+    : '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs 또는 npm run dev)';
   return {
     success: false,
     error: result.error,
-    hint: '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs)',
+    hint,
   };
 }
 

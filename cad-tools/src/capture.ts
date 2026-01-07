@@ -2,9 +2,9 @@
  * Viewport Capture Tool
  *
  * Captures the CAD viewer as a PNG screenshot for Claude to analyze.
- * Auto-detects environment:
- * - Windows/Mac: Try Electron first, fall back to Puppeteer
- * - Linux: Use Puppeteer for web viewer
+ * Platform behavior:
+ * - Windows/Mac: Electron capture only (requires CADViewer app running)
+ * - Linux: Puppeteer for web viewer (use forceMethod: 'puppeteer' on other platforms)
  */
 
 import puppeteer from 'puppeteer';
@@ -104,9 +104,10 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
  * - Lock indicators (orange solid borders)
  * - Grid and rulers (if enabled)
  *
- * Auto-detects capture method:
- * - Tries Electron first (if available)
- * - Falls back to Puppeteer for web viewer
+ * Platform behavior:
+ * - Windows/Mac: Electron capture (requires CADViewer app running)
+ * - Linux: Puppeteer for web viewer
+ * - Use forceMethod: 'puppeteer' to force browser capture on any platform
  */
 export async function captureViewport(options: CaptureOptions = {}): Promise<CaptureResult> {
   // Default output path: use Electron userData on Windows/Mac, viewer dir on Linux
@@ -135,7 +136,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // Don't fall back to Puppeteer - Electron is the expected method on Windows/Mac
     return {
       success: false,
-      error: 'Electron capture failed. Is the CADViewer app running? (Check AppData/Roaming/CADViewer/.server-port)',
+      error: 'Electron capture failed. Is the CADViewer app running? (Check userData/.server-port)',
       method: 'electron',
     };
   }

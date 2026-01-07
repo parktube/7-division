@@ -1,7 +1,7 @@
 //! SVG Path Parser
 //!
-//! Parses SVG path strings (M, C, S, L, Z commands) into Bezier geometry.
-//! Supports cubic bezier curves with smooth continuation (S command).
+//! Parses SVG path strings into Bezier geometry.
+//! Note: Implicit command continuation is NOT supported (each coordinate pair needs explicit command).
 
 /// Parsed bezier path result
 #[derive(Debug, Clone)]
@@ -13,12 +13,13 @@ pub struct ParsedPath {
 
 /// Parse SVG path string to bezier segments
 ///
-/// Supported commands:
-/// - M x,y (moveto) - sets start point
-/// - C cp1x,cp1y cp2x,cp2y x,y (cubic bezier)
-/// - S cp2x,cp2y x,y (smooth cubic - reflects previous cp2)
-/// - L x,y (lineto - converted to bezier)
-/// - Z (closepath)
+/// Supported commands (absolute and relative):
+/// - M/m x,y (moveto) - sets start point
+/// - C/c cp1x,cp1y cp2x,cp2y x,y (cubic bezier)
+/// - S/s cp2x,cp2y x,y (smooth cubic - reflects previous cp2)
+/// - Q/q cpx,cpy x,y (quadratic bezier - converted to cubic)
+/// - L/l x,y (lineto - converted to bezier)
+/// - Z/z (closepath)
 ///
 /// Example: "M 0,0 C 30,50 70,50 100,0 S 170,50 200,0"
 pub fn parse_svg_path(path: &str) -> Result<ParsedPath, String> {
@@ -202,13 +203,12 @@ pub fn parse_svg_path(path: &str) -> Result<ParsedPath, String> {
                 }
             }
             _ => {
-                // Skip unknown commands or numbers (implicit continuation)
-                if parse_num(cmd).is_ok() {
-                    // It's a number, might be implicit command continuation
-                    i -= 1; // Back up so we can re-process
-                    continue;
-                }
-                return Err(format!("Unknown command: {}", cmd));
+                // Implicit command continuation (e.g., "M 0,0 10,10") is not supported
+                // to avoid complexity and potential infinite loops
+                return Err(format!(
+                    "Unknown command: {}. Use explicit commands (M, C, S, Q, L, Z)",
+                    cmd
+                ));
             }
         }
     }

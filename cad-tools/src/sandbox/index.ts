@@ -104,8 +104,9 @@ export async function runCadCode(
 
     // CAD 명령어 실행 헬퍼
     const callCad = (command: string, params: Record<string, unknown>): boolean => {
-      // Lock 검사: 수정 명령이고 name 파라미터가 있을 때
-      const entityName = params.name as string | undefined;
+      // Lock 검사: 수정 명령이고 대상 엔티티 파라미터가 있을 때
+      // name 또는 entity_name (add_to_group 등) 모두 확인
+      const entityName = (params.name ?? params.entity_name) as string | undefined;
       if (MODIFY_COMMANDS.has(command) && entityName && lockedEntities.has(entityName)) {
         const warning = `Warning: '${entityName}' is locked by user`;
         warnings.push(warning);

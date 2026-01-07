@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'http';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { URL } from 'url';
 
 app.setName('CADViewer');
@@ -51,10 +51,11 @@ const MAX_BODY_SIZE = 1024 * 1024;
 
 // Validate capture path is within allowed directories (path traversal prevention)
 function isAllowedCapturePath(requestedPath: string): boolean {
-  const resolved = join(requestedPath); // Normalize path
+  // resolve() converts to absolute path, preventing ../../../ attacks
+  const resolved = resolve(requestedPath);
   // Allow: userData (Roaming) or app resources directory (Local/Programs/.../resources)
-  const userData = app.getPath('userData');
-  const resourcesPath = join(app.getAppPath(), '..'); // app.asar -> resources folder
+  const userData = resolve(app.getPath('userData'));
+  const resourcesPath = resolve(app.getAppPath(), '..'); // app.asar -> resources folder
   return resolved.startsWith(userData) || resolved.startsWith(resourcesPath);
 }
 
