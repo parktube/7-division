@@ -134,9 +134,10 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       return electronResult;
     }
     // Don't fall back to Puppeteer - Electron is the expected method on Windows/Mac
+    const portFile = join(getElectronUserDataPath(), '.server-port');
     return {
       success: false,
-      error: 'Electron capture failed. Is the CADViewer app running? (Check userData/.server-port)',
+      error: `Electron capture failed. Is the CADViewer app running? (Check ${portFile})`,
       method: 'electron',
     };
   }

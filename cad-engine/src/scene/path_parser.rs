@@ -315,4 +315,57 @@ mod tests {
         assert_eq!(result.start, [100.0, 100.0]);
         assert_eq!(result.segments[0][2], [200.0, 100.0]); // relative end: 100+100, 100+0
     }
+
+    #[test]
+    fn test_scientific_notation() {
+        let path = "M 1e-3,2e-3 C 1e1,2e1 3e1,4e1 5e1,6e1";
+        let result = parse_svg_path(path).unwrap();
+        assert!((result.start[0] - 0.001).abs() < 1e-9);
+        assert!((result.start[1] - 0.002).abs() < 1e-9);
+        assert_eq!(result.segments[0][2], [50.0, 60.0]);
+    }
+
+    #[test]
+    fn test_consecutive_minus_as_negative() {
+        // Tokenizer splits "10-5" into "10" and "-5" (negative number)
+        let path = "M 10,10 L -5,-10";
+        let result = parse_svg_path(path).unwrap();
+        assert_eq!(result.segments[0][2], [-5.0, -10.0]);
+    }
+
+    #[test]
+    fn test_empty_path() {
+        let result = parse_svg_path("");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("M command"));
+    }
+
+    #[test]
+    fn test_missing_m_command() {
+        let result = parse_svg_path("C 10,20 30,40 50,60");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_invalid_coordinate_count() {
+        // C command needs 6 coordinates, only 5 provided
+        let result = parse_svg_path("M 0,0 C 10,20 30,40 50");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("6 coordinates"));
+    }
+
+    #[test]
+    fn test_long_segment_chain() {
+        let path = "M 0,0 C 1,2 3,4 5,6 C 7,8 9,10 11,12 C 13,14 15,16 17,18 C 19,20 21,22 23,24";
+        let result = parse_svg_path(path).unwrap();
+        assert_eq!(result.segments.len(), 4);
+        assert_eq!(result.segments[3][2], [23.0, 24.0]);
+    }
+
+    #[test]
+    fn test_unknown_command_error() {
+        let result = parse_svg_path("M 0,0 X 10,20");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Unknown command"));
+    }
 }

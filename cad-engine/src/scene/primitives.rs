@@ -15,6 +15,22 @@ use super::entity::{Entity, EntityType, Geometry, Metadata, Style, Transform};
 use super::{Scene, SceneError, generate_id};
 use crate::primitives::parse_line_points;
 
+/// Parse style JSON with warning on failure
+fn parse_style_with_warning(style_json: &str, context: &str) -> Style {
+    serde_json::from_str::<Style>(style_json).unwrap_or_else(|err| {
+        if !style_json.is_empty() && style_json != "{}" {
+            web_sys::console::warn_1(
+                &format!(
+                    "[{}] style parsing failed: {} (using default)",
+                    context, err
+                )
+                .into(),
+            );
+        }
+        Style::default()
+    })
+}
+
 impl Scene {
     /// 내부용 Line 생성 함수 (테스트용)
     /// Vec<f64> 좌표를 받아 Line Entity 생성
@@ -351,8 +367,8 @@ impl Scene {
             radius
         };
 
-        // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_arc");
 
         // Arc center is the natural pivot point
         let pivot = [cx, cy];
@@ -433,8 +449,8 @@ impl Scene {
             radius
         };
 
-        // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_circle");
 
         // Circle center is the natural pivot point
         let pivot = [x, y];
@@ -500,8 +516,8 @@ impl Scene {
         let point_pairs = parse_line_points(points.to_vec())
             .map_err(|msg| JsValue::from_str(&format!("[draw_line] invalid_input: {}", msg)))?;
 
-        // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_line");
 
         // Calculate geometry center for default pivot
         let geometry = Geometry::Line {
@@ -574,8 +590,8 @@ impl Scene {
             ));
         }
 
-        // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_polygon");
 
         // Calculate geometry center for default pivot
         let geometry = Geometry::Polygon {
@@ -659,8 +675,8 @@ impl Scene {
         let parsed = super::path_parser::parse_svg_path(path)
             .map_err(|e| JsValue::from_str(&format!("[draw_bezier] invalid_path: {}", e)))?;
 
-        // 스타일 파싱
-        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_bezier");
 
         // Calculate geometry center for default pivot
         let geometry = Geometry::Bezier {
@@ -749,8 +765,8 @@ impl Scene {
             height
         };
 
-        // 스타일 파싱 (실패 시 기본 스타일)
-        let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_rect");
 
         // x, y는 중심 좌표, pivot도 동일
         let center = [x, y];
