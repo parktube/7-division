@@ -169,8 +169,8 @@ function resolveViewerPath(): string {
   if (process.env.ELECTRON_RENDERER_URL && existsSync(devViewerPath)) {
     return devViewerPath;
   }
-  // Production: use userData for writable data files
-  return join(app.getPath('userData'), 'viewer');
+  // Production: use userData directly (CLI writes here too)
+  return app.getPath('userData');
 }
 
 // App lifecycle
