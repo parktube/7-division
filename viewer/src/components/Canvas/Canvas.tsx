@@ -9,6 +9,11 @@ import SketchOverlay, { type SketchOverlayRef } from './SketchOverlay'
 import SketchToolbar from './SketchToolbar'
 import type { Entity } from '@/types/scene'
 
+// Grid and ruler constants
+const MINOR_GRID_SIZE = 20
+const MAJOR_GRID_SIZE = 100
+const RULER_SIZE = 20
+
 export default function Canvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -16,8 +21,14 @@ export default function Canvas() {
   const wheelListenerRef = useRef<((e: WheelEvent) => void) | null>(null)
   const { scene, isLoading, error } = useScene()
   const { viewport, zoomAt, pan } = useViewportContext()
-  const { setMousePosition, gridEnabled, rulersEnabled, sketchMode, setSketchMode, selectedIds, hiddenIds, lockedIds, clearSelection } = useUIContext()
-  const { strokes, activeTool, startStroke, addPoint, endStroke, eraseAt, clearAll, switchTool, getCurrentStroke, eraserRadius } = useSketch()
+  const {
+    setMousePosition, gridEnabled, rulersEnabled,
+    sketchMode, setSketchMode, selectedIds, hiddenIds, lockedIds, clearSelection,
+  } = useUIContext()
+  const {
+    strokes, activeTool, startStroke, addPoint, endStroke,
+    eraseAt, clearAll, switchTool, getCurrentStroke, eraserRadius,
+  } = useSketch()
 
   // Use refs for immediate access in event handlers (avoids stale closure)
   const isPanningRef = useRef(false)
@@ -28,6 +39,17 @@ export default function Canvas() {
   const [isPanning, setIsPanning] = useState(false)
   const [isSpacePressed, setIsSpacePressed] = useState(false)
 
+  // Cache CSS variables to avoid getComputedStyle on every render
+  // Re-computed when component mounts or theme changes (via full re-render)
+  const cssVars = useMemo(() => {
+    const computedStyle = getComputedStyle(document.documentElement)
+    return {
+      bgCanvas: computedStyle.getPropertyValue('--bg-canvas').trim() || '#e8e8e8',
+      bgPanel: computedStyle.getPropertyValue('--bg-panel').trim() || '#ffffff',
+      border: computedStyle.getPropertyValue('--border').trim() || '#e5e5e5',
+      textMuted: computedStyle.getPropertyValue('--text-muted').trim() || '#9ca3af',
+    }
+  }, [])
 
   // Build entity maps for quick lookup
   // Separate maps to avoid key collision between id and name
@@ -111,8 +133,8 @@ export default function Canvas() {
 
   // Render grid (matching mockup CSS: minor 20px @4% + major 100px @8%)
   const renderGrid = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    const minorGridSize = 20
-    const majorGridSize = 100
+    const minorGridSize = MINOR_GRID_SIZE
+    const majorGridSize = MAJOR_GRID_SIZE
 
     // Calculate visible world bounds
     const left = (-width / 2 - viewport.offset.x) / viewport.zoom
@@ -161,14 +183,11 @@ export default function Canvas() {
 
   // Render rulers (screen-space, drawn after restore)
   const renderRulers = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    const rulerSize = 20
+    const rulerSize = RULER_SIZE
     // Zoom-based tick interval: 300%+ → 10단위, 100%+ → 25단위, <100% → 50단위
     const tickInterval = viewport.zoom >= 3 ? 10 : viewport.zoom >= 1 ? 25 : 50
 
-    const computedStyle = getComputedStyle(document.documentElement)
-    const bgColor = computedStyle.getPropertyValue('--bg-panel').trim() || '#ffffff'
-    const borderColor = computedStyle.getPropertyValue('--border').trim() || '#e5e5e5'
-    const textColor = computedStyle.getPropertyValue('--text-muted').trim() || '#9ca3af'
+    const { bgPanel: bgColor, border: borderColor, textMuted: textColor } = cssVars
 
     // Calculate world bounds
     const left = (-width / 2 - viewport.offset.x) / viewport.zoom
@@ -242,7 +261,7 @@ export default function Canvas() {
     ctx.fillRect(0, 0, rulerSize, rulerSize)
     ctx.strokeStyle = borderColor
     ctx.strokeRect(0, 0, rulerSize, rulerSize)
-  }, [viewport])
+  }, [viewport, cssVars])
 
   // Render function
   const render = useCallback(() => {
@@ -264,9 +283,8 @@ export default function Canvas() {
     ctx.scale(dpr, dpr)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Fill background using CSS variable
-    const computedStyle = getComputedStyle(document.documentElement)
-    ctx.fillStyle = computedStyle.getPropertyValue('--bg-canvas').trim() || '#e8e8e8'
+    // Fill background using cached CSS variable
+    ctx.fillStyle = cssVars.bgCanvas
     ctx.fillRect(0, 0, rect.width, rect.height)
 
     // Setup coordinate system with viewport
@@ -289,7 +307,7 @@ export default function Canvas() {
     if (rulersEnabled) {
       renderRulers(ctx, rect.width, rect.height)
     }
-  }, [scene, viewport, gridEnabled, renderGrid, rulersEnabled, renderRulers, renderLockIndicator, renderSelection, hiddenIds])
+  }, [scene, viewport, gridEnabled, renderGrid, rulersEnabled, renderRulers, renderLockIndicator, renderSelection, hiddenIds, cssVars])
 
   // Render on scene or viewport change
   useEffect(() => {
@@ -444,9 +462,10 @@ export default function Canvas() {
   }
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : 'No scene loaded'
     return (
       <div className="h-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-canvas)' }}>
-        <p style={{ color: 'var(--text-muted)' }}>No scene loaded</p>
+        <p style={{ color: 'var(--text-muted)' }}>{errorMessage}</p>
       </div>
     )
   }
@@ -459,11 +478,20 @@ export default function Canvas() {
       : 'cursor-default'
 
   return (
-    <div ref={containerCallbackRef} id="cad-canvas" className="h-full relative" style={{ backgroundColor: 'var(--bg-canvas)' }}>
+    <div
+      ref={containerCallbackRef}
+      id="cad-canvas"
+      className="h-full relative"
+      style={{ backgroundColor: 'var(--bg-canvas)' }}
+      role="application"
+      aria-label="CAD canvas workspace"
+    >
       <canvas
         ref={canvasRef}
         className={`absolute inset-0 ${cursorClass}`}
         style={{ touchAction: 'none' }}
+        role="img"
+        aria-label="CAD drawing canvas with shapes and sketches"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}

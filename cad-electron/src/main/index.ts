@@ -103,6 +103,14 @@ function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerRespo
     const chunks: Buffer[] = [];
     let bodySize = 0;
     let aborted = false;
+
+    req.on('error', (err) => {
+      if (aborted || res.writableEnded) return;
+      aborted = true;
+      res.statusCode = 500;
+      res.end(`Request error: ${err.message}`);
+    });
+
     req.on('data', (chunk: Buffer) => {
       if (aborted) return; // Ignore further data after limit exceeded
       bodySize += chunk.length;

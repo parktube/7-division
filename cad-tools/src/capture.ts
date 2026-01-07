@@ -33,6 +33,19 @@ export interface CaptureResult {
 }
 
 /**
+ * Type guard to validate CaptureResult from JSON response
+ */
+function isCaptureResult(obj: unknown): obj is CaptureResult {
+  if (typeof obj !== 'object' || obj === null) return false;
+  const candidate = obj as Record<string, unknown>;
+  return (
+    typeof candidate.success === 'boolean' &&
+    (candidate.path === undefined || typeof candidate.path === 'string') &&
+    (candidate.error === undefined || typeof candidate.error === 'string')
+  );
+}
+
+/**
  * Get the default userData path for Electron (platform-specific)
  */
 function getElectronUserDataPath(): string {
@@ -77,7 +90,12 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       });
-      const result = await response.json() as CaptureResult;
+      const rawResult = await response.json();
+      if (!isCaptureResult(rawResult)) {
+        logger.debug('Electron capture returned invalid response', { rawResult });
+        return null;
+      }
+      const result = rawResult;
       logger.debug('Electron capture response', { status: response.status, result });
       if (response.ok && result.success) {
         return { ...result, method: 'electron' };
