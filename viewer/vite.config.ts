@@ -33,6 +33,24 @@ function dataMiddleware() {
         }
       })
 
+      // scene.json middleware (read-only)
+      server.middlewares.use('/scene.json', (req, res, next) => {
+        const filePath = path.join(__dirname, 'scene.json')
+
+        if (req.method === 'GET') {
+          if (fs.existsSync(filePath)) {
+            res.setHeader('Content-Type', 'application/json')
+            res.setHeader('Cache-Control', 'no-store')
+            res.end(fs.readFileSync(filePath, 'utf-8'))
+          } else {
+            res.statusCode = 404
+            res.end('{"entities":[],"last_operation":null}')
+          }
+        } else {
+          next()
+        }
+      })
+
       // sketch.json middleware
       server.middlewares.use('/sketch.json', (req, res, next) => {
         const filePath = path.join(__dirname, 'sketch.json')
