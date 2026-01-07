@@ -89,7 +89,7 @@ export async function runCadCode(
       // Lock 검사: 수정 명령이고 name 파라미터가 있을 때
       const entityName = params.name as string | undefined;
       if (MODIFY_COMMANDS.has(command) && entityName && lockedEntities.has(entityName)) {
-        const warning = `Warning: "${entityName}" is locked by user`;
+        const warning = `Warning: '${entityName}' is locked by user`;
         warnings.push(warning);
         logger.warn(`[sandbox] ${warning}`);
 

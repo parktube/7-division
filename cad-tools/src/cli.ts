@@ -116,7 +116,7 @@ function getSelectionResult(): { success: boolean; selection?: unknown; error?: 
         success: true,
         selection,
         hint: selection.last_selected
-          ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
+          ? `선택된 도형: '${selection.last_selected}'. 이 도형을 수정하려면 translate/rotate/scale 사용.`
           : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
       };
     } catch {
