@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'http';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { URL } from 'url';
 
 app.setName('CADViewer');
 
@@ -47,6 +48,25 @@ function ensureDataFiles(viewerPath: string): void {
 
 // Maximum body size for POST requests (1MB)
 const MAX_BODY_SIZE = 1024 * 1024;
+
+// Capture the viewport as PNG
+async function captureViewport(outputPath?: string): Promise<{ success: boolean; path?: string; error?: string }> {
+  if (!mainWindow) {
+    return { success: false, error: 'No window available' };
+  }
+  try {
+    const image = await mainWindow.webContents.capturePage();
+    const pngBuffer = image.toPNG();
+
+    // Default output path in userData
+    const capturePath = outputPath || join(app.getPath('userData'), 'capture.png');
+    writeFileSync(capturePath, pngBuffer);
+
+    return { success: true, path: capturePath };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
 
 function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerResponse): void {
   if (req.method === 'GET') {
@@ -105,14 +125,28 @@ async function startDataServer(viewerPath: string): Promise<string> {
         return;
       }
 
-      const url = req.url || '';
-      const pathname = url.split('?')[0];  // Remove query string for exact matching
+      const reqUrl = req.url || '';
+      const parsedUrl = new URL(reqUrl, 'http://localhost');
+      const pathname = parsedUrl.pathname;
+
       if (pathname === '/scene.json') {
         handleJsonFile(join(viewerPath, 'scene.json'), req, res);
       } else if (pathname === '/selection.json') {
         handleJsonFile(join(viewerPath, 'selection.json'), req, res);
       } else if (pathname === '/sketch.json') {
         handleJsonFile(join(viewerPath, 'sketch.json'), req, res);
+      } else if (pathname === '/capture') {
+        // Capture viewport as PNG
+        const outputPath = parsedUrl.searchParams.get('path') || undefined;
+        captureViewport(outputPath).then(result => {
+          res.statusCode = result.success ? 200 : 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(result));
+        }).catch(err => {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: false, error: String(err) }));
+        });
       } else {
         res.statusCode = 404;
         res.end('Not found');
