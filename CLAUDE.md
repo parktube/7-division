@@ -141,7 +141,7 @@ addToGroup(group, entity);
 // 조회
 exists(name);
 getWorldBounds(name);
-get_entity(name);  // local/world 좌표 모두 반환 (아래 형식 참조)
+getEntity(name);  // local/world 좌표 모두 반환 (아래 형식 참조)
 
 // 삭제
 deleteEntity(name);
@@ -188,7 +188,7 @@ new House('h2', 100, 0).build();
 
 ### Dual Coordinate API (FR42)
 
-**get_entity 응답 형식** - local/world 좌표 모두 반환:
+**getEntity 응답 형식** - local/world 좌표 모두 반환:
 
 ```json
 {
@@ -396,7 +396,7 @@ drawBezier(
    스케치_중심X = (minX + maxX) / 2
    스케치_중심Y = (minY + maxY) / 2
 
-4. get_entity로 현재 상태 획득:
+4. getEntity로 현재 상태 획득:
    현재_중심X = geometry.center.x + transform.translate.x
    현재_중심Y = geometry.center.y + transform.translate.y
    현재_반지름 = geometry.radius * transform.scale.x

@@ -228,14 +228,17 @@ export async function runCadCode(
     });
 
     // === Query API (FR42) ===
-    // get_entity: returns local/world coordinates for dual coordinate workflow
-    bindCadQueryFunction(vm, 'get_entity', (name: string) => {
+    // getEntity: returns local/world coordinates for dual coordinate workflow
+    const getEntityFn = (name: string) => {
       const result = executor.exec('get_entity', { name });
       if (result.success && result.data) {
         return JSON.parse(result.data);
       }
       return null;
-    });
+    };
+    bindCadQueryFunction(vm, 'getEntity', getEntityFn);
+    // Deprecated alias for backwards compatibility
+    bindCadQueryFunction(vm, 'get_entity', getEntityFn);
 
     // getDrawOrder: 계층적 드로우 오더 조회 (Progressive Disclosure)
     // group_name이 빈 문자열이면 root level, 그룹 이름이면 해당 그룹의 자식들
