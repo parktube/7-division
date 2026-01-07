@@ -659,7 +659,7 @@ impl Scene {
 
         // 첫 세그먼트 이후 좌표는 6개씩 (cp1, cp2, end)
         let remaining = coords.len() - 8;
-        if remaining % 6 != 0 {
+        if !remaining.is_multiple_of(6) {
             return Err(JsValue::from_str(
                 "[draw_bezier] invalid_input: After first 8 values, additional values must be in groups of 6 (cp1, cp2, end)",
             ));
