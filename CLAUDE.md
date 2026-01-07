@@ -111,7 +111,7 @@ drawRect(name, x, y, width, height); // (x, y) = 사각형의 중심
 drawLine(name, points); // [x1, y1, x2, y2, ...]
 drawPolygon(name, points); // 닫힌 다각형, 좌표 배열
 drawArc(name, cx, cy, radius, startAngle, endAngle); // (cx, cy) = 호의 중심
-drawBezier(name, points, closed);
+drawBezier(name, path);  // SVG path: 'M x,y C cp1x,cp1y cp2x,cp2y x,y S cp2x,cp2y x,y Z'
 
 // 스타일
 setFill(name, [r, g, b, a]); // 색상 0~1
@@ -307,63 +307,33 @@ npx tsx cad-cli.ts export_json
 npx tsx cad-cli.ts export_svg
 ```
 
-**Bezier 커브 포맷 (중요!):**
+**Bezier 커브 (SVG path 형식):**
 
 ```javascript
-// drawBezier(name, points, closed)
-// points 배열 구조: [startX, startY, cp1x, cp1y, cp2x, cp2y, endX, endY, ...]
-//   - 첫 2개: 시작점 (startX, startY)
-//   - 이후 6개씩: 세그먼트 (cp1, cp2, end)
+// drawBezier(name, path) - SVG path 문자열 사용
+//
+// 명령어:
+//   M x,y     - 시작점 (Move to)
+//   C cp1x,cp1y cp2x,cp2y x,y - 큐빅 베지어 (Cubic)
+//   S cp2x,cp2y x,y - 부드러운 연결 (Smooth, cp1 자동 반영)
+//   Q cpx,cpy x,y - 쿼드라틱 베지어 (자동으로 큐빅 변환)
+//   L x,y     - 직선 (Line, 베지어로 변환)
+//   Z         - 경로 닫기 (Close)
+//
+// 소문자 명령어 (m, c, s, l, z)는 상대 좌표
 
-// 예: 부드러운 S 커브
-drawBezier(
-  "wave",
-  [
-    0,
-    0, // 시작점
-    20,
-    50, // 제어점1
-    40,
-    -50, // 제어점2
-    60,
-    0, // 끝점 (= 다음 세그먼트 시작점)
-    80,
-    50, // 제어점1
-    100,
-    -50, // 제어점2
-    120,
-    0, // 끝점
-  ],
-  false
-);
+// 예: 단순 큐빅 베지어
+drawBezier('wave', 'M 0,0 C 30,50 70,50 100,0');
 
-// 예: 닫힌 유기적 형태 (구름, 눈덩이 등)
-drawBezier(
-  "cloud",
-  [
-    0,
-    0, // 시작점
-    30,
-    20,
-    -10,
-    30,
-    20,
-    40, // 세그먼트 1
-    50,
-    45,
-    40,
-    20,
-    30,
-    10, // 세그먼트 2
-    10,
-    5,
-    -5,
-    -10,
-    0,
-    0, // 마지막 세그먼트 (시작점으로 돌아옴)
-  ],
-  true
-); // closed=true
+// 예: 부드러운 S 커브 (S 명령어로 자동 연결)
+drawBezier('s_curve', 'M 0,0 C 20,50 40,-50 60,0 S 100,-50 120,0');
+// S는 이전 cp2를 반영하여 cp1 자동 계산 → 부드러운 연결
+
+// 예: 닫힌 형태
+drawBezier('blob', 'M 0,0 C 30,20 -10,30 20,40 C 50,45 40,20 30,10 C 10,5 -5,-10 0,0 Z');
+
+// 예: 직선과 혼합
+drawBezier('mixed', 'M 0,0 L 50,0 C 70,0 100,30 100,50 L 100,100 Z');
 ```
 
 ### 결과 확인

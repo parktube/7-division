@@ -610,27 +610,41 @@ impl Scene {
         Ok(name.to_string())
     }
 
-    /// 스타일이 적용된 베지어 커브를 생성합니다.
+    /// SVG path 문자열로 베지어 커브를 생성합니다.
     ///
     /// # Arguments
     /// * `name` - Entity 이름 (예: "curve1") - Scene 내 unique
-    /// * `points` - 좌표 배열 [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
-    ///              첫 8개는 첫 세그먼트 (시작점, 제어점1, 제어점2, 끝점)
-    ///              이후 6개씩 추가 세그먼트 (제어점1, 제어점2, 끝점)
-    /// * `closed` - true면 닫힌 경로 (fill 적용 가능)
+    /// * `path` - SVG path 문자열
+    ///   - `M x,y` : 시작점 (Move to)
+    ///   - `C cp1x,cp1y cp2x,cp2y x,y` : 큐빅 베지어
+    ///   - `S cp2x,cp2y x,y` : 부드러운 연결 (cp1 자동 반영)
+    ///   - `Q cpx,cpy x,y` : 쿼드라틱 (큐빅으로 변환)
+    ///   - `L x,y` : 직선 (베지어로 변환)
+    ///   - `Z` : 경로 닫기
     /// * `style_json` - 스타일 JSON
+    ///
+    /// # Examples
+    /// ```javascript
+    /// // 단순 큐빅 베지어
+    /// drawBezier('wave', 'M 0,0 C 30,50 70,50 100,0')
+    ///
+    /// // 부드러운 S 커브 (S 명령어로 자동 연결)
+    /// drawBezier('s_curve', 'M 0,0 C 30,50 70,50 100,0 S 170,-50 200,0')
+    ///
+    /// // 닫힌 형태
+    /// drawBezier('blob', 'M 0,0 C 50,80 80,80 100,0 S 50,-80 0,0 Z')
+    /// ```
     ///
     /// # Returns
     /// * Ok(name) - 성공 시 name 반환
     ///
     /// # Errors
     /// * name 중복 시 에러
-    /// * 최소 8개 좌표 (4점) 필요
+    /// * 잘못된 SVG path 문법
     pub fn draw_bezier(
         &mut self,
         name: &str,
-        points: Float64Array,
-        closed: bool,
+        path: &str,
         style_json: &str,
     ) -> Result<String, JsValue> {
         // name 중복 체크
@@ -641,62 +655,18 @@ impl Scene {
             )));
         }
 
-        let coords = points.to_vec();
-
-        // NaN/Infinity 검증
-        if coords.iter().any(|v| !v.is_finite()) {
-            return Err(JsValue::from_str(
-                "[draw_bezier] invalid_input: NaN or Infinity not allowed",
-            ));
-        }
-
-        // 최소 8개 좌표 필요 (시작점 + 제어점1 + 제어점2 + 끝점)
-        if coords.len() < 8 {
-            return Err(JsValue::from_str(
-                "[draw_bezier] invalid_input: Bezier requires at least 8 values (4 points: start, cp1, cp2, end)",
-            ));
-        }
-
-        // 첫 세그먼트 이후 좌표는 6개씩 (cp1, cp2, end)
-        let remaining = coords.len() - 8;
-        if !remaining.is_multiple_of(6) {
-            return Err(JsValue::from_str(
-                "[draw_bezier] invalid_input: After first 8 values, additional values must be in groups of 6 (cp1, cp2, end)",
-            ));
-        }
-
-        // 시작점
-        let start = [coords[0], coords[1]];
-
-        // 세그먼트 파싱
-        let mut segments: Vec<[[f64; 2]; 3]> = Vec::new();
-
-        // 첫 세그먼트
-        segments.push([
-            [coords[2], coords[3]], // cp1
-            [coords[4], coords[5]], // cp2
-            [coords[6], coords[7]], // end
-        ]);
-
-        // 추가 세그먼트
-        let mut i = 8;
-        while i + 5 < coords.len() {
-            segments.push([
-                [coords[i], coords[i + 1]],     // cp1
-                [coords[i + 2], coords[i + 3]], // cp2
-                [coords[i + 4], coords[i + 5]], // end
-            ]);
-            i += 6;
-        }
+        // Parse SVG path
+        let parsed = super::path_parser::parse_svg_path(path)
+            .map_err(|e| JsValue::from_str(&format!("[draw_bezier] invalid_path: {}", e)))?;
 
         // 스타일 파싱
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
         // Calculate geometry center for default pivot
         let geometry = Geometry::Bezier {
-            start,
-            segments,
-            closed,
+            start: parsed.start,
+            segments: parsed.segments,
+            closed: parsed.closed,
         };
         let (min, max) = Self::geometry_bounds(&geometry);
         let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];

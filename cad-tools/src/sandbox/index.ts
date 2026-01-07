@@ -132,8 +132,10 @@ export async function runCadCode(
       return callCad('draw_polygon', { name, points });
     });
 
-    bindCadFunction(vm, 'drawBezier', (name: string, points: number[], closed?: boolean) => {
-      return callCad('draw_bezier', { name, points, closed: closed || false });
+    // drawBezier(name, path) - SVG path 문자열
+    // M x,y = 시작점, C cp1x,cp1y cp2x,cp2y x,y = 큐빅, S cp2x,cp2y x,y = 부드러운 연결, Z = 닫기
+    bindCadFunction(vm, 'drawBezier', (name: string, path: string) => {
+      return callCad('draw_bezier', { name, path });
     });
 
     // === Transforms (4) ===

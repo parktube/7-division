@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 
 pub mod entity;
 mod groups;
+mod path_parser;
 mod primitives;
 mod query;
 pub mod style;

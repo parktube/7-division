@@ -854,7 +854,7 @@ const ACTION_HINTS: Record<string, string[]> = {
   draw_line: ['set_stroke로 선 색상/두께 변경'],
   draw_arc: ['set_stroke로 선 스타일 변경'],
   draw_polygon: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
-  draw_bezier: ['set_fill로 색상 추가 (closed=true일 때)'],
+  draw_bezier: ['SVG path 형식: M x,y C cp1 cp2 end S cp2 end Z', 'set_fill로 색상 추가 (Z로 닫힌 경우)'],
 
   // Style
   set_fill: ['set_stroke로 선도 스타일링', 'list_entities로 확인'],
@@ -2128,12 +2128,14 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
       case 'Bezier':
         if (geometry?.Bezier) {
           const { start, segments, closed } = geometry.Bezier;
-          // Flatten: [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
-          const points: number[] = [...start];
+          // Convert to SVG path: "M x,y C cp1x,cp1y cp2x,cp2y ex,ey ..."
+          let path = `M ${start[0]},${start[1]}`;
           for (const seg of segments) {
-            points.push(...seg[0], ...seg[1], ...seg[2]);
+            const [cp1, cp2, end] = seg;
+            path += ` C ${cp1[0]},${cp1[1]} ${cp2[0]},${cp2[1]} ${end[0]},${end[1]}`;
           }
-          executor.exec('draw_bezier', { name, points, closed, style });
+          if (closed) path += ' Z';
+          executor.exec('draw_bezier', { name, path, style });
         }
         break;
 
