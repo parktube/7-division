@@ -357,8 +357,8 @@ export default function Canvas() {
     }
   }, [sketchMode, setSketchMode, clearSelection, switchTool])
 
-  // Wheel zoom handler (native listener for non-passive)
-  // Note: Must be on container, not canvas - SketchOverlay with z-10 would block canvas wheel events
+  // Wheel zoom handler (capture phase to intercept before SketchOverlay)
+  // Using capture: true ensures we handle wheel before any child element (like SketchOverlay with pointerEvents: auto)
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -373,9 +373,10 @@ export default function Canvas() {
       zoomAt(cursorX, cursorY, e.deltaY)
     }
 
-    container.addEventListener('wheel', handleWheel, { passive: false })
-    return () => container.removeEventListener('wheel', handleWheel)
-  }, [zoomAt]) // zoomAt만 의존성으로 (scene 제거 - 매 씬 변경마다 리스너 재등록 불필요)
+    // capture: true - handle during capture phase (parent → child), not bubble phase (child → parent)
+    container.addEventListener('wheel', handleWheel, { passive: false, capture: true })
+    return () => container.removeEventListener('wheel', handleWheel, { capture: true })
+  }, [zoomAt])
 
 
   // Mouse handlers for panning (Space + left-click drag)
