@@ -1,6 +1,15 @@
 export function isMac(): boolean {
-  return typeof navigator !== 'undefined' &&
-         /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+  if (typeof navigator === 'undefined') return false
+
+  // Modern API (Chrome 90+, Edge 90+)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nav = navigator as any
+  if (nav.userAgentData?.platform) {
+    return nav.userAgentData.platform === 'macOS'
+  }
+
+  // Fallback for Safari and older browsers
+  return /Mac|iPod|iPhone|iPad/.test(navigator.platform)
 }
 
 export function isModifierKey(e: React.MouseEvent | React.KeyboardEvent): boolean {
