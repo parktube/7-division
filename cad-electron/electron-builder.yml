@@ -36,12 +36,8 @@ extraResources:
     to: cad-cli.cmd
   - from: resources/CLAUDE.md
     to: CLAUDE.md
-  - from: ../viewer
-    to: viewer
-    filter:
-      - "index.html"
-      - "renderer.js"
-      - "server.cjs"
+  # viewer/dist is already copied to out/renderer during build
+  # Data files (scene.json, selection.json) are stored in userData at runtime
 mac:
   icon: resources/icon.png
   target:

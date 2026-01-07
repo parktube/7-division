@@ -5,7 +5,6 @@ import { useUIContext } from '@/contexts/UIContext'
 import { useSketch } from '@/hooks/useSketch'
 import { setupCanvas } from '@/utils/transform'
 import { renderScene } from '@/utils/renderEntity'
-import { calculateWorldBounds } from '@/utils/calculateBounds'
 import SketchOverlay, { type SketchOverlayRef } from './SketchOverlay'
 import SketchToolbar from './SketchToolbar'
 import type { Entity } from '@/types/scene'
@@ -42,7 +41,7 @@ export default function Canvas() {
     return map
   }, [scene])
 
-  // Render lock indicator (orange solid border)
+  // Render lock indicator (orange solid border) - Dumb View: read computed
   const renderLockIndicator = useCallback((ctx: CanvasRenderingContext2D) => {
     if (lockedIds.size === 0) return
 
@@ -52,7 +51,8 @@ export default function Canvas() {
       const entity = entityMap.get(id)
       if (!entity) continue
 
-      const bounds = calculateWorldBounds(entity, entityMap)
+      // Dumb View: read from computed.world_bounds
+      const bounds = entity.computed?.world_bounds
       if (!bounds) continue
 
       // Lock border (orange solid)
@@ -62,15 +62,15 @@ export default function Canvas() {
 
       const padding = 2 / viewport.zoom
       ctx.strokeRect(
-        bounds.minX - padding,
-        bounds.minY - padding,
-        bounds.maxX - bounds.minX + padding * 2,
-        bounds.maxY - bounds.minY + padding * 2
+        bounds.min[0] - padding,
+        bounds.min[1] - padding,
+        bounds.max[0] - bounds.min[0] + padding * 2,
+        bounds.max[1] - bounds.min[1] + padding * 2
       )
     }
   }, [lockedIds, hiddenIds, entityMap, viewport.zoom])
 
-  // Render selection highlight
+  // Render selection highlight - Dumb View: read computed
   const renderSelection = useCallback((ctx: CanvasRenderingContext2D) => {
     if (selectedIds.size === 0) return
 
@@ -80,7 +80,8 @@ export default function Canvas() {
       const entity = entityMap.get(id)
       if (!entity) continue
 
-      const bounds = calculateWorldBounds(entity, entityMap)
+      // Dumb View: read from computed.world_bounds
+      const bounds = entity.computed?.world_bounds
       if (!bounds) continue
 
       // Selection border (blue dashed)
@@ -90,10 +91,10 @@ export default function Canvas() {
 
       const padding = 4 / viewport.zoom
       ctx.strokeRect(
-        bounds.minX - padding,
-        bounds.minY - padding,
-        bounds.maxX - bounds.minX + padding * 2,
-        bounds.maxY - bounds.minY + padding * 2
+        bounds.min[0] - padding,
+        bounds.min[1] - padding,
+        bounds.max[0] - bounds.min[0] + padding * 2,
+        bounds.max[1] - bounds.min[1] + padding * 2
       )
 
       ctx.setLineDash([])
@@ -153,8 +154,8 @@ export default function Canvas() {
   // Render rulers (screen-space, drawn after restore)
   const renderRulers = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const rulerSize = 20
-    const tickInterval = 50 // World units between major ticks (숫자 표시)
-    const minorTickInterval = 5 // 5단위 보조 눈금 (LLM 정밀 측정용)
+    // Zoom-based tick interval: 300%+ → 10단위, 100%+ → 25단위, <100% → 50단위
+    const tickInterval = viewport.zoom >= 3 ? 10 : viewport.zoom >= 1 ? 25 : 50
 
     const computedStyle = getComputedStyle(document.documentElement)
     const bgColor = computedStyle.getPropertyValue('--bg-panel').trim() || '#ffffff'
@@ -181,31 +182,24 @@ export default function Canvas() {
     ctx.lineTo(width, rulerSize)
     ctx.stroke()
 
-    // Horizontal ticks
+    // Horizontal ticks (major only - 숫자 표시)
     ctx.fillStyle = textColor
     ctx.font = '10px Inter, sans-serif'
     ctx.textAlign = 'center'
 
     const hStart = Math.floor(left / tickInterval) * tickInterval
-    for (let wx = hStart; wx <= right; wx += minorTickInterval) {
+    for (let wx = hStart; wx <= right; wx += tickInterval) {
       const sx = worldToScreenX(wx)
       if (sx < rulerSize || sx > width) continue
 
-      const isMajor = wx % tickInterval === 0
-      const isMid = wx % 10 === 0 // 10단위에도 숫자 표시
       ctx.strokeStyle = borderColor
       ctx.beginPath()
       ctx.moveTo(sx, rulerSize)
-      ctx.lineTo(sx, rulerSize - (isMajor ? 8 : isMid ? 6 : 4))
+      ctx.lineTo(sx, rulerSize - 8)
       ctx.stroke()
 
-      if (isMajor) {
-        ctx.font = '10px Inter, sans-serif'
-        ctx.fillText(String(wx), sx, 10)
-      } else if (isMid) {
-        ctx.font = '8px Inter, sans-serif'
-        ctx.fillText(String(wx), sx, 12)
-      }
+      ctx.font = '10px Inter, sans-serif'
+      ctx.fillText(String(wx), sx, 10)
     }
 
     // Vertical ruler (left) - draw below horizontal ruler
@@ -217,33 +211,25 @@ export default function Canvas() {
     ctx.lineTo(rulerSize, height)
     ctx.stroke()
 
-    // Vertical ticks
+    // Vertical ticks (major only - 숫자 표시)
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.font = '9px Inter, sans-serif'
-    ctx.fillStyle = textColor // Ensure fill color is set for text
+    ctx.fillStyle = textColor
     const vStart = Math.floor(bottom / tickInterval) * tickInterval
-    for (let wy = vStart; wy <= top; wy += minorTickInterval) {
+    for (let wy = vStart; wy <= top; wy += tickInterval) {
       const sy = worldToScreenY(wy)
       if (sy < rulerSize + 5 || sy > height - 5) continue
 
-      const isMajor = wy % tickInterval === 0
-      const isMid = wy % 10 === 0 // 10단위에도 숫자 표시
       ctx.strokeStyle = borderColor
       ctx.beginPath()
       ctx.moveTo(rulerSize, sy)
-      ctx.lineTo(rulerSize - (isMajor ? 8 : isMid ? 6 : 4), sy)
+      ctx.lineTo(rulerSize - 8, sy)
       ctx.stroke()
 
-      if (isMajor) {
-        ctx.fillStyle = textColor
-        ctx.font = '9px Inter, sans-serif'
-        ctx.fillText(String(wy), rulerSize / 2, sy)
-      } else if (isMid) {
-        ctx.fillStyle = textColor
-        ctx.font = '7px Inter, sans-serif'
-        ctx.fillText(String(wy), rulerSize / 2, sy)
-      }
+      ctx.fillStyle = textColor
+      ctx.font = '9px Inter, sans-serif'
+      ctx.fillText(String(wy), rulerSize / 2, sy)
     }
 
     // Corner square (top-left)

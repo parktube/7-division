@@ -5,8 +5,9 @@
   "description": "CADViewer - Electron app for real-time scene.json rendering",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "node scripts/run-electron-vite.cjs dev",
-    "build": "node scripts/run-electron-vite.cjs build",
+    "dev": "ELECTRON_RENDERER_URL=http://localhost:5173 node scripts/run-electron-vite.cjs dev",
+    "build": "npm run build:viewer && node scripts/run-electron-vite.cjs build",
+    "build:viewer": "npm --prefix ../viewer run build",
     "preview": "node scripts/run-electron-vite.cjs preview",
     "prepare:cad-tools": "npm --prefix ../cad-tools run build",
     "package": "npm run prepare:cad-tools && npm run build && electron-builder",

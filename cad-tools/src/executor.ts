@@ -387,7 +387,9 @@ export class CADExecutor {
     if (error) return { success: false, error: `get_entity: ${error}` };
 
     const name = input.name as string;
-    const data = this.scene.get_entity(name);
+
+    // Use WASM's get_entity_detailed for local/world coordinates (FR42)
+    const data = this.scene.get_entity_detailed(name);
 
     if (data === undefined || data === null) {
       return { success: false, error: `Entity not found: ${name}` };
@@ -489,8 +491,13 @@ export class CADExecutor {
     const name = input.name as string;
     const dx = input.dx as number;
     const dy = input.dy as number;
+    const space = (input.space as 'world' | 'local') || 'world';
 
-    const result = this.scene.translate(name, dx, dy);
+    // Use WASM functions for coordinate conversion
+    const result = space === 'world'
+      ? this.scene.translate_world(name, dx, dy)
+      : this.scene.translate(name, dx, dy);
+
     if (!result) {
       return { success: false, error: `Entity not found: ${name}` };
     }
@@ -504,6 +511,9 @@ export class CADExecutor {
     const name = input.name as string;
     const angleUnit = (input.angle_unit as AngleUnit) || 'radian';
     const angle = normalizeAngle(input.angle as number, angleUnit);
+    // space option accepted for API consistency, but rotation delta is identical
+    // in both world and local coordinates (angle is a scalar, unaffected by parent rotation)
+    // const space = (input.space as 'world' | 'local') || 'world';
 
     const result = this.scene.rotate(name, angle);
     if (!result) {
@@ -519,8 +529,13 @@ export class CADExecutor {
     const name = input.name as string;
     const sx = input.sx as number;
     const sy = input.sy as number;
+    const space = (input.space as 'world' | 'local') || 'world';
 
-    const result = this.scene.scale(name, sx, sy);
+    // Use WASM functions for coordinate conversion
+    const result = space === 'world'
+      ? this.scene.scale_world(name, sx, sy)
+      : this.scene.scale(name, sx, sy);
+
     if (!result) {
       return { success: false, error: `Entity not found: ${name}` };
     }

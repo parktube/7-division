@@ -7,6 +7,8 @@
  * Usage:
  *   node cli.js draw_circle '{"name":"head","x":0,"y":0,"radius":50}'
  *   node cli.js export_json
+ *   node cli.js export_svg
+ *   node cli.js capture_viewport
  *   node cli.js list_entities
  */
 
@@ -112,7 +114,7 @@ interface SceneEntity {
   entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc' | 'Polygon' | 'Bezier' | 'Group';
   geometry: {
     Circle?: { center: [number, number]; radius: number };
-    Rect?: { origin: [number, number]; width: number; height: number };
+    Rect?: { center: [number, number]; width: number; height: number };
     Line?: { points: [number, number][] };
     Arc?: { center: [number, number]; radius: number; start_angle: number; end_angle: number };
     Polygon?: { points: [number, number][] };
@@ -295,11 +297,11 @@ function getSceneEntities(): string[] {
 }
 
 /** Execute main code and update scene.json */
-async function executeMainCode(): Promise<{ success: boolean; error?: string; entities: string[] }> {
+async function executeMainCode(): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
   const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
 
   const executor = CADExecutor.create('cad-scene');
-  let result: { success: boolean; error?: string; entitiesCreated?: string[] } = { success: true };
+  let result: { success: boolean; error?: string; entitiesCreated?: string[]; warnings?: string[] } = { success: true };
 
   if (mainCode.trim()) {
     const preprocessed = await preprocessCode(mainCode);
@@ -320,10 +322,17 @@ async function executeMainCode(): Promise<{ success: boolean; error?: string; en
   }
 
   executor.free();
+
+  // Lock 경고 출력
+  if (result.warnings && result.warnings.length > 0) {
+    result.warnings.forEach(w => logger.warn(w));
+  }
+
   return {
     success: result.success,
     error: result.error,
     entities: result.entitiesCreated || [],
+    warnings: result.warnings || [],
   };
 }
 
@@ -431,7 +440,7 @@ function handleRunCadCodeStructure(): RunCadCodeResult {
       files: ['main', ...modules],
       main: mainCode || '// 빈 프로젝트입니다. main에 코드를 작성하세요.',
       entities,
-      hint: '읽기: run_cad_code <name> | 쓰기: run_cad_code <name> "code" | 탐색: --status, --info, --search, --lines',
+      hint: '읽기: run_cad_code <name> | 쓰기: run_cad_code <name> "code" | 탐색: --status, --info, --search, --lines | 유틸: --capture, --selection',
     }, null, 2),
   };
 }
@@ -496,7 +505,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
     if (result.success) {
       hints.push(`main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`);
       if (result.entities.length > 0) {
-        hints.push('외부 요소 배치 시 getWorldBounds(name)로 대상 위치 확인');
+        hints.push('수정 시 reset 대신 setZOrder/setFill/translate로 기존 엔티티 직접 수정');
       }
     } else {
       hints.push('실행 실패. 코드를 확인하세요.');
@@ -637,6 +646,7 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 💡 TIPS
 - 작업 전후로 list_entities 호출 권장
 - get_selection으로 사용자가 클릭한 도형 확인 가능
+- capture_viewport로 씬 전체를 시각적으로 확인 및 검증 가능
 - get_scene_info의 bounds로 뷰포트 계산 가능`,
 
   export: `💾 EXPORT - 내보내기
@@ -644,14 +654,17 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 📋 ACTIONS
 - export_json: JSON 형식 (scene.json에 자동 저장)
 - export_svg: SVG 형식
+- capture_viewport: 현재 뷰어를 PNG 이미지로 캡처 (시각적 검토용)
 
 🎯 WORKFLOW
 1. 모든 도형 작업 완료
 2. export_json으로 저장 (자동 저장됨)
-3. 필요시 export_svg로 벡터 출력
+3. capture_viewport로 최종 디자인 시각적 확인
+4. 필요시 export_svg로 벡터 출력
 
 💡 TIPS
 - scene.json은 매 명령어 후 자동 저장
+- capture_viewport는 로컬 뷰어가 실행 중이어야 함 (기본 http://localhost:5173)
 - SVG는 반환값의 data 필드에 포함`,
 
   session: `📁 SESSION - 세션 관리
@@ -792,15 +805,22 @@ const ACTION_HINTS: Record<string, string[]> = {
   set_fill: ['set_stroke로 선도 스타일링', 'list_entities로 확인'],
   set_stroke: ['set_fill로 채우기 추가', 'list_entities로 확인'],
 
-  // Transform
-  translate: ['get_entity로 결과 확인', 'rotate로 추가 변환'],
-  rotate: ['get_entity로 결과 확인', 'scale로 추가 변환'],
-  scale: ['get_entity로 결과 확인', 'translate로 추가 변환'],
+  // Transform - 작업 전 정확한 좌표/크기 계산 필수!
+  translate: [
+    '계산 → 검산 → 실행 → get_entity로 확인',
+  ],
+  rotate: ['get_entity로 결과 확인'],
+  scale: [
+    '계산 → 검산 → 실행 → get_entity로 확인',
+  ],
   delete: ['list_entities로 남은 엔티티 확인'],
   set_pivot: ['rotate로 pivot 기준 회전', 'get_entity로 결과 확인'],
 
   // Z-Order
-  set_z_order: ['get_entity로 현재 z_index 확인', 'bring_to_front/send_to_back으로 조정'],
+  set_z_order: [
+    '그룹 간 순서 변경 시 그룹 자체의 z-order 수정 필요',
+    'get_entity로 현재 z_index 확인',
+  ],
   bring_to_front: ['capture_viewport로 결과 확인'],
   send_to_back: ['capture_viewport로 결과 확인'],
 
@@ -813,7 +833,10 @@ const ACTION_HINTS: Record<string, string[]> = {
   // Export
   export_json: ['export_svg로 SVG도 내보내기'],
   export_svg: ['작업 완료!'],
-  capture_viewport: ['결과 이미지 확인', 'Read tool로 PNG 이미지 열기'],
+  capture_viewport: [
+    '이미지로 형태/의도 파악, 좌표/크기는 sketch.json에서',
+    '계산 → 검산 → 실행',
+  ],
 
   // Groups (객체지향 씬 설계)
   create_group: [
@@ -827,9 +850,9 @@ const ACTION_HINTS: Record<string, string[]> = {
 
   // Code Execution
   run_cad_code: [
+    '수정 시 reset 대신 setZOrder/setFill/translate 등으로 기존 엔티티 직접 수정',
     '외부 요소 배치 시 getWorldBounds()로 대상 위치 확인',
     '--status로 프로젝트 현황 확인',
-    '--info로 모듈 상세 보기',
     'capture_viewport로 결과 확인',
   ],
   save_module: ['run_cad_code로 모듈 코드 확인', 'list_modules로 저장된 모듈 확인'],
@@ -983,9 +1006,9 @@ Scene file:
     const { captureViewport } = await import('./capture.js');
     const result = await captureViewport({
       outputPath,
-      width: 800,
-      height: 600,
-      waitMs: 1000,
+      width: 1600,
+      height: 1000,
+      waitMs: 2000,
     });
     if (result.success) {
       print(JSON.stringify({
@@ -1027,6 +1050,8 @@ Scene file:
     const isInfoMode = target === '--info';
     const isLinesMode = target === '--lines';
     const isStatusMode = target === '--status';
+    const isCaptureMode = target === '--capture';
+    const isSelectionMode = target === '--selection';
 
     if (isDeleteMode) {
       target = args[2]; // module name to delete
@@ -1058,6 +1083,48 @@ Scene file:
       result = handleRunCadCodeStatus();
     } else if (isDepsMode) {
       result = handleRunCadCodeDeps();
+    } else if (isCaptureMode) {
+      // Re-use capture_viewport logic
+      const outputPath = resolve(__dirname, '../../viewer/capture.png');
+      const { captureViewport } = await import('./capture.js');
+      const captureResult = await captureViewport({
+        outputPath,
+        width: 1600,
+        height: 1000,
+        waitMs: 2000,
+      });
+      result = {
+        handled: true,
+        output: JSON.stringify({
+          success: captureResult.success,
+          path: captureResult.path,
+          error: captureResult.error,
+          message: captureResult.success ? 'Viewport captured. Use Read tool to view the image.' : undefined,
+          hint: captureResult.success ? `Read file: ${captureResult.path}` : '뷰어 서버가 실행 중인지 확인하세요',
+        }, null, 2),
+      };
+    } else if (isSelectionMode) {
+      // Re-use get_selection logic
+      const selectionFile = resolve(__dirname, '../../viewer/selection.json');
+      let selectData: { success: boolean; error: string | undefined; selection: { selected_ids: string[]; last_selected: string | null; timestamp: number | null } | null; hint: string } = { success: false, error: '파일 없음', selection: null, hint: '' };
+      if (existsSync(selectionFile)) {
+        try {
+          const selection = JSON.parse(readFileSync(selectionFile, 'utf-8'));
+          selectData = {
+            success: true,
+            error: undefined,
+            selection,
+            hint: selection.last_selected
+              ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
+              : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
+          };
+        } catch {
+          selectData = { success: false, error: '선택 정보를 읽을 수 없습니다', selection: null, hint: '뷰어에서 도형을 클릭하여 선택하세요' };
+        }
+      } else {
+        selectData = { success: true, error: undefined, selection: { selected_ids: [], last_selected: null, timestamp: null }, hint: '아직 선택된 도형이 없습니다.' };
+      }
+      result = { handled: true, output: JSON.stringify(selectData, null, 2) };
     } else if (isDeleteMode) {
       result = await handleRunCadCodeDelete(target);
     } else if (!target) {
@@ -1924,6 +1991,11 @@ Scene file:
       writeFileSync(SCENE_CODE_FILE, code);
     }
 
+    // Lock 경고 출력
+    if (result.warnings && result.warnings.length > 0) {
+      result.warnings.forEach(w => logger.warn(w));
+    }
+
     print(JSON.stringify({
       success: result.success,
       module: moduleName,
@@ -1931,6 +2003,7 @@ Scene file:
       importedModules: preprocessed.importedModules,
       error: result.error,
       logs: result.logs,
+      warnings: result.warnings,
       hint: result.success
         ? `모듈 '${moduleName}' 실행 완료. ${result.entitiesCreated.length}개 엔티티 생성.${preprocessed.importedModules.length > 0 ? ` (${preprocessed.importedModules.join(', ')} 포함)` : ''}`
         : '모듈 실행 실패. 오류 메시지를 확인하세요.',
@@ -2040,11 +2113,11 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
 
       case 'Rect':
         if (geometry?.Rect) {
-          const { origin, width, height } = geometry.Rect;
+          const { center, width, height } = geometry.Rect;
           executor.exec('draw_rect', {
             name,
-            x: origin[0],
-            y: origin[1],
+            x: center[0],
+            y: center[1],
             width,
             height,
             style,

@@ -117,7 +117,7 @@ impl Scene {
             name,
             EntityType::Rect,
             Geometry::Rect {
-                origin: [x, y],
+                center: [x, y],
                 width,
                 height,
             },
@@ -440,12 +440,12 @@ mod tests {
 
         let entity = scene.find_by_name("torso").unwrap();
         if let Geometry::Rect {
-            origin,
+            center,
             width,
             height,
         } = &entity.geometry
         {
-            assert_eq!(*origin, [0.0, 0.0]);
+            assert_eq!(*center, [0.0, 0.0]);
             assert_eq!(*width, 50.0);
             assert_eq!(*height, 100.0);
         } else {
@@ -523,8 +523,8 @@ mod tests {
         assert!(result.is_ok());
 
         let entity = scene.find_by_name("neg_coords").unwrap();
-        if let Geometry::Rect { origin, .. } = &entity.geometry {
-            assert_eq!(*origin, [-100.0, -50.0]); // 음수 좌표는 그대로 허용
+        if let Geometry::Rect { center, .. } = &entity.geometry {
+            assert_eq!(*center, [-100.0, -50.0]); // 음수 좌표는 그대로 허용
         } else {
             panic!("Expected Rect geometry");
         }

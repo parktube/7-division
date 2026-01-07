@@ -39,7 +39,7 @@ export interface CircleGeometry {
 
 export interface RectGeometry {
   Rect: {
-    origin: [number, number]
+    center: [number, number]
     width: number
     height: number
   }
@@ -92,6 +92,20 @@ export type Geometry =
 
 export type EntityType = 'Circle' | 'Rect' | 'Line' | 'Polygon' | 'Arc' | 'Bezier' | 'Group'
 
+/** Bounds (min/max) */
+export interface Bounds {
+  min: [number, number]
+  max: [number, number]
+}
+
+/** Computed fields (calculated by WASM, read-only in Viewer) */
+export interface Computed {
+  world_bounds?: Bounds
+  local_bounds?: Bounds
+  center?: [number, number]
+  size?: [number, number]
+}
+
 export interface Entity {
   id: string
   entity_type: EntityType
@@ -101,9 +115,20 @@ export interface Entity {
   metadata?: Metadata
   children?: string[] // For Group entities: child entity IDs
   parent_id?: string // Reference to parent group
+  computed?: Computed // WASM에서 계산된 필드 (Dumb View)
+}
+
+/** Tree node from WASM (pre-computed for LayerPanel) */
+export interface SceneTreeNode {
+  id: string
+  name: string
+  type: EntityType
+  zOrder: number
+  children?: SceneTreeNode[]
 }
 
 export interface Scene {
   name?: string
   entities: Entity[]
+  tree?: SceneTreeNode[] // Pre-computed tree from WASM (Dumb View)
 }

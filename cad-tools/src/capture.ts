@@ -28,14 +28,22 @@ export interface CaptureResult {
 
 /**
  * Capture the viewer viewport as a PNG
+ *
+ * Captures the full viewport including:
+ * - CAD shapes (scene.json entities)
+ * - Sketch overlay (red freehand drawings)
+ * - Selection indicators (blue dashed borders)
+ * - Lock indicators (orange solid borders)
+ * - Grid and rulers (if enabled)
  */
 export async function captureViewport(options: CaptureOptions = {}): Promise<CaptureResult> {
   const {
-    url = process.env.CAD_VIEWER_URL || 'http://localhost:8000/index.html',
-    width = 800,
-    height = 600,
+    // Default to Vite dev server, fall back to static server
+    url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
+    width = 1600,
+    height = 1000,
     outputPath = resolve(__dirname, '../../viewer/capture.png'),
-    waitMs = 1000,
+    waitMs = 2000,  // Wait for sketch to load
   } = options;
 
   let browser;
@@ -64,11 +72,34 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // Navigate to viewer with increased timeout
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait for scene to render
+    // Wait for scene and sketch to render
     await new Promise(resolve => setTimeout(resolve, waitMs));
 
-    // Capture screenshot
-    await page.screenshot({ path: outputPath, type: 'png' });
+    // Set zoom level (3x for better precision)
+    await page.evaluate(() => {
+      // Dispatch wheel event to zoom in (zoom is centered on canvas)
+      const canvas = document.querySelector('#cad-canvas canvas');
+      if (canvas) {
+        // Simulate zoom by dispatching custom event or using viewport context
+        // For now, use window.__setZoom if available
+        if ((window as unknown as { __setZoom?: (z: number) => void }).__setZoom) {
+          (window as unknown as { __setZoom: (z: number) => void }).__setZoom(3);
+        }
+      }
+    });
+    await new Promise(resolve => setTimeout(resolve, 500)); // Wait for zoom to apply
+
+    // Find the canvas container element
+    const canvasElement = await page.$('#cad-canvas');
+
+    if (canvasElement) {
+      // Capture only the canvas area
+      await canvasElement.screenshot({ path: outputPath, type: 'png' });
+    } else {
+      // Fallback to full page if canvas not found
+      logger.debug('Canvas element not found, capturing full page');
+      await page.screenshot({ path: outputPath, type: 'png' });
+    }
 
     await browser.close();
 

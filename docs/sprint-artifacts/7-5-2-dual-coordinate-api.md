@@ -1,6 +1,6 @@
 # Story 7.5.2: 이중 좌표 API
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -30,54 +30,59 @@ so that **스케치 기반 작업과 그룹 내 상대적 조정을 명확히 �
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: get_entity 응답 확장 (AC: #1)
-  - [ ] Rust executor에서 world bounds 계산
-  - [ ] 응답 JSON에 local/world 섹션 추가
-  - [ ] TypeScript 타입 정의 업데이트
+- [x] Task 1: get_entity 응답 확장 (AC: #1)
+  - [x] Rust `get_entity_detailed`에서 world bounds 계산 (기존 구현)
+  - [x] 응답 JSON에 local/world 섹션 추가
+  - [x] executor.ts에서 `get_entity_detailed` 사용
 
-- [ ] Task 2: translate space 옵션 (AC: #2, #5)
-  - [ ] Rust executor에 space 파라미터 추가
-  - [ ] world: 현재 world 위치 기준 이동
-  - [ ] local: 부모 좌표계 기준 이동
-  - [ ] 기본값 'world'
+- [x] Task 2: translate space 옵션 (AC: #2, #5)
+  - [x] executor.ts에 space 파라미터 처리
+  - [x] world: `translate_world()` 호출 (부모 scale 역산)
+  - [x] local: `translate()` 호출 (부모 좌표계 기준)
+  - [x] 기본값 'world'
 
-- [ ] Task 3: rotate space 옵션 (AC: #3, #5)
-  - [ ] world: 월드 축 기준 회전
-  - [ ] local: 부모 축 기준 회전
-  - [ ] 기본값 'world'
+- [x] Task 3: rotate space 옵션 (AC: #3, #5)
+  - [x] rotate는 world/local 동작이 동일 (각도는 스칼라)
+  - [x] API 일관성을 위해 space 옵션 수용
+  - [x] executor.ts 주석 정리
 
-- [ ] Task 4: scale space 옵션 (AC: #4, #5)
-  - [ ] world: 월드 기준 스케일
-  - [ ] local: 부모 기준 스케일
-  - [ ] 기본값 'world'
+- [x] Task 4: scale space 옵션 (AC: #4, #5)
+  - [x] executor.ts에 space 파라미터 처리
+  - [x] world: `scale_world()` 호출 (부모 scale 역산)
+  - [x] local: `scale()` 호출 (부모 기준)
+  - [x] 기본값 'world'
 
-- [ ] Task 5: Sandbox 바인딩 업데이트 (AC: #2, #3, #4)
-  - [ ] translate(name, dx, dy, options?) 시그니처
-  - [ ] rotate(name, angle, options?) 시그니처
-  - [ ] scale(name, sx, sy, options?) 시그니처
+- [x] Task 5: Sandbox 바인딩 업데이트 (AC: #2, #3, #4)
+  - [x] translate(name, dx, dy, options?) 시그니처
+  - [x] rotate(name, angle, options?) 시그니처
+  - [x] scale(name, sx, sy, options?) 시그니처
+  - [x] get_entity(name) 바인딩 추가
 
-- [ ] Task 6: CLAUDE.md 문서화 (AC: #6)
-  - [ ] space 옵션 설명 추가
-  - [ ] 사용 예시 추가
+- [x] Task 6: CLAUDE.md 문서화 (AC: #6)
+  - [x] space 옵션 설명 추가 (기존 구현 확인)
+  - [x] 사용 예시 추가 (기존 구현 확인)
 
 ## Dev Notes
 
-### get_entity 응답 형식
+### get_entity 응답 형식 (실제)
 
 ```json
 {
-  "name": "house1_wall",
-  "type": "Rect",
-  "parent": "house1",
+  "name": "c1",
+  "type": "Circle",
+  "parent": null,
   "local": {
-    "bounds": { "min": [-25, 0], "max": [25, 40] },
-    "position": [-25, 0],
-    "transform": { "translate": [0, 0], "rotate": 0, "scale": [1, 1] }
+    "geometry": { "Circle": { "center": [100, 50], "radius": 30 } },
+    "transform": { "translate": [0, 0], "rotate": 0, "scale": [1, 1], "pivot": [100, 50] },
+    "bounds": { "min": [70, 20], "max": [130, 80] },
+    "pivot": [100, 50]
   },
   "world": {
-    "bounds": { "min": [-145, 10], "max": [-95, 50] },
-    "center": [-120, 30]
-  }
+    "bounds": { "min_x": 70, "min_y": 20, "max_x": 130, "max_y": 80 },
+    "center": [100, 50]
+  },
+  "style": { ... },
+  "z_order": 0
 }
 ```
 
@@ -91,21 +96,32 @@ translate('window', 10, 0, { space: 'world' })
 // 벽 기준 상대 이동 (local 기준)
 translate('window', 5, 0, { space: 'local' })
 
-// 회전
+// 회전 (world/local 동작 동일)
 rotate('arm', 0.5)  // world 기준
 rotate('arm', 0.5, { space: 'local' })  // 부모 기준
+
+// 스케일
+scale('icon', 2, 2)  // world 기준
+scale('icon', 2, 2, { space: 'local' })  // 부모 기준
 ```
 
-### Rust 변경 범위
+### 구현 위치
 
-- `cad-engine/src/commands/transform.rs`: space 파라미터 처리
-- `cad-engine/src/commands/query.rs`: get_entity world bounds 추가
-- Matrix 연산: world→local, local→world 변환
+- `cad-engine/src/scene/mod.rs`: `get_entity_detailed`, `translate_world`, `scale_world`
+- `cad-tools/src/executor.ts`: space 파라미터 처리 및 WASM 함수 라우팅
+- `cad-tools/src/sandbox/index.ts`: QuickJS 바인딩 (options 파라미터)
+
+### rotate space 옵션 참고
+
+회전 각도는 스칼라 값이므로 부모의 회전에 영향받지 않습니다.
+- world rotate delta = local rotate delta
+- API 일관성을 위해 space 옵션을 수용하지만, 내부적으로 동일하게 처리됩니다.
 
 ## Testing Checklist
 
-- [ ] get_entity가 local/world 둘 다 반환
-- [ ] translate world: 화면 기준 이동 확인
-- [ ] translate local: 부모 기준 이동 확인
-- [ ] 옵션 생략 시 world로 동작 확인
-- [ ] 루트 엔티티: world/local 동일하게 동작
+- [x] get_entity가 local/world 둘 다 반환
+- [x] translate world: 화면 기준 이동 확인 (parent scale 2x에서 world 10 이동 → local 5)
+- [x] translate local: 부모 기준 이동 확인
+- [x] scale world: parent scale 역산 확인 (parent 2x에서 world 1.5x → local 0.75x)
+- [x] 옵션 생략 시 world로 동작 확인
+- [x] 루트 엔티티: world/local 동일하게 동작

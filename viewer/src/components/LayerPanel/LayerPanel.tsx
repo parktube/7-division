@@ -3,8 +3,19 @@ import { Search, Plus, MoreHorizontal } from 'lucide-react'
 import { useScene } from '@/hooks/useScene'
 import { useTreeExpansion } from '@/hooks/useTreeExpansion'
 import { useUIContext } from '@/contexts/UIContext'
-import { buildTree, flattenTree } from '@/utils/buildTree'
+import type { TreeNode } from '@/types/tree'
 import LayerItem from './LayerItem'
+
+/** Flatten tree to array of IDs (for range selection) */
+function flattenTree(nodes: TreeNode[]): string[] {
+  const result: string[] = []
+  function traverse(node: TreeNode) {
+    result.push(node.id)
+    node.children?.forEach(traverse)
+  }
+  nodes.forEach(traverse)
+  return result
+}
 
 interface LayerContextValue {
   isExpanded: (id: string) => boolean
@@ -32,8 +43,9 @@ export default function LayerPanel() {
   const { isExpanded, toggle } = useTreeExpansion()
   const { isSelected, select, toggleSelect, rangeSelect, clearSelection, isHidden, toggleHidden, isLocked, toggleLocked } = useUIContext()
 
+  // Dumb View: read pre-computed tree from scene.json
   const tree = useMemo(() => {
-    return scene ? buildTree(scene) : []
+    return (scene?.tree ?? []) as TreeNode[]
   }, [scene])
 
   const orderedIds = useMemo(() => {

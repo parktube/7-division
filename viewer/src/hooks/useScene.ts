@@ -3,18 +3,35 @@ import type { Scene } from '@/types/scene'
 
 const POLLING_INTERVAL = 1000 // ms
 
+/**
+ * Get scene.json URL based on environment:
+ * - Web: /scene.json (relative)
+ * - Electron: Uses ?scene= query parameter passed from main process
+ */
+function getSceneUrl(): string {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search)
+    const sceneUrl = params.get('scene')
+    if (sceneUrl) {
+      return sceneUrl // Electron: absolute URL from main process
+    }
+  }
+  return '/scene.json' // Web: relative path
+}
+
 export function useScene() {
   const [scene, setScene] = useState<Scene | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
   const lastModified = useRef<string | null>(null)
+  const sceneUrl = useRef(getSceneUrl())
 
   useEffect(() => {
     let mounted = true
 
     const fetchScene = async () => {
       try {
-        const res = await fetch('/scene.json', { cache: 'no-store' })
+        const res = await fetch(sceneUrl.current, { cache: 'no-store' })
 
         if (!res.ok) {
           throw new Error(`Failed to fetch scene.json: ${res.status}`)

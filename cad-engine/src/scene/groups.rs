@@ -138,6 +138,10 @@ impl Scene {
 
     /// 내부용 그룹에 자식 추가 함수 (테스트용)
     ///
+    /// # 월드 위치 보존 (Story 7.5.3)
+    /// addToGroup 시 엔티티의 월드 좌표가 유지됩니다.
+    /// 내부적으로 역행렬 계산을 통해 새 로컬 transform을 자동 계산합니다.
+    ///
     /// # Returns
     /// * Ok(true) - 추가 성공
     /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음
@@ -174,6 +178,19 @@ impl Scene {
             )));
         }
 
+        // ============================================
+        // 월드 위치 보존 로직 (Story 7.5.3)
+        // ============================================
+        // 1. entity의 현재 월드 transform 저장
+        // 2. 부모 그룹의 월드 transform 역행렬 계산
+        // 3. 새 로컬 transform = 역행렬 × entity 월드 transform
+
+        // Entity의 현재 월드 transform 저장
+        let entity_world_matrix = self.get_world_transform_internal(entity_name);
+
+        // 부모 그룹의 월드 transform 저장
+        let group_world_matrix = self.get_world_transform_internal(group_name);
+
         // 자식의 기존 부모에서 제거
         let old_parent = self
             .find_by_name(entity_name)
@@ -185,9 +202,30 @@ impl Scene {
             old_parent_entity.children.retain(|c| c != entity_name);
         }
 
-        // 자식의 parent_id를 새 그룹으로 설정
-        if let Some(child) = self.find_by_name_mut(entity_name) {
-            child.parent_id = Some(group_name.to_string());
+        // 새 로컬 transform 계산 및 적용
+        if let (Some(entity_world), Some(group_world)) = (entity_world_matrix, group_world_matrix) {
+            // 부모 그룹의 역행렬
+            if let Some(group_inverse) = Transform::inverse_matrix(&group_world) {
+                // 새 로컬 = 그룹역행렬 × 엔티티월드
+                let new_local_matrix = Transform::multiply_matrices(&group_inverse, &entity_world);
+                let new_transform = Transform::from_matrix(&new_local_matrix);
+
+                // transform 업데이트
+                if let Some(child) = self.find_by_name_mut(entity_name) {
+                    child.transform = new_transform;
+                    child.parent_id = Some(group_name.to_string());
+                }
+            } else {
+                // 역행렬 계산 실패 시 기존 동작 (parent_id만 변경)
+                if let Some(child) = self.find_by_name_mut(entity_name) {
+                    child.parent_id = Some(group_name.to_string());
+                }
+            }
+        } else {
+            // 월드 transform 없으면 기존 동작
+            if let Some(child) = self.find_by_name_mut(entity_name) {
+                child.parent_id = Some(group_name.to_string());
+            }
         }
 
         // 그룹의 children에 추가
@@ -725,5 +763,193 @@ mod tests {
         let result = scene.remove_from_group_internal("grp", "c1");
         assert!(result.is_ok());
         assert!(!result.unwrap());
+    }
+
+    // ========================================
+    // 월드 위치 유지 테스트 (Story 7.5.3)
+    // ========================================
+
+    /// 월드 좌표 비교 헬퍼 (오차 허용)
+    fn approx_eq(a: f64, b: f64) -> bool {
+        (a - b).abs() < 0.01
+    }
+
+    /// 엔티티에 translate 적용 헬퍼
+    fn apply_translate(scene: &mut Scene, name: &str, dx: f64, dy: f64) {
+        if let Some(entity) = scene.find_by_name_mut(name) {
+            entity.transform.translate[0] += dx;
+            entity.transform.translate[1] += dy;
+        }
+    }
+
+    /// 엔티티에 scale 적용 헬퍼
+    fn apply_scale(scene: &mut Scene, name: &str, sx: f64, sy: f64) {
+        if let Some(entity) = scene.find_by_name_mut(name) {
+            entity.transform.scale[0] *= sx;
+            entity.transform.scale[1] *= sy;
+        }
+    }
+
+    #[test]
+    fn test_add_to_group_preserves_world_position_simple() {
+        let mut scene = Scene::new("test");
+
+        // 그룹 생성: translate(-80, -10)
+        scene.create_group_internal("house", vec![]).unwrap();
+        apply_translate(&mut scene, "house", -80.0, -10.0);
+
+        // 창문 생성: world position (100, 50)
+        scene
+            .add_rect_internal("window", 100.0, 50.0, 20.0, 30.0)
+            .unwrap();
+
+        // addToGroup 전 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("window").unwrap();
+
+        // 그룹에 추가
+        scene.add_to_group_internal("house", "window").unwrap();
+
+        // addToGroup 후 world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("window").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x: before={}, after={}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y: before={}, after={}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
+        assert!(
+            approx_eq(before_bounds.1[0], after_bounds.1[0]),
+            "max_x: before={}, after={}",
+            before_bounds.1[0],
+            after_bounds.1[0]
+        );
+        assert!(
+            approx_eq(before_bounds.1[1], after_bounds.1[1]),
+            "max_y: before={}, after={}",
+            before_bounds.1[1],
+            after_bounds.1[1]
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_preserves_world_position_with_scale() {
+        let mut scene = Scene::new("test");
+
+        // 그룹 생성: scale(2, 2) + translate(10, 10)
+        scene.create_group_internal("scaled_grp", vec![]).unwrap();
+        apply_scale(&mut scene, "scaled_grp", 2.0, 2.0);
+        apply_translate(&mut scene, "scaled_grp", 10.0, 10.0);
+
+        // 원 생성
+        scene.add_circle_internal("c1", 50.0, 50.0, 10.0).unwrap();
+
+        // addToGroup 전 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 그룹에 추가
+        scene.add_to_group_internal("scaled_grp", "c1").unwrap();
+
+        // addToGroup 후 world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x differs: {} vs {}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y differs: {} vs {}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_preserves_world_position_nested() {
+        let mut scene = Scene::new("test");
+
+        // 중첩 그룹: outer contains inner
+        scene.create_group_internal("inner", vec![]).unwrap();
+        apply_translate(&mut scene, "inner", 20.0, 0.0);
+        scene
+            .create_group_internal("outer", vec!["inner".to_string()])
+            .unwrap();
+        apply_translate(&mut scene, "outer", 100.0, 100.0);
+
+        // 원 생성: world position (50, 50)
+        scene.add_circle_internal("c1", 50.0, 50.0, 5.0).unwrap();
+
+        // addToGroup 전 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // inner 그룹에 추가 (3레벨 중첩)
+        scene.add_to_group_internal("inner", "c1").unwrap();
+
+        // addToGroup 후 world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x differs: {} vs {}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y differs: {} vs {}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_move_between_groups_preserves_position() {
+        let mut scene = Scene::new("test");
+
+        // 두 그룹 생성
+        scene.create_group_internal("grp1", vec![]).unwrap();
+        apply_translate(&mut scene, "grp1", 10.0, 10.0);
+
+        scene.create_group_internal("grp2", vec![]).unwrap();
+        apply_translate(&mut scene, "grp2", -50.0, -50.0);
+
+        // 원을 grp1에 추가
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_to_group_internal("grp1", "c1").unwrap();
+
+        // 이동 후 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // grp1에서 grp2로 이동
+        scene.add_to_group_internal("grp2", "c1").unwrap();
+
+        // world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x differs: {} vs {}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y differs: {} vs {}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
     }
 }

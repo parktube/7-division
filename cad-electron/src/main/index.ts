@@ -1,18 +1,25 @@
 import { app, BrowserWindow } from 'electron';
-import { createServer, type Server } from 'http';
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'http';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, join } from 'path';
+import { join } from 'path';
 
 app.setName('CADViewer');
 
 let mainWindow: BrowserWindow | null = null;
-let sceneServer: Server | null = null;
-let sceneUrl: string | null = null;
+let dataServer: Server | null = null;
+let serverBaseUrl: string | null = null;
 
 const DEFAULT_SCENE = JSON.stringify({
   name: 'cad-scene',
   entities: [],
   last_operation: null,
+}, null, 2);
+
+const DEFAULT_SELECTION = JSON.stringify({
+  selected_entities: [],
+  locked_entities: [],
+  hidden_entities: [],
+  timestamp: Date.now(),
 }, null, 2);
 
 function resolveDefaultScene(): string {
@@ -23,20 +30,57 @@ function resolveDefaultScene(): string {
   return DEFAULT_SCENE;
 }
 
-function ensureSceneFile(scenePath: string): void {
-  mkdirSync(dirname(scenePath), { recursive: true });
+function ensureDataFiles(viewerPath: string): void {
+  mkdirSync(viewerPath, { recursive: true });
+  const scenePath = join(viewerPath, 'scene.json');
+  const selectionPath = join(viewerPath, 'selection.json');
+
   if (!existsSync(scenePath)) {
     writeFileSync(scenePath, resolveDefaultScene());
   }
+  if (!existsSync(selectionPath)) {
+    writeFileSync(selectionPath, DEFAULT_SELECTION);
+  }
 }
 
-async function startSceneServer(scenePath: string): Promise<string> {
-  ensureSceneFile(scenePath);
+function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerResponse): void {
+  if (req.method === 'GET') {
+    try {
+      const data = existsSync(filePath) ? readFileSync(filePath, 'utf-8') : '{}';
+      res.statusCode = 200;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(data);
+    } catch (error) {
+      res.statusCode = 500;
+      res.end(JSON.stringify({ error: String(error) }));
+    }
+  } else if (req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => (body += chunk));
+    req.on('end', () => {
+      try {
+        JSON.parse(body); // Validate JSON
+        writeFileSync(filePath, body, 'utf-8');
+        res.statusCode = 200;
+        res.end('OK');
+      } catch {
+        res.statusCode = 400;
+        res.end('Invalid JSON');
+      }
+    });
+  } else {
+    res.statusCode = 405;
+    res.end('Method not allowed');
+  }
+}
+
+async function startDataServer(viewerPath: string): Promise<string> {
+  ensureDataFiles(viewerPath);
 
   return await new Promise((resolve, reject) => {
     const server = createServer((req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
       if (req.method === 'OPTIONS') {
@@ -45,33 +89,27 @@ async function startSceneServer(scenePath: string): Promise<string> {
         return;
       }
 
-      if (!req.url || !req.url.startsWith('/scene.json')) {
+      const url = req.url || '';
+      if (url.startsWith('/scene.json')) {
+        handleJsonFile(join(viewerPath, 'scene.json'), req, res);
+      } else if (url.startsWith('/selection.json')) {
+        handleJsonFile(join(viewerPath, 'selection.json'), req, res);
+      } else if (url.startsWith('/sketch.json')) {
+        handleJsonFile(join(viewerPath, 'sketch.json'), req, res);
+      } else {
         res.statusCode = 404;
-        res.end();
-        return;
-      }
-
-      try {
-        const data = readFileSync(scenePath, 'utf-8');
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(data);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'scene.json not found';
-        res.statusCode = 404;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: message }));
+        res.end('Not found');
       }
     });
 
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
       if (address && typeof address !== 'string') {
-        sceneServer = server;
-        resolve(`http://127.0.0.1:${address.port}/scene.json`);
+        dataServer = server;
+        resolve(`http://127.0.0.1:${address.port}`);
         return;
       }
-      reject(new Error('scene server failed to bind'));
+      reject(new Error('data server failed to bind'));
     });
 
     server.on('error', reject);
@@ -89,17 +127,17 @@ function createWindow(): void {
     },
   });
 
-  // Development: load from vite dev server
-  // Production: load from built files
+  // Development: load from vite dev server (viewer's npm run dev)
+  // Production: load from viewer/dist (copied to out/renderer)
   if (process.env.ELECTRON_RENDERER_URL) {
     const url = new URL(process.env.ELECTRON_RENDERER_URL);
-    if (sceneUrl) {
-      url.searchParams.set('scene', sceneUrl);
+    if (serverBaseUrl) {
+      url.searchParams.set('scene', `${serverBaseUrl}/scene.json`);
     }
     mainWindow.loadURL(url.toString());
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'), {
-      query: sceneUrl ? { scene: sceneUrl } : undefined,
+      query: serverBaseUrl ? { scene: `${serverBaseUrl}/scene.json` } : undefined,
     });
   }
 
@@ -108,22 +146,21 @@ function createWindow(): void {
   });
 }
 
-function resolveScenePath(): string {
-  if (process.env.CAD_SCENE_PATH) {
-    return process.env.CAD_SCENE_PATH;
+function resolveViewerPath(): string {
+  // Development: use viewer/ directory
+  const devViewerPath = join(__dirname, '../../../viewer');
+  if (process.env.ELECTRON_RENDERER_URL && existsSync(devViewerPath)) {
+    return devViewerPath;
   }
-  const devScenePath = join(__dirname, '../../../viewer/scene.json');
-  if (process.env.ELECTRON_RENDERER_URL && existsSync(devScenePath)) {
-    return devScenePath;
-  }
-  return join(app.getPath('userData'), 'scene.json');
+  // Production: use userData for writable data files
+  return join(app.getPath('userData'), 'viewer');
 }
 
 // App lifecycle
 app.whenReady().then(async () => {
-  const scenePath = resolveScenePath();
+  const viewerPath = resolveViewerPath();
 
-  sceneUrl = await startSceneServer(scenePath);
+  serverBaseUrl = await startDataServer(viewerPath);
   createWindow();
 
   app.on('activate', () => {
@@ -140,10 +177,10 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
-  if (sceneServer) {
-    sceneServer.close((err) => {
+  if (dataServer) {
+    dataServer.close((err) => {
       if (err) {
-        console.error('Failed to close scene server:', err);
+        console.error('Failed to close data server:', err);
       }
     });
   }

@@ -5,8 +5,41 @@
  */
 
 import { getQuickJS, type QuickJSContext } from 'quickjs-emscripten';
+import { readFileSync, existsSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import type { CADExecutor } from '../executor.js';
 import { logger } from '../logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// 수정 명령어 목록 (생성 제외)
+const MODIFY_COMMANDS = new Set([
+  'translate', 'rotate', 'scale', 'set_pivot',
+  'set_fill', 'set_stroke', 'set_z_order',
+  'delete', 'add_to_group'
+]);
+
+interface SelectionData {
+  selected_entities?: string[];
+  locked_entities?: string[];
+  hidden_entities?: string[];
+  timestamp?: number;
+}
+
+function loadLockedEntities(): Set<string> {
+  const selectionFile = resolve(__dirname, '../../../viewer/selection.json');
+  if (existsSync(selectionFile)) {
+    try {
+      const data: SelectionData = JSON.parse(readFileSync(selectionFile, 'utf-8'));
+      return new Set(data.locked_entities || []);
+    } catch {
+      return new Set();
+    }
+  }
+  return new Set();
+}
 
 /**
  * 코드 실행 결과
@@ -16,6 +49,7 @@ export interface RunCodeResult {
   entitiesCreated: string[];
   error?: string;
   logs: string[];
+  warnings: string[];  // Lock 경고 등
 }
 
 /**
@@ -23,10 +57,15 @@ export interface RunCodeResult {
  */
 export async function runCadCode(
   executor: CADExecutor,
-  code: string
+  code: string,
+  lockMode: 'warn' | 'strict' = 'warn'
 ): Promise<RunCodeResult> {
   const logs: string[] = [];
+  const warnings: string[] = [];
   const entitiesCreatedSet = new Set<string>();
+
+  // 잠긴 엔티티 로드
+  const lockedEntities = loadLockedEntities();
 
   try {
     const QuickJS = await getQuickJS();
@@ -34,6 +73,19 @@ export async function runCadCode(
 
     // CAD 명령어 실행 헬퍼
     const callCad = (command: string, params: Record<string, unknown>): boolean => {
+      // Lock 검사: 수정 명령이고 name 파라미터가 있을 때
+      const entityName = params.name as string | undefined;
+      if (MODIFY_COMMANDS.has(command) && entityName && lockedEntities.has(entityName)) {
+        const warning = `Warning: "${entityName}" is locked by user`;
+        warnings.push(warning);
+        logger.warn(`[sandbox] ${warning}`);
+
+        if (lockMode === 'strict') {
+          return false;  // 실행 거부
+        }
+        // warn 모드: 경고 후 계속 실행
+      }
+
       const result = executor.exec(command, params);
       // draw_* 또는 create_group 명령어만 새 엔티티 생성으로 기록
       if (result.success && result.entity && (command.startsWith('draw_') || command === 'create_group')) {
@@ -72,17 +124,19 @@ export async function runCadCode(
     });
 
     // === Transforms (4) ===
-    bindCadFunction(vm, 'translate', (name: string, dx: number, dy: number) => {
-      return callCad('translate', { name, dx, dy });
+    // translate(name, dx, dy, options?) - options: { space: 'world' | 'local' }
+    bindCadFunction(vm, 'translate', (name: string, dx: number, dy: number, options?: { space?: 'world' | 'local' }) => {
+      return callCad('translate', { name, dx, dy, space: options?.space || 'world' });
     });
 
-    bindCadFunction(vm, 'rotate', (name: string, angle: number) => {
-      // angle은 라디안
-      return callCad('rotate', { name, angle, angle_unit: 'radian' });
+    // rotate(name, angle, options?) - angle은 라디안
+    bindCadFunction(vm, 'rotate', (name: string, angle: number, options?: { space?: 'world' | 'local' }) => {
+      return callCad('rotate', { name, angle, angle_unit: 'radian', space: options?.space || 'world' });
     });
 
-    bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number) => {
-      return callCad('scale', { name, sx, sy });
+    // scale(name, sx, sy, options?) - options: { space: 'world' | 'local' }
+    bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number, options?: { space?: 'world' | 'local' }) => {
+      return callCad('scale', { name, sx, sy, space: options?.space || 'world' });
     });
 
     bindCadFunction(vm, 'setPivot', (name: string, px: number, py: number) => {
@@ -151,6 +205,16 @@ export async function runCadCode(
       return null;
     });
 
+    // === Query API (FR42) ===
+    // get_entity: returns local/world coordinates for dual coordinate workflow
+    bindCadQueryFunction(vm, 'get_entity', (name: string) => {
+      const result = executor.exec('get_entity', { name });
+      if (result.success && result.data) {
+        return JSON.parse(result.data);
+      }
+      return null;
+    });
+
     // console.log 바인딩
     const consoleObj = vm.newObject();
     const logFn = vm.newFunction('log', (...args) => {
@@ -183,6 +247,7 @@ export async function runCadCode(
         entitiesCreated: Array.from(entitiesCreatedSet),
         error: errorMessage,
         logs,
+        warnings,
       };
     }
 
@@ -193,6 +258,7 @@ export async function runCadCode(
       success: true,
       entitiesCreated: Array.from(entitiesCreatedSet),
       logs,
+      warnings,
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -203,6 +269,7 @@ export async function runCadCode(
       entitiesCreated: Array.from(entitiesCreatedSet),
       error: errorMessage,
       logs,
+      warnings,
     };
   }
 }

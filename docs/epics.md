@@ -518,6 +518,14 @@ So that **Vision 모델이 사용자 의도를 해석할 수 있다** (FR39).
 
 해결: API에서 로컬/월드 좌표 둘 다 지원하고 명시적으로 선택 가능하게 함.
 
+### 아키텍처 원칙: "Dumb View"
+
+> **중요**: Viewer는 bounds를 계산하지 않는다. scene.json의 computed 필드에서 읽기만 한다.
+>
+> - WASM이 모든 bounds 계산 담당 (get_world_bounds_internal)
+> - scene.json export 시 computed.world_bounds, computed.local_bounds 포함
+> - Viewer의 InfoPanel은 entity.computed에서 읽기만
+
 ### Story 7.5.1: Info Panel 좌표 토글
 
 As a **사용자**,
@@ -532,13 +540,15 @@ So that **엔티티의 실제 위치와 그룹 내 상대 위치를 모두 확�
 
 **Given** World 모드가 선택되어 있을 때
 **When** 좌표 정보를 보면
-**Then** 엔티티의 월드 좌표 (화면에 보이는 위치)가 표시된다
+**Then** scene.json의 entity.computed.world_bounds가 표시된다
 **And** bounds: { min: [x, y], max: [x, y] } 형태로 표시된다
 
 **Given** Local 모드로 전환했을 때
 **When** 좌표 정보를 보면
-**Then** 엔티티의 로컬 좌표 (부모 그룹 기준 위치)가 표시된다
+**Then** scene.json의 entity.computed.local_bounds가 표시된다
 **And** 부모 그룹 이름이 함께 표시된다
+
+**Implementation Note:** Viewer에서 calculateBounds 함수 구현 금지. scene.json에서 읽기만.
 
 ---
 

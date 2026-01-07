@@ -3,86 +3,73 @@ import { ChevronDown, MoreHorizontal, Check, Lock, Globe, Box } from 'lucide-rea
 import { useUIContext } from '@/contexts/UIContext'
 import { useScene } from '@/hooks/useScene'
 import { ENTITY_ICONS } from '@/utils/entityIcon'
-import { calculateEntityBounds, calculateWorldBounds } from '@/utils/calculateBounds'
-import type { Entity } from '@/types/scene'
+import type { Entity, Bounds } from '@/types/scene'
 
 type CoordinateSpace = 'world' | 'local'
 
-// Get entity position (center of bounds or geometry origin)
-function getEntityPosition(entity: Entity, entityMap: Map<string, Entity>): { x: number; y: number } {
-  const geo = entity.geometry
+/** Legacy bounds format (for UI compatibility) */
+interface LegacyBounds {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+}
 
-  // Try to get position from geometry
-  if (typeof geo === 'object' && geo !== null) {
-    if ('Circle' in geo) {
-      const { center } = geo.Circle
-      return {
-        x: center[0] + entity.transform.translate[0],
-        y: center[1] + entity.transform.translate[1]
-      }
-    }
-    if ('Rect' in geo) {
-      const { origin, width, height } = geo.Rect
-      return {
-        x: origin[0] + width / 2 + entity.transform.translate[0],
-        y: origin[1] + height / 2 + entity.transform.translate[1]
-      }
-    }
-    if ('Arc' in geo) {
-      const { center } = geo.Arc
-      return {
-        x: center[0] + entity.transform.translate[0],
-        y: center[1] + entity.transform.translate[1]
-      }
-    }
+/** Convert computed bounds to legacy format */
+function toLegacyBounds(bounds: Bounds | undefined): LegacyBounds | null {
+  if (!bounds) return null
+  return {
+    minX: bounds.min[0],
+    minY: bounds.min[1],
+    maxX: bounds.max[0],
+    maxY: bounds.max[1]
+  }
+}
+
+// Get entity position from computed.center (Dumb View)
+function getEntityPosition(entity: Entity): { x: number; y: number } {
+  // Use computed center from scene.json
+  const center = entity.computed?.center
+  if (center) {
+    return { x: center[0], y: center[1] }
   }
 
-  // For groups or other types, use bounds center
-  const bounds = calculateEntityBounds(entity, entityMap)
+  // Fallback: calculate from local_bounds
+  const bounds = entity.computed?.local_bounds
   if (bounds) {
     return {
-      x: (bounds.minX + bounds.maxX) / 2,
-      y: (bounds.minY + bounds.maxY) / 2
+      x: (bounds.min[0] + bounds.max[0]) / 2,
+      y: (bounds.min[1] + bounds.max[1]) / 2
     }
   }
 
-  // Fallback to transform
+  // Last fallback to transform
   return {
     x: entity.transform.translate[0],
     y: entity.transform.translate[1]
   }
 }
 
-// Get world position (center of world bounds)
-function getWorldPosition(entity: Entity, entityMap: Map<string, Entity>): { x: number; y: number } | null {
-  const bounds = calculateWorldBounds(entity, entityMap)
+// Get world position from computed (Dumb View)
+function getWorldPosition(entity: Entity): { x: number; y: number } | null {
+  // Use computed center from scene.json
+  const center = entity.computed?.center
+  if (center) {
+    return { x: center[0], y: center[1] }
+  }
+
+  // Fallback: calculate from world_bounds
+  const bounds = entity.computed?.world_bounds
   if (!bounds) return null
   return {
-    x: (bounds.minX + bounds.maxX) / 2,
-    y: (bounds.minY + bounds.maxY) / 2
+    x: (bounds.min[0] + bounds.max[0]) / 2,
+    y: (bounds.min[1] + bounds.max[1]) / 2
   }
 }
 
-// Get effective z-order info (consider parent group)
-function getEffectiveZOrder(entity: Entity, entityMap: Map<string, Entity>): string {
-  const ownZ = entity.metadata?.z_index ?? 0
-
-  // If has parent, show parent's z-order + position in group
-  if (entity.parent_id) {
-    const parent = entityMap.get(entity.parent_id)
-    if (parent && parent.children) {
-      const parentZ = parent.metadata?.z_index ?? 0
-      const entityName = entity.metadata?.name || entity.id
-      const idx = parent.children.indexOf(entityName)
-      if (idx !== -1) {
-        // Show: parentZ (position/total)
-        return `${parentZ} (${idx + 1}/${parent.children.length})`
-      }
-      return String(parentZ)
-    }
-  }
-
-  return String(ownZ)
+// Get z-order directly from entity (Dumb View - no calculation)
+function getZOrder(entity: Entity): string {
+  return String(entity.metadata?.z_index ?? 0)
 }
 
 export default function InfoPanel() {
@@ -121,28 +108,28 @@ export default function InfoPanel() {
     return parent?.metadata?.name || parent?.id?.slice(0, 8) || null
   }, [selectedEntity, entityMap])
 
-  // Calculate position based on coordinate space
+  // Calculate position based on coordinate space (Dumb View - read from computed)
   const position = useMemo(() => {
     if (!selectedEntity) return { x: 0, y: 0 }
     if (coordinateSpace === 'world') {
-      return getWorldPosition(selectedEntity, entityMap) || { x: 0, y: 0 }
+      return getWorldPosition(selectedEntity) || { x: 0, y: 0 }
     }
-    return getEntityPosition(selectedEntity, entityMap)
-  }, [selectedEntity, entityMap, coordinateSpace])
+    return getEntityPosition(selectedEntity)
+  }, [selectedEntity, coordinateSpace])
 
-  // Calculate bounds for display
+  // Get bounds from computed field (Dumb View - read only)
   const bounds = useMemo(() => {
     if (!selectedEntity) return null
     if (coordinateSpace === 'world') {
-      return calculateWorldBounds(selectedEntity, entityMap)
+      return toLegacyBounds(selectedEntity.computed?.world_bounds)
     }
-    return calculateEntityBounds(selectedEntity, entityMap)
-  }, [selectedEntity, entityMap, coordinateSpace])
+    return toLegacyBounds(selectedEntity.computed?.local_bounds)
+  }, [selectedEntity, coordinateSpace])
 
   const zOrder = useMemo(() => {
     if (!selectedEntity) return '0'
-    return getEffectiveZOrder(selectedEntity, entityMap)
-  }, [selectedEntity, entityMap])
+    return getZOrder(selectedEntity)
+  }, [selectedEntity])
 
   const Icon = selectedEntity ? ENTITY_ICONS[selectedEntity.entity_type] : null
 

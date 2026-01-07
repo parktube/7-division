@@ -43,9 +43,12 @@ function renderCircle(ctx: CanvasRenderingContext2D, geo: CircleGeometry) {
 }
 
 function renderRect(ctx: CanvasRenderingContext2D, geo: RectGeometry) {
-  const { origin, width, height } = geo.Rect
+  const { center, width, height } = geo.Rect
+  // center에서 좌하단 origin 계산
+  const x = center[0] - width / 2
+  const y = center[1] - height / 2
   ctx.beginPath()
-  ctx.rect(origin[0], origin[1], width, height)
+  ctx.rect(x, y, width, height)
   ctx.closePath()
 }
 

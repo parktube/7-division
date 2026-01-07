@@ -70,10 +70,15 @@ function dataMiddleware() {
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), dataMiddleware()],
+  base: './', // Electron file:// protocol support
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   },
   server: {
     host: true,

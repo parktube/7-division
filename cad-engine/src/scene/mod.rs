@@ -95,11 +95,18 @@ impl Scene {
             ));
         }
 
+        // Calculate geometry center for default pivot
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
         let entity = Entity {
             id: generate_id(),
             entity_type,
             geometry,
-            transform: Transform::default(),
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
             style: Style::default(),
             metadata: Metadata {
                 name: name.to_string(),
@@ -157,7 +164,7 @@ impl Scene {
 
     /// Scene을 JSON으로 내보냅니다.
     pub fn export_json(&self) -> String {
-        serialize_scene(&self.name, &self.entities, self.last_operation.as_deref())
+        serialize_scene(self)
     }
 
     /// Scene을 SVG로 내보냅니다.
@@ -330,6 +337,9 @@ impl Scene {
         // 스타일 파싱 (실패 시 기본 스타일)
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
+        // Arc center is the natural pivot point
+        let pivot = [cx, cy];
+
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Arc,
@@ -339,7 +349,10 @@ impl Scene {
                 start_angle,
                 end_angle,
             },
-            transform: Transform::default(),
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
             style,
             metadata: Metadata {
                 name: name.to_string(),
@@ -402,6 +415,9 @@ impl Scene {
         // 스타일 파싱 (실패 시 기본 스타일)
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
+        // Circle center is the natural pivot point
+        let pivot = [x, y];
+
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Circle,
@@ -409,7 +425,10 @@ impl Scene {
                 center: [x, y],
                 radius,
             },
-            transform: Transform::default(),
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
             style,
             metadata: Metadata {
                 name: name.to_string(),
@@ -459,13 +478,21 @@ impl Scene {
         // 스타일 파싱 (실패 시 기본 스타일)
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Line {
+            points: point_pairs,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Line,
-            geometry: Geometry::Line {
-                points: point_pairs,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
             },
-            transform: Transform::default(),
             style,
             metadata: Metadata {
                 name: name.to_string(),
@@ -521,13 +548,21 @@ impl Scene {
         // 스타일 파싱 (실패 시 기본 스타일)
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Polygon {
+            points: point_pairs,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Polygon,
-            geometry: Geometry::Polygon {
-                points: point_pairs,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
             },
-            transform: Transform::default(),
             style,
             metadata: Metadata {
                 name: name.to_string(),
@@ -625,15 +660,23 @@ impl Scene {
         // 스타일 파싱
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Bezier {
+            start,
+            segments,
+            closed,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Bezier,
-            geometry: Geometry::Bezier {
-                start,
-                segments,
-                closed,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
             },
-            transform: Transform::default(),
             style,
             metadata: Metadata {
                 name: name.to_string(),
@@ -652,8 +695,8 @@ impl Scene {
     ///
     /// # Arguments
     /// * `name` - Entity 이름 (예: "torso") - Scene 내 unique
-    /// * `x` - 원점 x 좌표
-    /// * `y` - 원점 y 좌표
+    /// * `x` - 중심 x 좌표
+    /// * `y` - 중심 y 좌표
     /// * `width` - 너비 (음수/0 → abs().max(0.001)로 보정)
     /// * `height` - 높이 (음수/0 → abs().max(0.001)로 보정)
     /// * `style_json` - 스타일 JSON (파싱 실패 시 기본 스타일 사용)
@@ -703,15 +746,24 @@ impl Scene {
         // 스타일 파싱 (실패 시 기본 스타일)
         let style = serde_json::from_str::<Style>(style_json).unwrap_or_else(|_| Style::default());
 
+        // x, y는 중심 좌표, pivot도 동일
+        let center = [x, y];
+        let pivot = center;
+
+        let geometry = Geometry::Rect {
+            center,
+            width,
+            height,
+        };
+
         let entity = Entity {
             id: generate_id(),
             entity_type: EntityType::Rect,
-            geometry: Geometry::Rect {
-                origin: [x, y],
-                width,
-                height,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
             },
-            transform: Transform::default(),
             style,
             metadata: Metadata {
                 name: name.to_string(),
@@ -999,6 +1051,80 @@ impl Scene {
         Ok(true)
     }
 
+    /// Entity를 월드 좌표 기준으로 이동합니다.
+    ///
+    /// 부모 그룹의 scale을 역산하여 로컬 delta로 변환 후 적용합니다.
+    ///
+    /// # Arguments
+    /// * `name` - 대상 Entity의 이름
+    /// * `dx` - 월드 좌표 x축 이동 거리
+    /// * `dy` - 월드 좌표 y축 이동 거리
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    #[wasm_bindgen]
+    pub fn translate_world(&mut self, name: &str, dx: f64, dy: f64) -> Result<bool, JsValue> {
+        // Get parent's world scale
+        let parent_scale = self.get_parent_world_scale(name);
+
+        // Convert world delta to local delta
+        let local_dx = dx / parent_scale[0];
+        let local_dy = dy / parent_scale[1];
+
+        self.translate(name, local_dx, local_dy)
+    }
+
+    /// Entity를 월드 좌표 기준으로 스케일합니다.
+    ///
+    /// 부모 그룹의 scale을 역산하여 로컬 scale로 변환 후 적용합니다.
+    ///
+    /// # Arguments
+    /// * `name` - 대상 Entity의 이름
+    /// * `sx` - 월드 좌표 x축 스케일 배율
+    /// * `sy` - 월드 좌표 y축 스케일 배율
+    ///
+    /// # Returns
+    /// * Ok(true) - 성공
+    /// * Ok(false) - name 미발견 (no-op)
+    #[wasm_bindgen]
+    pub fn scale_world(&mut self, name: &str, sx: f64, sy: f64) -> Result<bool, JsValue> {
+        // Get parent's world scale
+        let parent_scale = self.get_parent_world_scale(name);
+
+        // Convert world scale to local scale
+        let local_sx = sx / parent_scale[0];
+        let local_sy = sy / parent_scale[1];
+
+        self.scale(name, local_sx, local_sy)
+    }
+
+    /// 부모의 누적 world scale을 반환합니다.
+    fn get_parent_world_scale(&self, name: &str) -> [f64; 2] {
+        // Find entity and its parent
+        let entity = match self.find_by_name(name) {
+            Some(e) => e,
+            None => return [1.0, 1.0],
+        };
+
+        let parent_id = match &entity.parent_id {
+            Some(id) => id.clone(),
+            None => return [1.0, 1.0], // Root entity
+        };
+
+        // Get parent's world transform
+        if let Some(matrix) = self.get_world_transform_internal(&parent_id) {
+            // Extract scale from matrix
+            // For a 2D affine matrix [[a, b, tx], [c, d, ty], [0, 0, 1]]
+            // scale_x = sqrt(a^2 + c^2), scale_y = sqrt(b^2 + d^2)
+            let scale_x = (matrix[0][0] * matrix[0][0] + matrix[1][0] * matrix[1][0]).sqrt();
+            let scale_y = (matrix[0][1] * matrix[0][1] + matrix[1][1] * matrix[1][1]).sqrt();
+            [scale_x.max(0.001), scale_y.max(0.001)]
+        } else {
+            [1.0, 1.0]
+        }
+    }
+
     /// Entity를 삭제합니다.
     ///
     /// # Arguments
@@ -1209,6 +1335,82 @@ impl Scene {
             .map(|entity| serde_json::to_string(entity).unwrap_or_else(|_| "{}".to_string()))
     }
 
+    /// Entity의 상세 정보를 local/world 좌표 포함하여 반환합니다 (FR42).
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    ///
+    /// # Returns
+    /// * Some(JSON) - local/world 좌표 포함 상세 정보
+    /// * None - Entity가 없으면 None
+    ///
+    /// # JSON Format
+    /// ```json
+    /// {
+    ///   "name": "house1_wall",
+    ///   "type": "Rect",
+    ///   "parent": "house1",
+    ///   "local": {
+    ///     "geometry": {...},
+    ///     "transform": {...},
+    ///     "bounds": {"min": [x, y], "max": [x, y]}
+    ///   },
+    ///   "world": {
+    ///     "bounds": {"min_x": ..., "min_y": ..., "max_x": ..., "max_y": ...},
+    ///     "center": [x, y]
+    ///   }
+    /// }
+    /// ```
+    #[wasm_bindgen]
+    pub fn get_entity_detailed(&self, name: &str) -> Option<String> {
+        let entity = self.find_by_name(name)?;
+
+        // Calculate local bounds from geometry
+        let local_bounds = Self::geometry_bounds(&entity.geometry);
+
+        // Get world bounds
+        let world_bounds = self.get_world_bounds_internal(name);
+
+        // Calculate world center from pivot (not bounds center)
+        // pivot is the center point for transformations
+        let world_center = self
+            .get_world_transform_internal(name)
+            .map(|matrix| Transform::transform_point(&matrix, entity.transform.pivot));
+
+        // Build response
+        let response = serde_json::json!({
+            "name": entity.metadata.name,
+            "type": format!("{:?}", entity.entity_type),
+            "parent": entity.parent_id,
+            "local": {
+                "geometry": entity.geometry,
+                "transform": entity.transform,
+                "bounds": {
+                    "min": local_bounds.0,
+                    "max": local_bounds.1
+                },
+                "pivot": entity.transform.pivot
+            },
+            "world": match world_bounds {
+                Some((min, max)) => serde_json::json!({
+                    "bounds": {
+                        "min_x": min[0],
+                        "min_y": min[1],
+                        "max_x": max[0],
+                        "max_y": max[1]
+                    },
+                    "center": world_center.unwrap_or([(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0])
+                }),
+                None => serde_json::Value::Null
+            },
+            "style": entity.style,
+            "children": if entity.children.is_empty() { serde_json::Value::Null } else { serde_json::json!(entity.children) },
+            "z_order": entity.metadata.z_index
+        });
+
+        Some(serde_json::to_string(&response).unwrap_or_else(|_| "{}".to_string()))
+    }
+
     /// Scene의 전체 정보를 반환합니다.
     ///
     /// # Returns
@@ -1329,6 +1531,89 @@ impl Scene {
 
 impl Scene {
     // ========================================
+    // Serialization Helpers (non-wasm)
+    // ========================================
+
+    /// Entities slice getter (for serialization)
+    pub fn entities(&self) -> &[Entity] {
+        &self.entities
+    }
+
+    /// Scene name getter
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Last operation getter
+    pub fn last_operation(&self) -> Option<&str> {
+        self.last_operation.as_deref()
+    }
+
+    /// Entity의 월드 좌표 바운딩 박스 (직렬화용 public wrapper)
+    pub fn get_world_bounds_for_entity(&self, name: &str) -> Option<([f64; 2], [f64; 2])> {
+        self.get_world_bounds_internal(name)
+    }
+
+    /// Entity의 로컬 좌표 바운딩 박스 (geometry + entity transform, 부모 제외)
+    pub fn get_local_bounds_for_entity(&self, name: &str) -> Option<([f64; 2], [f64; 2])> {
+        let entity = self.find_by_name(name)?;
+
+        // Group은 자식들의 로컬 바운드 합산 (각 자식의 transform 포함)
+        if matches!(entity.entity_type, EntityType::Group) {
+            if entity.children.is_empty() {
+                return None;
+            }
+
+            let mut min_x = f64::INFINITY;
+            let mut min_y = f64::INFINITY;
+            let mut max_x = f64::NEG_INFINITY;
+            let mut max_y = f64::NEG_INFINITY;
+
+            for child_name in &entity.children {
+                if let Some(child) = self.find_by_name(child_name) {
+                    let child_matrix = child.transform.to_matrix();
+                    let local_vertices = Self::geometry_vertices(&child.geometry);
+
+                    for vertex in local_vertices {
+                        let transformed = Transform::transform_point(&child_matrix, vertex);
+                        min_x = min_x.min(transformed[0]);
+                        min_y = min_y.min(transformed[1]);
+                        max_x = max_x.max(transformed[0]);
+                        max_y = max_y.max(transformed[1]);
+                    }
+                }
+            }
+
+            if min_x == f64::INFINITY {
+                return None;
+            }
+            return Some(([min_x, min_y], [max_x, max_y]));
+        }
+
+        // 일반 도형: geometry + entity transform (부모 transform 제외)
+        let local_vertices = Self::geometry_vertices(&entity.geometry);
+        if local_vertices.is_empty() {
+            return None;
+        }
+
+        let entity_matrix = entity.transform.to_matrix();
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        for vertex in local_vertices {
+            let transformed = Transform::transform_point(&entity_matrix, vertex);
+            min_x = min_x.min(transformed[0]);
+            min_y = min_y.min(transformed[1]);
+            max_x = max_x.max(transformed[0]);
+            max_y = max_y.max(transformed[1]);
+        }
+
+        Some(([min_x, min_y], [max_x, max_y]))
+    }
+
+    // ========================================
     // World Transform Functions (Phase 2)
     // ========================================
 
@@ -1399,16 +1684,18 @@ impl Scene {
                 ]
             }
             Geometry::Rect {
-                origin,
+                center,
                 width,
                 height,
             } => {
-                // 사각형 4개 꼭짓점
+                // 사각형 4개 꼭짓점 (center 기준)
+                let hw = width / 2.0;
+                let hh = height / 2.0;
                 vec![
-                    [origin[0], origin[1]],
-                    [origin[0] + width, origin[1]],
-                    [origin[0] + width, origin[1] + height],
-                    [origin[0], origin[1] + height],
+                    [center[0] - hw, center[1] - hh],
+                    [center[0] + hw, center[1] - hh],
+                    [center[0] + hw, center[1] + hh],
+                    [center[0] - hw, center[1] + hh],
                 ]
             }
             Geometry::Arc { center, radius, .. } => {
@@ -1540,12 +1827,12 @@ impl Scene {
                 [center[0] + radius, center[1] + radius],
             ),
             Geometry::Rect {
-                origin,
+                center,
                 width,
                 height,
             } => (
-                [origin[0], origin[1]],
-                [origin[0] + width, origin[1] + height],
+                [center[0] - width / 2.0, center[1] - height / 2.0],
+                [center[0] + width / 2.0, center[1] + height / 2.0],
             ),
             Geometry::Arc { center, radius, .. } => {
                 // Arc는 보수적으로 전체 원의 bounding box 사용
@@ -1920,7 +2207,23 @@ mod tests {
     #[test]
     fn test_world_bounds_simple() {
         let mut scene = Scene::new("test");
+        // center (0, 0), size 10x20 → bounds [-5, -10] to [5, 10]
         scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 20.0).unwrap();
+
+        let (min, max) = scene.get_world_bounds_internal("r1").unwrap();
+        assert!(approx_eq(min[0], -5.0, 1e-10));
+        assert!(approx_eq(min[1], -10.0, 1e-10));
+        assert!(approx_eq(max[0], 5.0, 1e-10));
+        assert!(approx_eq(max[1], 10.0, 1e-10));
+    }
+
+    #[test]
+    fn test_world_bounds_with_translate() {
+        let mut scene = Scene::new("test");
+        // center (0, 0), size 10x20 → local bounds [-5, -10] to [5, 10]
+        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 20.0).unwrap();
+        // translate [5, 10] → world bounds [0, 0] to [10, 20]
+        scene.find_by_name_mut("r1").unwrap().transform.translate = [5.0, 10.0];
 
         let (min, max) = scene.get_world_bounds_internal("r1").unwrap();
         assert!(approx_eq(min[0], 0.0, 1e-10));
@@ -1930,22 +2233,10 @@ mod tests {
     }
 
     #[test]
-    fn test_world_bounds_with_translate() {
-        let mut scene = Scene::new("test");
-        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 20.0).unwrap();
-        scene.find_by_name_mut("r1").unwrap().transform.translate = [5.0, 10.0];
-
-        let (min, max) = scene.get_world_bounds_internal("r1").unwrap();
-        assert!(approx_eq(min[0], 5.0, 1e-10));
-        assert!(approx_eq(min[1], 10.0, 1e-10));
-        assert!(approx_eq(max[0], 15.0, 1e-10));
-        assert!(approx_eq(max[1], 30.0, 1e-10));
-    }
-
-    #[test]
     fn test_world_bounds_group() {
         let mut scene = Scene::new("test");
-        scene.add_rect_internal("r1", 0.0, 0.0, 10.0, 10.0).unwrap();
+        // rect center (5, 5), size 10x10 → bounds [0, 0] to [10, 10]
+        scene.add_rect_internal("r1", 5.0, 5.0, 10.0, 10.0).unwrap();
         scene.add_circle_internal("c1", 50.0, 50.0, 5.0).unwrap();
         scene
             .create_group_internal("g1", vec!["r1".to_string(), "c1".to_string()])
