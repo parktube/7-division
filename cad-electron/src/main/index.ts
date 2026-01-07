@@ -15,12 +15,14 @@ const DEFAULT_SCENE = JSON.stringify({
   last_operation: null,
 }, null, 2);
 
-const DEFAULT_SELECTION = JSON.stringify({
-  selected_entities: [],
-  locked_entities: [],
-  hidden_entities: [],
-  timestamp: Date.now(),
-}, null, 2);
+function createDefaultSelection(): string {
+  return JSON.stringify({
+    selected_entities: [],
+    locked_entities: [],
+    hidden_entities: [],
+    timestamp: Date.now(),
+  }, null, 2);
+}
 
 function resolveDefaultScene(): string {
   const packagedScene = join(__dirname, '../renderer/scene.json');
@@ -39,7 +41,7 @@ function ensureDataFiles(viewerPath: string): void {
     writeFileSync(scenePath, resolveDefaultScene());
   }
   if (!existsSync(selectionPath)) {
-    writeFileSync(selectionPath, DEFAULT_SELECTION);
+    writeFileSync(selectionPath, createDefaultSelection());
   }
 }
 
@@ -104,11 +106,12 @@ async function startDataServer(viewerPath: string): Promise<string> {
       }
 
       const url = req.url || '';
-      if (url.startsWith('/scene.json')) {
+      const pathname = url.split('?')[0];  // Remove query string for exact matching
+      if (pathname === '/scene.json') {
         handleJsonFile(join(viewerPath, 'scene.json'), req, res);
-      } else if (url.startsWith('/selection.json')) {
+      } else if (pathname === '/selection.json') {
         handleJsonFile(join(viewerPath, 'selection.json'), req, res);
-      } else if (url.startsWith('/sketch.json')) {
+      } else if (pathname === '/sketch.json') {
         handleJsonFile(join(viewerPath, 'sketch.json'), req, res);
       } else {
         res.statusCode = 404;

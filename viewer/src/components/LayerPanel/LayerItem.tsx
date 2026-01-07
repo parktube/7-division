@@ -136,7 +136,7 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
           aria-label={locked ? 'Unlock layer' : 'Lock layer'}
           aria-pressed={locked}
           className={`w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--hover-strong)] transition-all flex-shrink-0
-            ${locked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            ${locked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
           style={{ color: locked ? '#f97316' : 'var(--text-secondary)' }}
         >
           {locked ? <Lock size={14} /> : <Unlock size={14} />}
@@ -149,7 +149,7 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
           aria-label={hidden ? 'Show layer' : 'Hide layer'}
           aria-pressed={hidden}
           className={`w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--hover-strong)] transition-all flex-shrink-0
-            ${hidden ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            ${hidden ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
           style={{ color: hidden ? 'var(--text-muted)' : 'var(--text-secondary)' }}
         >
           {hidden ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -157,7 +157,7 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
       </div>
 
       {/* Children (recursive, only when expanded) */}
-      {hasChildren && expanded && node.children!.map(child => (
+      {hasChildren && expanded && node.children?.map(child => (
         <LayerItem key={child.id} node={child} depth={depth + 1} parentLocked={locked} />
       ))}
     </div>
