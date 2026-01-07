@@ -64,10 +64,9 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
     try {
       const portData = await fs.readFile(portFilePath, 'utf-8');
       port = parseInt(portData.trim(), 10);
-    } catch {
-      // Port file doesn't exist, try scanning common dynamic ports
-      // Actually, we can't easily find the port without IPC
-      // Fall back to checking if Electron capture.png exists and is recent
+    } catch (err) {
+      // Port file doesn't exist - Electron app may not be running
+      logger.debug('Electron port file not found', { path: portFilePath, error: String(err) });
     }
 
     // If we have a port, try the capture endpoint
@@ -83,7 +82,8 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
     }
 
     return null;
-  } catch {
+  } catch (err) {
+    logger.debug('Electron capture failed', { error: String(err) });
     return null;
   }
 }

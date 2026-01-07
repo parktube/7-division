@@ -339,20 +339,18 @@ export class CADExecutor {
 
   /**
    * 베지어 커브를 그립니다.
-   * @param input.points - [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
-   *                       첫 세그먼트는 8개, 이후 세그먼트는 6개씩 (cp1, cp2, end)
-   * @param input.closed - 닫힌 경로 여부 (기본값 false)
+   * @param input.path - SVG path 문자열 (예: "M 0,0 C 30,50 70,50 100,0 S 170,50 200,0 Z")
+   *                     M x,y = 시작점, C cp1 cp2 end = 큐빅, S cp2 end = 부드러운 연결, Z = 닫기
    */
   private drawBezier(input: Record<string, unknown>): ToolResult {
-    const error = this.validateInput(input, { name: 'string', points: 'number[]' });
+    const error = this.validateInput(input, { name: 'string', path: 'string' });
     if (error) return { success: false, error: `draw_bezier: ${error}` };
 
     const name = input.name as string;
-    const points = new Float64Array(input.points as number[]);
-    const closed = (input.closed as boolean) || false;
+    const path = input.path as string;
     const styleJson = this.toJson(input.style);
 
-    const result = this.scene.draw_bezier(name, points, closed, styleJson);
+    const result = this.scene.draw_bezier(name, path, styleJson);
     return { success: true, entity: result, type: 'bezier' };
   }
 

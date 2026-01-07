@@ -158,6 +158,26 @@ const SketchOverlay = forwardRef<SketchOverlayRef, SketchOverlayProps>(
       }
     }, [isActive, render, strokes.length])
 
+    // ResizeObserver to re-render when canvas size changes (for inactive mode with strokes)
+    useEffect(() => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+
+      const hasContent = strokes.length > 0
+      // Only need ResizeObserver when inactive but showing strokes
+      // (when active, animation loop handles re-render)
+      if (isActive || !hasContent) return
+
+      const resizeObserver = new ResizeObserver(() => {
+        render()
+      })
+      resizeObserver.observe(canvas)
+
+      return () => {
+        resizeObserver.disconnect()
+      }
+    }, [isActive, strokes.length, render])
+
     // Convert screen coordinates to world coordinates (same as Canvas.tsx)
     const screenToWorld = useCallback((e: React.MouseEvent): Point => {
       const canvas = canvasRef.current

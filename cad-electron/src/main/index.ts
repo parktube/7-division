@@ -49,17 +49,31 @@ function ensureDataFiles(viewerPath: string): void {
 // Maximum body size for POST requests (1MB)
 const MAX_BODY_SIZE = 1024 * 1024;
 
+// Validate capture path is within allowed directory (path traversal prevention)
+function isAllowedCapturePath(requestedPath: string): boolean {
+  const userData = app.getPath('userData');
+  const resolved = join(requestedPath); // Normalize path
+  // Must be within userData or start with userData
+  return resolved.startsWith(userData);
+}
+
 // Capture the viewport as PNG
 async function captureViewport(outputPath?: string): Promise<{ success: boolean; path?: string; error?: string }> {
   if (!mainWindow) {
     return { success: false, error: 'No window available' };
   }
+
+  // Default output path in userData
+  const capturePath = outputPath || join(app.getPath('userData'), 'capture.png');
+
+  // Validate path (prevent directory traversal attacks)
+  if (outputPath && !isAllowedCapturePath(capturePath)) {
+    return { success: false, error: 'Invalid capture path: must be within userData directory' };
+  }
+
   try {
     const image = await mainWindow.webContents.capturePage();
     const pngBuffer = image.toPNG();
-
-    // Default output path in userData
-    const capturePath = outputPath || join(app.getPath('userData'), 'capture.png');
     writeFileSync(capturePath, pngBuffer);
 
     return { success: true, path: capturePath };
@@ -82,18 +96,22 @@ function handleJsonFile(filePath: string, req: IncomingMessage, res: ServerRespo
   } else if (req.method === 'POST') {
     let body = '';
     let bodySize = 0;
+    let aborted = false;
     req.on('data', (chunk: Buffer) => {
+      if (aborted) return; // Ignore further data after limit exceeded
       bodySize += chunk.length;
       if (bodySize > MAX_BODY_SIZE) {
-        req.destroy();
+        aborted = true;
+        // Send response first, then destroy request
         res.statusCode = 413;
         res.end('Payload too large');
+        req.destroy();
         return;
       }
       body += chunk;
     });
     req.on('end', () => {
-      if (res.writableEnded) return;
+      if (aborted || res.writableEnded) return;
       try {
         JSON.parse(body); // Validate JSON
         writeFileSync(filePath, body, 'utf-8');
