@@ -157,6 +157,9 @@ async function startDataServer(viewerPath: string): Promise<string> {
       const address = server.address();
       if (address && typeof address !== 'string') {
         dataServer = server;
+        // Write port to file for CLI discovery
+        const portFilePath = join(viewerPath, '.server-port');
+        writeFileSync(portFilePath, String(address.port));
         resolve(`http://127.0.0.1:${address.port}`);
         return;
       }
@@ -228,6 +231,17 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  // Clean up port file
+  const viewerPath = resolveViewerPath();
+  const portFilePath = join(viewerPath, '.server-port');
+  try {
+    if (existsSync(portFilePath)) {
+      require('fs').unlinkSync(portFilePath);
+    }
+  } catch {
+    // Ignore cleanup errors
+  }
+
   if (dataServer) {
     dataServer.close((err) => {
       if (err) {

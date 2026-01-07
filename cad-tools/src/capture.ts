@@ -2,12 +2,16 @@
  * Viewport Capture Tool
  *
  * Captures the CAD viewer as a PNG screenshot for Claude to analyze.
+ * Auto-detects environment:
+ * - Windows/Mac: Try Electron first, fall back to Puppeteer
+ * - Linux: Use Puppeteer for web viewer
  */
 
 import puppeteer from 'puppeteer';
 import { promises as fs } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 import { logger } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -18,12 +22,70 @@ export interface CaptureOptions {
   height?: number;
   outputPath?: string;
   waitMs?: number;
+  forceMethod?: 'electron' | 'puppeteer';
 }
 
 export interface CaptureResult {
   success: boolean;
   path?: string;
   error?: string;
+  method?: 'electron' | 'puppeteer';
+}
+
+/**
+ * Get the default userData path for Electron (platform-specific)
+ */
+function getElectronUserDataPath(): string {
+  const appName = 'CADViewer';
+  if (process.platform === 'darwin') {
+    return join(homedir(), 'Library', 'Application Support', appName);
+  }
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
+    return join(appData, appName);
+  }
+  const xdgConfig = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
+  return join(xdgConfig, appName);
+}
+
+/**
+ * Try to capture from Electron's data server
+ * Returns null if Electron is not running
+ */
+async function tryElectronCapture(outputPath: string): Promise<CaptureResult | null> {
+  // Electron's data server writes port to a file or we can try common ports
+  // For now, try to read from a known port file or scan
+  const userDataPath = getElectronUserDataPath();
+  const portFilePath = join(userDataPath, '.server-port');
+
+  try {
+    // First try to read the port from file (if Electron writes it)
+    let port: number | undefined;
+    try {
+      const portData = await fs.readFile(portFilePath, 'utf-8');
+      port = parseInt(portData.trim(), 10);
+    } catch {
+      // Port file doesn't exist, try scanning common dynamic ports
+      // Actually, we can't easily find the port without IPC
+      // Fall back to checking if Electron capture.png exists and is recent
+    }
+
+    // If we have a port, try the capture endpoint
+    if (port) {
+      const response = await fetch(`http://127.0.0.1:${port}/capture?path=${encodeURIComponent(outputPath)}`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+      if (response.ok) {
+        const result = await response.json() as CaptureResult;
+        return { ...result, method: 'electron' };
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -35,6 +97,10 @@ export interface CaptureResult {
  * - Selection indicators (blue dashed borders)
  * - Lock indicators (orange solid borders)
  * - Grid and rulers (if enabled)
+ *
+ * Auto-detects capture method:
+ * - Tries Electron first (if available)
+ * - Falls back to Puppeteer for web viewer
  */
 export async function captureViewport(options: CaptureOptions = {}): Promise<CaptureResult> {
   const {
@@ -44,7 +110,28 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     height = 1000,
     outputPath = resolve(__dirname, '../../viewer/capture.png'),
     waitMs = 2000,  // Wait for sketch to load
+    forceMethod,
   } = options;
+
+  // Try Electron first on Windows/Mac (unless forced to use Puppeteer)
+  if (forceMethod !== 'puppeteer' && (process.platform === 'win32' || process.platform === 'darwin')) {
+    logger.debug('Trying Electron capture first');
+    const electronResult = await tryElectronCapture(outputPath);
+    if (electronResult?.success) {
+      logger.debug('Electron capture succeeded');
+      return electronResult;
+    }
+    logger.debug('Electron capture not available, falling back to Puppeteer');
+  }
+
+  // Skip Puppeteer if forced to use Electron
+  if (forceMethod === 'electron') {
+    return {
+      success: false,
+      error: 'Electron capture not available (is the Electron app running?)',
+      method: 'electron',
+    };
+  }
 
   let browser;
   try {
@@ -108,6 +195,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     return {
       success: true,
       path: outputPath,
+      method: 'puppeteer',
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -119,6 +207,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     return {
       success: false,
       error: errorMessage,
+      method: 'puppeteer',
     };
   }
 }
