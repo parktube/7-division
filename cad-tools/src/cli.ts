@@ -105,7 +105,17 @@ const SCENE_CODE_FILE = resolve(STATE_DIR, 'scene.code.js');
 const MODULES_DIR = resolve(STATE_DIR, '.cad-modules');
 
 // Selection file path for get_selection and --selection
-const SELECTION_FILE = resolve(__dirname, '../../viewer/selection.json');
+function resolveSelectionFile(): string {
+  if (process.env.CAD_SELECTION_PATH) {
+    return resolve(process.env.CAD_SELECTION_PATH);
+  }
+  const repoSelection = resolve(__dirname, '../../viewer/selection.json');
+  if (existsSync(repoSelection)) {
+    return repoSelection;
+  }
+  return resolve(defaultUserDataDir(), 'selection.json');
+}
+const SELECTION_FILE = resolveSelectionFile();
 
 /** Helper: Get selection result (used by both get_selection command and --selection flag) */
 function getSelectionResult(): { success: boolean; selection?: unknown; error?: string; hint: string } {
@@ -136,6 +146,7 @@ function getSelectionResult(): { success: boolean; selection?: unknown; error?: 
 
 /** Helper: Capture viewport result (used by both capture_viewport command and --capture flag) */
 async function captureViewportResult(): Promise<{ success: boolean; path?: string; error?: string; message?: string; hint: string }> {
+  // Use app internal path (viewer/capture.png relative to cad-tools)
   const outputPath = resolve(__dirname, '../../viewer/capture.png');
   const { captureViewport } = await import('./capture.js');
   const result = await captureViewport({

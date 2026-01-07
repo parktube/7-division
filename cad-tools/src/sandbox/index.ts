@@ -6,7 +6,8 @@
 
 import { getQuickJS, type QuickJSContext } from 'quickjs-emscripten';
 import { readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
+import { resolve, dirname, join } from 'path';
+import { homedir } from 'os';
 import { fileURLToPath } from 'url';
 import type { CADExecutor } from '../executor.js';
 import { logger } from '../logger.js';
@@ -33,12 +34,29 @@ interface SelectionData {
   timestamp?: number;
 }
 
+function getDefaultUserDataDir(): string {
+  const appName = 'CADViewer';
+  if (process.platform === 'darwin') {
+    return join(homedir(), 'Library', 'Application Support', appName);
+  }
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
+    return join(appData, appName);
+  }
+  const xdgConfig = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
+  return join(xdgConfig, appName);
+}
+
 function resolveSelectionFile(): string {
   if (process.env.CAD_SELECTION_PATH) {
     return resolve(process.env.CAD_SELECTION_PATH);
   }
-  // Default: viewer/selection.json relative to repo root
-  return resolve(__dirname, '../../../viewer/selection.json');
+  // Try repo viewer/ first (development), then userData (production)
+  const repoSelection = resolve(__dirname, '../../../viewer/selection.json');
+  if (existsSync(repoSelection)) {
+    return repoSelection;
+  }
+  return resolve(getDefaultUserDataDir(), 'selection.json');
 }
 
 function loadLockedEntities(): Set<string> {

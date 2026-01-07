@@ -71,16 +71,22 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
 
     // If we have a port, try the capture endpoint
     if (port) {
-      const response = await fetch(`http://127.0.0.1:${port}/capture?path=${encodeURIComponent(outputPath)}`, {
+      const url = `http://127.0.0.1:${port}/capture?path=${encodeURIComponent(outputPath)}`;
+      logger.debug('Electron capture request', { url, outputPath });
+      const response = await fetch(url, {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       });
-      if (response.ok) {
-        const result = await response.json() as CaptureResult;
+      const result = await response.json() as CaptureResult;
+      logger.debug('Electron capture response', { status: response.status, result });
+      if (response.ok && result.success) {
         return { ...result, method: 'electron' };
       }
+      // Return the error from Electron
+      return { ...result, method: 'electron' };
     }
 
+    logger.debug('No port found for Electron capture');
     return null;
   } catch (err) {
     logger.debug('Electron capture failed', { error: String(err) });
@@ -103,25 +109,35 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
  * - Falls back to Puppeteer for web viewer
  */
 export async function captureViewport(options: CaptureOptions = {}): Promise<CaptureResult> {
+  // Default output path: use Electron userData on Windows/Mac, viewer dir on Linux
+  const defaultOutputPath = (process.platform === 'win32' || process.platform === 'darwin')
+    ? join(getElectronUserDataPath(), 'capture.png')
+    : resolve(__dirname, '../../viewer/capture.png');
+
   const {
     // Default to Vite dev server, fall back to static server
     url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
     width = 1600,
     height = 1000,
-    outputPath = resolve(__dirname, '../../viewer/capture.png'),
+    outputPath = defaultOutputPath,
     waitMs = 2000,  // Wait for sketch to load
     forceMethod,
   } = options;
 
-  // Try Electron first on Windows/Mac (unless forced to use Puppeteer)
+  // On Windows/Mac, use Electron capture (unless forced to use Puppeteer)
   if (forceMethod !== 'puppeteer' && (process.platform === 'win32' || process.platform === 'darwin')) {
-    logger.debug('Trying Electron capture first');
+    logger.debug('Trying Electron capture');
     const electronResult = await tryElectronCapture(outputPath);
     if (electronResult?.success) {
       logger.debug('Electron capture succeeded');
       return electronResult;
     }
-    logger.debug('Electron capture not available, falling back to Puppeteer');
+    // Don't fall back to Puppeteer - Electron is the expected method on Windows/Mac
+    return {
+      success: false,
+      error: 'Electron capture failed. Is the CADViewer app running? (Check AppData/Roaming/CADViewer/.server-port)',
+      method: 'electron',
+    };
   }
 
   // Skip Puppeteer if forced to use Electron

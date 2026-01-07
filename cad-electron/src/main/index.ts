@@ -49,12 +49,13 @@ function ensureDataFiles(viewerPath: string): void {
 // Maximum body size for POST requests (1MB)
 const MAX_BODY_SIZE = 1024 * 1024;
 
-// Validate capture path is within allowed directory (path traversal prevention)
+// Validate capture path is within allowed directories (path traversal prevention)
 function isAllowedCapturePath(requestedPath: string): boolean {
-  const userData = app.getPath('userData');
   const resolved = join(requestedPath); // Normalize path
-  // Must be within userData or start with userData
-  return resolved.startsWith(userData);
+  // Allow: userData (Roaming) or app resources directory (Local/Programs/.../resources)
+  const userData = app.getPath('userData');
+  const resourcesPath = join(app.getAppPath(), '..'); // app.asar -> resources folder
+  return resolved.startsWith(userData) || resolved.startsWith(resourcesPath);
 }
 
 // Capture the viewport as PNG
