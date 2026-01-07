@@ -28,18 +28,25 @@ export default function Canvas() {
   const [isSpacePressed, setIsSpacePressed] = useState(false)
 
 
-  // Build entity map for quick lookup (by both id and name for children lookup)
-  const entityMap = useMemo(() => {
-    if (!scene) return new Map<string, Entity>()
-    const map = new Map<string, Entity>()
+  // Build entity maps for quick lookup
+  // Separate maps to avoid key collision between id and name
+  const { entityById, entityByName } = useMemo(() => {
+    if (!scene) return { entityById: new Map<string, Entity>(), entityByName: new Map<string, Entity>() }
+    const byId = new Map<string, Entity>()
+    const byName = new Map<string, Entity>()
     scene.entities.forEach(e => {
-      map.set(e.id, e)
+      byId.set(e.id, e)
       if (e.metadata?.name) {
-        map.set(e.metadata.name, e)
+        byName.set(e.metadata.name, e)
       }
     })
-    return map
+    return { entityById: byId, entityByName: byName }
   }, [scene])
+
+  // Helper to find entity by id or name (for children lookup which uses name)
+  const findEntity = useCallback((key: string): Entity | undefined => {
+    return entityById.get(key) ?? entityByName.get(key)
+  }, [entityById, entityByName])
 
   // Render lock indicator (orange solid border) - Dumb View: read computed
   const renderLockIndicator = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -48,7 +55,7 @@ export default function Canvas() {
     for (const id of lockedIds) {
       if (hiddenIds.has(id)) continue // Skip hidden entities
 
-      const entity = entityMap.get(id)
+      const entity = findEntity(id)
       if (!entity) continue
 
       // Dumb View: read from computed.world_bounds
@@ -68,7 +75,7 @@ export default function Canvas() {
         bounds.max[1] - bounds.min[1] + padding * 2
       )
     }
-  }, [lockedIds, hiddenIds, entityMap, viewport.zoom])
+  }, [lockedIds, hiddenIds, findEntity, viewport.zoom])
 
   // Render selection highlight - Dumb View: read computed
   const renderSelection = useCallback((ctx: CanvasRenderingContext2D) => {
@@ -77,7 +84,7 @@ export default function Canvas() {
     for (const id of selectedIds) {
       if (hiddenIds.has(id)) continue // Skip hidden entities
 
-      const entity = entityMap.get(id)
+      const entity = findEntity(id)
       if (!entity) continue
 
       // Dumb View: read from computed.world_bounds
@@ -99,7 +106,7 @@ export default function Canvas() {
 
       ctx.setLineDash([])
     }
-  }, [selectedIds, hiddenIds, entityMap, viewport.zoom])
+  }, [selectedIds, hiddenIds, findEntity, viewport.zoom])
 
   // Render grid (matching mockup CSS: minor 20px @4% + major 100px @8%)
   const renderGrid = useCallback((ctx: CanvasRenderingContext2D, width: number, height: number) => {
@@ -198,7 +205,6 @@ export default function Canvas() {
       ctx.lineTo(sx, rulerSize - 8)
       ctx.stroke()
 
-      ctx.font = '10px Inter, sans-serif'
       ctx.fillText(String(wx), sx, 10)
     }
 
@@ -227,8 +233,6 @@ export default function Canvas() {
       ctx.lineTo(rulerSize - 8, sy)
       ctx.stroke()
 
-      ctx.fillStyle = textColor
-      ctx.font = '9px Inter, sans-serif'
       ctx.fillText(String(wy), rulerSize / 2, sy)
     }
 
@@ -284,7 +288,7 @@ export default function Canvas() {
     if (rulersEnabled) {
       renderRulers(ctx, rect.width, rect.height)
     }
-  }, [scene, viewport, gridEnabled, renderGrid, rulersEnabled, renderRulers, renderLockIndicator, renderSelection, hiddenIds, lockedIds])
+  }, [scene, viewport, gridEnabled, renderGrid, rulersEnabled, renderRulers, renderLockIndicator, renderSelection, hiddenIds])
 
   // Render on scene or viewport change
   useEffect(() => {

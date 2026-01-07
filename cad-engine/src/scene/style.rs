@@ -46,6 +46,26 @@ impl LineJoin {
     }
 }
 
+/// JSON 배열에서 RGBA 색상 파싱 (0.0-1.0 범위로 클램핑)
+///
+/// # Arguments
+/// * `arr` - JSON 배열 (4개 요소: R, G, B, A)
+/// * `default` - 파싱 실패 시 기본값
+///
+/// # Returns
+/// RGBA 색상 배열 [r, g, b, a], 각 값은 0.0-1.0 범위
+fn parse_rgba_color(arr: &[serde_json::Value], default: [f64; 4]) -> [f64; 4] {
+    if arr.len() != 4 {
+        return default;
+    }
+    [
+        arr[0].as_f64().unwrap_or(default[0]).clamp(0.0, 1.0),
+        arr[1].as_f64().unwrap_or(default[1]).clamp(0.0, 1.0),
+        arr[2].as_f64().unwrap_or(default[2]).clamp(0.0, 1.0),
+        arr[3].as_f64().unwrap_or(default[3]).clamp(0.0, 1.0),
+    ]
+}
+
 /// 선(stroke) 스타일
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -136,17 +156,8 @@ impl Scene {
             if let Some(width) = json_value.get("width").and_then(|v| v.as_f64()) {
                 existing.width = width;
             }
-            if let Some(color) = json_value
-                .get("color")
-                .and_then(|v| v.as_array())
-                .filter(|c| c.len() == 4)
-            {
-                existing.color = [
-                    color[0].as_f64().unwrap_or(0.0),
-                    color[1].as_f64().unwrap_or(0.0),
-                    color[2].as_f64().unwrap_or(0.0),
-                    color[3].as_f64().unwrap_or(1.0),
-                ];
+            if let Some(color) = json_value.get("color").and_then(|v| v.as_array()) {
+                existing.color = parse_rgba_color(color, existing.color);
             }
             if let Some(dash) = json_value.get("dash") {
                 if dash.is_null() {
@@ -171,18 +182,7 @@ impl Scene {
                 color: json_value
                     .get("color")
                     .and_then(|v| v.as_array())
-                    .map(|arr| {
-                        if arr.len() == 4 {
-                            [
-                                arr[0].as_f64().unwrap_or(0.0),
-                                arr[1].as_f64().unwrap_or(0.0),
-                                arr[2].as_f64().unwrap_or(0.0),
-                                arr[3].as_f64().unwrap_or(1.0),
-                            ]
-                        } else {
-                            [0.0, 0.0, 0.0, 1.0]
-                        }
-                    })
+                    .map(|arr| parse_rgba_color(arr, [0.0, 0.0, 0.0, 1.0]))
                     .unwrap_or([0.0, 0.0, 0.0, 1.0]),
                 dash: json_value.get("dash").and_then(|v| {
                     if v.is_null() {
@@ -230,18 +230,7 @@ impl Scene {
         let color = json_value
             .get("color")
             .and_then(|v| v.as_array())
-            .map(|arr| {
-                if arr.len() == 4 {
-                    [
-                        arr[0].as_f64().unwrap_or(0.0),
-                        arr[1].as_f64().unwrap_or(0.0),
-                        arr[2].as_f64().unwrap_or(0.0),
-                        arr[3].as_f64().unwrap_or(1.0),
-                    ]
-                } else {
-                    [0.0, 0.0, 0.0, 1.0]
-                }
-            })
+            .map(|arr| parse_rgba_color(arr, [0.0, 0.0, 0.0, 1.0]))
             .unwrap_or([0.0, 0.0, 0.0, 1.0]);
 
         entity.style.fill = Some(FillStyle { color });

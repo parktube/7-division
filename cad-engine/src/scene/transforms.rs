@@ -65,6 +65,10 @@ impl Scene {
     /// # Returns
     /// * Ok(true) - 성공
     /// * Ok(false) - name 미발견 (no-op)
+    ///
+    /// # Note
+    /// 0 이하의 스케일 값은 자동으로 양수(최소 0.001)로 보정됩니다.
+    /// 예: scale("e", -2, 0) → 실제 적용: (2.0, 0.001)
     pub fn scale(&mut self, name: &str, sx: f64, sy: f64) -> Result<bool, JsValue> {
         let entity = match self.find_by_name_mut(name) {
             Some(e) => e,
@@ -137,14 +141,14 @@ impl Scene {
                 }
 
                 // 3. 엔티티 삭제 (인덱스로 다시 찾아야 함 - 위에서 borrow 해제됨)
-                let idx = self
-                    .entities
-                    .iter()
-                    .position(|e| e.metadata.name == name)
-                    .unwrap();
-                self.entities.remove(idx);
-                self.last_operation = Some(format!("delete({})", name));
-                Ok(true)
+                if let Some(idx) = self.entities.iter().position(|e| e.metadata.name == name) {
+                    self.entities.remove(idx);
+                    self.last_operation = Some(format!("delete({})", name));
+                    Ok(true)
+                } else {
+                    // 방어적 처리: 논리적으로 도달하지 않아야 하나, 안전하게 false 반환
+                    Ok(false)
+                }
             }
             None => Ok(false),
         }
