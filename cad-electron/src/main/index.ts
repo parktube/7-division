@@ -56,7 +56,11 @@ function isAllowedCapturePath(requestedPath: string): boolean {
   // Allow: userData (Roaming) or app resources directory (Local/Programs/.../resources)
   const userData = resolve(app.getPath('userData'));
   const resourcesPath = resolve(app.getAppPath(), '..'); // app.asar -> resources folder
-  return resolved.startsWith(userData) || resolved.startsWith(resourcesPath);
+
+  // Check with path separator to prevent /app/data matching /app/data-evil
+  const isInUserData = resolved === userData || resolved.startsWith(userData + '/') || resolved.startsWith(userData + '\\');
+  const isInResources = resolved === resourcesPath || resolved.startsWith(resourcesPath + '/') || resolved.startsWith(resourcesPath + '\\');
+  return isInUserData || isInResources;
 }
 
 // Capture the viewport as PNG
