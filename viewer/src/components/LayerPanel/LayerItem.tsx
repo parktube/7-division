@@ -133,10 +133,12 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
         <button
           type="button"
           onClick={handleLockClick}
-          aria-label={locked ? 'Unlock layer' : 'Lock layer'}
-          aria-pressed={locked}
+          aria-label={parentLocked ? 'Layer locked by parent' : (selfLocked ? 'Unlock layer' : 'Lock layer')}
+          aria-pressed={selfLocked}
+          aria-disabled={parentLocked}
           className={`w-6 h-6 flex items-center justify-center rounded hover:bg-[var(--hover-strong)] transition-all flex-shrink-0
-            ${locked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}
+            ${locked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}
+            ${parentLocked && !selfLocked ? 'opacity-50' : ''}`}
           style={{ color: locked ? '#f97316' : 'var(--text-secondary)' }}
         >
           {locked ? <Lock size={14} /> : <Unlock size={14} />}
