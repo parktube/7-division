@@ -29,6 +29,21 @@ pub enum EntityType {
     Group,
 }
 
+impl EntityType {
+    /// 안정적인 문자열 표현 (API 호환성 보장)
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EntityType::Line => "Line",
+            EntityType::Circle => "Circle",
+            EntityType::Rect => "Rect",
+            EntityType::Arc => "Arc",
+            EntityType::Polygon => "Polygon",
+            EntityType::Bezier => "Bezier",
+            EntityType::Group => "Group",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Geometry {
     Line {
@@ -217,6 +232,11 @@ impl Transform {
         // 스케일 추출 (열 벡터의 길이)
         let sx = (m[0][0] * m[0][0] + m[1][0] * m[1][0]).sqrt();
         let sy = (m[0][1] * m[0][1] + m[1][1] * m[1][1]).sqrt();
+
+        // 음수 스케일 감지 (행렬식 부호로 판단)
+        // det < 0이면 하나의 축이 뒤집힌 것 (X축을 기준으로 처리)
+        let det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+        let sx = if det < 0.0 { -sx } else { sx };
 
         // 회전 추출 (첫 번째 열에서)
         let rotate = if sx.abs() > 1e-10 {

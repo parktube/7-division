@@ -52,10 +52,18 @@ export default function LayerItem({ node, depth, parentLocked = false }: LayerIt
     }
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      select(node.id)
+    }
+  }
+
   return (
     <div role="treeitem" aria-selected={selected} aria-expanded={isGroup ? expanded : undefined}>
       <div
         onClick={handleClick}
+        onKeyDown={handleKeyDown}
         tabIndex={0}
         className={`group flex items-center h-8 cursor-pointer mx-1 my-px rounded transition-colors relative
           ${selected

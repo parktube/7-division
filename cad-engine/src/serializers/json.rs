@@ -143,7 +143,7 @@ fn build_tree(entities: &[Entity]) -> Vec<TreeNode> {
         TreeNode {
             id: entity.id.clone(),
             name: entity.metadata.name.clone(),
-            entity_type: format!("{:?}", entity.entity_type),
+            entity_type: entity.entity_type.as_str().to_string(),
             z_order: get_z_order(entity),
             children,
         }

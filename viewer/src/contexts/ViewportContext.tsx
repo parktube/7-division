@@ -7,6 +7,13 @@ import {
   ZOOM_STEP,
 } from '@/types/viewport'
 
+// Puppeteer capture용 전역 타입 선언
+declare global {
+  interface Window {
+    __setZoom?: (z: number) => void
+  }
+}
+
 interface ViewportContextValue {
   viewport: ViewportState
   zoomAt: (cursorX: number, cursorY: number, delta: number) => void
@@ -62,9 +69,9 @@ export function ViewportProvider({ children }: { children: ReactNode }) {
 
   // Expose setZoom globally for capture (Puppeteer)
   useEffect(() => {
-    (window as unknown as { __setZoom: (z: number) => void }).__setZoom = setZoom
+    window.__setZoom = setZoom
     return () => {
-      delete (window as unknown as { __setZoom?: (z: number) => void }).__setZoom
+      delete window.__setZoom
     }
   }, [setZoom])
 
