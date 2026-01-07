@@ -90,6 +90,13 @@ export default function PanelLayout() {
 
       {/* Left Resize Handle */}
       <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-valuenow={leftWidth}
+        aria-valuemin={LEFT_MIN}
+        aria-valuemax={LEFT_MAX}
+        aria-label="Resize left panel"
+        tabIndex={0}
         className="w-1 cursor-col-resize transition-colors relative"
         style={{
           backgroundColor: dragging === 'left' ? 'var(--selection)' : 'transparent',
@@ -106,6 +113,13 @@ export default function PanelLayout() {
 
       {/* Right Resize Handle */}
       <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-valuenow={rightWidth}
+        aria-valuemin={RIGHT_MIN}
+        aria-valuemax={RIGHT_MAX}
+        aria-label="Resize right panel"
+        tabIndex={0}
         className="w-1 cursor-col-resize transition-colors relative"
         style={{
           backgroundColor: dragging === 'right' ? 'var(--selection)' : 'transparent',
