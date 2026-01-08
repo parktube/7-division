@@ -162,6 +162,11 @@ booleanUnion(nameA, nameB, resultName);      // 합집합
 booleanDifference(nameA, nameB, resultName); // A에서 B를 뺀 차집합
 booleanIntersect(nameA, nameB, resultName);  // 교집합
 // 결과는 Polygon 타입으로 생성됨
+
+// 기하 분석 (Manifold 기반)
+offsetPolygon(name, delta, resultName, joinType?); // 확장(+)/축소(-), joinType: 'round'|'square'|'miter'
+getArea(name);                               // 면적 계산 (닫힌 도형만)
+convexHull(name, resultName);                // 볼록 껍질 생성
 ```
 
 ### 모듈 시스템

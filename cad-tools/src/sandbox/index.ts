@@ -184,9 +184,38 @@ function entityToPolygon(entity: EntityGeometry): Polygon2D | null {
   }
 
   // Apply transform to all points
-  return basePolygon.map(contour =>
+  const transformed = basePolygon.map(contour =>
     contour.map(point => applyTransform(point, transform))
   );
+
+  // Ensure CCW winding for Manifold
+  return ensureCCW(transformed);
+}
+
+/**
+ * Polygon의 winding order 확인 (양수 = CCW, 음수 = CW)
+ * Shoelace formula 사용
+ */
+function getPolygonArea(points: [number, number][]): number {
+  let area = 0;
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    area += points[i][0] * points[j][1];
+    area -= points[j][0] * points[i][1];
+  }
+  return area / 2;
+}
+
+/**
+ * CCW winding order로 정규화 (Manifold는 CCW 필요)
+ */
+function ensureCCW(polygon: Polygon2D): Polygon2D {
+  return polygon.map(contour => {
+    const area = getPolygonArea(contour);
+    // 음수면 CW → 뒤집어서 CCW로
+    return area < 0 ? [...contour].reverse() : contour;
+  });
 }
 
 /**
@@ -493,6 +522,95 @@ export async function runCadCode(
 
     bindCadFunction(vm, 'booleanIntersect', (nameA: string, nameB: string, resultName: string) => {
       return performBooleanOp(nameA, nameB, resultName, 'intersection');
+    });
+
+    // === Geometry Analysis (Manifold) ===
+
+    // offsetPolygon(name, delta, resultName, joinType?): 폴리곤 확장/축소
+    // delta > 0: 확장, delta < 0: 축소
+    // joinType: 'round' (기본), 'square', 'miter'
+    bindCadFunction(vm, 'offsetPolygon', (
+      name: string,
+      delta: number,
+      resultName: string,
+      joinType: 'round' | 'square' | 'miter' = 'round'
+    ) => {
+      const result = executor.exec('get_entity', { name });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] offsetPolygon: entity '${name}' not found`);
+        return false;
+      }
+
+      const entity = JSON.parse(result.data) as EntityGeometry;
+      const polygon = entityToPolygon(entity);
+      if (!polygon) {
+        logger.error(`[sandbox] offsetPolygon: '${name}' is not a closed shape`);
+        return false;
+      }
+
+      const cs = polygonToCrossSection(manifold, polygon);
+      const joinTypeMap = { square: 0, round: 1, miter: 2 };
+      const offsetCs = cs.offset(delta, joinTypeMap[joinType], 2.0, 0);
+      const resultPolygon = crossSectionToPolygon(offsetCs);
+
+      cs.delete();
+      offsetCs.delete();
+
+      if (resultPolygon.length === 0) {
+        logger.warn(`[sandbox] offsetPolygon: result is empty (delta too large?)`);
+        return false;
+      }
+
+      const flatPoints = polygonToFlatPoints(resultPolygon);
+      return callCad('draw_polygon', { name: resultName, points: flatPoints });
+    });
+
+    // getArea(name): 폴리곤 면적 계산
+    bindCadQueryFunction(vm, 'getArea', (name: string) => {
+      const result = executor.exec('get_entity', { name });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] getArea: entity '${name}' not found`);
+        return null;
+      }
+
+      const entity = JSON.parse(result.data) as EntityGeometry;
+      const polygon = entityToPolygon(entity);
+      if (!polygon) {
+        logger.error(`[sandbox] getArea: '${name}' is not a closed shape`);
+        return null;
+      }
+
+      const cs = polygonToCrossSection(manifold, polygon);
+      const area = cs.area();
+      cs.delete();
+
+      return area;
+    });
+
+    // convexHull(name, resultName): 볼록 껍질 생성
+    bindCadFunction(vm, 'convexHull', (name: string, resultName: string) => {
+      const result = executor.exec('get_entity', { name });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] convexHull: entity '${name}' not found`);
+        return false;
+      }
+
+      const entity = JSON.parse(result.data) as EntityGeometry;
+      const polygon = entityToPolygon(entity);
+      if (!polygon) {
+        logger.error(`[sandbox] convexHull: '${name}' is not a closed shape`);
+        return false;
+      }
+
+      const cs = polygonToCrossSection(manifold, polygon);
+      const hullCs = cs.hull();
+      const resultPolygon = crossSectionToPolygon(hullCs);
+
+      cs.delete();
+      hullCs.delete();
+
+      const flatPoints = polygonToFlatPoints(resultPolygon);
+      return callCad('draw_polygon', { name: resultName, points: flatPoints });
     });
 
     // console.log 바인딩
