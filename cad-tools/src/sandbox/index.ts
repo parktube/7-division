@@ -13,6 +13,7 @@ import type { CADExecutor } from '../executor.js';
 import { logger } from '../logger.js';
 import {
   getManifold,
+  getManifoldSync,
   type Polygon2D,
   type BooleanOp,
   polygonToCrossSection,
@@ -267,9 +268,15 @@ export async function runCadCode(
   // 잠긴 엔티티 로드
   const lockedEntities = loadLockedEntities();
 
-  // Manifold 초기화 (Boolean 연산용, lazy singleton)
-  // Boolean 연산 사용 여부와 관계없이 미리 초기화 (singleton이라 비용 최소)
-  const manifold = await getManifold();
+  // Manifold lazy 초기화: Boolean/기하 연산 사용 시에만 WASM 로드
+  const MANIFOLD_OPERATIONS = [
+    'booleanUnion', 'booleanDifference', 'booleanIntersect',
+    'offsetPolygon', 'getArea', 'convexHull', 'decompose'
+  ];
+  const needsManifold = MANIFOLD_OPERATIONS.some(op => code.includes(op));
+  if (needsManifold) {
+    await getManifold();  // Singleton이므로 한 번만 로드됨
+  }
 
   try {
     const QuickJS = await getQuickJS();
@@ -347,22 +354,8 @@ export async function runCadCode(
         return false;
       }
 
-      // Create individual bezier entities for each glyph with default black fill
-      const glyphNames: string[] = [];
-      for (let i = 0; i < result.paths.length; i++) {
-        const glyphName = `${name}_g${i}`;
-        const success = callCad('draw_bezier', { name: glyphName, path: result.paths[i] });
-        if (success) {
-          // Apply default black fill to make text visible
-          callCad('set_fill', { name: glyphName, fill: { color: [0, 0, 0, 1] } });
-          glyphNames.push(glyphName);
-        }
-      }
-
-      // If only one glyph, just rename pattern
-      if (glyphNames.length === 1) {
-        // Delete the temp glyph and create with proper name
-        callCad('delete_entity', { name: glyphNames[0] });
+      // Single glyph: create directly with the given name (no temp entity)
+      if (result.paths.length === 1) {
         const success = callCad('draw_bezier', { name, path: result.paths[0] });
         if (success) {
           callCad('set_fill', { name, fill: { color: [0, 0, 0, 1] } });
@@ -370,7 +363,17 @@ export async function runCadCode(
         return success;
       }
 
-      // Multiple glyphs - create a group
+      // Multiple glyphs: create individual beziers then group
+      const glyphNames: string[] = [];
+      for (let i = 0; i < result.paths.length; i++) {
+        const glyphName = `${name}_g${i}`;
+        const success = callCad('draw_bezier', { name: glyphName, path: result.paths[i] });
+        if (success) {
+          callCad('set_fill', { name: glyphName, fill: { color: [0, 0, 0, 1] } });
+          glyphNames.push(glyphName);
+        }
+      }
+
       if (glyphNames.length > 0) {
         callCad('create_group', { name, children: glyphNames });
         return true;
@@ -749,8 +752,8 @@ export async function runCadCode(
       }
 
       // Perform Boolean operation using Manifold
-      const csA = polygonToCrossSection(manifold, polyA);
-      const csB = polygonToCrossSection(manifold, polyB);
+      const csA = polygonToCrossSection(getManifoldSync(), polyA);
+      const csB = polygonToCrossSection(getManifoldSync(), polyB);
 
       let resultCs: CrossSection;
       switch (operation) {
@@ -819,7 +822,7 @@ export async function runCadCode(
         return false;
       }
 
-      const cs = polygonToCrossSection(manifold, polygon);
+      const cs = polygonToCrossSection(getManifoldSync(), polygon);
       const joinTypeMap = { square: 0, round: 1, miter: 2 };
       const offsetCs = cs.offset(delta, joinTypeMap[joinType], 2.0, 0);
       const resultPolygon = crossSectionToPolygon(offsetCs);
@@ -851,7 +854,7 @@ export async function runCadCode(
         return null;
       }
 
-      const cs = polygonToCrossSection(manifold, polygon);
+      const cs = polygonToCrossSection(getManifoldSync(), polygon);
       const area = cs.area();
       cs.delete();
 
@@ -873,7 +876,7 @@ export async function runCadCode(
         return false;
       }
 
-      const cs = polygonToCrossSection(manifold, polygon);
+      const cs = polygonToCrossSection(getManifoldSync(), polygon);
       const hullCs = cs.hull();
       const resultPolygon = crossSectionToPolygon(hullCs);
 
@@ -902,7 +905,7 @@ export async function runCadCode(
         return null;
       }
 
-      const cs = polygonToCrossSection(manifold, polygon);
+      const cs = polygonToCrossSection(getManifoldSync(), polygon);
       const components = cs.decompose();
 
       const createdNames: string[] = [];

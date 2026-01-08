@@ -36,6 +36,25 @@ export async function getManifold(): Promise<ManifoldToplevel> {
 }
 
 /**
+ * Manifold 인스턴스 동기 반환 (이미 초기화된 경우만)
+ * Boolean 연산 등에서 sync context에서 사용
+ * @throws 초기화되지 않은 경우 에러
+ */
+export function getManifoldSync(): ManifoldToplevel {
+  if (!manifoldInstance) {
+    throw new Error('Manifold not initialized. Call getManifold() first.');
+  }
+  return manifoldInstance;
+}
+
+/**
+ * Manifold 초기화 여부 확인
+ */
+export function isManifoldInitialized(): boolean {
+  return manifoldInstance !== null;
+}
+
+/**
  * 2D 폴리곤 타입 (외부 윤곽 + 내부 구멍들)
  * 각 contour는 [x, y] 좌표 배열 (CCW winding for outer, CW for holes)
  */
