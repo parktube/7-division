@@ -76,6 +76,16 @@ export type Polygon2D = [number, number][][];
 export type BooleanOp = 'union' | 'difference' | 'intersection';
 
 /**
+ * JoinType 문자열 매핑 (manifold-3d v3.x API)
+ * offset 연산에서 사용
+ */
+export const JOIN_TYPE_MAP: Record<string, string> = {
+  square: 'Square',
+  round: 'Round',
+  miter: 'Miter',
+};
+
+/**
  * 폴리곤에서 CrossSection 생성
  */
 export function polygonToCrossSection(
@@ -226,9 +236,7 @@ export function offsetPolygonSync(
 ): Polygon2D {
   const cs = polygonToCrossSection(manifold, polygon);
 
-  // JoinType string 매핑 (manifold-3d v3.x API)
-  const joinTypeMap: Record<string, string> = { square: 'Square', round: 'Round', miter: 'Miter' };
-  const result = cs.offset(delta, joinTypeMap[joinType], miterLimit, circularSegments);
+  const result = cs.offset(delta, JOIN_TYPE_MAP[joinType], miterLimit, circularSegments);
 
   const resultPolygon = crossSectionToPolygon(result);
 

@@ -18,6 +18,7 @@ import {
   type BooleanOp,
   polygonToCrossSection,
   crossSectionToPolygon,
+  JOIN_TYPE_MAP,
 } from './manifold.js';
 import type { CrossSection } from 'manifold-3d';
 import { convertText, type TextOptions } from './text.js';
@@ -851,8 +852,9 @@ export async function runCadCode(
       }
 
       // Perform Boolean operation using Manifold
-      const csA = polygonToCrossSection(getManifoldSync(), polyA);
-      const csB = polygonToCrossSection(getManifoldSync(), polyB);
+      const manifold = getManifoldSync();
+      const csA = polygonToCrossSection(manifold, polyA);
+      const csB = polygonToCrossSection(manifold, polyB);
 
       let resultCs: CrossSection;
       switch (operation) {
@@ -921,9 +923,7 @@ export async function runCadCode(
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      // JoinType string 매핑 (manifold-3d v3.x API)
-      const joinTypeMap: Record<string, string> = { square: 'Square', round: 'Round', miter: 'Miter' };
-      const offsetCs = cs.offset(delta, joinTypeMap[joinType], 2.0, 0);
+      const offsetCs = cs.offset(delta, JOIN_TYPE_MAP[joinType], 2.0, 0);
       const resultPolygon = crossSectionToPolygon(offsetCs);
 
       cs.delete();
