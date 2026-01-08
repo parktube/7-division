@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from '
 import { join, resolve, sep } from 'path';
 import { URL } from 'url';
 
-app.setName('CADViewer');
+app.setName('AI-Native CAD');
 
 let mainWindow: BrowserWindow | null = null;
 let dataServer: Server | null = null;
