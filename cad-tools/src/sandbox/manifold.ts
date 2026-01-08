@@ -172,8 +172,8 @@ export async function offsetPolygon(
   const manifold = await getManifold();
   const cs = polygonToCrossSection(manifold, polygon);
 
-  // JoinType enum 값 매핑
-  const joinTypeMap = { square: 0, round: 1, miter: 2 };
+  // JoinType string 매핑 (manifold-3d v3.x API)
+  const joinTypeMap: Record<string, string> = { square: 'Square', round: 'Round', miter: 'Miter' };
   const result = cs.offset(delta, joinTypeMap[joinType], miterLimit, circularSegments);
 
   const resultPolygon = crossSectionToPolygon(result);

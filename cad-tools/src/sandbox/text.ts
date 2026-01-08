@@ -262,17 +262,28 @@ function glyphPathToSvg(
   offsetX: number,
   offsetY: number
 ): string {
+  // Validate input coordinates
+  if (!Number.isFinite(offsetX) || !Number.isFinite(offsetY)) {
+    logger.warn(`[text] glyphPathToSvg: invalid offset (${offsetX}, ${offsetY})`);
+    return '';
+  }
+
   const commands: string[] = [];
 
   for (const cmd of path.commands) {
     switch (cmd.type) {
       case 'M':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
         commands.push(`M ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
         break;
       case 'L':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
         commands.push(`L ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
         break;
       case 'C':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
+            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1) ||
+            !Number.isFinite(cmd.x2) || !Number.isFinite(cmd.y2)) continue;
         commands.push(
           `C ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
             `${(offsetX + cmd.x2).toFixed(2)},${(offsetY - cmd.y2).toFixed(2)} ` +
@@ -280,6 +291,8 @@ function glyphPathToSvg(
         );
         break;
       case 'Q':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
+            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1)) continue;
         commands.push(
           `Q ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
             `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
@@ -291,7 +304,15 @@ function glyphPathToSvg(
     }
   }
 
-  return commands.join(' ');
+  const pathData = commands.join(' ');
+
+  // Validate output for NaN/Infinity
+  if (pathData.includes('NaN') || pathData.includes('Infinity')) {
+    logger.warn('[text] glyphPathToSvg: generated path contains invalid values');
+    return '';
+  }
+
+  return pathData;
 }
 
 /**
@@ -312,6 +333,11 @@ export function textToGlyphPaths(
   fontSize: number,
   font: opentype.Font
 ): string[] {
+  // Validate input coordinates
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize) || fontSize <= 0) {
+    logger.warn(`[text] textToGlyphPaths: invalid input (x=${x}, y=${y}, fontSize=${fontSize})`);
+    return [];
+  }
   const scale = fontSize / font.unitsPerEm;
   const paths: string[] = [];
   let currentX = x;
@@ -367,6 +393,12 @@ export function convertText(
   fontSize: number,
   options: TextOptions = {}
 ): TextResult | null {
+  // Validate input coordinates
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize) || fontSize <= 0) {
+    logger.warn(`[text] convertText: invalid input (x=${x}, y=${y}, fontSize=${fontSize})`);
+    return null;
+  }
+
   const font = loadFontSync(options.fontPath);
   if (!font) {
     return null;

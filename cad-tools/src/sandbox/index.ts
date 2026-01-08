@@ -136,16 +136,21 @@ function rectToPolygon(
 
 /**
  * Transform을 적용한 point 반환
+ *
+ * 변환 순서: Scale → Rotate → Translate (SRT)
+ * - 로컬 좌표를 월드 좌표로 변환할 때 표준 순서
+ * - 엔티티는 로컬 원점(0,0) 기준으로 정의되어 있음
+ * - scale로 크기 조절 → rotate로 회전 → translate로 최종 위치 이동
  */
 function applyTransform(
   point: [number, number],
   transform: EntityGeometry['local']['transform']
 ): [number, number] {
-  // Apply scale
+  // 1. Apply scale (local space)
   let x = point[0] * transform.scale[0];
   let y = point[1] * transform.scale[1];
 
-  // Apply rotation
+  // 2. Apply rotation (around origin)
   if (transform.rotate !== 0) {
     const cos = Math.cos(transform.rotate);
     const sin = Math.sin(transform.rotate);
@@ -155,7 +160,7 @@ function applyTransform(
     y = ry;
   }
 
-  // Apply translation
+  // 3. Apply translation (to world position)
   x += transform.translate[0];
   y += transform.translate[1];
 
@@ -533,18 +538,13 @@ export async function runCadCode(
         }
       }
 
-      // 4. Copy style (get from raw entity data)
-      const rawResult = executor.exec('list_entities', {});
-      if (rawResult.success && rawResult.data) {
-        const entities = JSON.parse(rawResult.data);
-        const sourceRaw = entities.find((e: { name: string }) => e.name === sourceName);
-        if (sourceRaw?.style) {
-          if (sourceRaw.style.fill) {
-            callCad('set_fill', { name: newName, fill: sourceRaw.style.fill });
-          }
-          if (sourceRaw.style.stroke) {
-            callCad('set_stroke', { name: newName, stroke: sourceRaw.style.stroke });
-          }
+      // 4. Copy style (already have entity from get_entity)
+      if (entity.style) {
+        if (entity.style.fill) {
+          callCad('set_fill', { name: newName, fill: entity.style.fill });
+        }
+        if (entity.style.stroke) {
+          callCad('set_stroke', { name: newName, stroke: entity.style.stroke });
         }
       }
 
