@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { useScene } from '@/hooks/useScene'
+import { useTheme } from '@/hooks/useTheme'
 import { useViewportContext } from '@/contexts/ViewportContext'
 import { useUIContext } from '@/contexts/UIContext'
 import { useSketch } from '@/hooks/useSketch'
@@ -29,6 +30,7 @@ export default function Canvas() {
     strokes, activeTool, startStroke, addPoint, endStroke,
     eraseAt, clearAll, switchTool, getCurrentStroke, eraserRadius,
   } = useSketch()
+  const { theme } = useTheme()
 
   // Use refs for immediate access in event handlers (avoids stale closure)
   const isPanningRef = useRef(false)
@@ -40,7 +42,7 @@ export default function Canvas() {
   const [isSpacePressed, setIsSpacePressed] = useState(false)
 
   // Cache CSS variables to avoid getComputedStyle on every render
-  // Re-computed when component mounts or theme changes (via full re-render)
+  // Re-computed when theme changes
   const cssVars = useMemo(() => {
     const computedStyle = getComputedStyle(document.documentElement)
     return {
@@ -49,7 +51,7 @@ export default function Canvas() {
       border: computedStyle.getPropertyValue('--border').trim() || '#e5e5e5',
       textMuted: computedStyle.getPropertyValue('--text-muted').trim() || '#9ca3af',
     }
-  }, [])
+  }, [theme])
 
   // Build entity maps for quick lookup
   // Separate maps to avoid key collision between id and name
