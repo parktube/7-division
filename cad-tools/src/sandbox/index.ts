@@ -822,7 +822,8 @@ export async function runCadCode(
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      const joinTypeMap = { square: 0, round: 1, miter: 2 };
+      // JoinType string 매핑 (manifold-3d v3.x API)
+      const joinTypeMap: Record<string, string> = { square: 'Square', round: 'Round', miter: 'Miter' };
       const offsetCs = cs.offset(delta, joinTypeMap[joinType], 2.0, 0);
       const resultPolygon = crossSectionToPolygon(offsetCs);
 
