@@ -9,6 +9,7 @@ import opentype from 'opentype.js';
 import { existsSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { homedir } from 'os';
 import { logger } from '../logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -61,7 +62,7 @@ function findFont(fontPath?: string): string | null {
 
   // Search default locations
   for (const dir of DEFAULT_FONT_PATHS) {
-    const expandedDir = dir.replace('~', process.env.HOME || '');
+    const expandedDir = dir.startsWith('~') ? dir.replace('~', homedir()) : dir;
     if (!existsSync(expandedDir)) continue;
 
     for (const name of DEFAULT_FONT_NAMES) {
@@ -147,6 +148,12 @@ export function textToPath(
   fontSize: number,
   font: opentype.Font
 ): string {
+  // Validate input coordinates
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize) || fontSize <= 0) {
+    logger.warn(`[text] Invalid coordinates or fontSize: x=${x}, y=${y}, fontSize=${fontSize}`);
+    return '';
+  }
+
   // Get path from font (opentype uses Y-down coordinate system)
   const path = font.getPath(text, 0, 0, fontSize);
 
@@ -183,7 +190,15 @@ export function textToPath(
     }
   }
 
-  return commands.join(' ');
+  const pathData = commands.join(' ');
+
+  // Validate output for NaN/Infinity
+  if (pathData.includes('NaN') || pathData.includes('Infinity')) {
+    logger.error(`[text] Generated path contains invalid values for text: '${text}'`);
+    return '';
+  }
+
+  return pathData;
 }
 
 /**

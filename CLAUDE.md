@@ -124,7 +124,7 @@ drawArc(name, cx, cy, radius, startAngle, endAngle); // (cx, cy) = 호의 중심
 drawBezier(name, path);  // SVG path: 'M x,y C cp1x,cp1y cp2x,cp2y x,y S cp2x,cp2y x,y Z'
 
 // 텍스트 (opentype.js 기반, 베지어 경로로 변환)
-drawText(name, text, x, y, fontSize, options?);  // options: { fontPath?, align?: 'left'|'center'|'right' }
+drawText(name, text, x, y, fontSize, options?);  // y는 baseline 위치. options: { fontPath?, align?: 'left'|'center'|'right' }
 getTextMetrics(text, fontSize, fontPath?);       // { width, height } 반환
 
 // 스타일
@@ -398,7 +398,7 @@ setStroke('styled', [0, 0, 0, 1], 1);  // 검은 외곽선
 **폰트 검색 순서:**
 1. `options.fontPath`에 지정된 경로
 2. 프로젝트 `fonts/` 디렉토리
-3. 시스템 폰트 (Linux: `/usr/share/fonts`, macOS: `/System/Library/Fonts`)
+3. 시스템 폰트 (Linux: `/usr/share/fonts`, macOS: `/System/Library/Fonts`, Windows: `C:\Windows\Fonts`)
 
 **지원 폰트 형식:** TTF, OTF
 
