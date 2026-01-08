@@ -353,7 +353,32 @@ export class CADExecutor {
 
     const name = input.name as string;
     const points = new Float64Array(input.points as number[]);
-    const holes = input.holes as [number, number][][] ?? [];
+
+    // holes 타입 검증
+    const rawHoles = input.holes;
+    const holes: [number, number][][] = [];
+    if (rawHoles !== undefined && rawHoles !== null) {
+      if (!Array.isArray(rawHoles)) {
+        return { success: false, error: 'draw_polygon_with_holes: holes must be an array' };
+      }
+      for (let i = 0; i < rawHoles.length; i++) {
+        const contour = rawHoles[i];
+        if (!Array.isArray(contour)) {
+          return { success: false, error: `draw_polygon_with_holes: holes[${i}] must be an array` };
+        }
+        const validatedContour: [number, number][] = [];
+        for (let j = 0; j < contour.length; j++) {
+          const pt = contour[j];
+          if (!Array.isArray(pt) || pt.length !== 2 ||
+              typeof pt[0] !== 'number' || typeof pt[1] !== 'number') {
+            return { success: false, error: `draw_polygon_with_holes: holes[${i}][${j}] must be [number, number]` };
+          }
+          validatedContour.push([pt[0], pt[1]]);
+        }
+        holes.push(validatedContour);
+      }
+    }
+
     const holesJson = JSON.stringify(holes);
     const styleJson = this.toJson(input.style);
 

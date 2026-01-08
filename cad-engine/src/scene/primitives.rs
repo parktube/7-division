@@ -675,6 +675,17 @@ impl Scene {
             })?
         };
 
+        // 각 hole contour도 최소 3점 필요
+        for (i, hole) in holes.iter().enumerate() {
+            if hole.len() < 3 {
+                return Err(JsValue::from_str(&format!(
+                    "[draw_polygon_with_holes] invalid_hole: hole[{}] requires at least 3 points, got {}",
+                    i,
+                    hole.len()
+                )));
+            }
+        }
+
         // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
         let style = parse_style_with_warning(style_json, "draw_polygon_with_holes");
 

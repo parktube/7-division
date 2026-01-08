@@ -36,7 +36,7 @@ export async function getManifold(): Promise<ManifoldToplevel> {
       } catch (error) {
         // Reset promise on failure to allow retry
         initPromise = null;
-        logger.error('Manifold WASM initialization failed:', error);
+        logger.error(`Manifold WASM initialization failed: ${error}`);
         throw error;
       }
     })();
@@ -87,9 +87,32 @@ export function polygonToCrossSection(
 
 /**
  * CrossSection을 폴리곤으로 변환
+ *
+ * manifold-3d의 toPolygons()는 SimplePolygon[] 반환
+ * (SimplePolygon = Vec2[] = [number, number][])
+ * 방어적으로 반환값이 배열의 배열인지 확인
  */
 export function crossSectionToPolygon(cs: CrossSection): Polygon2D {
-  return cs.toPolygons() as Polygon2D;
+  const result = cs.toPolygons();
+
+  // 방어적 타입 정규화: 결과가 다중 contour 배열인지 확인
+  if (!Array.isArray(result) || result.length === 0) {
+    return [];
+  }
+
+  // 첫 번째 요소가 좌표쌍 배열인지 확인 (정상 케이스)
+  const first = result[0];
+  if (Array.isArray(first) && first.length > 0 && Array.isArray(first[0])) {
+    // [[x,y], [x,y], ...] 형태 = 정상적인 contour 배열
+    return result as Polygon2D;
+  }
+
+  // 단일 contour인 경우 배열로 감싸기 (방어적 처리)
+  if (Array.isArray(first) && typeof first[0] === 'number') {
+    return [result as unknown as [number, number][]];
+  }
+
+  return result as Polygon2D;
 }
 
 /**

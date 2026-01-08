@@ -61,8 +61,14 @@ function findFont(fontPath?: string): string | null {
   }
 
   // Search default locations
+  const home = homedir();
   for (const dir of DEFAULT_FONT_PATHS) {
-    const expandedDir = dir.startsWith('~') ? dir.replace('~', homedir()) : dir;
+    // ~ 경로 확장 (homedir()가 빈 문자열이면 스킵)
+    let expandedDir = dir;
+    if (dir.startsWith('~')) {
+      if (!home) continue;  // homedir()가 빈 문자열이면 이 경로 스킵
+      expandedDir = dir.replace('~', home);
+    }
     if (!existsSync(expandedDir)) continue;
 
     for (const name of DEFAULT_FONT_NAMES) {
