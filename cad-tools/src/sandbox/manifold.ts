@@ -13,6 +13,9 @@ let initPromise: Promise<ManifoldToplevel> | null = null;
 
 /**
  * Manifold WASM 모듈 초기화 (싱글톤, race-condition safe)
+ *
+ * - 동시 호출 시 하나의 Promise만 실행
+ * - 초기화 실패 시 Promise 리셋하여 재시도 가능
  */
 export async function getManifold(): Promise<ManifoldToplevel> {
   // Fast path: already initialized
@@ -23,12 +26,19 @@ export async function getManifold(): Promise<ManifoldToplevel> {
   // Ensure only one initialization runs even with concurrent calls
   if (!initPromise) {
     initPromise = (async () => {
-      logger.debug('Initializing Manifold WASM module...');
-      const instance = await Module();
-      instance.setup();
-      manifoldInstance = instance;
-      logger.debug('Manifold WASM module initialized');
-      return instance;
+      try {
+        logger.debug('Initializing Manifold WASM module...');
+        const instance = await Module();
+        instance.setup();
+        manifoldInstance = instance;
+        logger.debug('Manifold WASM module initialized');
+        return instance;
+      } catch (error) {
+        // Reset promise on failure to allow retry
+        initPromise = null;
+        logger.error('Manifold WASM initialization failed:', error);
+        throw error;
+      }
     })();
   }
 

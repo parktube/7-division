@@ -136,22 +136,62 @@ function rectToPolygon(
 }
 
 /**
+ * Arc를 "파이 조각" 폴리곤으로 변환 (Boolean 연산용)
+ * 중심점에서 시작하여 호를 따라가고 다시 중심으로 돌아옴
+ */
+function arcToPolygon(
+  center: [number, number],
+  radius: number,
+  startAngle: number,
+  endAngle: number,
+  segments: number = 32
+): Polygon2D {
+  const points: [number, number][] = [];
+
+  // 시작점: 중심
+  points.push([center[0], center[1]]);
+
+  // 호를 따라 점들 생성
+  const angleDiff = endAngle - startAngle;
+  const arcSegments = Math.max(2, Math.ceil(Math.abs(angleDiff) / (Math.PI * 2) * segments));
+
+  for (let i = 0; i <= arcSegments; i++) {
+    const angle = startAngle + (i / arcSegments) * angleDiff;
+    points.push([
+      center[0] + Math.cos(angle) * radius,
+      center[1] + Math.sin(angle) * radius,
+    ]);
+  }
+
+  // 끝점: 중심으로 돌아감 (자동으로 닫힘)
+  return [points];
+}
+
+/**
  * Transform을 적용한 point 반환
  *
- * 변환 순서: Scale → Rotate → Translate (SRT)
- * - 로컬 좌표를 월드 좌표로 변환할 때 표준 순서
- * - 엔티티는 로컬 원점(0,0) 기준으로 정의되어 있음
- * - scale로 크기 조절 → rotate로 회전 → translate로 최종 위치 이동
+ * 변환 순서: (원점 이동 →) Scale → Rotate → (원점 복귀 →) Translate
+ * - 기하를 중심 기준으로 변환하기 위해 중심점을 사용
+ * - localCenter: 기하의 로컬 중심점 (scale/rotate가 이 점 기준으로 적용됨)
+ *
+ * @param point - 변환할 점
+ * @param transform - 적용할 변환
+ * @param localCenter - 기하의 로컬 중심점 (scale/rotate 기준점)
  */
 function applyTransform(
   point: [number, number],
-  transform: EntityGeometry['local']['transform']
+  transform: EntityGeometry['local']['transform'],
+  localCenter: [number, number] = [0, 0]
 ): [number, number] {
-  // 1. Apply scale (local space)
-  let x = point[0] * transform.scale[0];
-  let y = point[1] * transform.scale[1];
+  // 1. Translate to origin (relative to local center)
+  let x = point[0] - localCenter[0];
+  let y = point[1] - localCenter[1];
 
-  // 2. Apply rotation (around origin)
+  // 2. Apply scale
+  x *= transform.scale[0];
+  y *= transform.scale[1];
+
+  // 3. Apply rotation (around origin)
   if (transform.rotate !== 0) {
     const cos = Math.cos(transform.rotate);
     const sin = Math.sin(transform.rotate);
@@ -161,7 +201,11 @@ function applyTransform(
     y = ry;
   }
 
-  // 3. Apply translation (to world position)
+  // 4. Translate back to local center
+  x += localCenter[0];
+  y += localCenter[1];
+
+  // 5. Apply world translation
   x += transform.translate[0];
   y += transform.translate[1];
 
@@ -170,28 +214,54 @@ function applyTransform(
 
 /**
  * Entity geometry를 Polygon2D로 변환 (transform 적용)
+ *
+ * 각 geometry 타입의 center를 기준으로 scale/rotate 적용
  */
 function entityToPolygon(entity: EntityGeometry): Polygon2D | null {
   const { geometry, transform } = entity.local;
   let basePolygon: Polygon2D | null = null;
+  let localCenter: [number, number] = [0, 0];
 
   if (entity.type === 'Circle' && 'Circle' in geometry) {
     const circle = geometry.Circle as { center: [number, number]; radius: number };
-    // Use original radius - transform will be applied later via applyTransform
+    localCenter = circle.center;
     basePolygon = circleToPolygon(circle.center, circle.radius);
   } else if (entity.type === 'Rect' && 'Rect' in geometry) {
     const rect = geometry.Rect as { center: [number, number]; width: number; height: number };
+    localCenter = rect.center;
     basePolygon = rectToPolygon(rect.center, rect.width, rect.height);
   } else if (entity.type === 'Polygon' && 'Polygon' in geometry) {
-    const poly = geometry.Polygon as { points: [number, number][] };
-    basePolygon = [poly.points];
+    const poly = geometry.Polygon as { points: [number, number][]; holes?: [number, number][][] };
+    // Polygon의 중심점 계산 (bounding box 기반)
+    if (poly.points.length > 0) {
+      const xs = poly.points.map(p => p[0]);
+      const ys = poly.points.map(p => p[1]);
+      localCenter = [
+        (Math.min(...xs) + Math.max(...xs)) / 2,
+        (Math.min(...ys) + Math.max(...ys)) / 2,
+      ];
+    }
+    // holes도 함께 포함
+    basePolygon = poly.holes && poly.holes.length > 0
+      ? [poly.points, ...poly.holes]
+      : [poly.points];
+  } else if (entity.type === 'Arc' && 'Arc' in geometry) {
+    // Arc를 "파이 조각" 폴리곤으로 변환 (중심 + 호)
+    const arc = geometry.Arc as {
+      center: [number, number];
+      radius: number;
+      start_angle: number;
+      end_angle: number;
+    };
+    localCenter = arc.center;
+    basePolygon = arcToPolygon(arc.center, arc.radius, arc.start_angle, arc.end_angle);
   } else {
-    return null; // Line, Arc, Bezier, Empty 등은 Boolean 미지원
+    return null; // Line, Bezier, Empty 등은 Boolean 미지원
   }
 
-  // Apply transform to all points
+  // Apply transform to all points (localCenter 기준 scale/rotate)
   const transformed = basePolygon.map(contour =>
-    contour.map(point => applyTransform(point, transform))
+    contour.map(point => applyTransform(point, transform, localCenter))
   );
 
   // Ensure CCW winding for Manifold
