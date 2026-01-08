@@ -64,15 +64,29 @@ function renderLine(ctx: CanvasRenderingContext2D, geo: LineGeometry) {
 }
 
 function renderPolygon(ctx: CanvasRenderingContext2D, geo: PolygonGeometry) {
-  const points = geo.Polygon.points
+  const { points, holes } = geo.Polygon
   if (points.length < 3) return
 
   ctx.beginPath()
+
+  // 외곽선 (outer contour)
   ctx.moveTo(points[0][0], points[0][1])
   for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i][0], points[i][1])
   }
   ctx.closePath()
+
+  // 구멍들 (holes) - evenodd fill rule로 구멍 생성
+  if (holes && holes.length > 0) {
+    for (const hole of holes) {
+      if (hole.length < 3) continue
+      ctx.moveTo(hole[0][0], hole[0][1])
+      for (let i = 1; i < hole.length; i++) {
+        ctx.lineTo(hole[i][0], hole[i][1])
+      }
+      ctx.closePath()
+    }
+  }
 }
 
 function renderArc(ctx: CanvasRenderingContext2D, geo: ArcGeometry) {
@@ -106,7 +120,7 @@ function applyStyle(ctx: CanvasRenderingContext2D, style: Style) {
   if (style.fill) {
     const [r, g, b, a] = style.fill.color
     ctx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`
-    ctx.fill()
+    ctx.fill('evenodd')  // holes 지원을 위해 evenodd 사용
   }
 
   if (style.stroke) {

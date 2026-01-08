@@ -54,6 +54,7 @@ export interface LineGeometry {
 export interface PolygonGeometry {
   Polygon: {
     points: [number, number][]
+    holes?: [number, number][][]  // 구멍들 (inner contours)
   }
 }
 

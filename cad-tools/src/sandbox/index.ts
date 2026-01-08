@@ -225,21 +225,51 @@ function ensureCCW(polygon: Polygon2D): Polygon2D {
 }
 
 /**
- * Polygon2D를 flat points 배열로 변환 (drawPolygon용)
+ * Polygon2D를 flat points 배열로 변환 (drawPolygon용 - holes 없는 경우)
  */
 function polygonToFlatPoints(polygon: Polygon2D): number[] {
-  // 첫 번째 contour만 사용 (holes 미지원)
   if (polygon.length === 0 || polygon[0].length === 0) {
     return [];
-  }
-  if (polygon.length > 1) {
-    logger.warn(`[sandbox] polygonToFlatPoints: discarding ${polygon.length - 1} inner contour(s) (holes not supported)`);
   }
   const points: number[] = [];
   for (const [x, y] of polygon[0]) {
     points.push(x, y);
   }
   return points;
+}
+
+/**
+ * Polygon2D에 구멍이 있는지 확인
+ */
+function hasHoles(polygon: Polygon2D): boolean {
+  return polygon.length > 1;
+}
+
+/**
+ * Polygon2D로 Entity를 생성합니다 (holes 자동 처리).
+ * holes가 있으면 draw_polygon_with_holes, 없으면 draw_polygon 사용.
+ */
+function createPolygonEntity(
+  callCad: (cmd: string, args: Record<string, unknown>) => boolean,
+  name: string,
+  polygon: Polygon2D
+): boolean {
+  if (polygon.length === 0 || polygon[0].length === 0) {
+    return false;
+  }
+
+  // 외곽선 (첫 번째 contour)
+  const flatPoints = polygonToFlatPoints(polygon);
+
+  if (hasHoles(polygon)) {
+    // holes가 있으면 draw_polygon_with_holes 사용
+    // holes: [[[x1,y1], [x2,y2], ...], ...]
+    const holes = polygon.slice(1);  // 첫 번째 제외한 나머지가 holes
+    return callCad('draw_polygon_with_holes', { name, points: flatPoints, holes });
+  } else {
+    // holes 없으면 기존 draw_polygon 사용
+    return callCad('draw_polygon', { name, points: flatPoints });
+  }
 }
 
 /**
@@ -780,9 +810,8 @@ export async function runCadCode(
         return false;
       }
 
-      // Create result entity using drawPolygon
-      const flatPoints = polygonToFlatPoints(resultPolygon);
-      return callCad('draw_polygon', { name: resultName, points: flatPoints });
+      // Create result entity (holes 자동 처리)
+      return createPolygonEntity(callCad, resultName, resultPolygon);
     };
 
     bindCadFunction(vm, 'booleanUnion', (nameA: string, nameB: string, resultName: string) => {
@@ -835,8 +864,8 @@ export async function runCadCode(
         return false;
       }
 
-      const flatPoints = polygonToFlatPoints(resultPolygon);
-      return callCad('draw_polygon', { name: resultName, points: flatPoints });
+      // holes 자동 처리
+      return createPolygonEntity(callCad, resultName, resultPolygon);
     });
 
     // getArea(name): 폴리곤 면적 계산
@@ -883,8 +912,8 @@ export async function runCadCode(
       cs.delete();
       hullCs.delete();
 
-      const flatPoints = polygonToFlatPoints(resultPolygon);
-      return callCad('draw_polygon', { name: resultName, points: flatPoints });
+      // convexHull은 단일 컨투어로 holes 없음
+      return createPolygonEntity(callCad, resultName, resultPolygon);
     });
 
     // decompose(name, prefix): 분리된 컴포넌트들을 개별 폴리곤으로 추출
@@ -913,10 +942,10 @@ export async function runCadCode(
       for (let i = 0; i < components.length; i++) {
         const comp = components[i];
         const compPolygon = crossSectionToPolygon(comp);
-        const flatPoints = polygonToFlatPoints(compPolygon);
         const compName = `${prefix}_${i}`;
 
-        if (callCad('draw_polygon', { name: compName, points: flatPoints })) {
+        // 각 컴포넌트도 holes를 가질 수 있음
+        if (createPolygonEntity(callCad, compName, compPolygon)) {
           createdNames.push(compName);
         }
         comp.delete();

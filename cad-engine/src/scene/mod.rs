@@ -379,7 +379,7 @@ impl Scene {
                     [center[0], center[1] + radius],
                 ]
             }
-            Geometry::Polygon { points } => points.clone(),
+            Geometry::Polygon { points, .. } => points.clone(),
             Geometry::Bezier {
                 start, segments, ..
             } => {
@@ -513,7 +513,8 @@ impl Scene {
                     [center[0] + radius, center[1] + radius],
                 )
             }
-            Geometry::Polygon { points } => {
+            Geometry::Polygon { points, .. } => {
+                // holes는 bounds 계산에 영향 없음 (outer points만 사용)
                 let mut min_x = f64::INFINITY;
                 let mut min_y = f64::INFINITY;
                 let mut max_x = f64::NEG_INFINITY;
