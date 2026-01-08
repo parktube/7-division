@@ -123,11 +123,12 @@ function computeBounds(entities) {
       maxX = Math.max(maxX, center[0] + radius);
       maxY = Math.max(maxY, center[1] + radius);
     } else if (geo.Rect) {
-      const { origin, width, height } = geo.Rect;
-      minX = Math.min(minX, origin[0]);
-      minY = Math.min(minY, origin[1]);
-      maxX = Math.max(maxX, origin[0] + width);
-      maxY = Math.max(maxY, origin[1] + height);
+      const { center, width, height } = geo.Rect;
+      const hw = width / 2, hh = height / 2;
+      minX = Math.min(minX, center[0] - hw);
+      minY = Math.min(minY, center[1] - hh);
+      maxX = Math.max(maxX, center[0] + hw);
+      maxY = Math.max(maxY, center[1] + hh);
     } else if (geo.Line) {
       for (const pt of geo.Line.points) {
         minX = Math.min(minX, pt[0]);
@@ -373,19 +374,22 @@ function renderRect(geometry, style) {
   if (!rect) {
     return;
   }
-  const { origin, width, height } = rect;
-  if (!Array.isArray(origin) || origin.length < 2) {
+  const { center, width, height } = rect;
+  if (!Array.isArray(center) || center.length < 2) {
     return;
   }
-  const [x, y] = origin;
+  const [cx, cy] = center;
   if (
-    !Number.isFinite(x) ||
-    !Number.isFinite(y) ||
+    !Number.isFinite(cx) ||
+    !Number.isFinite(cy) ||
     !Number.isFinite(width) ||
     !Number.isFinite(height)
   ) {
     return;
   }
+  // Convert center to top-left corner for canvas rect API
+  const x = cx - width / 2;
+  const y = cy - height / 2;
   ctx.beginPath();
   ctx.rect(x, y, width, height);
   applyFill(style?.fill);
@@ -754,12 +758,13 @@ function getEntityBounds(entity, entitiesByName) {
     };
   }
   if (geo.Rect) {
-    const { origin, width, height } = geo.Rect;
+    const { center, width, height } = geo.Rect;
+    const hw = width / 2, hh = height / 2;
     return {
-      minX: origin[0],
-      minY: origin[1],
-      maxX: origin[0] + width,
-      maxY: origin[1] + height,
+      minX: center[0] - hw,
+      minY: center[1] - hh,
+      maxX: center[0] + hw,
+      maxY: center[1] + hh,
     };
   }
   if (geo.Line) {

@@ -1,23 +1,11 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
-import { existsSync, readFileSync, copyFileSync, mkdirSync } from 'fs';
-import { resolve, dirname } from 'path';
-import copy from 'rollup-plugin-copy';
+import { existsSync, readFileSync, cpSync, mkdirSync, rmSync } from 'fs';
+import { resolve } from 'path';
 
 const viewerRoot = resolve(__dirname, '../viewer');
-const viewerRendererPath = resolve(viewerRoot, 'renderer.js');
+const viewerDistPath = resolve(viewerRoot, 'dist');
 const viewerScenePath = resolve(viewerRoot, 'scene.json');
-const rendererDest = resolve(__dirname, 'src/renderer');
 const rendererOutDir = resolve(__dirname, 'out/renderer');
-
-const createCopyTargets = (dest: string) => {
-  const targets = [{ src: viewerRendererPath, dest }];
-  if (existsSync(viewerScenePath)) {
-    targets.push({ src: viewerScenePath, dest });
-  }
-  return targets;
-};
-
-const copyTargets = createCopyTargets(rendererDest);
 
 function serveSceneJson() {
   return {
@@ -41,26 +29,32 @@ function serveSceneJson() {
 }
 
 /**
- * Copy viewer assets to output directory after build completes.
+ * Copy viewer/dist to out/renderer after build completes.
  * Uses closeBundle hook to ensure files are copied AFTER Vite finishes,
  * so electron-builder includes them in the asar package.
  */
-function copyViewerAssets() {
+function copyViewerDist() {
   return {
-    name: 'copy-viewer-assets',
+    name: 'copy-viewer-dist',
     closeBundle() {
-      mkdirSync(rendererOutDir, { recursive: true });
-      copyFileSync(viewerRendererPath, resolve(rendererOutDir, 'renderer.js'));
-      if (existsSync(viewerScenePath)) {
-        copyFileSync(viewerScenePath, resolve(rendererOutDir, 'scene.json'));
+      if (!existsSync(viewerDistPath)) {
+        console.warn('Warning: viewer/dist not found. Run "npm run build" in viewer/ first.');
+        return;
       }
+      // Clean up old files first
+      if (existsSync(rendererOutDir)) {
+        rmSync(rendererOutDir, { recursive: true });
+      }
+      mkdirSync(rendererOutDir, { recursive: true });
+      cpSync(viewerDistPath, rendererOutDir, { recursive: true });
+      console.log('Copied viewer/dist to out/renderer');
     },
   };
 }
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
+    plugins: [externalizeDepsPlugin(), copyViewerDist()],
     build: {
       rollupOptions: {
         external: ['electron'],
@@ -70,28 +64,7 @@ export default defineConfig({
       },
     },
   },
-  renderer: {
-    plugins: [
-      copy({
-        targets: copyTargets,
-        hook: 'buildStart',
-        copySync: true,
-      }),
-      serveSceneJson(),
-      copyViewerAssets(),
-    ],
-    server: {
-      host: '127.0.0.1',
-      port: 5173,
-      strictPort: true,
-    },
-    build: {
-      outDir: rendererOutDir,
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/renderer/index.html'),
-        },
-      },
-    },
-  },
+  // renderer config is disabled - we use viewer's Vite build instead
+  // In dev mode: ELECTRON_RENDERER_URL points to viewer's dev server (localhost:5173)
+  // In production: viewer/dist is copied to out/renderer
 });

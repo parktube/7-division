@@ -5,8 +5,72 @@
  */
 
 import { getQuickJS, type QuickJSContext } from 'quickjs-emscripten';
+import { readFileSync, existsSync } from 'fs';
+import { resolve, dirname, join } from 'path';
+import { homedir } from 'os';
+import { fileURLToPath } from 'url';
 import type { CADExecutor } from '../executor.js';
 import { logger } from '../logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// 수정 명령어 목록 (생성 제외)
+const MODIFY_COMMANDS = new Set([
+  'translate', 'rotate', 'scale', 'set_pivot',
+  'set_fill', 'set_stroke', 'set_z_order',
+  'delete', 'add_to_group',
+  // z-order 명령어들
+  'draw_order',  // 통합 z-order API
+  'bring_to_front', 'send_to_back',
+  'bring_forward', 'send_backward',
+  'move_above', 'move_below'
+]);
+
+interface SelectionData {
+  selected_entities?: string[];
+  locked_entities?: string[];
+  hidden_entities?: string[];
+  timestamp?: number;
+}
+
+function getDefaultUserDataDir(): string {
+  const appName = 'CADViewer';
+  if (process.platform === 'darwin') {
+    return join(homedir(), 'Library', 'Application Support', appName);
+  }
+  if (process.platform === 'win32') {
+    const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
+    return join(appData, appName);
+  }
+  const xdgConfig = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
+  return join(xdgConfig, appName);
+}
+
+function resolveSelectionFile(): string {
+  if (process.env.CAD_SELECTION_PATH) {
+    return resolve(process.env.CAD_SELECTION_PATH);
+  }
+  // Try repo viewer/ first (development), then userData (production)
+  const repoSelection = resolve(__dirname, '../../../viewer/selection.json');
+  if (existsSync(repoSelection)) {
+    return repoSelection;
+  }
+  return resolve(getDefaultUserDataDir(), 'selection.json');
+}
+
+function loadLockedEntities(): Set<string> {
+  const selectionFile = resolveSelectionFile();
+  if (existsSync(selectionFile)) {
+    try {
+      const data: SelectionData = JSON.parse(readFileSync(selectionFile, 'utf-8'));
+      return new Set(data.locked_entities || []);
+    } catch {
+      return new Set();
+    }
+  }
+  return new Set();
+}
 
 /**
  * 코드 실행 결과
@@ -16,6 +80,7 @@ export interface RunCodeResult {
   entitiesCreated: string[];
   error?: string;
   logs: string[];
+  warnings: string[];  // Lock 경고 등
 }
 
 /**
@@ -23,10 +88,15 @@ export interface RunCodeResult {
  */
 export async function runCadCode(
   executor: CADExecutor,
-  code: string
+  code: string,
+  lockMode: 'warn' | 'strict' = 'warn'
 ): Promise<RunCodeResult> {
   const logs: string[] = [];
+  const warnings: string[] = [];
   const entitiesCreatedSet = new Set<string>();
+
+  // 잠긴 엔티티 로드
+  const lockedEntities = loadLockedEntities();
 
   try {
     const QuickJS = await getQuickJS();
@@ -34,6 +104,20 @@ export async function runCadCode(
 
     // CAD 명령어 실행 헬퍼
     const callCad = (command: string, params: Record<string, unknown>): boolean => {
+      // Lock 검사: 수정 명령이고 대상 엔티티 파라미터가 있을 때
+      // name 또는 entity_name (add_to_group 등) 모두 확인
+      const entityName = (params.name ?? params.entity_name) as string | undefined;
+      if (MODIFY_COMMANDS.has(command) && entityName && lockedEntities.has(entityName)) {
+        const warning = `Warning: '${entityName}' is locked by user`;
+        warnings.push(warning);
+        logger.warn(`[sandbox] ${warning}`);
+
+        if (lockMode === 'strict') {
+          return false;  // 실행 거부
+        }
+        // warn 모드: 경고 후 계속 실행
+      }
+
       const result = executor.exec(command, params);
       // draw_* 또는 create_group 명령어만 새 엔티티 생성으로 기록
       if (result.success && result.entity && (command.startsWith('draw_') || command === 'create_group')) {
@@ -67,22 +151,26 @@ export async function runCadCode(
       return callCad('draw_polygon', { name, points });
     });
 
-    bindCadFunction(vm, 'drawBezier', (name: string, points: number[], closed?: boolean) => {
-      return callCad('draw_bezier', { name, points, closed: closed || false });
+    // drawBezier(name, path) - SVG path 문자열
+    // M x,y = 시작점, C cp1x,cp1y cp2x,cp2y x,y = 큐빅, S cp2x,cp2y x,y = 부드러운 연결, Z = 닫기
+    bindCadFunction(vm, 'drawBezier', (name: string, path: string) => {
+      return callCad('draw_bezier', { name, path });
     });
 
     // === Transforms (4) ===
-    bindCadFunction(vm, 'translate', (name: string, dx: number, dy: number) => {
-      return callCad('translate', { name, dx, dy });
+    // translate(name, dx, dy, options?) - options: { space: 'world' | 'local' }
+    bindCadFunction(vm, 'translate', (name: string, dx: number, dy: number, options?: { space?: 'world' | 'local' }) => {
+      return callCad('translate', { name, dx, dy, space: options?.space || 'world' });
     });
 
-    bindCadFunction(vm, 'rotate', (name: string, angle: number) => {
-      // angle은 라디안
-      return callCad('rotate', { name, angle, angle_unit: 'radian' });
+    // rotate(name, angle, options?) - angle은 라디안
+    bindCadFunction(vm, 'rotate', (name: string, angle: number, options?: { space?: 'world' | 'local' }) => {
+      return callCad('rotate', { name, angle, angle_unit: 'radian', space: options?.space || 'world' });
     });
 
-    bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number) => {
-      return callCad('scale', { name, sx, sy });
+    // scale(name, sx, sy, options?) - options: { space: 'world' | 'local' }
+    bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number, options?: { space?: 'world' | 'local' }) => {
+      return callCad('scale', { name, sx, sy, space: options?.space || 'world' });
     });
 
     bindCadFunction(vm, 'setPivot', (name: string, px: number, py: number) => {
@@ -107,9 +195,18 @@ export async function runCadCode(
       return callCad('set_stroke', { name, stroke: { color, width: width || 1 } });
     });
 
-    // === Z-Order (1) ===
-    bindCadFunction(vm, 'setZOrder', (name: string, zIndex: number) => {
-      return callCad('set_z_order', { name, z_index: zIndex });
+    // === Z-Order (통합 API) ===
+    // drawOrder(name, mode): 단일 함수로 모든 z-order 조작
+    // mode:
+    //   - 'front': 맨 앞으로
+    //   - 'back': 맨 뒤로
+    //   - '+N' 또는 N: N단계 앞으로 (예: '+1', 1)
+    //   - '-N': N단계 뒤로 (예: '-1', -1)
+    //   - 'above:target': target 위로
+    //   - 'below:target': target 아래로
+    bindCadFunction(vm, 'drawOrder', (name: string, mode: string | number) => {
+      const modeStr = typeof mode === 'number' ? String(mode) : mode;
+      return callCad('draw_order', { name, mode: modeStr });
     });
 
     // === Utility (2) ===
@@ -151,6 +248,29 @@ export async function runCadCode(
       return null;
     });
 
+    // === Query API (FR42) ===
+    // getEntity: returns local/world coordinates for dual coordinate workflow
+    const getEntityFn = (name: string) => {
+      const result = executor.exec('get_entity', { name });
+      if (result.success && result.data) {
+        return JSON.parse(result.data);
+      }
+      return null;
+    };
+    bindCadQueryFunction(vm, 'getEntity', getEntityFn);
+    // Deprecated alias for backwards compatibility
+    bindCadQueryFunction(vm, 'get_entity', getEntityFn);
+
+    // getDrawOrder: 계층적 드로우 오더 조회 (Progressive Disclosure)
+    // group_name이 빈 문자열이면 root level, 그룹 이름이면 해당 그룹의 자식들
+    bindCadQueryFunction(vm, 'getDrawOrder', (groupName?: string) => {
+      const result = executor.exec('get_draw_order', { group_name: groupName || '' });
+      if (result.success && result.data) {
+        return JSON.parse(result.data);
+      }
+      return null;
+    });
+
     // console.log 바인딩
     const consoleObj = vm.newObject();
     const logFn = vm.newFunction('log', (...args) => {
@@ -183,6 +303,7 @@ export async function runCadCode(
         entitiesCreated: Array.from(entitiesCreatedSet),
         error: errorMessage,
         logs,
+        warnings,
       };
     }
 
@@ -193,6 +314,7 @@ export async function runCadCode(
       success: true,
       entitiesCreated: Array.from(entitiesCreatedSet),
       logs,
+      warnings,
     };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -203,6 +325,7 @@ export async function runCadCode(
       entitiesCreated: Array.from(entitiesCreatedSet),
       error: errorMessage,
       logs,
+      warnings,
     };
   }
 }

@@ -26,19 +26,20 @@
      │
 ```
 
-## Rect Origin
+## Rect Geometry
 
 | 속성 | 값 |
 |------|-----|
-| **origin** | 좌하단 (left-bottom) |
-| **width** | +X 방향 확장 |
-| **height** | +Y 방향 확장 |
+| **center** | 중심점 (center) |
+| **width** | 전체 너비 |
+| **height** | 전체 높이 |
 
 ```
-   (x, y+h) ───── (x+w, y+h)
-       │             │
-       │             │
-   (x, y) ─────── (x+w, y)  ← origin
+   (cx-w/2, cy+h/2) ── (cx+w/2, cy+h/2)
+           │                │
+           │   (cx, cy)     │  ← center
+           │                │
+   (cx-w/2, cy-h/2) ── (cx+w/2, cy-h/2)
 ```
 
 ## 로컬 좌표 패턴 (필수)

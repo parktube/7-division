@@ -18,7 +18,7 @@ pub struct Entity {
     pub children: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum EntityType {
     Line,
     Circle,
@@ -27,6 +27,21 @@ pub enum EntityType {
     Polygon,
     Bezier,
     Group,
+}
+
+impl EntityType {
+    /// 안정적인 문자열 표현 (API 호환성 보장)
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EntityType::Line => "Line",
+            EntityType::Circle => "Circle",
+            EntityType::Rect => "Rect",
+            EntityType::Arc => "Arc",
+            EntityType::Polygon => "Polygon",
+            EntityType::Bezier => "Bezier",
+            EntityType::Group => "Group",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,7 +54,7 @@ pub enum Geometry {
         radius: f64,
     },
     Rect {
-        origin: [f64; 2],
+        center: [f64; 2],
         width: f64,
         height: f64,
     },
@@ -176,6 +191,66 @@ impl Transform {
         let x = matrix[0][0] * point[0] + matrix[0][1] * point[1] + matrix[0][2];
         let y = matrix[1][0] * point[0] + matrix[1][1] * point[1] + matrix[1][2];
         [x, y]
+    }
+
+    /// 2D affine 변환 행렬의 역행렬을 계산합니다
+    ///
+    /// 3x3 동차 행렬에서 2x2 선형 부분의 역행렬을 구하고,
+    /// 이동 성분을 역변환합니다.
+    pub fn inverse_matrix(m: &Matrix3x3) -> Option<Matrix3x3> {
+        // 2x2 부분의 행렬식
+        let det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+
+        // 행렬식이 0에 가까우면 역행렬 없음
+        if det.abs() < 1e-10 {
+            return None;
+        }
+
+        let inv_det = 1.0 / det;
+
+        // 2x2 역행렬
+        let a = m[1][1] * inv_det;
+        let b = -m[0][1] * inv_det;
+        let c = -m[1][0] * inv_det;
+        let d = m[0][0] * inv_det;
+
+        // 이동 성분 역변환: -inv(A) * t
+        let tx = -(a * m[0][2] + b * m[1][2]);
+        let ty = -(c * m[0][2] + d * m[1][2]);
+
+        Some([[a, b, tx], [c, d, ty], [0.0, 0.0, 1.0]])
+    }
+
+    /// 행렬에서 Transform 구조체로 분해합니다
+    ///
+    /// 회전과 스케일을 분리하여 추출합니다.
+    /// 주의: pivot은 추출할 수 없으므로 [0, 0]으로 설정됩니다.
+    pub fn from_matrix(m: &Matrix3x3) -> Self {
+        // 이동 성분 추출
+        let translate = [m[0][2], m[1][2]];
+
+        // 스케일 추출 (열 벡터의 길이)
+        let sx = (m[0][0] * m[0][0] + m[1][0] * m[1][0]).sqrt();
+        let sy = (m[0][1] * m[0][1] + m[1][1] * m[1][1]).sqrt();
+
+        // 음수 스케일 감지 (행렬식 부호로 판단)
+        // det < 0이면 하나의 축이 뒤집힌 것 (X축을 기준으로 처리)
+        let det = m[0][0] * m[1][1] - m[0][1] * m[1][0];
+        let sx = if det < 0.0 { -sx } else { sx };
+
+        // 회전 추출 (첫 번째 열에서)
+        let rotate = if sx.abs() > 1e-10 {
+            (m[1][0] / sx).atan2(m[0][0] / sx)
+        } else {
+            0.0
+        };
+
+        Self {
+            translate,
+            rotate,
+            scale: [sx, sy],
+            pivot: [0.0, 0.0], // pivot은 행렬에서 복원 불가
+        }
     }
 }
 

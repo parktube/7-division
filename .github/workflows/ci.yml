@@ -111,7 +111,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: cad-electron/package-lock.json
+          cache-dependency-path: |
+            cad-electron/package-lock.json
+            viewer/package-lock.json
+
+      - name: Install dependencies (viewer)
+        working-directory: viewer
+        run: npm ci
 
       - name: Install dependencies (cad-electron)
         working-directory: cad-electron

@@ -35,7 +35,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: cad-electron/package-lock.json
+          cache-dependency-path: |
+            cad-electron/package-lock.json
+            cad-tools/package-lock.json
+            viewer/package-lock.json
 
       - name: Install dependencies (cad-electron)
         working-directory: cad-electron
@@ -43,6 +46,10 @@ jobs:
 
       - name: Install dependencies (cad-tools)
         working-directory: cad-tools
+        run: npm ci
+
+      - name: Install dependencies (viewer)
+        working-directory: viewer
         run: npm ci
 
       - name: Setup Rust

@@ -86,8 +86,9 @@ add_to_group(group_name, entity_name)
 set_fill(name, color)         // color: [r, g, b, a]
 set_stroke(name, color, width)
 
-// z-order (1)
-setZOrder(name, zIndex)  // 렌더링 순서
+// z-order (2)
+drawOrder(name, mode)     // 'front', 'back', +N, -N, 'above:target', 'below:target'
+getDrawOrder(groupName?)  // Progressive Disclosure 순서 조회
 
 // query (3) - Phase 2 월드 변환 조회
 getWorldTransform(name)
@@ -99,7 +100,7 @@ deleteEntity(name)
 exists(name)
 ```
 
-**총 20개 함수** (primitives 7 + transforms 4 + groups 2 + style 2 + z-order 1 + query 3 + utility 2)
+**총 21개 함수** (primitives 7 + transforms 4 + groups 2 + style 2 + z-order 2 + query 3 + utility 2)
 
 > Note: `draw_bezier`는 primitives에 포함, 실제 구현된 primitives는 6개 (Bezier 제외 시)
 
@@ -217,9 +218,9 @@ set_fill("center", [0.85, 0.92, 1.0, 1]);
 24. [x] `translate_scene`, `scale_scene`, `center_scene` - 전체 씬 조작
 
 ### Phase 5: Z-Order / 레이어 ✅
-25. [x] `set_z_order` - 렌더링 순서 설정
-26. [x] `get_z_order` - 렌더링 순서 조회
-27. [x] `bring_to_front`, `send_to_back` - 편의 명령어
+25. [x] `drawOrder(name, mode)` - 통합 Z-Order API (front, back, +N, -N, above:, below:)
+26. [x] `getDrawOrder(groupName?)` - Progressive Disclosure 순서 조회
+27. [x] 스코프 기반 z_index 할당 (root: max+1, 그룹 내부: 0,1,2... 정규화)
 28. [x] SVG 렌더링에 z_index 정렬 적용
 
 ### Phase 6: Polygon Primitive ✅

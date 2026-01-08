@@ -181,6 +181,31 @@ export class CADExecutor {
         case 'get_z_order':
           return this.getZOrder(input);
 
+        case 'get_draw_order':
+          return this.getDrawOrder(input);
+
+        case 'draw_order':
+          return this.drawOrder(input);
+
+        // Legacy z-order commands (use draw_order instead)
+        case 'bring_to_front':
+          return this.bringToFront(input);
+
+        case 'send_to_back':
+          return this.sendToBack(input);
+
+        case 'bring_forward':
+          return this.bringForward(input);
+
+        case 'send_backward':
+          return this.sendBackward(input);
+
+        case 'move_above':
+          return this.moveAbove(input);
+
+        case 'move_below':
+          return this.moveBelow(input);
+
         // === group ===
         case 'create_group':
           return this.createGroup(input);
@@ -314,20 +339,18 @@ export class CADExecutor {
 
   /**
    * 베지어 커브를 그립니다.
-   * @param input.points - [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
-   *                       첫 세그먼트는 8개, 이후 세그먼트는 6개씩 (cp1, cp2, end)
-   * @param input.closed - 닫힌 경로 여부 (기본값 false)
+   * @param input.path - SVG path 문자열 (예: "M 0,0 C 30,50 70,50 100,0 S 170,50 200,0 Z")
+   *                     M x,y = 시작점, C cp1 cp2 end = 큐빅, S cp2 end = 부드러운 연결, Z = 닫기
    */
   private drawBezier(input: Record<string, unknown>): ToolResult {
-    const error = this.validateInput(input, { name: 'string', points: 'number[]' });
+    const error = this.validateInput(input, { name: 'string', path: 'string' });
     if (error) return { success: false, error: `draw_bezier: ${error}` };
 
     const name = input.name as string;
-    const points = new Float64Array(input.points as number[]);
-    const closed = (input.closed as boolean) || false;
+    const path = input.path as string;
     const styleJson = this.toJson(input.style);
 
-    const result = this.scene.draw_bezier(name, points, closed, styleJson);
+    const result = this.scene.draw_bezier(name, path, styleJson);
     return { success: true, entity: result, type: 'bezier' };
   }
 
@@ -387,7 +410,9 @@ export class CADExecutor {
     if (error) return { success: false, error: `get_entity: ${error}` };
 
     const name = input.name as string;
-    const data = this.scene.get_entity(name);
+
+    // Use WASM's get_entity_detailed for local/world coordinates (FR42)
+    const data = this.scene.get_entity_detailed(name);
 
     if (data === undefined || data === null) {
       return { success: false, error: `Entity not found: ${name}` };
@@ -489,14 +514,26 @@ export class CADExecutor {
     const name = input.name as string;
     const dx = input.dx as number;
     const dy = input.dy as number;
+    const space = (input.space as 'world' | 'local') || 'world';
 
-    const result = this.scene.translate(name, dx, dy);
+    // Use WASM functions for coordinate conversion
+    const result = space === 'world'
+      ? this.scene.translate_world(name, dx, dy)
+      : this.scene.translate(name, dx, dy);
+
     if (!result) {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name };
   }
 
+  /**
+   * 엔티티를 회전합니다.
+   *
+   * Note: space 옵션은 API 일관성을 위해 허용되지만, 회전에는 영향을 미치지 않습니다.
+   * 회전 델타는 스칼라값이므로 world/local 구분이 무의미합니다.
+   * (부모의 회전과 관계없이 동일한 각도만큼 회전)
+   */
   private rotateEntity(input: Record<string, unknown>): ToolResult {
     const error = this.validateInput(input, { name: 'string', angle: 'number' });
     if (error) return { success: false, error: `rotate: ${error}` };
@@ -504,6 +541,9 @@ export class CADExecutor {
     const name = input.name as string;
     const angleUnit = (input.angle_unit as AngleUnit) || 'radian';
     const angle = normalizeAngle(input.angle as number, angleUnit);
+    // space option accepted for API consistency but has no effect on rotation
+    // Rotation delta is a scalar - world/local distinction is not applicable
+    void input.space; // Explicitly read to acknowledge API consistency
 
     const result = this.scene.rotate(name, angle);
     if (!result) {
@@ -519,8 +559,13 @@ export class CADExecutor {
     const name = input.name as string;
     const sx = input.sx as number;
     const sy = input.sy as number;
+    const space = (input.space as 'world' | 'local') || 'world';
 
-    const result = this.scene.scale(name, sx, sy);
+    // Use WASM functions for coordinate conversion
+    const result = space === 'world'
+      ? this.scene.scale_world(name, sx, sy)
+      : this.scene.scale(name, sx, sy);
+
     if (!result) {
       return { success: false, error: `Entity not found: ${name}` };
     }
@@ -580,6 +625,114 @@ export class CADExecutor {
       return { success: false, error: `Entity not found: ${name}` };
     }
     return { success: true, entity: name, type: 'z_order', data: JSON.stringify({ z_index: zIndex }) };
+  }
+
+  private getDrawOrder(input: Record<string, unknown>): ToolResult {
+    const groupName = (input.group_name as string) || '';
+    const result = this.scene.get_draw_order(groupName);
+    if (result === undefined || result === null) {
+      return { success: false, error: `Draw order not found${groupName ? ` for group: ${groupName}` : ''}` };
+    }
+    return { success: true, data: result };
+  }
+
+  /**
+   * 통합 Z-Order 명령어
+   * mode:
+   *   - 'front': 맨 앞으로
+   *   - 'back': 맨 뒤로
+   *   - '+N' or N: N단계 앞으로
+   *   - '-N': N단계 뒤로
+   *   - 'above:target': target 위로
+   *   - 'below:target': target 아래로
+   */
+  private drawOrder(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', mode: 'string' });
+    if (error) return { success: false, error: `draw_order: ${error}` };
+
+    const name = input.name as string;
+    const mode = input.mode as string;
+
+    const result = this.scene.draw_order(name, mode);
+    if (!result) {
+      return { success: false, error: `draw_order failed: entity not found or invalid mode (${mode})` };
+    }
+    return { success: true, entity: name, data: JSON.stringify({ mode }) };
+  }
+
+  // Legacy Z-Order Methods (use drawOrder instead)
+  private bringToFront(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `bring_to_front: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.bring_to_front(name);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private sendToBack(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `send_to_back: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.send_to_back(name);
+    if (!result) {
+      return { success: false, error: `Entity not found: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private bringForward(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `bring_forward: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.bring_forward(name);
+    if (!result) {
+      return { success: false, error: `Entity not found or already at front: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private sendBackward(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string' });
+    if (error) return { success: false, error: `send_backward: ${error}` };
+
+    const name = input.name as string;
+    const result = this.scene.send_backward(name);
+    if (!result) {
+      return { success: false, error: `Entity not found or already at back: ${name}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private moveAbove(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', target: 'string' });
+    if (error) return { success: false, error: `move_above: ${error}` };
+
+    const name = input.name as string;
+    const target = input.target as string;
+    const result = this.scene.move_above(name, target);
+    if (!result) {
+      return { success: false, error: `Entity not found or different levels: ${name}, ${target}` };
+    }
+    return { success: true, entity: name };
+  }
+
+  private moveBelow(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', target: 'string' });
+    if (error) return { success: false, error: `move_below: ${error}` };
+
+    const name = input.name as string;
+    const target = input.target as string;
+    const result = this.scene.move_below(name, target);
+    if (!result) {
+      return { success: false, error: `Entity not found or different levels: ${name}, ${target}` };
+    }
+    return { success: true, entity: name };
   }
 
   // === Group implementations ===

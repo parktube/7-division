@@ -55,7 +55,7 @@ drawBezier(name, points, closed)
 // 스타일
 setFill(name, [r, g, b, a])      // 색상 0~1
 setStroke(name, [r, g, b, a], width)
-setZOrder(name, z)               // 높을수록 앞 (기본값: 0)
+drawOrder(name, mode)            // 'front', 'back', +N, -N, 'above:target', 'below:target'
 
 // 변환
 translate(name, dx, dy)
@@ -243,41 +243,39 @@ drawBezier(
 // 2. 개체 그룹: createGroup('house_1', ['h1_wall', 'h1_roof', 'h1_door'])
 // 3. 카테고리 그룹: createGroup('houses', ['house_1', 'house_2'])
 // 4. 씬 그룹: createGroup('village', ['houses', 'trees'])
-// 5. Root z-order 필수: setZOrder('background', 0); setZOrder('village', 100);
+// 5. Z-order는 자동 할당, 상대적 조정만: drawOrder('village', 'front');
 ```
 
-**주의**: 그룹 내 children은 개별 z-order로 정렬됨
+**주의**: 그룹 내 children은 그룹 내부 스코프에서 개별 z-order로 정렬됨 (외부에 영향 없음)
 
 ### Z-Order 가이드
 
-**기본 동작:**
-- 모든 엔티티는 `z_index = 0`으로 생성됨
-- 같은 z_index면 **생성 순서**로 정렬 (나중 생성 = 앞)
-- 높은 z_index = 앞에 표시
+**스코프 기반 할당:**
+- **Root level**: 엔티티 생성 시 `max(root_z) + 1`로 자동 할당
+- **그룹 내부**: `createGroup`/`addToGroup` 시 0, 1, 2...로 정규화
+- **정규화**: `drawOrder` 후 해당 스코프의 z-index가 자동으로 연속 정렬 (갭/중복 없음)
+- **스코프 독립**: 그룹 내부 z-order는 root level에 영향 없음
 
-**현재 z_index 확인:**
-```bash
-npx tsx cad-cli.ts get_entity '{"name":"my_entity"}'
-# → metadata.z_index 필드 확인
+**drawOrder 사용:**
+```javascript
+drawOrder('entity', 'front');       // 맨 앞으로
+drawOrder('entity', 'back');        // 맨 뒤로
+drawOrder('entity', 1);             // 한 단계 앞으로
+drawOrder('entity', -2);            // 두 단계 뒤로
+drawOrder('entity', 'above:other'); // other 바로 위로
+drawOrder('entity', 'below:other'); // other 바로 아래로
 ```
 
-**사용 예시:**
+**순서 확인:**
 ```javascript
-// 배경 → 건물 → UI 순으로 레이어링
-drawRect('background', ...);
-setZOrder('background', -100);   // 맨 뒤
-
-drawRect('building', ...);
-// z_index = 0 (기본값)
-
-drawRect('tooltip', ...);
-setZOrder('tooltip', 100);       // 맨 앞
+getDrawOrder();           // root level: { order: ['bg', 'obj1', 'group_a'], ... }
+getDrawOrder('group_a');  // 그룹 내부: { order: ['child1', 'child2'], ... }
 ```
 
 ### 에이전트 주의사항 (AX Lessons Learned)
 
 1. **run_cad_code가 메인**: 레거시 JSON 명령어보다 run_cad_code 사용 권장
-2. **Z-Order 확인**: 겹치는 도형이 있으면 `get_entity`로 z_index 확인 후 `setZOrder` 조정
+2. **Z-Order 조정**: 겹치는 도형이 있으면 `getDrawOrder()`로 순서 확인 후 `drawOrder` 조정
 3. **Bezier 데이터 검증**: `drawBezier` 사용 시 좌표값에 `NaN`이나 `Infinity` 포함 금지
 4. **Boundary 확인**: 복잡한 다각형이나 베지어는 `getWorldBounds(name)`로 실제 영역 확인
 

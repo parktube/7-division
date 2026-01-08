@@ -42,13 +42,16 @@ fn entity_to_svg_element(entity: &Entity, indent: &str) -> String {
             ) + "\n"
         }
         Geometry::Rect {
-            origin,
+            center,
             width,
             height,
         } => {
+            // SVG rect는 좌상단 기준, center에서 계산
+            let x = center[0] - width / 2.0;
+            let y = center[1] - height / 2.0;
             format!(
                 r#"{}<rect x="{}" y="{}" width="{}" height="{}" {}{}/>"#,
-                indent, origin[0], origin[1], width, height, style_attr, transform_attr
+                indent, x, y, width, height, style_attr, transform_attr
             ) + "\n"
         }
         Geometry::Arc {
@@ -378,7 +381,7 @@ mod tests {
     #[test]
     fn test_rect_to_svg() {
         let entity = make_entity(Geometry::Rect {
-            origin: [0.0, 0.0],
+            center: [50.0, 25.0],
             width: 100.0,
             height: 50.0,
         });
@@ -386,6 +389,9 @@ mod tests {
         assert!(svg.contains("<rect"));
         assert!(svg.contains(r#"width="100""#));
         assert!(svg.contains(r#"height="50""#));
+        // center [50, 25] with w=100, h=50 → x=0, y=0
+        assert!(svg.contains(r#"x="0""#));
+        assert!(svg.contains(r#"y="0""#));
     }
 
     #[test]
@@ -480,7 +486,7 @@ mod tests {
         let mut rect = make_named_entity(
             "rect1",
             Geometry::Rect {
-                origin: [0.0, 0.0],
+                center: [10.0, 5.0],
                 width: 20.0,
                 height: 10.0,
             },

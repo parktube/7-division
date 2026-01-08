@@ -13,7 +13,7 @@ date: '2025-01-06'
 
 # Architecture Document - AI-Native CAD (Epic 7)
 
-**Last Updated:** 2025-01-06
+**Last Updated:** 2026-01-07
 
 ---
 
@@ -65,6 +65,63 @@ Epic 7은 10개의 FR을 포함하며, 인간-LLM 협업을 위한 UI 개선에 
 2. **이벤트 시스템**: Canvas 클릭, 키보드 단축키, 패널 드래그
 3. **렌더링 성능**: Canvas 2D, 60fps 목표
 4. **Electron 호환**: IPC 최소화, 파일 기반 통신 유지
+
+---
+
+## Core Architecture Principles
+
+### "Dumb View" 패턴 (필수)
+
+```
+"데이터를 가진 쪽이 계산한다"
+
+WASM: 모든 entity 데이터 보유 → 모든 계산 담당
+Viewer: scene.json 읽음 → 표시만 담당
+
+View가 "똑똑하면" 안 된다. 똑똑한 건 Model의 일.
+```
+
+**계층별 책임:**
+
+| 계층 | 책임 | 하면 안 되는 것 |
+|------|------|----------------|
+| **WASM (cad-engine)** | geometry, transform, bounds, tree 계산 | - |
+| **cad-tools** | JS 코드 실행, WASM 호출, scene.json export | 계산 |
+| **scene.json** | computed 데이터 포함하여 전달 | - |
+| **Viewer** | 렌더링, UI 이벤트, 사용자 인터랙션 | **계산 금지** |
+
+**scene.json v2 스키마:**
+
+```json
+{
+  "version": 2,
+  "entities": [{
+    "id": "uuid",
+    "entity_type": "Rect",
+    "geometry": { ... },
+    "transform": { ... },
+    "computed": {
+      "local_bounds": { "min": [-25, 0], "max": [25, 40] },
+      "world_bounds": { "min": [75, 30], "max": [125, 70] },
+      "world_center": [100, 50]
+    }
+  }],
+  "tree": [{ "id": "root", "children": ["child1", "child2"] }],
+  "name_index": { "wall": "uuid-1234" }
+}
+```
+
+**Viewer에서 금지된 코드:**
+
+```typescript
+// ❌ Viewer에서 bounds 계산 금지
+function calculateWorldBounds(entity, entityMap) { ... }
+
+// ✅ scene.json에서 읽기만
+const bounds = entity.computed.world_bounds;
+```
+
+**MAMA Decision:** `cad:viewer_dumb_view_architecture`
 
 ---
 

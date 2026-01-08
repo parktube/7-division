@@ -58,8 +58,19 @@ impl Scene {
             .filter(|child_name| self.has_entity(child_name))
             .collect();
 
-        // 자식의 기존 부모에서 제거 + parent_id 설정
-        for child_name in &valid_children {
+        // 자식들의 현재 z_index를 수집하여 상대 순서 유지
+        let mut children_with_z: Vec<(String, i32)> = valid_children
+            .iter()
+            .filter_map(|child_name| {
+                self.find_by_name(child_name)
+                    .map(|e| (child_name.clone(), e.metadata.z_index))
+            })
+            .collect();
+        // z_index 순으로 정렬하여 상대 순서 보존
+        children_with_z.sort_by_key(|(_, z)| *z);
+
+        // 자식의 기존 부모에서 제거 + parent_id 설정 + z_index 정규화
+        for (new_z, (child_name, _old_z)) in children_with_z.iter().enumerate() {
             // 자식의 현재 parent_id 확인
             let old_parent = self
                 .find_by_name(child_name)
@@ -72,11 +83,25 @@ impl Scene {
                 old_parent_entity.children.retain(|c| c != child_name);
             }
 
-            // 자식의 parent_id를 새 그룹으로 설정
+            // 자식의 parent_id를 새 그룹으로 설정 + z_index 정규화 (0, 1, 2, ...)
             if let Some(child_entity) = self.find_by_name_mut(child_name) {
                 child_entity.parent_id = Some(name.to_string());
+                child_entity.metadata.z_index = new_z as i32;
             }
         }
+
+        // 그룹의 z-index: 임시로 max + 1 할당 (나중에 정규화됨)
+        let max_root_z = self
+            .entities
+            .iter()
+            .filter(|e| e.parent_id.is_none())
+            .map(|e| e.metadata.z_index)
+            .max()
+            .unwrap_or(-1);
+        let z_order = max_root_z + 1;
+
+        // 정렬된 순서로 children 목록 생성
+        let sorted_children: Vec<String> = children_with_z.iter().map(|(n, _)| n.clone()).collect();
 
         // Group Entity 생성
         let group_entity = Entity {
@@ -87,15 +112,42 @@ impl Scene {
             style: Style::default(),
             metadata: Metadata {
                 name: name.to_string(),
+                z_index: z_order,
                 ..Default::default()
             },
             parent_id: None,
-            children: valid_children,
+            children: sorted_children,
         };
 
         self.entities.push(group_entity);
+
+        // Root level z-index 정규화 (갭과 중복 제거)
+        self.normalize_root_z_indices();
+
         self.last_operation = Some(format!("create_group({})", name));
         Ok(name.to_string())
+    }
+
+    /// Root level 엔티티들의 z-index를 0, 1, 2...로 정규화
+    ///
+    /// 갭이나 중복 없이 순서대로 재정렬합니다.
+    fn normalize_root_z_indices(&mut self) {
+        // Root level 엔티티의 (index, z_index) 수집
+        let mut roots: Vec<(usize, i32)> = self
+            .entities
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.parent_id.is_none())
+            .map(|(idx, e)| (idx, e.metadata.z_index))
+            .collect();
+
+        // 현재 z_index 순으로 정렬 (상대 순서 유지)
+        roots.sort_by_key(|(_, z)| *z);
+
+        // 0, 1, 2...로 재할당
+        for (new_z, (idx, _)) in roots.iter().enumerate() {
+            self.entities[*idx].metadata.z_index = new_z as i32;
+        }
     }
 
     /// 내부용 그룹 해제 함수 (테스트용)
@@ -138,6 +190,10 @@ impl Scene {
 
     /// 내부용 그룹에 자식 추가 함수 (테스트용)
     ///
+    /// # 월드 위치 보존 (Story 7.5.3)
+    /// addToGroup 시 엔티티의 월드 좌표가 유지됩니다.
+    /// 내부적으로 역행렬 계산을 통해 새 로컬 transform을 자동 계산합니다.
+    ///
     /// # Returns
     /// * Ok(true) - 추가 성공
     /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음
@@ -174,6 +230,19 @@ impl Scene {
             )));
         }
 
+        // ============================================
+        // 월드 위치 보존 로직 (Story 7.5.3)
+        // ============================================
+        // 1. entity의 현재 월드 transform 저장
+        // 2. 부모 그룹의 월드 transform 역행렬 계산
+        // 3. 새 로컬 transform = 역행렬 × entity 월드 transform
+
+        // Entity의 현재 월드 transform 저장
+        let entity_world_matrix = self.get_world_transform_internal(entity_name);
+
+        // 부모 그룹의 월드 transform 저장
+        let group_world_matrix = self.get_world_transform_internal(group_name);
+
         // 자식의 기존 부모에서 제거
         let old_parent = self
             .find_by_name(entity_name)
@@ -185,12 +254,50 @@ impl Scene {
             old_parent_entity.children.retain(|c| c != entity_name);
         }
 
-        // 자식의 parent_id를 새 그룹으로 설정
-        if let Some(child) = self.find_by_name_mut(entity_name) {
-            child.parent_id = Some(group_name.to_string());
+        // 새 로컬 transform 계산 및 적용
+        if let (Some(entity_world), Some(group_world)) = (entity_world_matrix, group_world_matrix) {
+            // 부모 그룹의 역행렬
+            if let Some(group_inverse) = Transform::inverse_matrix(&group_world) {
+                // 새 로컬 = 그룹역행렬 × 엔티티월드
+                let new_local_matrix = Transform::multiply_matrices(&group_inverse, &entity_world);
+                let new_transform = Transform::from_matrix(&new_local_matrix);
+
+                // transform 업데이트
+                if let Some(child) = self.find_by_name_mut(entity_name) {
+                    child.transform = new_transform;
+                    child.parent_id = Some(group_name.to_string());
+                }
+            } else {
+                // 역행렬 계산 실패 시 기존 동작 (parent_id만 변경)
+                if let Some(child) = self.find_by_name_mut(entity_name) {
+                    child.parent_id = Some(group_name.to_string());
+                }
+            }
+        } else {
+            // 월드 transform 없으면 기존 동작
+            if let Some(child) = self.find_by_name_mut(entity_name) {
+                child.parent_id = Some(group_name.to_string());
+            }
         }
 
-        // 그룹의 children에 추가
+        // 그룹의 children에 추가 + z_index 정규화
+        // 기존 자식들 중 최대 z_index를 찾아 +1로 설정 (로컬 스코프)
+        let max_child_z = self
+            .find_by_name(group_name)
+            .map(|g| {
+                g.children
+                    .iter()
+                    .filter_map(|c| self.find_by_name(c).map(|e| e.metadata.z_index))
+                    .max()
+                    .unwrap_or(-1)
+            })
+            .unwrap_or(-1);
+
+        // 새 자식의 z_index를 그룹 내 최대값 + 1로 설정
+        if let Some(child) = self.find_by_name_mut(entity_name) {
+            child.metadata.z_index = max_child_z + 1;
+        }
+
         if let Some(group) = self.find_by_name_mut(group_name)
             && !group.children.contains(&entity_name.to_string())
         {
@@ -255,6 +362,95 @@ impl Scene {
     }
 }
 
+// ========================================
+// WASM Bindings for Group Functions
+// ========================================
+
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+impl Scene {
+    /// 여러 Entity를 그룹으로 묶습니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `name` - 그룹 이름 (예: "left_arm") - Scene 내 unique
+    /// * `children_json` - 자식 Entity 이름들의 JSON 배열 (예: '["upper_arm", "lower_arm"]')
+    ///
+    /// # Returns
+    /// * Ok(name) - 성공 시 그룹 name 반환
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    ///
+    /// # 입력 보정 (AC2)
+    /// 존재하지 않는 자식 이름은 무시하고 정상 생성
+    pub fn create_group(&mut self, name: &str, children_json: &str) -> Result<String, JsValue> {
+        // children JSON 파싱
+        let children_names: Vec<String> = serde_json::from_str(children_json)
+            .map_err(|e| JsValue::from_str(&format!("Invalid children JSON: {}", e)))?;
+
+        self.create_group_internal(name, children_names)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 그룹을 해제하여 자식들을 독립 엔티티로 만듭니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `name` - 해제할 그룹 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 그룹 해제 성공
+    /// * Ok(false) - name이 존재하지 않음
+    ///
+    /// # Errors
+    /// * name이 Group 타입이 아니면 에러
+    pub fn ungroup(&mut self, name: &str) -> Result<bool, JsValue> {
+        self.ungroup_internal(name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 그룹에 Entity를 추가합니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `group_name` - 그룹 이름
+    /// * `entity_name` - 추가할 Entity 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 추가 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음
+    ///
+    /// # Errors
+    /// * group_name이 Group 타입이 아니면 에러
+    ///
+    /// # Notes
+    /// 이미 다른 그룹에 속한 Entity는 기존 그룹에서 제거 후 추가됩니다.
+    pub fn add_to_group(&mut self, group_name: &str, entity_name: &str) -> Result<bool, JsValue> {
+        self.add_to_group_internal(group_name, entity_name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+
+    /// 그룹에서 Entity를 제거합니다. (WASM 바인딩)
+    ///
+    /// # Arguments
+    /// * `group_name` - 그룹 이름
+    /// * `entity_name` - 제거할 Entity 이름
+    ///
+    /// # Returns
+    /// * Ok(true) - 제거 성공
+    /// * Ok(false) - group_name 또는 entity_name이 존재하지 않음, 또는 해당 그룹의 자식이 아님
+    ///
+    /// # Errors
+    /// * group_name이 Group 타입이 아니면 에러
+    pub fn remove_from_group(
+        &mut self,
+        group_name: &str,
+        entity_name: &str,
+    ) -> Result<bool, JsValue> {
+        self.remove_from_group_internal(group_name, entity_name)
+            .map_err(|e| JsValue::from_str(&e.to_string()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -300,6 +496,41 @@ mod tests {
 
         // last_operation 확인
         assert_eq!(scene.last_operation, Some("create_group(grp)".to_string()));
+    }
+
+    #[test]
+    fn test_create_group_normalizes_z_index() {
+        let mut scene = Scene::new("test");
+
+        // 여러 엔티티 생성 (z_index가 순서대로 0, 1, 2, 3 부여됨)
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 10.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c3", 20.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c4", 30.0, 0.0, 10.0).unwrap();
+
+        // 그룹화 전 z_index 확인
+        let c3_before = scene.find_by_name("c3").unwrap().metadata.z_index;
+        let c4_before = scene.find_by_name("c4").unwrap().metadata.z_index;
+        println!("BEFORE: c3={}, c4={}", c3_before, c4_before);
+
+        // c3, c4를 그룹화 (원래 z=2, z=3)
+        scene
+            .create_group_internal("grp", vec!["c3".to_string(), "c4".to_string()])
+            .unwrap();
+
+        // 그룹화 후 z_index 확인
+        let c3 = scene.find_by_name("c3").unwrap();
+        let c4 = scene.find_by_name("c4").unwrap();
+        println!(
+            "AFTER: c3={}, c4={}",
+            c3.metadata.z_index, c4.metadata.z_index
+        );
+
+        assert_eq!(c3.metadata.z_index, 0, "c3 should be normalized to z=0");
+        assert_eq!(c4.metadata.z_index, 1, "c4 should be normalized to z=1");
+
+        // 상대 순서 유지 확인 (c3 < c4)
+        assert!(c3.metadata.z_index < c4.metadata.z_index);
     }
 
     #[test]
@@ -638,6 +869,37 @@ mod tests {
         assert_eq!(grp.children.len(), 1);
     }
 
+    #[test]
+    fn test_add_to_group_normalizes_z_index() {
+        let mut scene = Scene::new("test");
+
+        // 그룹 생성 (c1, c2 포함 → 그룹 내 z=0, z=1)
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c2", 10.0, 0.0, 10.0).unwrap();
+        scene
+            .create_group_internal("grp", vec!["c1".to_string(), "c2".to_string()])
+            .unwrap();
+
+        // 새 오브젝트 생성 (root level에서 grp 다음 z-index)
+        scene.add_circle_internal("c3", 20.0, 0.0, 10.0).unwrap();
+        scene.add_circle_internal("c4", 30.0, 0.0, 10.0).unwrap();
+
+        // 그룹에 추가
+        scene.add_to_group_internal("grp", "c3").unwrap();
+        scene.add_to_group_internal("grp", "c4").unwrap();
+
+        // 추가 후 z_index가 그룹 내에서 정규화되어야 함
+        let c1 = scene.find_by_name("c1").unwrap();
+        let c2 = scene.find_by_name("c2").unwrap();
+        let c3 = scene.find_by_name("c3").unwrap();
+        let c4 = scene.find_by_name("c4").unwrap();
+
+        assert_eq!(c1.metadata.z_index, 0, "c1 should be z=0");
+        assert_eq!(c2.metadata.z_index, 1, "c2 should be z=1");
+        assert_eq!(c3.metadata.z_index, 2, "c3 should be normalized to z=2");
+        assert_eq!(c4.metadata.z_index, 3, "c4 should be normalized to z=3");
+    }
+
     // ========================================
     // remove_from_group 테스트
     // ========================================
@@ -725,5 +987,193 @@ mod tests {
         let result = scene.remove_from_group_internal("grp", "c1");
         assert!(result.is_ok());
         assert!(!result.unwrap());
+    }
+
+    // ========================================
+    // 월드 위치 유지 테스트 (Story 7.5.3)
+    // ========================================
+
+    /// 월드 좌표 비교 헬퍼 (오차 허용)
+    fn approx_eq(a: f64, b: f64) -> bool {
+        (a - b).abs() < 0.01
+    }
+
+    /// 엔티티에 translate 적용 헬퍼
+    fn apply_translate(scene: &mut Scene, name: &str, dx: f64, dy: f64) {
+        if let Some(entity) = scene.find_by_name_mut(name) {
+            entity.transform.translate[0] += dx;
+            entity.transform.translate[1] += dy;
+        }
+    }
+
+    /// 엔티티에 scale 적용 헬퍼
+    fn apply_scale(scene: &mut Scene, name: &str, sx: f64, sy: f64) {
+        if let Some(entity) = scene.find_by_name_mut(name) {
+            entity.transform.scale[0] *= sx;
+            entity.transform.scale[1] *= sy;
+        }
+    }
+
+    #[test]
+    fn test_add_to_group_preserves_world_position_simple() {
+        let mut scene = Scene::new("test");
+
+        // 그룹 생성: translate(-80, -10)
+        scene.create_group_internal("house", vec![]).unwrap();
+        apply_translate(&mut scene, "house", -80.0, -10.0);
+
+        // 창문 생성: world position (100, 50)
+        scene
+            .add_rect_internal("window", 100.0, 50.0, 20.0, 30.0)
+            .unwrap();
+
+        // addToGroup 전 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("window").unwrap();
+
+        // 그룹에 추가
+        scene.add_to_group_internal("house", "window").unwrap();
+
+        // addToGroup 후 world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("window").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x: before={}, after={}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y: before={}, after={}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
+        assert!(
+            approx_eq(before_bounds.1[0], after_bounds.1[0]),
+            "max_x: before={}, after={}",
+            before_bounds.1[0],
+            after_bounds.1[0]
+        );
+        assert!(
+            approx_eq(before_bounds.1[1], after_bounds.1[1]),
+            "max_y: before={}, after={}",
+            before_bounds.1[1],
+            after_bounds.1[1]
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_preserves_world_position_with_scale() {
+        let mut scene = Scene::new("test");
+
+        // 그룹 생성: scale(2, 2) + translate(10, 10)
+        scene.create_group_internal("scaled_grp", vec![]).unwrap();
+        apply_scale(&mut scene, "scaled_grp", 2.0, 2.0);
+        apply_translate(&mut scene, "scaled_grp", 10.0, 10.0);
+
+        // 원 생성
+        scene.add_circle_internal("c1", 50.0, 50.0, 10.0).unwrap();
+
+        // addToGroup 전 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 그룹에 추가
+        scene.add_to_group_internal("scaled_grp", "c1").unwrap();
+
+        // addToGroup 후 world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x differs: {} vs {}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y differs: {} vs {}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_preserves_world_position_nested() {
+        let mut scene = Scene::new("test");
+
+        // 중첩 그룹: outer contains inner
+        scene.create_group_internal("inner", vec![]).unwrap();
+        apply_translate(&mut scene, "inner", 20.0, 0.0);
+        scene
+            .create_group_internal("outer", vec!["inner".to_string()])
+            .unwrap();
+        apply_translate(&mut scene, "outer", 100.0, 100.0);
+
+        // 원 생성: world position (50, 50)
+        scene.add_circle_internal("c1", 50.0, 50.0, 5.0).unwrap();
+
+        // addToGroup 전 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // inner 그룹에 추가 (3레벨 중첩)
+        scene.add_to_group_internal("inner", "c1").unwrap();
+
+        // addToGroup 후 world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x differs: {} vs {}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y differs: {} vs {}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
+    }
+
+    #[test]
+    fn test_add_to_group_move_between_groups_preserves_position() {
+        let mut scene = Scene::new("test");
+
+        // 두 그룹 생성
+        scene.create_group_internal("grp1", vec![]).unwrap();
+        apply_translate(&mut scene, "grp1", 10.0, 10.0);
+
+        scene.create_group_internal("grp2", vec![]).unwrap();
+        apply_translate(&mut scene, "grp2", -50.0, -50.0);
+
+        // 원을 grp1에 추가
+        scene.add_circle_internal("c1", 0.0, 0.0, 10.0).unwrap();
+        scene.add_to_group_internal("grp1", "c1").unwrap();
+
+        // 이동 후 world bounds 저장
+        let before_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // grp1에서 grp2로 이동
+        scene.add_to_group_internal("grp2", "c1").unwrap();
+
+        // world bounds 확인
+        let after_bounds = scene.get_world_bounds_internal("c1").unwrap();
+
+        // 월드 위치가 동일해야 함
+        assert!(
+            approx_eq(before_bounds.0[0], after_bounds.0[0]),
+            "min_x differs: {} vs {}",
+            before_bounds.0[0],
+            after_bounds.0[0]
+        );
+        assert!(
+            approx_eq(before_bounds.0[1], after_bounds.0[1]),
+            "min_y differs: {} vs {}",
+            before_bounds.0[1],
+            after_bounds.0[1]
+        );
     }
 }

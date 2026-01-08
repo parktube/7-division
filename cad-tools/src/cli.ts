@@ -7,6 +7,8 @@
  * Usage:
  *   node cli.js draw_circle '{"name":"head","x":0,"y":0,"radius":50}'
  *   node cli.js export_json
+ *   node cli.js export_svg
+ *   node cli.js capture_viewport
  *   node cli.js list_entities
  */
 
@@ -102,6 +104,76 @@ const STATE_FILE = process.env.CAD_STATE_PATH
 const SCENE_CODE_FILE = resolve(STATE_DIR, 'scene.code.js');
 const MODULES_DIR = resolve(STATE_DIR, '.cad-modules');
 
+// Selection file path for get_selection and --selection
+function resolveSelectionFile(): string {
+  if (process.env.CAD_SELECTION_PATH) {
+    return resolve(process.env.CAD_SELECTION_PATH);
+  }
+  const repoSelection = resolve(__dirname, '../../viewer/selection.json');
+  if (existsSync(repoSelection)) {
+    return repoSelection;
+  }
+  return resolve(defaultUserDataDir(), 'selection.json');
+}
+const SELECTION_FILE = resolveSelectionFile();
+
+/** Helper: Get selection result (used by both get_selection command and --selection flag) */
+function getSelectionResult(): { success: boolean; selection?: unknown; error?: string; hint: string } {
+  if (existsSync(SELECTION_FILE)) {
+    try {
+      const selection = JSON.parse(readFileSync(SELECTION_FILE, 'utf-8'));
+      return {
+        success: true,
+        selection,
+        hint: selection.last_selected
+          ? `선택된 도형: '${selection.last_selected}'. 이 도형을 수정하려면 translate/rotate/scale 사용.`
+          : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
+      };
+    } catch {
+      return {
+        success: false,
+        error: '선택 정보를 읽을 수 없습니다',
+        hint: '뷰어에서 도형을 클릭하여 선택하세요',
+      };
+    }
+  }
+  return {
+    success: true,
+    selection: { selected_ids: [], last_selected: null, timestamp: null },
+    hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
+  };
+}
+
+/** Helper: Capture viewport result (used by both capture_viewport command and --capture flag) */
+async function captureViewportResult(): Promise<{ success: boolean; path?: string; error?: string; message?: string; hint: string }> {
+  // Use app internal path (viewer/capture.png relative to cad-tools)
+  const outputPath = resolve(__dirname, '../../viewer/capture.png');
+  const { captureViewport } = await import('./capture.js');
+  const result = await captureViewport({
+    outputPath,
+    width: 1600,
+    height: 1000,
+    waitMs: 2000,
+  });
+  if (result.success) {
+    return {
+      success: true,
+      path: result.path,
+      message: 'Viewport captured. Use Read tool to view the image.',
+      hint: `Read file: ${result.path}`,
+    };
+  }
+  // Provide method-specific hint for troubleshooting
+  const hint = result.method === 'electron'
+    ? 'CADViewer 앱이 실행 중인지 확인하세요 (userData/.server-port 파일 확인)'
+    : '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs 또는 npm run dev)';
+  return {
+    success: false,
+    error: result.error,
+    hint,
+  };
+}
+
 interface SceneState {
   sceneName: string;
   entities: string[];
@@ -112,7 +184,7 @@ interface SceneEntity {
   entity_type: 'Circle' | 'Rect' | 'Line' | 'Arc' | 'Polygon' | 'Bezier' | 'Group';
   geometry: {
     Circle?: { center: [number, number]; radius: number };
-    Rect?: { origin: [number, number]; width: number; height: number };
+    Rect?: { center: [number, number]; width: number; height: number };
     Line?: { points: [number, number][] };
     Arc?: { center: [number, number]; radius: number; start_angle: number; end_angle: number };
     Polygon?: { points: [number, number][] };
@@ -295,11 +367,11 @@ function getSceneEntities(): string[] {
 }
 
 /** Execute main code and update scene.json */
-async function executeMainCode(): Promise<{ success: boolean; error?: string; entities: string[] }> {
+async function executeMainCode(): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
   const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
 
   const executor = CADExecutor.create('cad-scene');
-  let result: { success: boolean; error?: string; entitiesCreated?: string[] } = { success: true };
+  let result: { success: boolean; error?: string; entitiesCreated?: string[]; warnings?: string[] } = { success: true };
 
   if (mainCode.trim()) {
     const preprocessed = await preprocessCode(mainCode);
@@ -320,10 +392,17 @@ async function executeMainCode(): Promise<{ success: boolean; error?: string; en
   }
 
   executor.free();
+
+  // Lock 경고 출력
+  if (result.warnings && result.warnings.length > 0) {
+    result.warnings.forEach(w => logger.warn(w));
+  }
+
   return {
     success: result.success,
     error: result.error,
     entities: result.entitiesCreated || [],
+    warnings: result.warnings || [],
   };
 }
 
@@ -431,7 +510,7 @@ function handleRunCadCodeStructure(): RunCadCodeResult {
       files: ['main', ...modules],
       main: mainCode || '// 빈 프로젝트입니다. main에 코드를 작성하세요.',
       entities,
-      hint: '읽기: run_cad_code <name> | 쓰기: run_cad_code <name> "code" | 탐색: --status, --info, --search, --lines',
+      hint: '읽기: run_cad_code <name> | 쓰기: run_cad_code <name> "code" | 탐색: --status, --info, --search, --lines | 유틸: --capture, --selection',
     }, null, 2),
   };
 }
@@ -496,7 +575,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
     if (result.success) {
       hints.push(`main ${isAppendMode ? '추가' : '저장'} 및 실행 완료. ${result.entities.length}개 엔티티.`);
       if (result.entities.length > 0) {
-        hints.push('외부 요소 배치 시 getWorldBounds(name)로 대상 위치 확인');
+        hints.push('수정 시 reset 대신 drawOrder/setFill/translate로 기존 엔티티 직접 수정');
       }
     } else {
       hints.push('실행 실패. 코드를 확인하세요.');
@@ -637,6 +716,7 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 💡 TIPS
 - 작업 전후로 list_entities 호출 권장
 - get_selection으로 사용자가 클릭한 도형 확인 가능
+- capture_viewport로 씬 전체를 시각적으로 확인 및 검증 가능
 - get_scene_info의 bounds로 뷰포트 계산 가능`,
 
   export: `💾 EXPORT - 내보내기
@@ -644,14 +724,17 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 📋 ACTIONS
 - export_json: JSON 형식 (scene.json에 자동 저장)
 - export_svg: SVG 형식
+- capture_viewport: 현재 뷰어를 PNG 이미지로 캡처 (시각적 검토용)
 
 🎯 WORKFLOW
 1. 모든 도형 작업 완료
 2. export_json으로 저장 (자동 저장됨)
-3. 필요시 export_svg로 벡터 출력
+3. capture_viewport로 최종 디자인 시각적 확인
+4. 필요시 export_svg로 벡터 출력
 
 💡 TIPS
 - scene.json은 매 명령어 후 자동 저장
+- capture_viewport는 로컬 뷰어가 실행 중이어야 함 (기본 http://localhost:5173)
 - SVG는 반환값의 data 필드에 포함`,
 
   session: `📁 SESSION - 세션 관리
@@ -714,7 +797,7 @@ run_cad_code로 JavaScript 코드를 실행할 때 사용 가능한 함수들입
 📋 STYLE (3개)
 - setFill(name, [r,g,b,a])          // 0.0~1.0
 - setStroke(name, [r,g,b,a], width?)
-- setZOrder(name, zIndex)            // 높을수록 앞
+- drawOrder(name, 'front'|'back'|N)  // 상대적 z-order 조정
 
 📋 GROUPS (2개)
 - createGroup(name, children[])
@@ -780,27 +863,34 @@ Example:
 // ============================================================================
 
 const ACTION_HINTS: Record<string, string[]> = {
-  // Primitives (z_index=0 기본값, 겹치면 setZOrder로 조정)
-  draw_circle: ['set_fill로 색상 추가', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
-  draw_rect: ['(x,y)는 좌하단 코너 기준', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
-  draw_line: ['set_stroke로 선 색상/두께 변경', 'z_index=0 기본값'],
-  draw_arc: ['set_stroke로 선 스타일 변경', 'z_index=0 기본값'],
-  draw_polygon: ['set_fill로 색상 추가', 'z_index=0 기본값, 겹치면 setZOrder 사용'],
-  draw_bezier: ['set_fill로 색상 추가 (closed=true일 때)', 'z_index=0 기본값'],
+  // Primitives (z-order 자동 할당, 겹치면 drawOrder로 조정)
+  draw_circle: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
+  draw_rect: ['(x,y)는 사각형 중심 기준', '겹치면 drawOrder 사용'],
+  draw_line: ['set_stroke로 선 색상/두께 변경'],
+  draw_arc: ['set_stroke로 선 스타일 변경'],
+  draw_polygon: ['set_fill로 색상 추가', '겹치면 drawOrder 사용'],
+  draw_bezier: ['SVG path 형식: M x,y C cp1 cp2 end S cp2 end Z', 'set_fill로 색상 추가 (Z로 닫힌 경우)'],
 
   // Style
   set_fill: ['set_stroke로 선도 스타일링', 'list_entities로 확인'],
   set_stroke: ['set_fill로 채우기 추가', 'list_entities로 확인'],
 
-  // Transform
-  translate: ['get_entity로 결과 확인', 'rotate로 추가 변환'],
-  rotate: ['get_entity로 결과 확인', 'scale로 추가 변환'],
-  scale: ['get_entity로 결과 확인', 'translate로 추가 변환'],
+  // Transform - 작업 전 정확한 좌표/크기 계산 필수!
+  translate: [
+    '계산 → 검산 → 실행 → get_entity로 확인',
+  ],
+  rotate: ['get_entity로 결과 확인'],
+  scale: [
+    '계산 → 검산 → 실행 → get_entity로 확인',
+  ],
   delete: ['list_entities로 남은 엔티티 확인'],
   set_pivot: ['rotate로 pivot 기준 회전', 'get_entity로 결과 확인'],
 
   // Z-Order
-  set_z_order: ['get_entity로 현재 z_index 확인', 'bring_to_front/send_to_back으로 조정'],
+  set_z_order: [
+    '그룹 간 순서 변경 시 그룹 자체의 z-order 수정 필요',
+    'get_entity로 현재 z_index 확인',
+  ],
   bring_to_front: ['capture_viewport로 결과 확인'],
   send_to_back: ['capture_viewport로 결과 확인'],
 
@@ -813,13 +903,16 @@ const ACTION_HINTS: Record<string, string[]> = {
   // Export
   export_json: ['export_svg로 SVG도 내보내기'],
   export_svg: ['작업 완료!'],
-  capture_viewport: ['결과 이미지 확인', 'Read tool로 PNG 이미지 열기'],
+  capture_viewport: [
+    '이미지로 형태/의도 파악, 좌표/크기는 sketch.json에서',
+    '계산 → 검산 → 실행',
+  ],
 
   // Groups (객체지향 씬 설계)
   create_group: [
     '⚠️ 자식은 (0,0) 로컬 좌표로 생성했어야 함! 아니면 translate 시 위치 중첩',
     'translate(groupName, x, y)로 그룹 전체 이동',
-    'setZOrder로 그룹 z-order 설정',
+    'drawOrder로 그룹 z-order 설정',
   ],
   ungroup: ['list_entities로 해제 결과 확인', 'create_group으로 다시 그룹화'],
   add_to_group: ['get_entity로 추가 결과 확인', 'remove_from_group으로 제거'],
@@ -827,9 +920,9 @@ const ACTION_HINTS: Record<string, string[]> = {
 
   // Code Execution
   run_cad_code: [
+    '수정 시 reset 대신 drawOrder/setFill/translate 등으로 기존 엔티티 직접 수정',
     '외부 요소 배치 시 getWorldBounds()로 대상 위치 확인',
     '--status로 프로젝트 현황 확인',
-    '--info로 모듈 상세 보기',
     'capture_viewport로 결과 확인',
   ],
   save_module: ['run_cad_code로 모듈 코드 확인', 'list_modules로 저장된 모듈 확인'],
@@ -949,58 +1042,12 @@ Scene file:
   }
 
   if (command === 'get_selection') {
-    const selectionFile = resolve(__dirname, '../../viewer/selection.json');
-    if (existsSync(selectionFile)) {
-      try {
-        const selection = JSON.parse(readFileSync(selectionFile, 'utf-8'));
-        print(JSON.stringify({
-          success: true,
-          selection,
-          hint: selection.last_selected
-            ? `선택된 도형: "${selection.last_selected}". 이 도형을 수정하려면 translate/rotate/scale 사용.`
-            : '선택된 도형 없음. 뷰어에서 도형을 클릭하세요.',
-        }, null, 2));
-      } catch {
-        print(JSON.stringify({
-          success: false,
-          error: '선택 정보를 읽을 수 없습니다',
-          hint: '뷰어에서 도형을 클릭하여 선택하세요',
-        }, null, 2));
-      }
-    } else {
-      print(JSON.stringify({
-        success: true,
-        selection: { selected_ids: [], last_selected: null, timestamp: null },
-        hint: '아직 선택된 도형이 없습니다. 뷰어에서 도형을 클릭하세요.',
-      }, null, 2));
-    }
+    print(JSON.stringify(getSelectionResult(), null, 2));
     return;
   }
 
   if (command === 'capture_viewport') {
-    const outputPath = resolve(__dirname, '../../viewer/capture.png');
-    // Dynamic import to avoid loading puppeteer at startup (not bundled in packaged app)
-    const { captureViewport } = await import('./capture.js');
-    const result = await captureViewport({
-      outputPath,
-      width: 800,
-      height: 600,
-      waitMs: 1000,
-    });
-    if (result.success) {
-      print(JSON.stringify({
-        success: true,
-        path: result.path,
-        message: 'Viewport captured. Use Read tool to view the image.',
-        hint: `Read file: ${result.path}`,
-      }, null, 2));
-    } else {
-      print(JSON.stringify({
-        success: false,
-        error: result.error,
-        hint: '뷰어 서버가 실행 중인지 확인하세요 (node viewer/server.cjs)',
-      }, null, 2));
-    }
+    print(JSON.stringify(await captureViewportResult(), null, 2));
     return;
   }
 
@@ -1027,6 +1074,8 @@ Scene file:
     const isInfoMode = target === '--info';
     const isLinesMode = target === '--lines';
     const isStatusMode = target === '--status';
+    const isCaptureMode = target === '--capture';
+    const isSelectionMode = target === '--selection';
 
     if (isDeleteMode) {
       target = args[2]; // module name to delete
@@ -1058,6 +1107,10 @@ Scene file:
       result = handleRunCadCodeStatus();
     } else if (isDepsMode) {
       result = handleRunCadCodeDeps();
+    } else if (isCaptureMode) {
+      result = { handled: true, output: JSON.stringify(await captureViewportResult(), null, 2) };
+    } else if (isSelectionMode) {
+      result = { handled: true, output: JSON.stringify(getSelectionResult(), null, 2) };
     } else if (isDeleteMode) {
       result = await handleRunCadCodeDelete(target);
     } else if (!target) {
@@ -1924,6 +1977,11 @@ Scene file:
       writeFileSync(SCENE_CODE_FILE, code);
     }
 
+    // Lock 경고 출력
+    if (result.warnings && result.warnings.length > 0) {
+      result.warnings.forEach(w => logger.warn(w));
+    }
+
     print(JSON.stringify({
       success: result.success,
       module: moduleName,
@@ -1931,6 +1989,7 @@ Scene file:
       importedModules: preprocessed.importedModules,
       error: result.error,
       logs: result.logs,
+      warnings: result.warnings,
       hint: result.success
         ? `모듈 '${moduleName}' 실행 완료. ${result.entitiesCreated.length}개 엔티티 생성.${preprocessed.importedModules.length > 0 ? ` (${preprocessed.importedModules.join(', ')} 포함)` : ''}`
         : '모듈 실행 실패. 오류 메시지를 확인하세요.',
@@ -2040,11 +2099,11 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
 
       case 'Rect':
         if (geometry?.Rect) {
-          const { origin, width, height } = geometry.Rect;
+          const { center, width, height } = geometry.Rect;
           executor.exec('draw_rect', {
             name,
-            x: origin[0],
-            y: origin[1],
+            x: center[0],
+            y: center[1],
             width,
             height,
             style,
@@ -2084,12 +2143,14 @@ function replayEntity(executor: CADExecutor, entity: SceneEntity): void {
       case 'Bezier':
         if (geometry?.Bezier) {
           const { start, segments, closed } = geometry.Bezier;
-          // Flatten: [start_x, start_y, cp1_x, cp1_y, cp2_x, cp2_y, end_x, end_y, ...]
-          const points: number[] = [...start];
+          // Convert to SVG path: "M x,y C cp1x,cp1y cp2x,cp2y ex,ey ..."
+          let path = `M ${start[0]},${start[1]}`;
           for (const seg of segments) {
-            points.push(...seg[0], ...seg[1], ...seg[2]);
+            const [cp1, cp2, end] = seg;
+            path += ` C ${cp1[0]},${cp1[1]} ${cp2[0]},${cp2[1]} ${end[0]},${end[1]}`;
           }
-          executor.exec('draw_bezier', { name, points, closed, style });
+          if (closed) path += ' Z';
+          executor.exec('draw_bezier', { name, path, style });
         }
         break;
 
