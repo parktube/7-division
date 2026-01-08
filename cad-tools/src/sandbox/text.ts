@@ -78,26 +78,38 @@ function findFont(fontPath?: string): string | null {
 }
 
 /**
- * Load font from file (with caching)
+ * Resolve font path and check cache (shared logic)
+ * @returns [resolvedPath, cachedFont] or null if font not found
  */
-export async function loadFont(fontPath?: string): Promise<opentype.Font | null> {
+function resolveFontWithCache(fontPath?: string): { path: string; cached: opentype.Font | null } | null {
   const resolvedPath = findFont(fontPath);
   if (!resolvedPath) {
     logger.error('[text] No font found. Please provide a font path.');
     return null;
   }
+  return { path: resolvedPath, cached: fontCache.get(resolvedPath) || null };
+}
 
-  // Check cache
-  const cached = fontCache.get(resolvedPath);
-  if (cached) {
-    return cached;
-  }
+/**
+ * Cache font after loading (shared logic)
+ */
+function cacheLoadedFont(path: string, font: opentype.Font): opentype.Font {
+  fontCache.set(path, font);
+  logger.info(`[text] Font loaded: ${path}`);
+  return font;
+}
+
+/**
+ * Load font from file (with caching)
+ */
+export async function loadFont(fontPath?: string): Promise<opentype.Font | null> {
+  const resolved = resolveFontWithCache(fontPath);
+  if (!resolved) return null;
+  if (resolved.cached) return resolved.cached;
 
   try {
-    const font = await opentype.load(resolvedPath);
-    fontCache.set(resolvedPath, font);
-    logger.info(`[text] Font loaded: ${resolvedPath}`);
-    return font;
+    const font = await opentype.load(resolved.path);
+    return cacheLoadedFont(resolved.path, font);
   } catch (err) {
     logger.error(`[text] Failed to load font: ${err}`);
     return null;
@@ -108,23 +120,13 @@ export async function loadFont(fontPath?: string): Promise<opentype.Font | null>
  * Load font synchronously (for QuickJS sandbox compatibility)
  */
 export function loadFontSync(fontPath?: string): opentype.Font | null {
-  const resolvedPath = findFont(fontPath);
-  if (!resolvedPath) {
-    logger.error('[text] No font found. Please provide a font path.');
-    return null;
-  }
-
-  // Check cache
-  const cached = fontCache.get(resolvedPath);
-  if (cached) {
-    return cached;
-  }
+  const resolved = resolveFontWithCache(fontPath);
+  if (!resolved) return null;
+  if (resolved.cached) return resolved.cached;
 
   try {
-    const font = opentype.loadSync(resolvedPath);
-    fontCache.set(resolvedPath, font);
-    logger.info(`[text] Font loaded: ${resolvedPath}`);
-    return font;
+    const font = opentype.loadSync(resolved.path);
+    return cacheLoadedFont(resolved.path, font);
   } catch (err) {
     logger.error(`[text] Failed to load font: ${err}`);
     return null;
