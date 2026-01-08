@@ -39,6 +39,10 @@ const DEFAULT_FONT_NAMES = [
   'Arial.ttf',
   'Helvetica.ttf',
   'LiberationSans-Regular.ttf',
+  // Ubuntu fonts
+  'Ubuntu-R.ttf',
+  'Ubuntu-M.ttf',
+  'ubuntu/Ubuntu-R.ttf',
 ];
 
 /**
@@ -131,7 +135,7 @@ export function loadFontSync(fontPath?: string): opentype.Font | null {
  *
  * @param text - Text string to convert
  * @param x - X position
- * @param y - Y position
+ * @param y - Y position (baseline position in CAD coordinates - Y up)
  * @param fontSize - Font size in pixels
  * @param font - Loaded opentype.Font
  * @returns SVG path string compatible with drawBezier
@@ -143,11 +147,43 @@ export function textToPath(
   fontSize: number,
   font: opentype.Font
 ): string {
-  // Get path from font
-  const path = font.getPath(text, x, y, fontSize);
+  // Get path from font (opentype uses Y-down coordinate system)
+  const path = font.getPath(text, 0, 0, fontSize);
 
-  // Convert to SVG path string
-  return path.toPathData(2); // 2 decimal places precision
+  // Convert to SVG path string with Y-flip for CAD coordinate system
+  // OpenType: Y increases downward, baseline at y=0
+  // CAD: Y increases upward
+  const commands: string[] = [];
+
+  for (const cmd of path.commands) {
+    switch (cmd.type) {
+      case 'M':
+        commands.push(`M ${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`);
+        break;
+      case 'L':
+        commands.push(`L ${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`);
+        break;
+      case 'C':
+        commands.push(
+          `C ${(x + cmd.x1).toFixed(2)},${(y - cmd.y1).toFixed(2)} ` +
+          `${(x + cmd.x2).toFixed(2)},${(y - cmd.y2).toFixed(2)} ` +
+          `${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`
+        );
+        break;
+      case 'Q':
+        // Convert quadratic to cubic bezier
+        commands.push(
+          `Q ${(x + cmd.x1).toFixed(2)},${(y - cmd.y1).toFixed(2)} ` +
+          `${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`
+        );
+        break;
+      case 'Z':
+        commands.push('Z');
+        break;
+    }
+  }
+
+  return commands.join(' ');
 }
 
 /**
@@ -195,11 +231,108 @@ export interface TextOptions {
  * Result of text conversion
  */
 export interface TextResult {
-  path: string;        // SVG path string
+  path: string;        // Combined SVG path string (may have rendering issues)
+  paths: string[];     // Individual glyph paths (recommended for correct rendering)
   width: number;       // Text width
   height: number;      // Text height
   adjustedX: number;   // X after alignment adjustment
   adjustedY: number;   // Y after baseline adjustment
+}
+
+/**
+ * Convert a single glyph path to SVG path string with Y-flip
+ */
+function glyphPathToSvg(
+  path: opentype.Path,
+  offsetX: number,
+  offsetY: number
+): string {
+  const commands: string[] = [];
+
+  for (const cmd of path.commands) {
+    switch (cmd.type) {
+      case 'M':
+        commands.push(`M ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
+        break;
+      case 'L':
+        commands.push(`L ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
+        break;
+      case 'C':
+        commands.push(
+          `C ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
+            `${(offsetX + cmd.x2).toFixed(2)},${(offsetY - cmd.y2).toFixed(2)} ` +
+            `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
+        );
+        break;
+      case 'Q':
+        commands.push(
+          `Q ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
+            `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
+        );
+        break;
+      case 'Z':
+        commands.push('Z');
+        break;
+    }
+  }
+
+  return commands.join(' ');
+}
+
+/**
+ * Convert text to array of glyph paths (one per character)
+ * This avoids the issue of connecting lines between glyphs
+ *
+ * @param text - Text string
+ * @param x - X position
+ * @param y - Y position (baseline in CAD coordinates)
+ * @param fontSize - Font size
+ * @param font - Loaded opentype.Font
+ * @returns Array of SVG path strings, one per glyph
+ */
+export function textToGlyphPaths(
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number,
+  font: opentype.Font
+): string[] {
+  const scale = fontSize / font.unitsPerEm;
+  const paths: string[] = [];
+  let currentX = x;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    // Skip space characters (no visible glyph)
+    if (char === ' ') {
+      const spaceGlyph = font.charToGlyph(char);
+      currentX += (spaceGlyph.advanceWidth || 0) * scale;
+      continue;
+    }
+
+    const glyph = font.charToGlyph(char);
+    const glyphPath = glyph.getPath(0, 0, fontSize);
+
+    if (glyphPath.commands.length > 0) {
+      const pathStr = glyphPathToSvg(glyphPath, currentX, y);
+      if (pathStr.length > 0) {
+        paths.push(pathStr);
+      }
+    }
+
+    // Advance X position
+    currentX += (glyph.advanceWidth || 0) * scale;
+
+    // Apply kerning if not last character
+    if (i < text.length - 1) {
+      const nextGlyph = font.charToGlyph(text[i + 1]);
+      const kerning = font.getKerningValue(glyph, nextGlyph);
+      currentX += kerning * scale;
+    }
+  }
+
+  return paths;
 }
 
 /**
@@ -210,7 +343,7 @@ export interface TextResult {
  * @param y - Y position (baseline)
  * @param fontSize - Font size
  * @param options - Text options (fontPath, align)
- * @returns TextResult with path and metrics
+ * @returns TextResult with paths (array) and metrics
  */
 export function convertText(
   text: string,
@@ -238,14 +371,14 @@ export function convertText(
     // 'left' is default, no adjustment needed
   }
 
-  // Note: opentype.js uses y as baseline, CAD uses y as center
-  // We'll keep y as-is and let users handle baseline positioning
   const adjustedY = y;
 
-  const path = textToPath(text, adjustedX, adjustedY, fontSize, font);
+  // Get individual glyph paths to avoid connecting lines
+  const paths = textToGlyphPaths(text, adjustedX, adjustedY, fontSize, font);
 
   return {
-    path,
+    path: paths.join(' '), // Combined path for single entity (may have issues)
+    paths, // Individual glyph paths for separate entities
     width: metrics.width,
     height: metrics.height,
     adjustedX,

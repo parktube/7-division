@@ -9,18 +9,30 @@ import { logger } from '../logger.js';
 
 // 싱글톤 Manifold 인스턴스
 let manifoldInstance: ManifoldToplevel | null = null;
+let initPromise: Promise<ManifoldToplevel> | null = null;
 
 /**
- * Manifold WASM 모듈 초기화 (싱글톤)
+ * Manifold WASM 모듈 초기화 (싱글톤, race-condition safe)
  */
 export async function getManifold(): Promise<ManifoldToplevel> {
-  if (!manifoldInstance) {
-    logger.debug('Initializing Manifold WASM module...');
-    manifoldInstance = await Module();
-    manifoldInstance.setup();
-    logger.debug('Manifold WASM module initialized');
+  // Fast path: already initialized
+  if (manifoldInstance) {
+    return manifoldInstance;
   }
-  return manifoldInstance;
+
+  // Ensure only one initialization runs even with concurrent calls
+  if (!initPromise) {
+    initPromise = (async () => {
+      logger.debug('Initializing Manifold WASM module...');
+      const instance = await Module();
+      instance.setup();
+      manifoldInstance = instance;
+      logger.debug('Manifold WASM module initialized');
+      return instance;
+    })();
+  }
+
+  return initPromise;
 }
 
 /**

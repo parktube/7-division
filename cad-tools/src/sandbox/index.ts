@@ -171,9 +171,8 @@ function entityToPolygon(entity: EntityGeometry): Polygon2D | null {
 
   if (entity.type === 'Circle' && 'Circle' in geometry) {
     const circle = geometry.Circle as { center: [number, number]; radius: number };
-    // Scale affects radius
-    const scaledRadius = circle.radius * Math.max(transform.scale[0], transform.scale[1]);
-    basePolygon = circleToPolygon(circle.center, scaledRadius);
+    // Use original radius - transform will be applied later via applyTransform
+    basePolygon = circleToPolygon(circle.center, circle.radius);
   } else if (entity.type === 'Rect' && 'Rect' in geometry) {
     const rect = geometry.Rect as { center: [number, number]; width: number; height: number };
     basePolygon = rectToPolygon(rect.center, rect.width, rect.height);
@@ -226,6 +225,9 @@ function polygonToFlatPoints(polygon: Polygon2D): number[] {
   // 첫 번째 contour만 사용 (holes 미지원)
   if (polygon.length === 0 || polygon[0].length === 0) {
     return [];
+  }
+  if (polygon.length > 1) {
+    logger.warn(`[sandbox] polygonToFlatPoints: discarding ${polygon.length - 1} inner contour(s) (holes not supported)`);
   }
   const points: number[] = [];
   for (const [x, y] of polygon[0]) {
@@ -325,6 +327,7 @@ export async function runCadCode(
 
     // drawText(name, text, x, y, fontSize, options?) - 텍스트를 베지어 경로로 변환하여 그리기
     // options: { fontPath?: string, align?: 'left' | 'center' | 'right' }
+    // 각 글자를 개별 베지어로 생성 후 그룹화 (서브패스 연결선 방지)
     bindCadFunction(vm, 'drawText', (
       name: string,
       text: string,
@@ -338,7 +341,37 @@ export async function runCadCode(
         logger.error(`[sandbox] drawText: failed to convert text '${text}'`);
         return false;
       }
-      return callCad('draw_bezier', { name, path: result.path });
+
+      // Create individual bezier entities for each glyph with default black fill
+      const glyphNames: string[] = [];
+      for (let i = 0; i < result.paths.length; i++) {
+        const glyphName = `${name}_g${i}`;
+        const success = callCad('draw_bezier', { name: glyphName, path: result.paths[i] });
+        if (success) {
+          // Apply default black fill to make text visible
+          callCad('set_fill', { name: glyphName, fill: { color: [0, 0, 0, 1] } });
+          glyphNames.push(glyphName);
+        }
+      }
+
+      // If only one glyph, just rename pattern
+      if (glyphNames.length === 1) {
+        // Delete the temp glyph and create with proper name
+        callCad('delete_entity', { name: glyphNames[0] });
+        const success = callCad('draw_bezier', { name, path: result.paths[0] });
+        if (success) {
+          callCad('set_fill', { name, fill: { color: [0, 0, 0, 1] } });
+        }
+        return success;
+      }
+
+      // Multiple glyphs - create a group
+      if (glyphNames.length > 0) {
+        callCad('create_group', { name, children: glyphNames });
+        return true;
+      }
+
+      return false;
     });
 
     // getTextMetrics(text, fontSize, fontPath?) - 텍스트 치수 조회
@@ -421,6 +454,209 @@ export async function runCadCode(
         return parsed.exists;
       }
       return false;
+    });
+
+    // duplicate(sourceName, newName): 엔티티 복제
+    bindCadFunction(vm, 'duplicate', (sourceName: string, newName: string) => {
+      // 1. Get source entity full data
+      const result = executor.exec('get_entity', { name: sourceName });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] duplicate: source entity '${sourceName}' not found`);
+        return false;
+      }
+
+      const entity = JSON.parse(result.data);
+      const entityType = entity.type;
+
+      // 2. Create new entity based on type
+      let createSuccess = false;
+      const localGeom = entity.local?.geometry;
+
+      if (!localGeom) {
+        logger.error(`[sandbox] duplicate: cannot read geometry from '${sourceName}'`);
+        return false;
+      }
+
+      // Create based on entity type
+      if (entityType === 'Circle' && localGeom.Circle) {
+        const { center, radius } = localGeom.Circle;
+        createSuccess = callCad('draw_circle', { name: newName, x: center[0], y: center[1], radius });
+      } else if (entityType === 'Rect' && localGeom.Rect) {
+        const { center, width, height } = localGeom.Rect;
+        createSuccess = callCad('draw_rect', { name: newName, x: center[0], y: center[1], width, height });
+      } else if (entityType === 'Polygon' && localGeom.Polygon) {
+        const points = localGeom.Polygon.points.flat();
+        createSuccess = callCad('draw_polygon', { name: newName, points });
+      } else if (entityType === 'Line' && localGeom.Line) {
+        const points = localGeom.Line.points.flat();
+        createSuccess = callCad('draw_line', { name: newName, points });
+      } else if (entityType === 'Arc' && localGeom.Arc) {
+        const { center, radius, start_angle, end_angle } = localGeom.Arc;
+        createSuccess = callCad('draw_arc', {
+          name: newName, cx: center[0], cy: center[1], radius, start_angle, end_angle
+        });
+      } else if (entityType === 'Bezier' && localGeom.Bezier) {
+        // Reconstruct SVG path from bezier data
+        const { start, segments, closed } = localGeom.Bezier;
+        let path = `M ${start[0]},${start[1]}`;
+        for (const seg of segments) {
+          if (seg.length === 3) {
+            path += ` C ${seg[0][0]},${seg[0][1]} ${seg[1][0]},${seg[1][1]} ${seg[2][0]},${seg[2][1]}`;
+          }
+        }
+        if (closed) path += ' Z';
+        createSuccess = callCad('draw_bezier', { name: newName, path });
+      } else if (entityType === 'Group') {
+        logger.error(`[sandbox] duplicate: Group duplication not supported yet`);
+        return false;
+      } else {
+        logger.error(`[sandbox] duplicate: unsupported entity type '${entityType}'`);
+        return false;
+      }
+
+      if (!createSuccess) {
+        logger.error(`[sandbox] duplicate: failed to create '${newName}'`);
+        return false;
+      }
+
+      // 3. Copy transform
+      const transform = entity.local?.transform;
+      if (transform) {
+        if (transform.translate && (transform.translate[0] !== 0 || transform.translate[1] !== 0)) {
+          callCad('translate', { name: newName, dx: transform.translate[0], dy: transform.translate[1] });
+        }
+        if (transform.rotate && transform.rotate !== 0) {
+          callCad('rotate', { name: newName, angle: transform.rotate });
+        }
+        if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
+          callCad('scale', { name: newName, sx: transform.scale[0], sy: transform.scale[1] });
+        }
+      }
+
+      // 4. Copy style (get from raw entity data)
+      const rawResult = executor.exec('list_entities', {});
+      if (rawResult.success && rawResult.data) {
+        const entities = JSON.parse(rawResult.data);
+        const sourceRaw = entities.find((e: { name: string }) => e.name === sourceName);
+        if (sourceRaw?.style) {
+          if (sourceRaw.style.fill) {
+            callCad('set_fill', { name: newName, fill: sourceRaw.style.fill });
+          }
+          if (sourceRaw.style.stroke) {
+            callCad('set_stroke', { name: newName, stroke: sourceRaw.style.stroke });
+          }
+        }
+      }
+
+      return true;
+    });
+
+    // mirror(sourceName, newName, axis): 엔티티를 축 기준으로 미러 복제
+    // axis: 'x' (좌우 반전) | 'y' (상하 반전)
+    bindCadFunction(vm, 'mirror', (sourceName: string, newName: string, axis: 'x' | 'y') => {
+      const result = executor.exec('get_entity', { name: sourceName });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] mirror: source entity '${sourceName}' not found`);
+        return false;
+      }
+
+      const entity = JSON.parse(result.data);
+      const entityType = entity.type;
+      const localGeom = entity.local?.geometry;
+      const worldBounds = entity.world?.bounds;
+
+      if (!localGeom || !worldBounds) {
+        logger.error(`[sandbox] mirror: cannot read geometry from '${sourceName}'`);
+        return false;
+      }
+
+      // 미러 축 계산 (world bounds의 중심점)
+      const centerX = (worldBounds.min_x + worldBounds.max_x) / 2;
+      const centerY = (worldBounds.min_y + worldBounds.max_y) / 2;
+
+      // 좌표 미러 함수
+      const mirrorPoint = (x: number, y: number): [number, number] => {
+        if (axis === 'x') {
+          return [2 * centerX - x, y]; // X축 기준 반전
+        } else {
+          return [x, 2 * centerY - y]; // Y축 기준 반전
+        }
+      };
+
+      let createSuccess = false;
+
+      if (entityType === 'Circle' && localGeom.Circle) {
+        const { center, radius } = localGeom.Circle;
+        const transform = entity.local?.transform;
+        const worldCenter = [
+          center[0] + (transform?.translate?.[0] || 0),
+          center[1] + (transform?.translate?.[1] || 0)
+        ];
+        const [mx, my] = mirrorPoint(worldCenter[0], worldCenter[1]);
+        createSuccess = callCad('draw_circle', { name: newName, x: mx, y: my, radius });
+
+      } else if (entityType === 'Rect' && localGeom.Rect) {
+        const { center, width, height } = localGeom.Rect;
+        const transform = entity.local?.transform;
+        const worldCenter = [
+          center[0] + (transform?.translate?.[0] || 0),
+          center[1] + (transform?.translate?.[1] || 0)
+        ];
+        const [mx, my] = mirrorPoint(worldCenter[0], worldCenter[1]);
+        createSuccess = callCad('draw_rect', { name: newName, x: mx, y: my, width, height });
+
+      } else if (entityType === 'Polygon' && localGeom.Polygon) {
+        const transform = entity.local?.transform;
+        const tx = transform?.translate?.[0] || 0;
+        const ty = transform?.translate?.[1] || 0;
+
+        const mirroredPoints: number[] = [];
+        for (const pt of localGeom.Polygon.points) {
+          const worldPt = [pt[0] + tx, pt[1] + ty];
+          const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
+          mirroredPoints.push(mx, my);
+        }
+        createSuccess = callCad('draw_polygon', { name: newName, points: mirroredPoints });
+
+      } else if (entityType === 'Line' && localGeom.Line) {
+        const transform = entity.local?.transform;
+        const tx = transform?.translate?.[0] || 0;
+        const ty = transform?.translate?.[1] || 0;
+
+        const mirroredPoints: number[] = [];
+        for (const pt of localGeom.Line.points) {
+          const worldPt = [pt[0] + tx, pt[1] + ty];
+          const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
+          mirroredPoints.push(mx, my);
+        }
+        createSuccess = callCad('draw_line', { name: newName, points: mirroredPoints });
+
+      } else {
+        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}'`);
+        return false;
+      }
+
+      if (!createSuccess) {
+        logger.error(`[sandbox] mirror: failed to create '${newName}'`);
+        return false;
+      }
+
+      // 스타일 복사
+      const rawResult = executor.exec('list_entities', {});
+      if (rawResult.success && rawResult.data) {
+        const entities = JSON.parse(rawResult.data);
+        const sourceRaw = entities.find((e: { name: string }) => e.name === sourceName);
+        if (sourceRaw?.style) {
+          if (sourceRaw.style.fill) {
+            callCad('set_fill', { name: newName, fill: sourceRaw.style.fill });
+          }
+          if (sourceRaw.style.stroke) {
+            callCad('set_stroke', { name: newName, stroke: sourceRaw.style.stroke });
+          }
+        }
+      }
+
+      return true;
     });
 
     // === World Transform API (Phase 2) ===
@@ -646,6 +882,46 @@ export async function runCadCode(
 
       const flatPoints = polygonToFlatPoints(resultPolygon);
       return callCad('draw_polygon', { name: resultName, points: flatPoints });
+    });
+
+    // decompose(name, prefix): 분리된 컴포넌트들을 개별 폴리곤으로 추출
+    // Union 결과 등에서 서로 떨어진 도형들을 분리할 때 유용
+    // 결과: prefix_0, prefix_1, ... 형태로 생성
+    // 반환: 생성된 엔티티 이름 배열 또는 null
+    bindCadQueryFunction(vm, 'decompose', (name: string, prefix: string) => {
+      const result = executor.exec('get_entity', { name });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] decompose: entity '${name}' not found`);
+        return null;
+      }
+
+      const entity = JSON.parse(result.data) as EntityGeometry;
+      const polygon = entityToPolygon(entity);
+      if (!polygon) {
+        logger.error(`[sandbox] decompose: '${name}' is not a closed shape`);
+        return null;
+      }
+
+      const cs = polygonToCrossSection(manifold, polygon);
+      const components = cs.decompose();
+
+      const createdNames: string[] = [];
+
+      for (let i = 0; i < components.length; i++) {
+        const comp = components[i];
+        const compPolygon = crossSectionToPolygon(comp);
+        const flatPoints = polygonToFlatPoints(compPolygon);
+        const compName = `${prefix}_${i}`;
+
+        if (callCad('draw_polygon', { name: compName, points: flatPoints })) {
+          createdNames.push(compName);
+        }
+        comp.delete();
+      }
+
+      cs.delete();
+
+      return createdNames.length > 0 ? createdNames : null;
     });
 
     // console.log 바인딩

@@ -157,8 +157,10 @@ exists(name);
 getWorldBounds(name);
 getEntity(name);  // local/world 좌표 모두 반환 (아래 형식 참조)
 
-// 삭제
+// 삭제 / 복제 / 미러
 deleteEntity(name);
+duplicate(sourceName, newName);              // 엔티티 복제 (지오메트리, 스타일, 변환 모두 복사)
+mirror(sourceName, newName, axis);           // 미러 복제. axis: 'x' (좌우) | 'y' (상하)
 
 // Boolean 연산 (Manifold 기반)
 // 지원 도형: Circle, Rect, Polygon (닫힌 도형만)
@@ -171,6 +173,7 @@ booleanIntersect(nameA, nameB, resultName);  // 교집합
 offsetPolygon(name, delta, resultName, joinType?); // 확장(+)/축소(-), joinType: 'round'|'square'|'miter'
 getArea(name);                               // 면적 계산 (닫힌 도형만)
 convexHull(name, resultName);                // 볼록 껍질 생성
+decompose(name, prefix);                     // 분리된 컴포넌트 추출 → [prefix_0, prefix_1, ...]
 ```
 
 ### 모듈 시스템

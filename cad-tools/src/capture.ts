@@ -135,8 +135,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
   const {
     // Default to Vite dev server, fall back to static server
     url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
-    width = 1600,
-    height = 1000,
+    width = 2400,
+    height = 1500,
     outputPath = defaultOutputPath,
     waitMs = 2000,  // Wait for sketch to load
     forceMethod,
