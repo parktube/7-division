@@ -83,20 +83,20 @@ export function crossSectionToPolygon(cs: CrossSection): Polygon2D {
 }
 
 /**
- * 2D Boolean 연산 수행
+ * 2D Boolean 연산 수행 (sync - manifold 인스턴스 필요)
  *
+ * @param manifold Manifold 인스턴스 (getManifoldSync()로 획득)
  * @param polygonA 첫 번째 폴리곤
  * @param polygonB 두 번째 폴리곤
  * @param operation Boolean 연산 타입
  * @returns 결과 폴리곤
  */
-export async function booleanOperation(
+export function booleanOperationSync(
+  manifold: ManifoldToplevel,
   polygonA: Polygon2D,
   polygonB: Polygon2D,
   operation: BooleanOp
-): Promise<Polygon2D> {
-  const manifold = await getManifold();
-
+): Polygon2D {
   // CrossSection 생성
   const csA = polygonToCrossSection(manifold, polygonA);
   const csB = polygonToCrossSection(manifold, polygonB);
@@ -127,15 +127,15 @@ export async function booleanOperation(
 }
 
 /**
- * Circle을 폴리곤으로 변환
+ * Circle을 폴리곤으로 변환 (sync - manifold 인스턴스 필요)
  */
-export async function circleToPolygon(
+export function circleToPolygonSync(
+  manifold: ManifoldToplevel,
   cx: number,
   cy: number,
   radius: number,
   segments: number = 32
-): Promise<Polygon2D> {
-  const manifold = await getManifold();
+): Polygon2D {
   const cs = manifold.CrossSection.circle(radius, segments).translate([cx, cy]);
   const polygon = crossSectionToPolygon(cs);
   cs.delete();
@@ -143,15 +143,15 @@ export async function circleToPolygon(
 }
 
 /**
- * Rectangle을 폴리곤으로 변환
+ * Rectangle을 폴리곤으로 변환 (sync - manifold 인스턴스 필요)
  */
-export async function rectToPolygon(
+export function rectToPolygonSync(
+  manifold: ManifoldToplevel,
   cx: number,
   cy: number,
   width: number,
   height: number
-): Promise<Polygon2D> {
-  const manifold = await getManifold();
+): Polygon2D {
   const cs = manifold.CrossSection.square([width, height], true).translate([cx, cy]);
   const polygon = crossSectionToPolygon(cs);
   cs.delete();
@@ -159,13 +159,15 @@ export async function rectToPolygon(
 }
 
 /**
- * 복수 폴리곤 Union (batch)
+ * 복수 폴리곤 Union (batch, sync - manifold 인스턴스 필요)
  */
-export async function booleanUnionBatch(polygons: Polygon2D[]): Promise<Polygon2D> {
+export function booleanUnionBatchSync(
+  manifold: ManifoldToplevel,
+  polygons: Polygon2D[]
+): Polygon2D {
   if (polygons.length === 0) return [];
   if (polygons.length === 1) return polygons[0];
 
-  const manifold = await getManifold();
   const crossSections = polygons.map(p => polygonToCrossSection(manifold, p));
 
   const result = manifold.CrossSection.union(crossSections);
@@ -179,16 +181,16 @@ export async function booleanUnionBatch(polygons: Polygon2D[]): Promise<Polygon2
 }
 
 /**
- * 폴리곤 offset (확장/축소)
+ * 폴리곤 offset (확장/축소, sync - manifold 인스턴스 필요)
  */
-export async function offsetPolygon(
+export function offsetPolygonSync(
+  manifold: ManifoldToplevel,
   polygon: Polygon2D,
   delta: number,
   joinType: 'square' | 'round' | 'miter' = 'round',
   miterLimit: number = 2.0,
   circularSegments: number = 0
-): Promise<Polygon2D> {
-  const manifold = await getManifold();
+): Polygon2D {
   const cs = polygonToCrossSection(manifold, polygon);
 
   // JoinType string 매핑 (manifold-3d v3.x API)

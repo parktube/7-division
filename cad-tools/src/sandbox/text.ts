@@ -134,6 +134,66 @@ export function loadFontSync(fontPath?: string): opentype.Font | null {
 }
 
 /**
+ * Convert opentype.Path to SVG path string with Y-flip (shared logic)
+ * Validates each command for NaN/Infinity and skips invalid ones
+ *
+ * @param path - opentype.Path object
+ * @param offsetX - X offset to apply
+ * @param offsetY - Y offset (Y-flip: result = offsetY - cmd.y)
+ * @returns SVG path string or empty string if invalid
+ */
+function pathToSvgString(
+  path: opentype.Path,
+  offsetX: number,
+  offsetY: number
+): string {
+  const commands: string[] = [];
+
+  for (const cmd of path.commands) {
+    switch (cmd.type) {
+      case 'M':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
+        commands.push(`M ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
+        break;
+      case 'L':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
+        commands.push(`L ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
+        break;
+      case 'C':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
+            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1) ||
+            !Number.isFinite(cmd.x2) || !Number.isFinite(cmd.y2)) continue;
+        commands.push(
+          `C ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
+          `${(offsetX + cmd.x2).toFixed(2)},${(offsetY - cmd.y2).toFixed(2)} ` +
+          `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
+        );
+        break;
+      case 'Q':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
+            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1)) continue;
+        commands.push(
+          `Q ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
+          `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
+        );
+        break;
+      case 'Z':
+        commands.push('Z');
+        break;
+    }
+  }
+
+  const pathData = commands.join(' ');
+
+  // Final validation for any remaining invalid values
+  if (pathData.includes('NaN') || pathData.includes('Infinity')) {
+    return '';
+  }
+
+  return pathData;
+}
+
+/**
  * Convert text to SVG path string
  *
  * @param text - Text string to convert
@@ -159,45 +219,11 @@ export function textToPath(
   // Get path from font (opentype uses Y-down coordinate system)
   const path = font.getPath(text, 0, 0, fontSize);
 
-  // Convert to SVG path string with Y-flip for CAD coordinate system
-  // OpenType: Y increases downward, baseline at y=0
-  // CAD: Y increases upward
-  const commands: string[] = [];
+  // Convert using shared helper
+  const pathData = pathToSvgString(path, x, y);
 
-  for (const cmd of path.commands) {
-    switch (cmd.type) {
-      case 'M':
-        commands.push(`M ${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`);
-        break;
-      case 'L':
-        commands.push(`L ${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`);
-        break;
-      case 'C':
-        commands.push(
-          `C ${(x + cmd.x1).toFixed(2)},${(y - cmd.y1).toFixed(2)} ` +
-          `${(x + cmd.x2).toFixed(2)},${(y - cmd.y2).toFixed(2)} ` +
-          `${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`
-        );
-        break;
-      case 'Q':
-        // Convert quadratic to cubic bezier
-        commands.push(
-          `Q ${(x + cmd.x1).toFixed(2)},${(y - cmd.y1).toFixed(2)} ` +
-          `${(x + cmd.x).toFixed(2)},${(y - cmd.y).toFixed(2)}`
-        );
-        break;
-      case 'Z':
-        commands.push('Z');
-        break;
-    }
-  }
-
-  const pathData = commands.join(' ');
-
-  // Validate output for NaN/Infinity
-  if (pathData.includes('NaN') || pathData.includes('Infinity')) {
+  if (!pathData) {
     logger.error(`[text] Generated path contains invalid values for text: '${text}'`);
-    return '';
   }
 
   return pathData;
@@ -258,6 +284,7 @@ export interface TextResult {
 
 /**
  * Convert a single glyph path to SVG path string with Y-flip
+ * Uses shared pathToSvgString helper for consistency
  */
 function glyphPathToSvg(
   path: opentype.Path,
@@ -270,52 +297,13 @@ function glyphPathToSvg(
     return '';
   }
 
-  const commands: string[] = [];
-
-  for (const cmd of path.commands) {
-    switch (cmd.type) {
-      case 'M':
-        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
-        commands.push(`M ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
-        break;
-      case 'L':
-        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
-        commands.push(`L ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
-        break;
-      case 'C':
-        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
-            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1) ||
-            !Number.isFinite(cmd.x2) || !Number.isFinite(cmd.y2)) continue;
-        commands.push(
-          `C ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
-            `${(offsetX + cmd.x2).toFixed(2)},${(offsetY - cmd.y2).toFixed(2)} ` +
-            `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
-        );
-        break;
-      case 'Q':
-        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
-            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1)) continue;
-        commands.push(
-          `Q ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
-            `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
-        );
-        break;
-      case 'Z':
-        commands.push('Z');
-        break;
-    }
-  }
-
-  const pathData = commands.join(' ');
-
-  // Validate output for NaN/Infinity
-  if (pathData.includes('NaN') || pathData.includes('Infinity')) {
+  const result = pathToSvgString(path, offsetX, offsetY);
+  if (!result) {
     logger.warn('[text] glyphPathToSvg: generated path contains invalid values');
-    return '';
   }
-
-  return pathData;
+  return result;
 }
+
 
 /**
  * Convert text to array of glyph paths (one per character)
