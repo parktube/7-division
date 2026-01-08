@@ -11,6 +11,14 @@ import { homedir } from 'os';
 import { fileURLToPath } from 'url';
 import type { CADExecutor } from '../executor.js';
 import { logger } from '../logger.js';
+import {
+  getManifold,
+  type Polygon2D,
+  type BooleanOp,
+  polygonToCrossSection,
+  crossSectionToPolygon,
+} from './manifold.js';
+import type { CrossSection } from 'manifold-3d';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -72,6 +80,130 @@ function loadLockedEntities(): Set<string> {
   return new Set();
 }
 
+// === Geometry to Polygon2D conversion ===
+
+interface EntityGeometry {
+  type: string;
+  local: {
+    geometry: Record<string, unknown>;
+    transform: {
+      translate: [number, number];
+      rotate: number;
+      scale: [number, number];
+    };
+  };
+}
+
+const CIRCLE_SEGMENTS = 32;
+
+/**
+ * Circle geometry를 Polygon2D로 변환
+ */
+function circleToPolygon(
+  center: [number, number],
+  radius: number,
+  segments: number = CIRCLE_SEGMENTS
+): Polygon2D {
+  const points: [number, number][] = [];
+  for (let i = 0; i < segments; i++) {
+    const angle = (2 * Math.PI * i) / segments;
+    points.push([
+      center[0] + radius * Math.cos(angle),
+      center[1] + radius * Math.sin(angle),
+    ]);
+  }
+  return [points];
+}
+
+/**
+ * Rect geometry를 Polygon2D로 변환
+ */
+function rectToPolygon(
+  center: [number, number],
+  width: number,
+  height: number
+): Polygon2D {
+  const hw = width / 2;
+  const hh = height / 2;
+  return [[
+    [center[0] - hw, center[1] - hh],
+    [center[0] + hw, center[1] - hh],
+    [center[0] + hw, center[1] + hh],
+    [center[0] - hw, center[1] + hh],
+  ]];
+}
+
+/**
+ * Transform을 적용한 point 반환
+ */
+function applyTransform(
+  point: [number, number],
+  transform: EntityGeometry['local']['transform']
+): [number, number] {
+  // Apply scale
+  let x = point[0] * transform.scale[0];
+  let y = point[1] * transform.scale[1];
+
+  // Apply rotation
+  if (transform.rotate !== 0) {
+    const cos = Math.cos(transform.rotate);
+    const sin = Math.sin(transform.rotate);
+    const rx = x * cos - y * sin;
+    const ry = x * sin + y * cos;
+    x = rx;
+    y = ry;
+  }
+
+  // Apply translation
+  x += transform.translate[0];
+  y += transform.translate[1];
+
+  return [x, y];
+}
+
+/**
+ * Entity geometry를 Polygon2D로 변환 (transform 적용)
+ */
+function entityToPolygon(entity: EntityGeometry): Polygon2D | null {
+  const { geometry, transform } = entity.local;
+  let basePolygon: Polygon2D | null = null;
+
+  if (entity.type === 'Circle' && 'Circle' in geometry) {
+    const circle = geometry.Circle as { center: [number, number]; radius: number };
+    // Scale affects radius
+    const scaledRadius = circle.radius * Math.max(transform.scale[0], transform.scale[1]);
+    basePolygon = circleToPolygon(circle.center, scaledRadius);
+  } else if (entity.type === 'Rect' && 'Rect' in geometry) {
+    const rect = geometry.Rect as { center: [number, number]; width: number; height: number };
+    basePolygon = rectToPolygon(rect.center, rect.width, rect.height);
+  } else if (entity.type === 'Polygon' && 'Polygon' in geometry) {
+    const poly = geometry.Polygon as { points: [number, number][] };
+    basePolygon = [poly.points];
+  } else {
+    return null; // Line, Arc, Bezier, Empty 등은 Boolean 미지원
+  }
+
+  // Apply transform to all points
+  return basePolygon.map(contour =>
+    contour.map(point => applyTransform(point, transform))
+  );
+}
+
+/**
+ * Polygon2D를 flat points 배열로 변환 (drawPolygon용)
+ */
+function polygonToFlatPoints(polygon: Polygon2D): number[] {
+  // 첫 번째 contour만 사용 (holes 미지원)
+  if (polygon.length === 0 || polygon[0].length === 0) {
+    return [];
+  }
+  const points: number[] = [];
+  for (const [x, y] of polygon[0]) {
+    points.push(x, y);
+  }
+  return points;
+}
+
 /**
  * 코드 실행 결과
  */
@@ -97,6 +229,10 @@ export async function runCadCode(
 
   // 잠긴 엔티티 로드
   const lockedEntities = loadLockedEntities();
+
+  // Manifold 초기화 (Boolean 연산용, lazy singleton)
+  // Boolean 연산 사용 여부와 관계없이 미리 초기화 (singleton이라 비용 최소)
+  const manifold = await getManifold();
 
   try {
     const QuickJS = await getQuickJS();
@@ -269,6 +405,94 @@ export async function runCadCode(
         return JSON.parse(result.data);
       }
       return null;
+    });
+
+    // === Boolean Operations (Manifold) ===
+    // booleanUnion(nameA, nameB, resultName): 두 도형의 합집합
+    // booleanDifference(nameA, nameB, resultName): A에서 B를 뺀 차집합
+    // booleanIntersect(nameA, nameB, resultName): 두 도형의 교집합
+    // 지원 도형: Circle, Rect, Polygon (닫힌 도형만)
+
+    const performBooleanOp = (
+      nameA: string,
+      nameB: string,
+      resultName: string,
+      operation: BooleanOp
+    ): boolean => {
+      // Get entity data
+      const resultA = executor.exec('get_entity', { name: nameA });
+      const resultB = executor.exec('get_entity', { name: nameB });
+
+      if (!resultA.success || !resultA.data) {
+        logger.error(`[sandbox] Boolean: entity '${nameA}' not found`);
+        return false;
+      }
+      if (!resultB.success || !resultB.data) {
+        logger.error(`[sandbox] Boolean: entity '${nameB}' not found`);
+        return false;
+      }
+
+      const entityA = JSON.parse(resultA.data) as EntityGeometry;
+      const entityB = JSON.parse(resultB.data) as EntityGeometry;
+
+      // Convert to polygons
+      const polyA = entityToPolygon(entityA);
+      const polyB = entityToPolygon(entityB);
+
+      if (!polyA) {
+        logger.error(`[sandbox] Boolean: '${nameA}' is not a closed shape (${entityA.type})`);
+        return false;
+      }
+      if (!polyB) {
+        logger.error(`[sandbox] Boolean: '${nameB}' is not a closed shape (${entityB.type})`);
+        return false;
+      }
+
+      // Perform Boolean operation using Manifold
+      const csA = polygonToCrossSection(manifold, polyA);
+      const csB = polygonToCrossSection(manifold, polyB);
+
+      let resultCs: CrossSection;
+      switch (operation) {
+        case 'union':
+          resultCs = csA.add(csB);
+          break;
+        case 'difference':
+          resultCs = csA.subtract(csB);
+          break;
+        case 'intersection':
+          resultCs = csA.intersect(csB);
+          break;
+      }
+
+      const resultPolygon = crossSectionToPolygon(resultCs);
+
+      // Cleanup WASM objects
+      csA.delete();
+      csB.delete();
+      resultCs.delete();
+
+      // Check if result is empty
+      if (resultPolygon.length === 0 || resultPolygon[0].length === 0) {
+        logger.warn(`[sandbox] Boolean ${operation}: result is empty`);
+        return false;
+      }
+
+      // Create result entity using drawPolygon
+      const flatPoints = polygonToFlatPoints(resultPolygon);
+      return callCad('draw_polygon', { name: resultName, points: flatPoints });
+    };
+
+    bindCadFunction(vm, 'booleanUnion', (nameA: string, nameB: string, resultName: string) => {
+      return performBooleanOp(nameA, nameB, resultName, 'union');
+    });
+
+    bindCadFunction(vm, 'booleanDifference', (nameA: string, nameB: string, resultName: string) => {
+      return performBooleanOp(nameA, nameB, resultName, 'difference');
+    });
+
+    bindCadFunction(vm, 'booleanIntersect', (nameA: string, nameB: string, resultName: string) => {
+      return performBooleanOp(nameA, nameB, resultName, 'intersection');
     });
 
     // console.log 바인딩

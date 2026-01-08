@@ -155,6 +155,13 @@ getEntity(name);  // local/world 좌표 모두 반환 (아래 형식 참조)
 
 // 삭제
 deleteEntity(name);
+
+// Boolean 연산 (Manifold 기반)
+// 지원 도형: Circle, Rect, Polygon (닫힌 도형만)
+booleanUnion(nameA, nameB, resultName);      // 합집합
+booleanDifference(nameA, nameB, resultName); // A에서 B를 뺀 차집합
+booleanIntersect(nameA, nameB, resultName);  // 교집합
+// 결과는 Polygon 타입으로 생성됨
 ```
 
 ### 모듈 시스템
