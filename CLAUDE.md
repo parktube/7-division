@@ -123,6 +123,10 @@ drawPolygon(name, points); // 닫힌 다각형, 좌표 배열
 drawArc(name, cx, cy, radius, startAngle, endAngle); // (cx, cy) = 호의 중심
 drawBezier(name, path);  // SVG path: 'M x,y C cp1x,cp1y cp2x,cp2y x,y S cp2x,cp2y x,y Z'
 
+// 텍스트 (opentype.js 기반, 베지어 경로로 변환)
+drawText(name, text, x, y, fontSize, options?);  // options: { fontPath?, align?: 'left'|'center'|'right' }
+getTextMetrics(text, fontSize, fontPath?);       // { width, height } 반환
+
 // 스타일
 setFill(name, [r, g, b, a]); // 색상 0~1
 setStroke(name, [r, g, b, a], width);
@@ -357,6 +361,43 @@ drawBezier('blob', 'M 0,0 C 30,20 -10,30 20,40 C 50,45 40,20 30,10 C 10,5 -5,-10
 // 예: 직선과 혼합
 drawBezier('mixed', 'M 0,0 L 50,0 C 70,0 100,30 100,50 L 100,100 Z');
 ```
+
+**텍스트 렌더링 (opentype.js 기반):**
+
+```javascript
+// drawText(name, text, x, y, fontSize, options?)
+// 텍스트를 베지어 경로로 변환하여 그립니다.
+// 결과는 Bezier 엔티티로 저장됩니다.
+//
+// options:
+//   fontPath: TTF/OTF 폰트 파일 경로 (생략 시 시스템 기본 폰트 검색)
+//   align: 'left' (기본) | 'center' | 'right'
+
+// 기본 사용
+drawText('title', 'Hello World', 0, 0, 24);
+
+// 중앙 정렬
+drawText('label', 'Center', 100, 50, 16, { align: 'center' });
+
+// 커스텀 폰트 사용
+drawText('korean', '안녕하세요', 0, 100, 20, { fontPath: '/path/to/NotoSansKR.ttf' });
+
+// 텍스트 크기 미리 계산
+const metrics = getTextMetrics('Hello', 24);
+console.log(metrics);  // { width: 58.4, height: 24 }
+
+// 스타일 적용 (텍스트도 일반 엔티티처럼 스타일링 가능)
+drawText('styled', 'Styled Text', 0, 0, 32);
+setFill('styled', [1, 0, 0, 1]);  // 빨간색
+setStroke('styled', [0, 0, 0, 1], 1);  // 검은 외곽선
+```
+
+**폰트 검색 순서:**
+1. `options.fontPath`에 지정된 경로
+2. 프로젝트 `fonts/` 디렉토리
+3. 시스템 폰트 (Linux: `/usr/share/fonts`, macOS: `/System/Library/Fonts`)
+
+**지원 폰트 형식:** TTF, OTF
 
 ### 결과 확인
 

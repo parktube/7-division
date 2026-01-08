@@ -19,6 +19,7 @@ import {
   crossSectionToPolygon,
 } from './manifold.js';
 import type { CrossSection } from 'manifold-3d';
+import { convertText, type TextOptions } from './text.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -320,6 +321,40 @@ export async function runCadCode(
     // M x,y = 시작점, C cp1x,cp1y cp2x,cp2y x,y = 큐빅, S cp2x,cp2y x,y = 부드러운 연결, Z = 닫기
     bindCadFunction(vm, 'drawBezier', (name: string, path: string) => {
       return callCad('draw_bezier', { name, path });
+    });
+
+    // drawText(name, text, x, y, fontSize, options?) - 텍스트를 베지어 경로로 변환하여 그리기
+    // options: { fontPath?: string, align?: 'left' | 'center' | 'right' }
+    bindCadFunction(vm, 'drawText', (
+      name: string,
+      text: string,
+      x: number,
+      y: number,
+      fontSize: number,
+      options?: TextOptions
+    ) => {
+      const result = convertText(text, x, y, fontSize, options || {});
+      if (!result) {
+        logger.error(`[sandbox] drawText: failed to convert text '${text}'`);
+        return false;
+      }
+      return callCad('draw_bezier', { name, path: result.path });
+    });
+
+    // getTextMetrics(text, fontSize, fontPath?) - 텍스트 치수 조회
+    bindCadQueryFunction(vm, 'getTextMetrics', (
+      text: string,
+      fontSize: number,
+      fontPath?: string
+    ) => {
+      const result = convertText(text, 0, 0, fontSize, { fontPath });
+      if (!result) {
+        return null;
+      }
+      return {
+        width: result.width,
+        height: result.height,
+      };
     });
 
     // === Transforms (4) ===
