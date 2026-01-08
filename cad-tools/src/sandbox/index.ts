@@ -509,7 +509,11 @@ export async function runCadCode(
         let path = `M ${start[0]},${start[1]}`;
         for (const seg of segments) {
           if (seg.length === 3) {
+            // Cubic bezier: 2 control points + end point
             path += ` C ${seg[0][0]},${seg[0][1]} ${seg[1][0]},${seg[1][1]} ${seg[2][0]},${seg[2][1]}`;
+          } else if (seg.length === 2) {
+            // Quadratic bezier: 1 control point + end point
+            path += ` Q ${seg[0][0]},${seg[0][1]} ${seg[1][0]},${seg[1][1]}`;
           }
         }
         if (closed) path += ' Z';
@@ -644,18 +648,13 @@ export async function runCadCode(
         return false;
       }
 
-      // 스타일 복사
-      const rawResult = executor.exec('list_entities', {});
-      if (rawResult.success && rawResult.data) {
-        const entities = JSON.parse(rawResult.data);
-        const sourceRaw = entities.find((e: { name: string }) => e.name === sourceName);
-        if (sourceRaw?.style) {
-          if (sourceRaw.style.fill) {
-            callCad('set_fill', { name: newName, fill: sourceRaw.style.fill });
-          }
-          if (sourceRaw.style.stroke) {
-            callCad('set_stroke', { name: newName, stroke: sourceRaw.style.stroke });
-          }
+      // 스타일 복사 (이미 get_entity로 가져온 entity 재사용)
+      if (entity.style) {
+        if (entity.style.fill) {
+          callCad('set_fill', { name: newName, fill: entity.style.fill });
+        }
+        if (entity.style.stroke) {
+          callCad('set_stroke', { name: newName, stroke: entity.style.stroke });
         }
       }
 

@@ -237,6 +237,14 @@ export function getTextMetrics(
   fontSize: number,
   font: opentype.Font
 ): { width: number; height: number; ascender: number; descender: number } {
+  // Validate fontSize
+  if (!Number.isFinite(fontSize) || fontSize <= 0) {
+    throw new RangeError(`[text] getTextMetrics: invalid fontSize (${fontSize}). Must be a positive number.`);
+  }
+  if (!font.unitsPerEm || font.unitsPerEm <= 0) {
+    throw new RangeError(`[text] getTextMetrics: invalid font.unitsPerEm (${font.unitsPerEm})`);
+  }
+
   const scale = fontSize / font.unitsPerEm;
   const ascender = font.ascender * scale;
   const descender = font.descender * scale;
