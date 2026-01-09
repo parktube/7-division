@@ -27,11 +27,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Manifold lazy 초기화: Boolean/기하 연산 사용 시에만 WASM 로드
+// 정규식은 함수 호출 패턴 `func(` 을 감지하여 문자열 리터럴 false positive 방지
 const MANIFOLD_OPERATIONS = [
   'booleanUnion', 'booleanDifference', 'booleanIntersect',
   'offsetPolygon', 'getArea', 'convexHull', 'decompose'
 ] as const;
-const MANIFOLD_PATTERN = new RegExp(`\\b(${MANIFOLD_OPERATIONS.join('|')})\\b`);
+const MANIFOLD_PATTERN = new RegExp(`\\b(${MANIFOLD_OPERATIONS.join('|')})\\s*\\(`);
 
 // 수정 명령어 목록 (생성 제외)
 const MODIFY_COMMANDS = new Set([
