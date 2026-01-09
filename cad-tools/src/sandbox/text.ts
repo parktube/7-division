@@ -383,6 +383,15 @@ interface SubpathInfo {
  * (e.g., Korean characters like 녕 have multiple subpaths)
  * Also detects holes using winding direction (CW = hole in font coords)
  */
+/**
+ * Intermediate subpath data before hole detection
+ */
+interface RawSubpathData {
+  path: string;
+  points: [number, number][];
+  area: number;
+}
+
 function glyphPathToSvgSubpaths(
   path: opentype.Path,
   offsetX: number,
@@ -395,7 +404,7 @@ function glyphPathToSvgSubpaths(
   }
 
   const CURVE_SAMPLES = 4; // Number of samples per curve segment
-  const subpaths: SubpathInfo[] = [];
+  const rawSubpaths: RawSubpathData[] = [];
   let currentCommands: string[] = [];
   let currentPoints: [number, number][] = []; // For area calculation (original coords)
   let worldPoints: [number, number][] = []; // World coordinates (after transform)
@@ -408,10 +417,8 @@ function glyphPathToSvgSubpaths(
         if (currentCommands.length > 0 && currentPoints.length > 0) {
           const pathData = currentCommands.join(' ');
           if (!pathData.includes('NaN') && !pathData.includes('Infinity')) {
-            // Calculate signed area in original coordinates
-            // TrueType convention: CW = negative = outer, CCW = positive = hole
             const area = calculateSignedArea(currentPoints);
-            subpaths.push({ path: pathData, isHole: area > 0, points: [...worldPoints] });
+            rawSubpaths.push({ path: pathData, points: [...worldPoints], area });
           }
           currentCommands = [];
           currentPoints = [];
@@ -487,9 +494,8 @@ function glyphPathToSvgSubpaths(
         if (currentCommands.length > 1 && currentPoints.length >= 3) {
           const pathData = currentCommands.join(' ');
           if (!pathData.includes('NaN') && !pathData.includes('Infinity')) {
-            // TrueType convention: CW = negative = outer, CCW = positive = hole
             const area = calculateSignedArea(currentPoints);
-            subpaths.push({ path: pathData, isHole: area > 0, points: [...worldPoints] });
+            rawSubpaths.push({ path: pathData, points: [...worldPoints], area });
           }
         }
         currentCommands = [];
@@ -503,9 +509,49 @@ function glyphPathToSvgSubpaths(
   if (currentCommands.length > 0 && currentPoints.length >= 3) {
     const pathData = currentCommands.join(' ');
     if (!pathData.includes('NaN') && !pathData.includes('Infinity')) {
-      // TrueType convention: CW = negative = outer, CCW = positive = hole
       const area = calculateSignedArea(currentPoints);
-      subpaths.push({ path: pathData, isHole: area > 0, points: [...worldPoints] });
+      rawSubpaths.push({ path: pathData, points: [...worldPoints], area });
+    }
+  }
+
+  // Determine holes by absolute area comparison
+  // The subpath with largest absolute area is the outer contour, rest are holes
+  if (rawSubpaths.length === 0) return [];
+  if (rawSubpaths.length === 1) {
+    // Single subpath = always outer (no hole)
+    return [{ path: rawSubpaths[0].path, isHole: false, points: rawSubpaths[0].points }];
+  }
+
+  // Find the index of the subpath with the largest absolute area
+  let maxAbsArea = 0;
+  let outerIndex = 0;
+  for (let i = 0; i < rawSubpaths.length; i++) {
+    const absArea = Math.abs(rawSubpaths[i].area);
+    if (absArea > maxAbsArea) {
+      maxAbsArea = absArea;
+      outerIndex = i;
+    }
+  }
+
+  // Convert to SubpathInfo with correct isHole flags
+  // IMPORTANT: Always put outer first, then holes (for charGroup logic in index.ts)
+  const subpaths: SubpathInfo[] = [];
+
+  // First, add the outer contour
+  subpaths.push({
+    path: rawSubpaths[outerIndex].path,
+    isHole: false,
+    points: rawSubpaths[outerIndex].points,
+  });
+
+  // Then add all holes
+  for (let i = 0; i < rawSubpaths.length; i++) {
+    if (i !== outerIndex) {
+      subpaths.push({
+        path: rawSubpaths[i].path,
+        isHole: true,
+        points: rawSubpaths[i].points,
+      });
     }
   }
 
