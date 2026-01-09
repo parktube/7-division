@@ -439,7 +439,7 @@ export async function runCadCode(
     });
 
     // drawText(name, text, x, y, fontSize, options?) - 텍스트를 베지어 경로로 변환하여 그리기
-    // options: { fontPath?: string, align?: 'left' | 'center' | 'right' }
+    // options: { fontPath?: string, align?: 'left' | 'center' | 'right', color?: [r,g,b,a] }
     // 각 글자를 개별 베지어로 생성 후 그룹화 (서브패스 연결선 방지)
     bindCadFunction(vm, 'drawText', (
       name: string,
@@ -465,11 +465,14 @@ export async function runCadCode(
         return false;
       }
 
+      // 기본 색상: 검정 (사용자 지정 가능)
+      const fillColor = options?.color ?? [0, 0, 0, 1];
+
       // Single glyph: create directly with the given name (no temp entity)
       if (result.paths.length === 1) {
         const success = callCad('draw_bezier', { name, path: result.paths[0] });
         if (success) {
-          callCad('set_fill', { name, fill: { color: [0, 0, 0, 1] } });
+          callCad('set_fill', { name, fill: { color: fillColor } });
         }
         return success;
       }
@@ -480,7 +483,7 @@ export async function runCadCode(
         const glyphName = `${name}_g${i}`;
         const success = callCad('draw_bezier', { name: glyphName, path: result.paths[i] });
         if (success) {
-          callCad('set_fill', { name: glyphName, fill: { color: [0, 0, 0, 1] } });
+          callCad('set_fill', { name: glyphName, fill: { color: fillColor } });
           glyphNames.push(glyphName);
         }
       }

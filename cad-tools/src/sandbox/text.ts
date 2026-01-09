@@ -282,6 +282,7 @@ export function getTextMetrics(
 export interface TextOptions {
   fontPath?: string;
   align?: 'left' | 'center' | 'right';
+  color?: [number, number, number, number];  // RGBA [0-1]
 }
 
 /**

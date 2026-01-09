@@ -124,7 +124,7 @@ drawArc(name, cx, cy, radius, startAngle, endAngle); // (cx, cy) = 호의 중심
 drawBezier(name, path);  // SVG path: 'M x,y C cp1x,cp1y cp2x,cp2y x,y S cp2x,cp2y x,y Z'
 
 // 텍스트 (opentype.js 기반, 베지어 경로로 변환)
-drawText(name, text, x, y, fontSize, options?);  // y는 baseline 위치. options: { fontPath?, align?: 'left'|'center'|'right' }
+drawText(name, text, x, y, fontSize, options?);  // y는 baseline 위치. options: { fontPath?, align?, color?: [r,g,b,a] }
 getTextMetrics(text, fontSize, fontPath?);       // { width, height } 반환
 
 // 스타일
@@ -375,12 +375,16 @@ drawBezier('mixed', 'M 0,0 L 50,0 C 70,0 100,30 100,50 L 100,100 Z');
 // options:
 //   fontPath: TTF/OTF 폰트 파일 경로 (생략 시 시스템 기본 폰트 검색)
 //   align: 'left' (기본) | 'center' | 'right'
+//   color: [r, g, b, a] (기본: [0, 0, 0, 1] 검정)
 
 // 기본 사용
 drawText('title', 'Hello World', 0, 0, 24);
 
 // 중앙 정렬
 drawText('label', 'Center', 100, 50, 16, { align: 'center' });
+
+// 빨간색 텍스트
+drawText('red', 'Red Text', 0, 50, 24, { color: [1, 0, 0, 1] });
 
 // 커스텀 폰트 사용
 drawText('korean', '안녕하세요', 0, 100, 20, { fontPath: '/path/to/NotoSansKR.ttf' });
