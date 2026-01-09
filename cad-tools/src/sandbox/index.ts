@@ -1107,15 +1107,29 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
 
     // === Geometry Analysis (Manifold) ===
 
-    // offsetPolygon(name, delta, resultName, joinType?): 폴리곤 확장/축소
+    // offsetPolygon(name, delta, resultName, options?): 폴리곤 확장/축소
     // delta > 0: 확장, delta < 0: 축소
-    // joinType: 'round' (기본), 'square', 'miter'
+    // options.joinType: 'round' (기본), 'square', 'miter'
+    // options.miterLimit: miter 조인 최대 길이 (기본 2.0)
+    // options.circularSegments: round 조인 세그먼트 수 (기본 0=자동)
     bindCadFunction(vm, 'offsetPolygon', (
       name: string,
       delta: number,
       resultName: string,
-      joinType: 'round' | 'square' | 'miter' = 'round'
+      options?: {
+        joinType?: 'round' | 'square' | 'miter';
+        miterLimit?: number;
+        circularSegments?: number;
+      } | 'round' | 'square' | 'miter'  // 하위 호환: 4번째 인자로 joinType만 받던 기존 API 지원
     ) => {
+      // 하위 호환: 문자열로 joinType만 전달하는 기존 API 지원
+      const opts = typeof options === 'string'
+        ? { joinType: options }
+        : options ?? {};
+      const joinType = opts.joinType ?? 'round';
+      const miterLimit = opts.miterLimit ?? 2.0;
+      const circularSegments = opts.circularSegments ?? 0;
+
       const result = executor.exec('get_entity', { name });
       if (!result.success || !result.data) {
         logger.error(`[sandbox] offsetPolygon: entity '${name}' not found`);
@@ -1130,7 +1144,7 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      const offsetCs = cs.offset(delta, JOIN_TYPE_MAP[joinType], 2.0, 0);
+      const offsetCs = cs.offset(delta, JOIN_TYPE_MAP[joinType], miterLimit, circularSegments);
       const resultPolygon = crossSectionToPolygon(offsetCs);
 
       cs.delete();

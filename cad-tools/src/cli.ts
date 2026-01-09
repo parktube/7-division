@@ -385,15 +385,22 @@ function getSceneEntities(): string[] {
   }
 }
 
-/** Execute main code and update scene.json */
-async function executeMainCode(): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
-  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+/** Common execution result type */
+type ExecutionResult = { success: boolean; error?: string; entities: string[]; warnings?: string[] };
 
+/**
+ * Core execution logic: preprocess, execute, and save scene
+ * Shared by executeMainCode and executeAndCommitScene
+ */
+async function executeCodeCore(
+  code: string,
+  options?: { logWarnings?: boolean }
+): Promise<ExecutionResult> {
   const executor = CADExecutor.create('cad-scene');
   let result: { success: boolean; error?: string; entitiesCreated?: string[]; warnings?: string[] } = { success: true };
 
-  if (mainCode.trim()) {
-    const preprocessed = await preprocessCode(mainCode);
+  if (code.trim()) {
+    const preprocessed = await preprocessCode(code);
     if (preprocessed.errors.length > 0) {
       executor.free();
       return { success: false, error: `Import errors: ${preprocessed.errors.join(', ')}`, entities: [] };
@@ -401,7 +408,7 @@ async function executeMainCode(): Promise<{ success: boolean; error?: string; en
     result = await runCadCode(executor, preprocessed.code);
   }
 
-  // Always save scene (empty code = empty scene for Code-as-SoT consistency)
+  // Save scene if successful
   if (result.success) {
     const jsonResult = executor.exec('export_json', {});
     if (jsonResult.success && jsonResult.data) {
@@ -412,8 +419,8 @@ async function executeMainCode(): Promise<{ success: boolean; error?: string; en
 
   executor.free();
 
-  // Lock 경고 출력
-  if (result.warnings && result.warnings.length > 0) {
+  // Optional: log warnings
+  if (options?.logWarnings && result.warnings?.length) {
     result.warnings.forEach(w => logger.warn(w));
   }
 
@@ -423,6 +430,12 @@ async function executeMainCode(): Promise<{ success: boolean; error?: string; en
     entities: result.entitiesCreated || [],
     warnings: result.warnings || [],
   };
+}
+
+/** Execute main code from file and update scene.json */
+async function executeMainCode(): Promise<ExecutionResult> {
+  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+  return executeCodeCore(mainCode, { logWarnings: true });
 }
 
 // ============================================================================
@@ -574,38 +587,10 @@ function handleRunCadCodeRead(target: string): RunCadCodeResult {
 
 /**
  * Execute code and commit scene on success (transactional execution)
- * Returns result with entities created
+ * Delegates to executeCodeCore for shared logic
  */
-async function executeAndCommitScene(code: string): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
-  const executor = CADExecutor.create('cad-scene');
-  let result: { success: boolean; error?: string; entitiesCreated?: string[]; warnings?: string[] } = { success: true };
-
-  if (code.trim()) {
-    const preprocessed = await preprocessCode(code);
-    if (preprocessed.errors.length > 0) {
-      executor.free();
-      return { success: false, error: `Import errors: ${preprocessed.errors.join(', ')}`, entities: [] };
-    }
-    result = await runCadCode(executor, preprocessed.code);
-  }
-
-  // Save scene if successful
-  if (result.success) {
-    const jsonResult = executor.exec('export_json', {});
-    if (jsonResult.success && jsonResult.data) {
-      ensureParentDir(SCENE_FILE);
-      writeFileSync(SCENE_FILE, jsonResult.data);
-    }
-  }
-
-  executor.free();
-
-  return {
-    success: result.success,
-    error: result.error,
-    entities: result.entitiesCreated || [],
-    warnings: result.warnings || [],
-  };
+async function executeAndCommitScene(code: string): Promise<ExecutionResult> {
+  return executeCodeCore(code);
 }
 
 /**
@@ -687,18 +672,30 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
   // We need to temporarily test as if the module was updated
   const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
 
-  // Write module temporarily for test
-  writeFileSync(modulePath, combinedModuleCode);
+  // Safer approach: backup existing module before writing
+  const backupPath = `${modulePath}.bak`;
+  if (existingModuleCode) {
+    writeFileSync(backupPath, existingModuleCode);
+  }
 
-  // Test execution
-  const result = await executeAndCommitScene(mainCode);
+  let result: ExecutionResult;
+  try {
+    // Write module and test execution
+    writeFileSync(modulePath, combinedModuleCode);
+    result = await executeAndCommitScene(mainCode);
 
-  // Rollback module if execution failed
-  if (!result.success) {
-    if (existingModuleCode) {
-      writeFileSync(modulePath, existingModuleCode);
-    } else {
-      unlinkSync(modulePath);
+    // Rollback module if execution failed
+    if (!result.success) {
+      if (existingModuleCode) {
+        writeFileSync(modulePath, existingModuleCode);
+      } else {
+        unlinkSync(modulePath);
+      }
+    }
+  } finally {
+    // Clean up backup file
+    if (existsSync(backupPath)) {
+      unlinkSync(backupPath);
     }
   }
 
