@@ -131,8 +131,9 @@ const SKETCH_FILE = resolveSketchFile();
 function clearSketch(): void {
   try {
     writeFileSync(SKETCH_FILE, '{"strokes":[]}');
-  } catch {
-    // Ignore errors - sketch file might not exist or be writable
+  } catch (err) {
+    // Log error but don't fail - sketch file might not exist or be writable
+    logger.debug(`[cli] clearSketch failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

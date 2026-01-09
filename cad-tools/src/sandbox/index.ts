@@ -292,13 +292,22 @@ function getPolygonArea(points: [number, number][]): number {
 }
 
 /**
- * CCW winding order로 정규화 (Manifold는 CCW 필요)
+ * Polygon winding order 정규화 (Manifold 규약)
+ * - 외곽선 (첫 번째 contour): CCW (counter-clockwise)
+ * - 구멍 (나머지 contours): CW (clockwise)
  */
 function ensureCCW(polygon: Polygon2D): Polygon2D {
-  return polygon.map(contour => {
+  return polygon.map((contour, index) => {
     const area = getPolygonArea(contour);
-    // 음수면 CW → 뒤집어서 CCW로
-    return area < 0 ? [...contour].reverse() : contour;
+    const isOuter = index === 0;
+
+    if (isOuter) {
+      // 외곽선: CCW 필요 (area > 0)
+      return area < 0 ? [...contour].reverse() : contour;
+    } else {
+      // 구멍: CW 필요 (area < 0)
+      return area > 0 ? [...contour].reverse() : contour;
+    }
   });
 }
 
@@ -309,9 +318,10 @@ function polygonToFlatPoints(polygon: Polygon2D): number[] {
   if (polygon.length === 0 || polygon[0].length === 0) {
     return [];
   }
-  // holes가 있으면 경고 (첫 번째 contour만 사용됨)
+  // holes가 있으면 디버그 로그 (첫 번째 contour만 사용됨)
+  // Note: holes가 있는 폴리곤은 createPolygonEntity에서 draw_polygon_with_holes로 처리됨
   if (polygon.length > 1) {
-    logger.warn(`[sandbox] polygonToFlatPoints: polygon has ${polygon.length - 1} holes that will be ignored`);
+    logger.debug(`[sandbox] polygonToFlatPoints: polygon has ${polygon.length - 1} holes (outer contour only)`);
   }
   const points: number[] = [];
   for (const [x, y] of polygon[0]) {
@@ -399,17 +409,30 @@ function buildBezierPath(
 
 /**
  * 엔티티 스타일 복사 (fill, stroke)
+ * 실제 entity.style 구조: { fill?: { color: number[] }, stroke?: { color: number[], width?: number } }
  */
 function copyEntityStyle(
   callCad: CallCadFn,
   targetName: string,
-  style?: { fill?: number[]; stroke?: number[] }
+  style?: {
+    fill?: { color?: number[] } | number[];
+    stroke?: { color?: number[]; width?: number } | number[];
+  }
 ): void {
   if (style?.fill) {
-    callCad('set_fill', { name: targetName, fill: style.fill });
+    // fill이 { color: [...] } 또는 직접 배열일 수 있음
+    const fillColor = Array.isArray(style.fill) ? style.fill : style.fill.color;
+    if (fillColor) {
+      callCad('set_fill', { name: targetName, fill: { color: fillColor } });
+    }
   }
   if (style?.stroke) {
-    callCad('set_stroke', { name: targetName, stroke: style.stroke });
+    // stroke가 { color: [...], width: n } 또는 직접 배열일 수 있음
+    const strokeColor = Array.isArray(style.stroke) ? style.stroke : style.stroke.color;
+    const strokeWidth = Array.isArray(style.stroke) ? 1 : (style.stroke.width ?? 1);
+    if (strokeColor) {
+      callCad('set_stroke', { name: targetName, stroke: { color: strokeColor, width: strokeWidth } });
+    }
   }
 }
 
@@ -648,13 +671,21 @@ export async function runCadCode(
 
       // Multiple glyphs: create individual beziers then group
       const glyphNames: string[] = [];
+      let failedCount = 0;
       for (let i = 0; i < result.paths.length; i++) {
         const glyphName = `${name}_g${i}`;
         const success = callCad('draw_bezier', { name: glyphName, path: result.paths[i] });
         if (success) {
           callCad('set_fill', { name: glyphName, fill: { color: fillColor } });
           glyphNames.push(glyphName);
+        } else {
+          failedCount++;
         }
+      }
+
+      // Partial success warning
+      if (failedCount > 0 && glyphNames.length > 0) {
+        logger.warn(`[sandbox] drawText: ${failedCount}/${result.paths.length} glyphs failed for '${text}'`);
       }
 
       if (glyphNames.length > 0) {
@@ -695,6 +726,16 @@ export async function runCadCode(
       realHeight: number,
       options?: { viewport?: [number, number]; margin?: number }
     ) => {
+      // NaN/Infinity 검증
+      if (!Number.isFinite(realWidth) || !Number.isFinite(realHeight)) {
+        logger.error(`[sandbox] fitToViewport: realWidth and realHeight must be finite numbers`);
+        return null;
+      }
+      if (realWidth <= 0 || realHeight <= 0) {
+        logger.error(`[sandbox] fitToViewport: realWidth and realHeight must be positive`);
+        return null;
+      }
+
       // 기본 뷰포트: 1600x1000 (일반적인 캡처 크기)
       const viewportWidth = options?.viewport?.[0] ?? 1600;
       const viewportHeight = options?.viewport?.[1] ?? 1000;
@@ -900,7 +941,7 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
           newEnd = -start_angle;
         }
         createSuccess = callCad('draw_arc', {
-          name: newName, cx, cy, radius, start_angle: newStart, end_angle: newEnd
+          name: newName, cx, cy, radius, start_angle: newStart, end_angle: newEnd, angle_unit: 'radian'
         });
 
       } else if (entityType === 'Group' && entity.children) {
@@ -929,6 +970,19 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       if (!createSuccess) {
         logger.error(`[sandbox] mirror: failed to create '${newName}'`);
         return false;
+      }
+
+      // Transform 복사 (rotate는 미러링, scale은 그대로)
+      if (transform) {
+        // Scale은 그대로 복사
+        if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
+          callCad('scale', { name: newName, sx: transform.scale[0], sy: transform.scale[1], space: 'local' });
+        }
+        // Rotate는 미러링 (X축 미러: -angle, Y축 미러: π - angle)
+        if (transform.rotate && transform.rotate !== 0) {
+          const mirroredRotate = axis === 'x' ? -transform.rotate : Math.PI - transform.rotate;
+          callCad('rotate', { name: newName, angle: mirroredRotate });
+        }
       }
 
       // 스타일 복사 (헬퍼 함수 사용)
@@ -1063,25 +1117,27 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       const csA = polygonToCrossSection(manifold, polyA);
       const csB = polygonToCrossSection(manifold, polyB);
 
-      let resultCs: CrossSection;
-      switch (operation) {
-        case 'union':
-          resultCs = csA.add(csB);
-          break;
-        case 'difference':
-          resultCs = csA.subtract(csB);
-          break;
-        case 'intersection':
-          resultCs = csA.intersect(csB);
-          break;
+      let resultCs: CrossSection | null = null;
+      let resultPolygon: Polygon2D;
+      try {
+        switch (operation) {
+          case 'union':
+            resultCs = csA.add(csB);
+            break;
+          case 'difference':
+            resultCs = csA.subtract(csB);
+            break;
+          case 'intersection':
+            resultCs = csA.intersect(csB);
+            break;
+        }
+        resultPolygon = crossSectionToPolygon(resultCs);
+      } finally {
+        // Cleanup WASM objects (guaranteed even on exception)
+        csA.delete();
+        csB.delete();
+        resultCs?.delete();
       }
-
-      const resultPolygon = crossSectionToPolygon(resultCs);
-
-      // Cleanup WASM objects
-      csA.delete();
-      csB.delete();
-      resultCs.delete();
 
       // Check if result is empty
       if (resultPolygon.length === 0 || resultPolygon[0].length === 0) {
@@ -1127,6 +1183,14 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         ? { joinType: options }
         : options ?? {};
       const joinType = opts.joinType ?? 'round';
+
+      // joinType 검증
+      const validJoinTypes = ['round', 'square', 'miter'] as const;
+      if (!validJoinTypes.includes(joinType as typeof validJoinTypes[number])) {
+        logger.error(`[sandbox] offsetPolygon: invalid joinType '${joinType}', must be one of: ${validJoinTypes.join(', ')}`);
+        return false;
+      }
+
       const miterLimit = opts.miterLimit ?? 2.0;
       const circularSegments = opts.circularSegments ?? 0;
 
@@ -1144,11 +1208,15 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      const offsetCs = cs.offset(delta, JOIN_TYPE_MAP[joinType], miterLimit, circularSegments);
-      const resultPolygon = crossSectionToPolygon(offsetCs);
-
-      cs.delete();
-      offsetCs.delete();
+      let offsetCs: CrossSection | null = null;
+      let resultPolygon: Polygon2D;
+      try {
+        offsetCs = cs.offset(delta, JOIN_TYPE_MAP[joinType], miterLimit, circularSegments);
+        resultPolygon = crossSectionToPolygon(offsetCs);
+      } finally {
+        cs.delete();
+        offsetCs?.delete();
+      }
 
       if (resultPolygon.length === 0) {
         logger.warn(`[sandbox] offsetPolygon: result is empty (delta too large?)`);
@@ -1175,10 +1243,11 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      const area = cs.area();
-      cs.delete();
-
-      return area;
+      try {
+        return cs.area();
+      } finally {
+        cs.delete();
+      }
     });
 
     // convexHull(name, resultName): 볼록 껍질 생성
@@ -1197,11 +1266,15 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      const hullCs = cs.hull();
-      const resultPolygon = crossSectionToPolygon(hullCs);
-
-      cs.delete();
-      hullCs.delete();
+      let hullCs: CrossSection | null = null;
+      let resultPolygon: Polygon2D;
+      try {
+        hullCs = cs.hull();
+        resultPolygon = crossSectionToPolygon(hullCs);
+      } finally {
+        cs.delete();
+        hullCs?.delete();
+      }
 
       // convexHull은 단일 컨투어로 holes 없음
       return createPolygonEntity(callCad, resultName, resultPolygon);
@@ -1226,25 +1299,31 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       }
 
       const cs = polygonToCrossSection(getManifoldSync(), polygon);
-      const components = cs.decompose();
+      let components: CrossSection[] = [];
+      try {
+        components = cs.decompose();
 
-      const createdNames: string[] = [];
+        const createdNames: string[] = [];
 
-      for (let i = 0; i < components.length; i++) {
-        const comp = components[i];
-        const compPolygon = crossSectionToPolygon(comp);
-        const compName = `${prefix}_${i}`;
+        for (let i = 0; i < components.length; i++) {
+          const comp = components[i];
+          const compPolygon = crossSectionToPolygon(comp);
+          const compName = `${prefix}_${i}`;
 
-        // 각 컴포넌트도 holes를 가질 수 있음
-        if (createPolygonEntity(callCad, compName, compPolygon)) {
-          createdNames.push(compName);
+          // 각 컴포넌트도 holes를 가질 수 있음
+          if (createPolygonEntity(callCad, compName, compPolygon)) {
+            createdNames.push(compName);
+          }
         }
-        comp.delete();
+
+        return createdNames.length > 0 ? createdNames : null;
+      } finally {
+        // Cleanup all WASM objects
+        cs.delete();
+        for (const comp of components) {
+          comp.delete();
+        }
       }
-
-      cs.delete();
-
-      return createdNames.length > 0 ? createdNames : null;
     });
 
     // console.log 바인딩
