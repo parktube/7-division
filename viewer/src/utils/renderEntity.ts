@@ -116,11 +116,16 @@ function renderBezier(ctx: CanvasRenderingContext2D, geo: BezierGeometry) {
 }
 
 // Style application
-function applyStyle(ctx: CanvasRenderingContext2D, style: Style) {
+function applyStyle(ctx: CanvasRenderingContext2D, style: Style, hasHoles = false) {
   if (style.fill) {
     const [r, g, b, a] = style.fill.color
     ctx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`
-    ctx.fill('evenodd')  // holes 지원을 위해 evenodd 사용
+    // holes가 있을 때만 evenodd 사용 (성능 최적화)
+    if (hasHoles) {
+      ctx.fill('evenodd')
+    } else {
+      ctx.fill()
+    }
   }
 
   if (style.stroke) {
@@ -159,6 +164,7 @@ function renderEntity(
     }
   } else if (geo !== 'Empty') {
     // Render geometry
+    let hasHoles = false
     if (isCircle(geo)) {
       renderCircle(ctx, geo)
     } else if (isRect(geo)) {
@@ -167,12 +173,13 @@ function renderEntity(
       renderLine(ctx, geo)
     } else if (isPolygon(geo)) {
       renderPolygon(ctx, geo)
+      hasHoles = (geo.Polygon.holes?.length ?? 0) > 0
     } else if (isArc(geo)) {
       renderArc(ctx, geo)
     } else if (isBezier(geo)) {
       renderBezier(ctx, geo)
     }
-    applyStyle(ctx, entity.style)
+    applyStyle(ctx, entity.style, hasHoles)
   }
 
   ctx.restore()
