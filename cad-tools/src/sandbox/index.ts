@@ -595,7 +595,12 @@ export async function runCadCode(
         createSuccess = callCad('draw_rect', { name: newName, x: center[0], y: center[1], width, height });
       } else if (entityType === 'Polygon' && localGeom.Polygon) {
         const points = localGeom.Polygon.points.flat();
-        createSuccess = callCad('draw_polygon', { name: newName, points });
+        const holes = localGeom.Polygon.holes;
+        if (holes && holes.length > 0) {
+          createSuccess = callCad('draw_polygon_with_holes', { name: newName, points, holes });
+        } else {
+          createSuccess = callCad('draw_polygon', { name: newName, points });
+        }
       } else if (entityType === 'Line' && localGeom.Line) {
         const points = localGeom.Line.points.flat();
         createSuccess = callCad('draw_line', { name: newName, points });
