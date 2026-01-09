@@ -638,9 +638,71 @@ export async function runCadCode(
         }
         if (closed) path += ' Z';
         createSuccess = callCad('draw_bezier', { name: newName, path });
-      } else if (entityType === 'Group') {
-        logger.error(`[sandbox] duplicate: Group duplication not supported yet`);
-        return false;
+      } else if (entityType === 'Group' && entity.children) {
+        // Group 복제: 자식들을 재귀적으로 복제 후 새 그룹 생성
+        const duplicatedChildren: string[] = [];
+        for (let i = 0; i < entity.children.length; i++) {
+          const childName = entity.children[i];
+          const dupChildName = `${newName}_${i}`;
+          // 재귀 호출 (bindCadFunction 내부이므로 vm 함수 직접 호출)
+          const childResult = executor.exec('get_entity', { name: childName });
+          if (childResult.success && childResult.data) {
+            const childEntity = JSON.parse(childResult.data);
+            const childType = childEntity.type;
+            const childGeom = childEntity.local?.geometry;
+
+            let childSuccess = false;
+            if (childType === 'Circle' && childGeom?.Circle) {
+              const { center, radius } = childGeom.Circle;
+              childSuccess = callCad('draw_circle', { name: dupChildName, x: center[0], y: center[1], radius });
+            } else if (childType === 'Rect' && childGeom?.Rect) {
+              const { center, width, height } = childGeom.Rect;
+              childSuccess = callCad('draw_rect', { name: dupChildName, x: center[0], y: center[1], width, height });
+            } else if (childType === 'Polygon' && childGeom?.Polygon) {
+              const pts = childGeom.Polygon.points.flat();
+              const hls = childGeom.Polygon.holes;
+              childSuccess = hls?.length > 0
+                ? callCad('draw_polygon_with_holes', { name: dupChildName, points: pts, holes: hls })
+                : callCad('draw_polygon', { name: dupChildName, points: pts });
+            } else if (childType === 'Line' && childGeom?.Line) {
+              childSuccess = callCad('draw_line', { name: dupChildName, points: childGeom.Line.points.flat() });
+            } else if (childType === 'Arc' && childGeom?.Arc) {
+              const { center, radius, start_angle, end_angle } = childGeom.Arc;
+              childSuccess = callCad('draw_arc', { name: dupChildName, cx: center[0], cy: center[1], radius, start_angle, end_angle });
+            } else if (childType === 'Bezier' && childGeom?.Bezier) {
+              const { start, segments, closed } = childGeom.Bezier;
+              let p = `M ${start[0]},${start[1]}`;
+              for (const s of segments) {
+                if (s.length === 3) p += ` C ${s[0][0]},${s[0][1]} ${s[1][0]},${s[1][1]} ${s[2][0]},${s[2][1]}`;
+              }
+              if (closed) p += ' Z';
+              childSuccess = callCad('draw_bezier', { name: dupChildName, path: p });
+            }
+
+            if (childSuccess) {
+              // 자식의 transform과 style 복사
+              const childTransform = childEntity.local?.transform;
+              if (childTransform) {
+                if (childTransform.translate && (childTransform.translate[0] !== 0 || childTransform.translate[1] !== 0)) {
+                  callCad('translate', { name: dupChildName, dx: childTransform.translate[0], dy: childTransform.translate[1], space: 'local' });
+                }
+                if (childTransform.rotate && childTransform.rotate !== 0) {
+                  callCad('rotate', { name: dupChildName, angle: childTransform.rotate });
+                }
+                if (childTransform.scale && (childTransform.scale[0] !== 1 || childTransform.scale[1] !== 1)) {
+                  callCad('scale', { name: dupChildName, sx: childTransform.scale[0], sy: childTransform.scale[1], space: 'local' });
+                }
+              }
+              if (childEntity.style?.fill) callCad('set_fill', { name: dupChildName, fill: childEntity.style.fill });
+              if (childEntity.style?.stroke) callCad('set_stroke', { name: dupChildName, stroke: childEntity.style.stroke });
+              duplicatedChildren.push(dupChildName);
+            }
+          }
+        }
+        if (duplicatedChildren.length > 0) {
+          createSuccess = callCad('create_group', { name: newName, children: duplicatedChildren });
+        }
+
       } else {
         logger.error(`[sandbox] duplicate: unsupported entity type '${entityType}'`);
         return false;
