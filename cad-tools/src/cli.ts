@@ -1228,8 +1228,11 @@ Scene file:
             parsed.sketchCleared = true;
             result.output = JSON.stringify(parsed, null, 2);
           }
-        } catch {
-          // Ignore JSON parse errors
+        } catch (e) {
+          // JSON parse errors are expected for non-JSON output, log for debugging only
+          if (!(e instanceof SyntaxError)) {
+            logger.debug(`[cli] Unexpected error in clearSketch: ${e}`);
+          }
         }
       }
     }

@@ -309,6 +309,10 @@ function polygonToFlatPoints(polygon: Polygon2D): number[] {
   if (polygon.length === 0 || polygon[0].length === 0) {
     return [];
   }
+  // holes가 있으면 경고 (첫 번째 contour만 사용됨)
+  if (polygon.length > 1) {
+    logger.warn(`[sandbox] polygonToFlatPoints: polygon has ${polygon.length - 1} holes that will be ignored`);
+  }
   const points: number[] = [];
   for (const [x, y] of polygon[0]) {
     points.push(x, y);
@@ -348,6 +352,168 @@ function createPolygonEntity(
     // holes 없으면 기존 draw_polygon 사용
     return callCad('draw_polygon', { name, points: flatPoints });
   }
+}
+
+// === 엔티티 복제/미러링 헬퍼 함수들 ===
+
+type CallCadFn = (cmd: string, args: Record<string, unknown>) => boolean;
+type TransformPointFn = (x: number, y: number) => [number, number];
+
+// Identity transform (좌표 변환 없음)
+const identityTransform: TransformPointFn = (x, y) => [x, y];
+
+/**
+ * Bezier 세그먼트를 SVG path 문자열로 변환
+ * Cubic (length 3)과 Quadratic (length 2) 모두 지원
+ */
+function buildBezierPath(
+  start: [number, number],
+  segments: number[][][],
+  closed: boolean,
+  transformPoint: TransformPointFn = identityTransform,
+  translate: [number, number] = [0, 0]
+): string {
+  const [tx, ty] = translate;
+  const [sx, sy] = transformPoint(start[0] + tx, start[1] + ty);
+  let path = `M ${sx},${sy}`;
+
+  for (const seg of segments) {
+    if (seg.length === 3) {
+      // Cubic bezier: 2 control points + end point
+      const [cp1, cp2, end] = seg;
+      const [cp1x, cp1y] = transformPoint(cp1[0] + tx, cp1[1] + ty);
+      const [cp2x, cp2y] = transformPoint(cp2[0] + tx, cp2[1] + ty);
+      const [ex, ey] = transformPoint(end[0] + tx, end[1] + ty);
+      path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${ex},${ey}`;
+    } else if (seg.length === 2) {
+      // Quadratic bezier: 1 control point + end point
+      const [cp, end] = seg;
+      const [cpx, cpy] = transformPoint(cp[0] + tx, cp[1] + ty);
+      const [ex, ey] = transformPoint(end[0] + tx, end[1] + ty);
+      path += ` Q ${cpx},${cpy} ${ex},${ey}`;
+    }
+  }
+  if (closed) path += ' Z';
+  return path;
+}
+
+/**
+ * 엔티티 스타일 복사 (fill, stroke)
+ */
+function copyEntityStyle(
+  callCad: CallCadFn,
+  targetName: string,
+  style?: { fill?: number[]; stroke?: number[] }
+): void {
+  if (style?.fill) {
+    callCad('set_fill', { name: targetName, fill: style.fill });
+  }
+  if (style?.stroke) {
+    callCad('set_stroke', { name: targetName, stroke: style.stroke });
+  }
+}
+
+/**
+ * 엔티티 transform 복사 (translate, rotate, scale)
+ */
+function copyEntityTransform(
+  callCad: CallCadFn,
+  targetName: string,
+  transform?: { translate?: [number, number]; rotate?: number; scale?: [number, number] }
+): void {
+  if (!transform) return;
+  if (transform.translate && (transform.translate[0] !== 0 || transform.translate[1] !== 0)) {
+    callCad('translate', { name: targetName, dx: transform.translate[0], dy: transform.translate[1], space: 'local' });
+  }
+  if (transform.rotate && transform.rotate !== 0) {
+    callCad('rotate', { name: targetName, angle: transform.rotate });
+  }
+  if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
+    callCad('scale', { name: targetName, sx: transform.scale[0], sy: transform.scale[1], space: 'local' });
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LocalGeometry = Record<string, any>;
+
+/**
+ * 엔티티를 geometry 기반으로 생성 (좌표 변환 콜백 지원)
+ * duplicate와 mirror에서 공통 사용
+ *
+ * @param callCad - CAD 명령 실행 함수
+ * @param name - 생성할 엔티티 이름
+ * @param entityType - 엔티티 타입 (Circle, Rect, Polygon, Line, Arc, Bezier)
+ * @param localGeom - 로컬 geometry 데이터
+ * @param translate - 적용할 translate [tx, ty]
+ * @param transformPoint - 좌표 변환 함수 (미러링 등에 사용)
+ * @returns 생성 성공 여부
+ */
+function createEntityFromGeometry(
+  callCad: CallCadFn,
+  name: string,
+  entityType: string,
+  localGeom: LocalGeometry,
+  translate: [number, number] = [0, 0],
+  transformPoint: TransformPointFn = identityTransform
+): boolean {
+  const [tx, ty] = translate;
+
+  if (entityType === 'Circle' && localGeom.Circle) {
+    const { center, radius } = localGeom.Circle;
+    const [x, y] = transformPoint(center[0] + tx, center[1] + ty);
+    return callCad('draw_circle', { name, x, y, radius });
+  }
+
+  if (entityType === 'Rect' && localGeom.Rect) {
+    const { center, width, height } = localGeom.Rect;
+    const [x, y] = transformPoint(center[0] + tx, center[1] + ty);
+    return callCad('draw_rect', { name, x, y, width, height });
+  }
+
+  if (entityType === 'Polygon' && localGeom.Polygon) {
+    const points: number[] = [];
+    for (const pt of localGeom.Polygon.points) {
+      const [x, y] = transformPoint(pt[0] + tx, pt[1] + ty);
+      points.push(x, y);
+    }
+
+    const holes = localGeom.Polygon.holes;
+    if (holes && holes.length > 0) {
+      const transformedHoles: [number, number][][] = [];
+      for (const hole of holes) {
+        const transformedHole: [number, number][] = [];
+        for (const pt of hole) {
+          transformedHole.push(transformPoint(pt[0] + tx, pt[1] + ty));
+        }
+        transformedHoles.push(transformedHole);
+      }
+      return callCad('draw_polygon_with_holes', { name, points, holes: transformedHoles });
+    }
+    return callCad('draw_polygon', { name, points });
+  }
+
+  if (entityType === 'Line' && localGeom.Line) {
+    const points: number[] = [];
+    for (const pt of localGeom.Line.points) {
+      const [x, y] = transformPoint(pt[0] + tx, pt[1] + ty);
+      points.push(x, y);
+    }
+    return callCad('draw_line', { name, points });
+  }
+
+  if (entityType === 'Arc' && localGeom.Arc) {
+    const { center, radius, start_angle, end_angle } = localGeom.Arc;
+    const [cx, cy] = transformPoint(center[0] + tx, center[1] + ty);
+    return callCad('draw_arc', { name, cx, cy, radius, start_angle, end_angle });
+  }
+
+  if (entityType === 'Bezier' && localGeom.Bezier) {
+    const { start, segments, closed } = localGeom.Bezier;
+    const path = buildBezierPath(start, segments, closed, transformPoint, translate);
+    return callCad('draw_bezier', { name, path });
+  }
+
+  return false;
 }
 
 /**
@@ -640,8 +806,8 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
     });
 
     // duplicate(sourceName, newName): 엔티티 복제
-    bindCadFunction(vm, 'duplicate', (sourceName: string, newName: string) => {
-      // 1. Get source entity full data
+    // 내부 재귀 헬퍼 함수
+    const duplicateInternal = (sourceName: string, newName: string): boolean => {
       const result = executor.exec('get_entity', { name: sourceName });
       if (!result.success || !result.data) {
         logger.error(`[sandbox] duplicate: source entity '${sourceName}' not found`);
@@ -650,128 +816,31 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
 
       const entity = JSON.parse(result.data);
       const entityType = entity.type;
-
-      // 2. Create new entity based on type
-      let createSuccess = false;
       const localGeom = entity.local?.geometry;
 
-      if (!localGeom) {
+      if (!localGeom && entityType !== 'Group') {
         logger.error(`[sandbox] duplicate: cannot read geometry from '${sourceName}'`);
         return false;
       }
 
-      // Create based on entity type
-      if (entityType === 'Circle' && localGeom.Circle) {
-        const { center, radius } = localGeom.Circle;
-        createSuccess = callCad('draw_circle', { name: newName, x: center[0], y: center[1], radius });
-      } else if (entityType === 'Rect' && localGeom.Rect) {
-        const { center, width, height } = localGeom.Rect;
-        createSuccess = callCad('draw_rect', { name: newName, x: center[0], y: center[1], width, height });
-      } else if (entityType === 'Polygon' && localGeom.Polygon) {
-        const points = localGeom.Polygon.points.flat();
-        const holes = localGeom.Polygon.holes;
-        if (holes && holes.length > 0) {
-          createSuccess = callCad('draw_polygon_with_holes', { name: newName, points, holes });
-        } else {
-          createSuccess = callCad('draw_polygon', { name: newName, points });
-        }
-      } else if (entityType === 'Line' && localGeom.Line) {
-        const points = localGeom.Line.points.flat();
-        createSuccess = callCad('draw_line', { name: newName, points });
-      } else if (entityType === 'Arc' && localGeom.Arc) {
-        const { center, radius, start_angle, end_angle } = localGeom.Arc;
-        createSuccess = callCad('draw_arc', {
-          name: newName, cx: center[0], cy: center[1], radius, start_angle, end_angle
-        });
-      } else if (entityType === 'Bezier' && localGeom.Bezier) {
-        // Reconstruct SVG path from bezier data
-        const { start, segments, closed } = localGeom.Bezier;
-        let path = `M ${start[0]},${start[1]}`;
-        for (const seg of segments) {
-          if (seg.length === 3) {
-            // Cubic bezier: 2 control points + end point
-            path += ` C ${seg[0][0]},${seg[0][1]} ${seg[1][0]},${seg[1][1]} ${seg[2][0]},${seg[2][1]}`;
-          } else if (seg.length === 2) {
-            // Quadratic bezier: 1 control point + end point
-            path += ` Q ${seg[0][0]},${seg[0][1]} ${seg[1][0]},${seg[1][1]}`;
-          }
-        }
-        if (closed) path += ' Z';
-        createSuccess = callCad('draw_bezier', { name: newName, path });
-      } else if (entityType === 'Group' && entity.children) {
+      let createSuccess = false;
+
+      if (entityType === 'Group' && entity.children) {
         // Group 복제: 자식들을 재귀적으로 복제 후 새 그룹 생성
         const duplicatedChildren: string[] = [];
         for (let i = 0; i < entity.children.length; i++) {
           const childName = entity.children[i];
           const dupChildName = `${newName}_${i}`;
-          // 재귀 호출 (bindCadFunction 내부이므로 vm 함수 직접 호출)
-          const childResult = executor.exec('get_entity', { name: childName });
-          if (childResult.success && childResult.data) {
-            const childEntity = JSON.parse(childResult.data);
-            const childType = childEntity.type;
-            const childGeom = childEntity.local?.geometry;
-
-            let childSuccess = false;
-            if (childType === 'Circle' && childGeom?.Circle) {
-              const { center, radius } = childGeom.Circle;
-              childSuccess = callCad('draw_circle', { name: dupChildName, x: center[0], y: center[1], radius });
-            } else if (childType === 'Rect' && childGeom?.Rect) {
-              const { center, width, height } = childGeom.Rect;
-              childSuccess = callCad('draw_rect', { name: dupChildName, x: center[0], y: center[1], width, height });
-            } else if (childType === 'Polygon' && childGeom?.Polygon) {
-              const pts = childGeom.Polygon.points.flat();
-              const hls = childGeom.Polygon.holes;
-              childSuccess = hls?.length > 0
-                ? callCad('draw_polygon_with_holes', { name: dupChildName, points: pts, holes: hls })
-                : callCad('draw_polygon', { name: dupChildName, points: pts });
-            } else if (childType === 'Line' && childGeom?.Line) {
-              childSuccess = callCad('draw_line', { name: dupChildName, points: childGeom.Line.points.flat() });
-            } else if (childType === 'Arc' && childGeom?.Arc) {
-              const { center, radius, start_angle, end_angle } = childGeom.Arc;
-              childSuccess = callCad('draw_arc', { name: dupChildName, cx: center[0], cy: center[1], radius, start_angle, end_angle });
-            } else if (childType === 'Bezier' && childGeom?.Bezier) {
-              const { start, segments, closed } = childGeom.Bezier;
-              let p = `M ${start[0]},${start[1]}`;
-              for (const s of segments) {
-                if (s.length === 3) {
-                  // Cubic bezier: 2 control points + end point
-                  p += ` C ${s[0][0]},${s[0][1]} ${s[1][0]},${s[1][1]} ${s[2][0]},${s[2][1]}`;
-                } else if (s.length === 2) {
-                  // Quadratic bezier: 1 control point + end point
-                  p += ` Q ${s[0][0]},${s[0][1]} ${s[1][0]},${s[1][1]}`;
-                }
-              }
-              if (closed) p += ' Z';
-              childSuccess = callCad('draw_bezier', { name: dupChildName, path: p });
-            }
-
-            if (childSuccess) {
-              // 자식의 transform과 style 복사
-              const childTransform = childEntity.local?.transform;
-              if (childTransform) {
-                if (childTransform.translate && (childTransform.translate[0] !== 0 || childTransform.translate[1] !== 0)) {
-                  callCad('translate', { name: dupChildName, dx: childTransform.translate[0], dy: childTransform.translate[1], space: 'local' });
-                }
-                if (childTransform.rotate && childTransform.rotate !== 0) {
-                  callCad('rotate', { name: dupChildName, angle: childTransform.rotate });
-                }
-                if (childTransform.scale && (childTransform.scale[0] !== 1 || childTransform.scale[1] !== 1)) {
-                  callCad('scale', { name: dupChildName, sx: childTransform.scale[0], sy: childTransform.scale[1], space: 'local' });
-                }
-              }
-              if (childEntity.style?.fill) callCad('set_fill', { name: dupChildName, fill: childEntity.style.fill });
-              if (childEntity.style?.stroke) callCad('set_stroke', { name: dupChildName, stroke: childEntity.style.stroke });
-              duplicatedChildren.push(dupChildName);
-            }
+          if (duplicateInternal(childName, dupChildName)) {
+            duplicatedChildren.push(dupChildName);
           }
         }
         if (duplicatedChildren.length > 0) {
           createSuccess = callCad('create_group', { name: newName, children: duplicatedChildren });
         }
-
       } else {
-        logger.error(`[sandbox] duplicate: unsupported entity type '${entityType}'`);
-        return false;
+        // 일반 엔티티: 헬퍼 함수 사용 (transform 없이 로컬 좌표 그대로)
+        createSuccess = createEntityFromGeometry(callCad, newName, entityType, localGeom);
       }
 
       if (!createSuccess) {
@@ -779,31 +848,15 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         return false;
       }
 
-      // 3. Copy transform (use space: 'local' since these are local transform values)
-      const transform = entity.local?.transform;
-      if (transform) {
-        if (transform.translate && (transform.translate[0] !== 0 || transform.translate[1] !== 0)) {
-          callCad('translate', { name: newName, dx: transform.translate[0], dy: transform.translate[1], space: 'local' });
-        }
-        if (transform.rotate && transform.rotate !== 0) {
-          callCad('rotate', { name: newName, angle: transform.rotate });
-        }
-        if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
-          callCad('scale', { name: newName, sx: transform.scale[0], sy: transform.scale[1], space: 'local' });
-        }
-      }
-
-      // 4. Copy style (already have entity from get_entity)
-      if (entity.style) {
-        if (entity.style.fill) {
-          callCad('set_fill', { name: newName, fill: entity.style.fill });
-        }
-        if (entity.style.stroke) {
-          callCad('set_stroke', { name: newName, stroke: entity.style.stroke });
-        }
-      }
+      // Transform과 Style 복사 (헬퍼 함수 사용)
+      copyEntityTransform(callCad, newName, entity.local?.transform);
+      copyEntityStyle(callCad, newName, entity.style);
 
       return true;
+    };
+
+    bindCadFunction(vm, 'duplicate', (sourceName: string, newName: string) => {
+      return duplicateInternal(sourceName, newName);
     });
 
     // mirror(sourceName, newName, axis): 엔티티를 축 기준으로 미러 복제
@@ -813,7 +866,7 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       sourceName: string,
       newName: string,
       axis: 'x' | 'y',
-      mirrorPoint: (x: number, y: number) => [number, number]
+      mirrorPointFn: TransformPointFn
     ): boolean => {
       const result = executor.exec('get_entity', { name: sourceName });
       if (!result.success || !result.data) {
@@ -824,80 +877,18 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       const entity = JSON.parse(result.data);
       const entityType = entity.type;
       const localGeom = entity.local?.geometry;
+      const transform = entity.local?.transform;
+      const translate: [number, number] = [
+        transform?.translate?.[0] || 0,
+        transform?.translate?.[1] || 0
+      ];
 
       let createSuccess = false;
 
-      if (entityType === 'Circle' && localGeom.Circle) {
-        const { center, radius } = localGeom.Circle;
-        const transform = entity.local?.transform;
-        const worldCenter = [
-          center[0] + (transform?.translate?.[0] || 0),
-          center[1] + (transform?.translate?.[1] || 0)
-        ];
-        const [mx, my] = mirrorPoint(worldCenter[0], worldCenter[1]);
-        createSuccess = callCad('draw_circle', { name: newName, x: mx, y: my, radius });
-
-      } else if (entityType === 'Rect' && localGeom.Rect) {
-        const { center, width, height } = localGeom.Rect;
-        const transform = entity.local?.transform;
-        const worldCenter = [
-          center[0] + (transform?.translate?.[0] || 0),
-          center[1] + (transform?.translate?.[1] || 0)
-        ];
-        const [mx, my] = mirrorPoint(worldCenter[0], worldCenter[1]);
-        createSuccess = callCad('draw_rect', { name: newName, x: mx, y: my, width, height });
-
-      } else if (entityType === 'Polygon' && localGeom.Polygon) {
-        const transform = entity.local?.transform;
-        const tx = transform?.translate?.[0] || 0;
-        const ty = transform?.translate?.[1] || 0;
-
-        const mirroredPoints: number[] = [];
-        for (const pt of localGeom.Polygon.points) {
-          const worldPt = [pt[0] + tx, pt[1] + ty];
-          const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
-          mirroredPoints.push(mx, my);
-        }
-
-        // holes 미러링 지원
-        const holes = localGeom.Polygon.holes;
-        if (holes && holes.length > 0) {
-          const mirroredHoles: [number, number][][] = [];
-          for (const hole of holes) {
-            const mirroredHole: [number, number][] = [];
-            for (const pt of hole) {
-              const worldPt = [pt[0] + tx, pt[1] + ty];
-              const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
-              mirroredHole.push([mx, my]);
-            }
-            mirroredHoles.push(mirroredHole);
-          }
-          createSuccess = callCad('draw_polygon_with_holes', { name: newName, points: mirroredPoints, holes: mirroredHoles });
-        } else {
-          createSuccess = callCad('draw_polygon', { name: newName, points: mirroredPoints });
-        }
-
-      } else if (entityType === 'Line' && localGeom.Line) {
-        const transform = entity.local?.transform;
-        const tx = transform?.translate?.[0] || 0;
-        const ty = transform?.translate?.[1] || 0;
-
-        const mirroredPoints: number[] = [];
-        for (const pt of localGeom.Line.points) {
-          const worldPt = [pt[0] + tx, pt[1] + ty];
-          const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
-          mirroredPoints.push(mx, my);
-        }
-        createSuccess = callCad('draw_line', { name: newName, points: mirroredPoints });
-
-      } else if (entityType === 'Arc' && localGeom.Arc) {
+      if (entityType === 'Arc' && localGeom?.Arc) {
+        // Arc는 각도 미러링이 필요하므로 별도 처리
         const { center, radius, start_angle, end_angle } = localGeom.Arc;
-        const transform = entity.local?.transform;
-        const worldCenter = [
-          center[0] + (transform?.translate?.[0] || 0),
-          center[1] + (transform?.translate?.[1] || 0)
-        ];
-        const [mx, my] = mirrorPoint(worldCenter[0], worldCenter[1]);
+        const [cx, cy] = mirrorPointFn(center[0] + translate[0], center[1] + translate[1]);
 
         // 각도 미러링: axis='x'(좌우) → π-angle, axis='y'(상하) → -angle, start/end 교환
         let newStart: number, newEnd: number;
@@ -909,44 +900,8 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
           newEnd = -start_angle;
         }
         createSuccess = callCad('draw_arc', {
-          name: newName, cx: mx, cy: my, radius, start_angle: newStart, end_angle: newEnd
+          name: newName, cx, cy, radius, start_angle: newStart, end_angle: newEnd
         });
-
-      } else if (entityType === 'Bezier' && localGeom.Bezier) {
-        const { start, segments, closed } = localGeom.Bezier;
-        const transform = entity.local?.transform;
-        const tx = transform?.translate?.[0] || 0;
-        const ty = transform?.translate?.[1] || 0;
-
-        // 시작점 미러링
-        const worldStart = [start[0] + tx, start[1] + ty];
-        const [msx, msy] = mirrorPoint(worldStart[0], worldStart[1]);
-        let path = `M ${msx},${msy}`;
-
-        // 세그먼트 미러링
-        for (const seg of segments) {
-          if (seg.length === 3) {
-            // Cubic bezier: 2 control points + end point
-            const [cp1, cp2, end] = seg;
-            const worldCp1 = [cp1[0] + tx, cp1[1] + ty];
-            const worldCp2 = [cp2[0] + tx, cp2[1] + ty];
-            const worldEnd = [end[0] + tx, end[1] + ty];
-            const [mcp1x, mcp1y] = mirrorPoint(worldCp1[0], worldCp1[1]);
-            const [mcp2x, mcp2y] = mirrorPoint(worldCp2[0], worldCp2[1]);
-            const [mex, mey] = mirrorPoint(worldEnd[0], worldEnd[1]);
-            path += ` C ${mcp1x},${mcp1y} ${mcp2x},${mcp2y} ${mex},${mey}`;
-          } else if (seg.length === 2) {
-            // Quadratic bezier: 1 control point + end point
-            const [cp, end] = seg;
-            const worldCp = [cp[0] + tx, cp[1] + ty];
-            const worldEnd = [end[0] + tx, end[1] + ty];
-            const [mcpx, mcpy] = mirrorPoint(worldCp[0], worldCp[1]);
-            const [mex, mey] = mirrorPoint(worldEnd[0], worldEnd[1]);
-            path += ` Q ${mcpx},${mcpy} ${mex},${mey}`;
-          }
-        }
-        if (closed) path += ' Z';
-        createSuccess = callCad('draw_bezier', { name: newName, path });
 
       } else if (entityType === 'Group' && entity.children) {
         // Group 미러링: 자식들을 재귀적으로 미러링 후 새 그룹 생성
@@ -954,8 +909,7 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         for (let i = 0; i < entity.children.length; i++) {
           const childName = entity.children[i];
           const mirroredChildName = `${newName}_${i}`;
-          const childSuccess = mirrorInternal(childName, mirroredChildName, axis, mirrorPoint);
-          if (childSuccess) {
+          if (mirrorInternal(childName, mirroredChildName, axis, mirrorPointFn)) {
             mirroredChildren.push(mirroredChildName);
           } else {
             logger.warn(`[sandbox] mirror: failed to mirror child '${childName}'`);
@@ -965,9 +919,11 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
           createSuccess = callCad('create_group', { name: newName, children: mirroredChildren });
         }
 
-      } else {
-        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}'`);
-        return false;
+      } else if (localGeom) {
+        // Circle, Rect, Polygon, Line, Bezier: 헬퍼 함수 사용
+        createSuccess = createEntityFromGeometry(
+          callCad, newName, entityType, localGeom, translate, mirrorPointFn
+        );
       }
 
       if (!createSuccess) {
@@ -975,15 +931,8 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         return false;
       }
 
-      // 스타일 복사 (이미 get_entity로 가져온 entity 재사용)
-      if (entity.style) {
-        if (entity.style.fill) {
-          callCad('set_fill', { name: newName, fill: entity.style.fill });
-        }
-        if (entity.style.stroke) {
-          callCad('set_stroke', { name: newName, stroke: entity.style.stroke });
-        }
-      }
+      // 스타일 복사 (헬퍼 함수 사용)
+      copyEntityStyle(callCad, newName, entity.style);
 
       return true;
     };
