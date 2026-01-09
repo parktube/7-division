@@ -291,6 +291,8 @@ export interface TextOptions {
 export interface TextResult {
   path: string;        // Combined SVG path string (may have rendering issues)
   paths: string[];     // Individual glyph paths (recommended for correct rendering)
+  isHole: boolean[];   // Whether each path is a hole (inner contour)
+  points: [number, number][][]; // Polygon points for booleanDifference
   width: number;       // Text width
   height: number;      // Text height
   adjustedX: number;   // X after alignment adjustment
@@ -298,38 +300,239 @@ export interface TextResult {
 }
 
 /**
- * Convert a single glyph path to SVG path string with Y-flip
- * Uses shared pathToSvgString helper for consistency
+ * Calculate signed area of a polygon using shoelace formula
+ * Positive area = CCW (counter-clockwise)
+ * Negative area = CW (clockwise)
  */
-function glyphPathToSvg(
+function calculateSignedArea(points: [number, number][]): number {
+  if (points.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const j = (i + 1) % points.length;
+    area += points[i][0] * points[j][1];
+    area -= points[j][0] * points[i][1];
+  }
+  return area / 2;
+}
+
+/**
+ * Sample points along a quadratic Bezier curve
+ * @param p0 Start point
+ * @param p1 Control point
+ * @param p2 End point
+ * @param samples Number of samples (excluding start, including end)
+ */
+function sampleQuadraticBezier(
+  p0: [number, number],
+  p1: [number, number],
+  p2: [number, number],
+  samples: number = 4
+): [number, number][] {
+  const points: [number, number][] = [];
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples;
+    const mt = 1 - t;
+    // B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+    const x = mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0];
+    const y = mt * mt * p0[1] + 2 * mt * t * p1[1] + t * t * p2[1];
+    points.push([x, y]);
+  }
+  return points;
+}
+
+/**
+ * Sample points along a cubic Bezier curve
+ * @param p0 Start point
+ * @param p1 Control point 1
+ * @param p2 Control point 2
+ * @param p3 End point
+ * @param samples Number of samples (excluding start, including end)
+ */
+function sampleCubicBezier(
+  p0: [number, number],
+  p1: [number, number],
+  p2: [number, number],
+  p3: [number, number],
+  samples: number = 4
+): [number, number][] {
+  const points: [number, number][] = [];
+  for (let i = 1; i <= samples; i++) {
+    const t = i / samples;
+    const mt = 1 - t;
+    // B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+    const x = mt*mt*mt*p0[0] + 3*mt*mt*t*p1[0] + 3*mt*t*t*p2[0] + t*t*t*p3[0];
+    const y = mt*mt*mt*p0[1] + 3*mt*mt*t*p1[1] + 3*mt*t*t*p2[1] + t*t*t*p3[1];
+    points.push([x, y]);
+  }
+  return points;
+}
+
+/**
+ * Subpath result with hole detection and polygon points
+ */
+interface SubpathInfo {
+  path: string;
+  isHole: boolean;
+  /** Polygon points in world coordinates (after Y-flip and offset) */
+  points: [number, number][];
+}
+
+/**
+ * Convert a single glyph path to array of SVG subpath strings with Y-flip
+ * Each M...Z sequence becomes a separate string to handle multi-contour glyphs
+ * (e.g., Korean characters like 녕 have multiple subpaths)
+ * Also detects holes using winding direction (CW = hole in font coords)
+ */
+function glyphPathToSvgSubpaths(
   path: opentype.Path,
   offsetX: number,
   offsetY: number
-): string {
+): SubpathInfo[] {
   // Validate input coordinates
   if (!Number.isFinite(offsetX) || !Number.isFinite(offsetY)) {
-    logger.warn(`[text] glyphPathToSvg: invalid offset (${offsetX}, ${offsetY})`);
-    return '';
+    logger.warn(`[text] glyphPathToSvgSubpaths: invalid offset (${offsetX}, ${offsetY})`);
+    return [];
   }
 
-  const result = pathToSvgString(path, offsetX, offsetY);
-  if (!result) {
-    logger.warn('[text] glyphPathToSvg: generated path contains invalid values');
+  const CURVE_SAMPLES = 4; // Number of samples per curve segment
+  const subpaths: SubpathInfo[] = [];
+  let currentCommands: string[] = [];
+  let currentPoints: [number, number][] = []; // For area calculation (original coords)
+  let worldPoints: [number, number][] = []; // World coordinates (after transform)
+  let cursorX = 0, cursorY = 0; // Current cursor position in original coords
+
+  for (const cmd of path.commands) {
+    switch (cmd.type) {
+      case 'M':
+        // Start new subpath - save previous if exists
+        if (currentCommands.length > 0 && currentPoints.length > 0) {
+          const pathData = currentCommands.join(' ');
+          if (!pathData.includes('NaN') && !pathData.includes('Infinity')) {
+            // Calculate signed area in original coordinates
+            // TrueType convention: CW = negative = outer, CCW = positive = hole
+            const area = calculateSignedArea(currentPoints);
+            subpaths.push({ path: pathData, isHole: area > 0, points: [...worldPoints] });
+          }
+          currentCommands = [];
+          currentPoints = [];
+          worldPoints = [];
+        }
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
+        currentCommands.push(`M ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
+        currentPoints.push([cmd.x, cmd.y]);
+        worldPoints.push([offsetX + cmd.x, offsetY - cmd.y]);
+        cursorX = cmd.x;
+        cursorY = cmd.y;
+        break;
+      case 'L':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y)) continue;
+        currentCommands.push(`L ${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`);
+        currentPoints.push([cmd.x, cmd.y]);
+        worldPoints.push([offsetX + cmd.x, offsetY - cmd.y]);
+        cursorX = cmd.x;
+        cursorY = cmd.y;
+        break;
+      case 'C':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
+            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1) ||
+            !Number.isFinite(cmd.x2) || !Number.isFinite(cmd.y2)) continue;
+        currentCommands.push(
+          `C ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
+          `${(offsetX + cmd.x2).toFixed(2)},${(offsetY - cmd.y2).toFixed(2)} ` +
+          `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
+        );
+        {
+          // Sample cubic bezier curve for polygon approximation
+          const samples = sampleCubicBezier(
+            [cursorX, cursorY],
+            [cmd.x1, cmd.y1],
+            [cmd.x2, cmd.y2],
+            [cmd.x, cmd.y],
+            CURVE_SAMPLES
+          );
+          for (const [sx, sy] of samples) {
+            currentPoints.push([sx, sy]);
+            worldPoints.push([offsetX + sx, offsetY - sy]);
+          }
+        }
+        cursorX = cmd.x;
+        cursorY = cmd.y;
+        break;
+      case 'Q':
+        if (!Number.isFinite(cmd.x) || !Number.isFinite(cmd.y) ||
+            !Number.isFinite(cmd.x1) || !Number.isFinite(cmd.y1)) continue;
+        currentCommands.push(
+          `Q ${(offsetX + cmd.x1).toFixed(2)},${(offsetY - cmd.y1).toFixed(2)} ` +
+          `${(offsetX + cmd.x).toFixed(2)},${(offsetY - cmd.y).toFixed(2)}`
+        );
+        {
+          // Sample quadratic bezier curve for polygon approximation
+          const samples = sampleQuadraticBezier(
+            [cursorX, cursorY],
+            [cmd.x1, cmd.y1],
+            [cmd.x, cmd.y],
+            CURVE_SAMPLES
+          );
+          for (const [sx, sy] of samples) {
+            currentPoints.push([sx, sy]);
+            worldPoints.push([offsetX + sx, offsetY - sy]);
+          }
+        }
+        cursorX = cmd.x;
+        cursorY = cmd.y;
+        break;
+      case 'Z':
+        currentCommands.push('Z');
+        // End of subpath - save it
+        if (currentCommands.length > 1 && currentPoints.length >= 3) {
+          const pathData = currentCommands.join(' ');
+          if (!pathData.includes('NaN') && !pathData.includes('Infinity')) {
+            // TrueType convention: CW = negative = outer, CCW = positive = hole
+            const area = calculateSignedArea(currentPoints);
+            subpaths.push({ path: pathData, isHole: area > 0, points: [...worldPoints] });
+          }
+        }
+        currentCommands = [];
+        currentPoints = [];
+        worldPoints = [];
+        break;
+    }
   }
-  return result;
+
+  // Handle unclosed paths (no Z at end)
+  if (currentCommands.length > 0 && currentPoints.length >= 3) {
+    const pathData = currentCommands.join(' ');
+    if (!pathData.includes('NaN') && !pathData.includes('Infinity')) {
+      // TrueType convention: CW = negative = outer, CCW = positive = hole
+      const area = calculateSignedArea(currentPoints);
+      subpaths.push({ path: pathData, isHole: area > 0, points: [...worldPoints] });
+    }
+  }
+
+  return subpaths;
 }
 
 
 /**
- * Convert text to array of glyph paths (one per character)
- * This avoids the issue of connecting lines between glyphs
+ * Result of glyph path conversion with hole detection
+ */
+export interface GlyphPathsResult {
+  paths: string[];
+  isHole: boolean[];
+  /** Polygon points for each subpath (for booleanDifference) */
+  points: [number, number][][];
+}
+
+/**
+ * Convert text to array of glyph subpaths (multiple per character if needed)
+ * This properly handles multi-contour glyphs (e.g., Korean 녕, English 'e', 'a')
  *
  * @param text - Text string
  * @param x - X position
  * @param y - Y position (baseline in CAD coordinates)
  * @param fontSize - Font size
  * @param font - Loaded opentype.Font
- * @returns Array of SVG path strings, one per glyph
+ * @returns Object with paths array and isHole array indicating which paths are holes
  */
 export function textToGlyphPaths(
   text: string,
@@ -337,14 +540,16 @@ export function textToGlyphPaths(
   y: number,
   fontSize: number,
   font: opentype.Font
-): string[] {
+): GlyphPathsResult {
   // Validate input coordinates
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize) || fontSize <= 0) {
     logger.warn(`[text] textToGlyphPaths: invalid input (x=${x}, y=${y}, fontSize=${fontSize})`);
-    return [];
+    return { paths: [], isHole: [], points: [] };
   }
   const scale = fontSize / font.unitsPerEm;
   const paths: string[] = [];
+  const isHole: boolean[] = [];
+  const points: [number, number][][] = [];
   let currentX = x;
 
   for (let i = 0; i < text.length; i++) {
@@ -361,9 +566,12 @@ export function textToGlyphPaths(
     const glyphPath = glyph.getPath(0, 0, fontSize);
 
     if (glyphPath.commands.length > 0) {
-      const pathStr = glyphPathToSvg(glyphPath, currentX, y);
-      if (pathStr.length > 0) {
-        paths.push(pathStr);
+      // Get all subpaths for this glyph (handles multi-contour glyphs)
+      const subpaths = glyphPathToSvgSubpaths(glyphPath, currentX, y);
+      for (const sp of subpaths) {
+        paths.push(sp.path);
+        isHole.push(sp.isHole);
+        points.push(sp.points);
       }
     }
 
@@ -378,7 +586,7 @@ export function textToGlyphPaths(
     }
   }
 
-  return paths;
+  return { paths, isHole, points };
 }
 
 /**
@@ -425,12 +633,14 @@ export function convertText(
 
   const adjustedY = y;
 
-  // Get individual glyph paths to avoid connecting lines
-  const paths = textToGlyphPaths(text, adjustedX, adjustedY, fontSize, font);
+  // Get individual glyph paths with hole detection
+  const glyphResult = textToGlyphPaths(text, adjustedX, adjustedY, fontSize, font);
 
   return {
-    path: paths.join(' '), // Combined path for single entity (may have issues)
-    paths, // Individual glyph paths for separate entities
+    path: glyphResult.paths.join(' '), // Combined path for single entity (may have issues)
+    paths: glyphResult.paths, // Individual glyph paths for separate entities
+    isHole: glyphResult.isHole, // Which paths are holes (inner contours)
+    points: glyphResult.points, // Polygon points for booleanDifference
     width: metrics.width,
     height: metrics.height,
     adjustedX,

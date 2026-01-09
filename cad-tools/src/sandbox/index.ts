@@ -661,21 +661,64 @@ export async function runCadCode(
       // 기본 색상: 검정 (사용자 지정 가능)
       const fillColor = options?.color ?? [0, 0, 0, 1];
 
-      // Single glyph: create directly with the given name (no temp entity)
-      if (result.paths.length === 1) {
-        const success = callCad('draw_bezier', { name, path: result.paths[0] });
+      // 글자 단위로 그룹화: outer와 그에 속한 holes를 묶음
+      // TrueType에서 outer 다음에 holes가 연속으로 나옴
+      interface CharGroup {
+        outerPoints: [number, number][];
+        outerPath: string;
+        holes: [number, number][][];
+      }
+      const charGroups: CharGroup[] = [];
+
+      for (let i = 0; i < result.paths.length; i++) {
+        if (!result.isHole[i]) {
+          // 새 글자(외곽선) 시작
+          charGroups.push({
+            outerPoints: result.points[i],
+            outerPath: result.paths[i],
+            holes: [],
+          });
+        } else {
+          // 구멍 - 이전 글자에 추가
+          if (charGroups.length > 0) {
+            charGroups[charGroups.length - 1].holes.push(result.points[i]);
+          }
+        }
+      }
+
+      // Single character: create directly with the given name
+      if (charGroups.length === 1) {
+        const cg = charGroups[0];
+        let success: boolean;
+        if (cg.holes.length > 0) {
+          // 구멍이 있으면 draw_polygon_with_holes 사용
+          const flatPoints = cg.outerPoints.flat();
+          success = callCad('draw_polygon_with_holes', { name, points: flatPoints, holes: cg.holes });
+        } else {
+          // 구멍 없으면 bezier 사용
+          success = callCad('draw_bezier', { name, path: cg.outerPath });
+        }
         if (success) {
           callCad('set_fill', { name, fill: { color: fillColor } });
         }
         return success;
       }
 
-      // Multiple glyphs: create individual beziers then group
+      // Multiple characters: create individual shapes then group
       const glyphNames: string[] = [];
       let failedCount = 0;
-      for (let i = 0; i < result.paths.length; i++) {
+      for (let i = 0; i < charGroups.length; i++) {
         const glyphName = `${name}_g${i}`;
-        const success = callCad('draw_bezier', { name: glyphName, path: result.paths[i] });
+        const cg = charGroups[i];
+        let success: boolean;
+        if (cg.holes.length > 0) {
+          // 구멍이 있으면 draw_polygon_with_holes 사용
+          const flatPoints = cg.outerPoints.flat();
+          success = callCad('draw_polygon_with_holes', { name: glyphName, points: flatPoints, holes: cg.holes });
+        } else {
+          // 구멍 없으면 bezier 사용
+          success = callCad('draw_bezier', { name: glyphName, path: cg.outerPath });
+        }
         if (success) {
           callCad('set_fill', { name: glyphName, fill: { color: fillColor } });
           glyphNames.push(glyphName);
