@@ -29,6 +29,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 5 | Selection UI | ✅ 완료 |
 | 6 | Electron 앱 | ✅ 완료 |
 | 7 | 인간-LLM 협업 UI | 🔄 진행 중 |
+| 8 | LLM DX 개선 | 🆕 신규 |
 
 ---
 
@@ -126,6 +127,11 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 사용자/LLM이 로컬 좌표와 월드 좌표를 명시적으로 구분하여 혼란 없이 작업할 수 있다
 
 **FRs covered:** FR41 (신규), FR42 (신규)
+
+### Epic 8: LLM DX 개선
+LLM이 CAD 코드를 작성할 때 겪는 마찰을 줄이고 워크플로우를 개선한다
+
+**FRs covered:** FR43, FR44, FR45, FR46 (모두 신규)
 
 ---
 
@@ -627,6 +633,141 @@ So that **스케치 위치에 만든 엔티티를 그룹에 추가해도 위치�
 - File polling 아키텍처
 - Windows/Mac 빌드
 - Claude Code 연동 가이드
+
+---
+
+---
+
+## Epic 8: LLM 개발자 경험 (DX) 개선
+
+**목표**: LLM이 CAD 코드를 작성할 때 겪는 마찰을 줄이고 워크플로우를 개선한다
+
+### 배경
+
+평면도 작업 중 발견된 DX 문제들:
+- 코드 추가 시 기존 변수 재정의 오류
+- 스케치 오버레이가 구현 후에도 잔존
+- 적절한 스케일 값 찾기 위한 시행착오
+- 실행 실패해도 파일이 변경되어 중복 정의 누적
+
+### FR Coverage Map (신규)
+
+| 요구사항 | Epic | 설명 |
+|----------|------|------|
+| FR43 | 8.1 | 추가 모드 변수 접근 |
+| FR44 | 8.2 | 스케치 자동 클리어 |
+| FR45 | 8.3 | 자동 스케일 계산 |
+| FR46 | 8.4 | 실행 트랜잭션 |
+
+---
+
+### Story 8.1: 코드 추가 모드 변수 접근
+
+As a **LLM**,
+I want **+ prefix로 코드를 추가할 때 기존 모듈의 변수/함수에 접근할 수 있기를**,
+So that **전체 코드를 다시 작성하지 않고 점진적으로 확장할 수 있다** (FR43).
+
+**Acceptance Criteria:**
+
+**Given** main 모듈에 `const W = 13550;`이 정의되어 있을 때
+**When** `run_cad_code main "+drawRect('r', W/2, 0, 100, 100)"`를 실행하면
+**Then** W 변수를 참조하여 정상 실행된다
+**And** 새 코드가 기존 코드 뒤에 추가된다
+
+**Given** main 모듈에 `function wall(id, x, y, w, h) {...}`가 정의되어 있을 때
+**When** `run_cad_code main "+wall('new_wall', 0, 0, 100, 10)"`를 실행하면
+**Then** wall 함수를 호출하여 정상 실행된다
+
+**Given** 추가할 코드에 동일한 변수명이 있을 때
+**When** `run_cad_code main "+const W = 500;"`를 실행하면
+**Then** 명확한 에러 메시지가 반환된다: "Variable 'W' already defined. Use a different name or modify existing code."
+
+**Technical Notes:**
+- 기존 코드와 추가 코드를 결합하여 단일 스크립트로 실행
+- 변수 충돌 시 사전 검사하여 실행 전 에러 반환
+
+---
+
+### Story 8.2: 스케치 자동 클리어
+
+As a **LLM**,
+I want **스케치 기반 작업 완료 후 스케치를 자동으로 클리어하는 옵션이 있기를**,
+So that **매번 수동으로 sketch.json을 비우지 않아도 된다** (FR44).
+
+**Acceptance Criteria:**
+
+**Given** 스케치가 그려져 있고 run_cad_code로 구현을 완료했을 때
+**When** `--clear-sketch` 플래그와 함께 실행하면
+**Then** 코드 실행 후 sketch.json이 `{"strokes":[]}`로 초기화된다
+**And** 다음 캡처에서 빨간 스케치 선이 보이지 않는다
+
+**Given** 스케치 클리어 없이 실행할 때
+**When** 플래그 없이 `run_cad_code main "..."`를 실행하면
+**Then** sketch.json은 변경되지 않는다 (기존 동작 유지)
+
+**Given** capture 명령 실행 시
+**When** `run_cad_code --capture --clear-sketch`를 실행하면
+**Then** 캡처 후 sketch.json이 클리어된다
+
+**Technical Notes:**
+- `--clear-sketch` 플래그 추가
+- sketch.json 경로: `viewer/sketch.json`
+
+---
+
+### Story 8.3: 자동 스케일 계산 함수
+
+As a **LLM**,
+I want **실제 치수(mm)와 뷰포트 크기를 입력하면 최적 스케일을 계산해주는 함수가 있기를**,
+So that **스케일 값을 시행착오 없이 빠르게 결정할 수 있다** (FR45).
+
+**Acceptance Criteria:**
+
+**Given** 평면도 실제 크기가 13550mm × 11800mm일 때
+**When** `fitToViewport(13550, 11800)` 또는 `--fit 13550x11800` 옵션을 사용하면
+**Then** 뷰포트(기본 1600×1000)에 맞는 최적 스케일이 계산된다
+**And** 적절한 여백(10%)이 포함된다
+**And** 결과 예: `{ scale: 0.042, offsetX: -285, offsetY: -248 }`
+
+**Given** 커스텀 뷰포트 크기를 지정할 때
+**When** `fitToViewport(13550, 11800, { viewport: [800, 600] })`를 실행하면
+**Then** 해당 뷰포트 크기에 맞는 스케일이 계산된다
+
+**Given** 계산된 스케일을 적용할 때
+**When** 반환된 값을 코드에 사용하면
+**Then** 도면이 뷰포트 중앙에 적절한 크기로 표시된다
+
+**Technical Notes:**
+- Sandbox에 `fitToViewport(realWidth, realHeight, options?)` 함수 추가
+- 반환값: `{ scale, offsetX, offsetY, code }` (code는 복사 가능한 스니펫)
+
+---
+
+### Story 8.4: 실행 트랜잭션 (롤백)
+
+As a **LLM**,
+I want **코드 실행 실패 시 파일이 변경되지 않기를**,
+So that **에러 발생 시 중복 정의나 불완전한 코드가 파일에 남지 않는다** (FR46).
+
+**Acceptance Criteria:**
+
+**Given** 추가 모드로 코드를 실행할 때
+**When** 코드에 문법 오류나 런타임 에러가 있으면
+**Then** 파일은 원래 상태로 유지된다 (변경되지 않음)
+**And** 에러 메시지가 반환된다
+
+**Given** 코드가 성공적으로 실행될 때
+**When** 모든 엔티티가 정상 생성되면
+**Then** 파일이 업데이트된다
+
+**Given** 부분 실행 후 에러가 발생할 때
+**When** 일부 엔티티만 생성되고 에러가 발생하면
+**Then** 씬도 원래 상태로 롤백된다 (부분 생성된 엔티티 제거)
+
+**Technical Notes:**
+- 실행 전 파일 백업 (메모리)
+- 에러 발생 시 백업에서 복원
+- scene.json도 트랜잭션 범위에 포함
 
 ---
 

@@ -203,12 +203,12 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       type WindowWithZoom = Window & { __setZoom?: (z: number) => void };
       const win = window as WindowWithZoom;
       if (win.__setZoom) {
-        win.__setZoom(3);
+        win.__setZoom(1);
         return true;
       }
       return false;
     });
-    logger.debug('Zoom setting', { zoomApplied, targetZoom: 3 });
+    logger.debug('Zoom setting', { zoomApplied, targetZoom: 1 });
     await new Promise(resolve => setTimeout(resolve, 500)); // Wait for zoom to apply
 
     // Find the canvas container element

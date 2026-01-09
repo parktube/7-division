@@ -513,6 +513,59 @@ export async function runCadCode(
       };
     });
 
+    // === Story 8.3: Auto Scale Calculation ===
+    // fitToViewport(realWidth, realHeight, options?) - 실제 치수를 뷰포트에 맞는 스케일로 변환
+    // options: { viewport?: [width, height], margin?: number (0-1, default 0.1) }
+    // 반환: { scale, offsetX, offsetY, code }
+    bindCadQueryFunction(vm, 'fitToViewport', (
+      realWidth: number,
+      realHeight: number,
+      options?: { viewport?: [number, number]; margin?: number }
+    ) => {
+      // 기본 뷰포트: 1600x1000 (일반적인 캡처 크기)
+      const viewportWidth = options?.viewport?.[0] ?? 1600;
+      const viewportHeight = options?.viewport?.[1] ?? 1000;
+      const margin = options?.margin ?? 0.1;  // 10% 여백
+
+      // 사용 가능한 영역 (여백 제외)
+      const availableWidth = viewportWidth * (1 - margin * 2);
+      const availableHeight = viewportHeight * (1 - margin * 2);
+
+      // 스케일 계산 (가로/세로 중 작은 값 사용)
+      const scaleX = availableWidth / realWidth;
+      const scaleY = availableHeight / realHeight;
+      const scale = Math.min(scaleX, scaleY);
+
+      // 오프셋 계산 (뷰포트 중앙에 위치)
+      // 뷰포트 중심: (viewportWidth/2, viewportHeight/2)
+      // 도면 크기 (스케일 적용 후): realWidth * scale, realHeight * scale
+      // 도면 중심을 뷰포트 중심에 맞추기 위한 오프셋
+      const scaledWidth = realWidth * scale;
+      const scaledHeight = realHeight * scale;
+      const offsetX = (viewportWidth - scaledWidth) / 2;
+      const offsetY = (viewportHeight - scaledHeight) / 2;
+
+      // 사용자가 바로 복사해서 쓸 수 있는 코드 스니펫
+      // 도면 좌하단이 원점이라고 가정하고, 스케일 적용 후 오프셋으로 중앙 배치
+      const code = `const SCALE = ${scale.toFixed(6)};
+const S = (v) => v * SCALE;
+const OX = ${offsetX.toFixed(1)}, OY = ${offsetY.toFixed(1)};
+const P = (x, y) => [S(x) + OX, S(y) + OY];
+
+// 사용 예:
+// const [px, py] = P(realX, realY);
+// drawRect('r', px, py, S(realWidth), S(realHeight));`;
+
+      return {
+        scale: parseFloat(scale.toFixed(6)),
+        offsetX: parseFloat(offsetX.toFixed(1)),
+        offsetY: parseFloat(offsetY.toFixed(1)),
+        viewportWidth,
+        viewportHeight,
+        code,
+      };
+    });
+
     // === Transforms (4) ===
     // translate(name, dx, dy, options?) - options: { space: 'world' | 'local' }
     bindCadFunction(vm, 'translate', (name: string, dx: number, dy: number, options?: { space?: 'world' | 'local' }) => {

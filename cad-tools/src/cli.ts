@@ -117,6 +117,25 @@ function resolveSelectionFile(): string {
 }
 const SELECTION_FILE = resolveSelectionFile();
 
+// Sketch file path for --clear-sketch (Story 8.2)
+function resolveSketchFile(): string {
+  if (process.env.CAD_SKETCH_PATH) {
+    return resolve(process.env.CAD_SKETCH_PATH);
+  }
+  const repoSketch = resolve(__dirname, '../../viewer/sketch.json');
+  return repoSketch;
+}
+const SKETCH_FILE = resolveSketchFile();
+
+/** Clear sketch overlay (Story 8.2) */
+function clearSketch(): void {
+  try {
+    writeFileSync(SKETCH_FILE, '{"strokes":[]}');
+  } catch {
+    // Ignore errors - sketch file might not exist or be writable
+  }
+}
+
 /** Helper: Get selection result (used by both get_selection command and --selection flag) */
 function getSelectionResult(): { success: boolean; selection?: unknown; error?: string; hint: string } {
   if (existsSync(SELECTION_FILE)) {
@@ -553,6 +572,55 @@ function handleRunCadCodeRead(target: string): RunCadCodeResult {
   };
 }
 
+/**
+ * Execute code without saving to file (for transaction testing)
+ * Returns result with entities created
+ */
+async function testExecuteCode(code: string): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
+  const executor = CADExecutor.create('cad-scene');
+  let result: { success: boolean; error?: string; entitiesCreated?: string[]; warnings?: string[] } = { success: true };
+
+  if (code.trim()) {
+    const preprocessed = await preprocessCode(code);
+    if (preprocessed.errors.length > 0) {
+      executor.free();
+      return { success: false, error: `Import errors: ${preprocessed.errors.join(', ')}`, entities: [] };
+    }
+    result = await runCadCode(executor, preprocessed.code);
+  }
+
+  // Save scene if successful
+  if (result.success) {
+    const jsonResult = executor.exec('export_json', {});
+    if (jsonResult.success && jsonResult.data) {
+      ensureParentDir(SCENE_FILE);
+      writeFileSync(SCENE_FILE, jsonResult.data);
+    }
+  }
+
+  executor.free();
+
+  return {
+    success: result.success,
+    error: result.error,
+    entities: result.entitiesCreated || [],
+    warnings: result.warnings || [],
+  };
+}
+
+/**
+ * Provide user-friendly error message for common errors
+ */
+function enhanceErrorMessage(error: string, isAppendMode: boolean): string {
+  // Variable redefinition error
+  if (error.includes('redefinition') || error.includes('already been declared')) {
+    const match = error.match(/identifier\s+'?(\w+)'?/i) || error.match(/variable\s+'?(\w+)'?/i);
+    const varName = match ? match[1] : 'unknown';
+    return `Variable '${varName}' already defined in existing code. ${isAppendMode ? 'In append mode, you can reference existing variables directly without re-declaring them.' : ''}`;
+  }
+  return error;
+}
+
 /** Handle write mode: write code to file and execute */
 async function handleRunCadCodeWrite(target: string, newCode: string): Promise<RunCadCodeResult> {
   const isAppendMode = newCode.startsWith('+');
@@ -561,14 +629,18 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
   if (target === 'main') {
     ensureParentDir(SCENE_CODE_FILE);
 
-    if (isAppendMode) {
-      const existingCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
-      writeFileSync(SCENE_CODE_FILE, existingCode + '\n' + codeToWrite);
-    } else {
-      writeFileSync(SCENE_CODE_FILE, codeToWrite);
-    }
+    // Build combined code for testing
+    const existingCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+    const combinedCode = isAppendMode ? existingCode + '\n' + codeToWrite : codeToWrite;
 
-    const result = await executeMainCode();
+    // Story 8.1 + 8.4: Test execution BEFORE writing file (transaction pattern)
+    const result = await testExecuteCode(combinedCode);
+
+    // Only save file if execution succeeded
+    if (result.success) {
+      writeFileSync(SCENE_CODE_FILE, combinedCode);
+    }
+    // If failed, file remains unchanged (rollback behavior)
 
     // Build contextual hints
     const hints: string[] = [];
@@ -579,7 +651,13 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
       }
     } else {
       hints.push('실행 실패. 코드를 확인하세요.');
+      if (isAppendMode) {
+        hints.push('파일은 변경되지 않았습니다 (롤백됨).');
+      }
     }
+
+    // Enhance error message for better UX
+    const enhancedError = result.error ? enhanceErrorMessage(result.error, isAppendMode) : undefined;
 
     return {
       handled: true,
@@ -588,7 +666,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
         file: 'main',
         mode: isAppendMode ? 'append' : 'write',
         entities: result.entities,
-        error: result.error,
+        error: enhancedError,
         hint: hints[0],
         hints,
       }, null, 2),
@@ -601,15 +679,28 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
   }
   const modulePath = resolve(MODULES_DIR, `${target}.js`);
 
-  if (isAppendMode) {
-    const existingCode = existsSync(modulePath) ? readFileSync(modulePath, 'utf-8') : '';
-    writeFileSync(modulePath, existingCode + '\n' + codeToWrite);
-  } else {
-    writeFileSync(modulePath, codeToWrite);
-  }
+  // Build combined code for testing
+  const existingModuleCode = existsSync(modulePath) ? readFileSync(modulePath, 'utf-8') : '';
+  const combinedModuleCode = isAppendMode ? existingModuleCode + '\n' + codeToWrite : codeToWrite;
 
-  // Re-execute main (to pick up module changes)
-  const result = await executeMainCode();
+  // Story 8.1 + 8.4: Test execution with module change BEFORE writing
+  // We need to temporarily test as if the module was updated
+  const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
+
+  // Write module temporarily for test
+  writeFileSync(modulePath, combinedModuleCode);
+
+  // Test execution
+  const result = await testExecuteCode(mainCode);
+
+  // Rollback module if execution failed
+  if (!result.success) {
+    if (existingModuleCode) {
+      writeFileSync(modulePath, existingModuleCode);
+    } else {
+      unlinkSync(modulePath);
+    }
+  }
 
   // Build contextual hints for module write
   const moduleHints: string[] = [];
@@ -618,7 +709,11 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
     moduleHints.push('모듈 클래스 사용 시 getWorldBounds()로 앵커 위치 확인');
   } else {
     moduleHints.push('main 실행 실패. 코드를 확인하세요.');
+    moduleHints.push('모듈 파일은 변경되지 않았습니다 (롤백됨).');
   }
+
+  // Enhance error message
+  const enhancedError = result.error ? enhanceErrorMessage(result.error, isAppendMode) : undefined;
 
   return {
     handled: true,
@@ -627,7 +722,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
       file: target,
       mode: isAppendMode ? 'append' : 'write',
       entities: result.entities,
-      error: result.error,
+      error: enhancedError,
       hint: moduleHints[0],
       hints: moduleHints,
     }, null, 2),
@@ -641,214 +736,207 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
 const DOMAIN_DESCRIPTIONS: Record<string, string> = {
   primitives: `📦 PRIMITIVES - 기본 도형 그리기
 
-📋 ACTIONS
-- draw_circle [name, x, y, radius]: 원 (머리, 관절, 버튼 등)
-- draw_rect [name, x, y, width, height]: 사각형 (몸통, 창문, 문 등)
-- draw_line [name, points]: 선분/폴리라인 (팔, 다리, 지붕 등)
-- draw_arc [name, cx, cy, radius, start_angle, end_angle]: 호 (미소, 문 표시 등)
-- draw_polygon [name, points]: 다각형 (삼각형 산, 별, 화살표 등) - 닫힌 도형, fill 지원
+📋 FUNCTIONS (run_cad_code로 사용)
+- drawCircle(name, x, y, radius)        // 원
+- drawRect(name, x, y, width, height)   // 사각형
+- drawLine(name, points[])              // 선분 [x1,y1, x2,y2, ...]
+- drawArc(name, cx, cy, r, start, end)  // 호 (라디안)
+- drawPolygon(name, points[])           // 다각형 (닫힌 도형)
+- drawBezier(name, path)                // 베지어 커브 (SVG path)
 
 🎯 WORKFLOW
-1. list_entities → 현재 상태 확인
-2. primitives → 도형 그리기
-3. style → 색상/스타일 적용
-4. transforms → 위치/크기 조정
+1. query 도메인으로 현재 상태 확인
+2. primitives로 도형 그리기
+3. style로 색상/스타일 적용
+4. transforms로 위치/크기 조정
 
 💡 TIPS
-- 이름은 의미있게: "head", "left_arm", "door" 등
+- 이름은 의미있게: "head", "left_arm", "door"
 - 좌표계: Y+ 위쪽, 중심 (0,0)
-- style 파라미터로 그리기와 동시에 스타일 적용 가능`,
+- drawBezier: 'M x,y C cp1 cp2 end S cp2 end Z'`,
 
   style: `🎨 STYLE - 색상 및 스타일 적용
 
-📋 ACTIONS
-- set_fill [name, fill]: 채우기 색상 설정
-- set_stroke [name, stroke]: 선 스타일 설정 (color, width)
-- remove_fill [name]: 채우기 제거
-- remove_stroke [name]: 선 제거
+📋 FUNCTIONS (run_cad_code로 사용)
+- setFill(name, [r,g,b,a])              // 채우기 색상
+- setStroke(name, [r,g,b,a], width?)    // 선 스타일
+- drawOrder(name, order)                // z-order 조정
 
-🎯 WORKFLOW
-1. primitives로 도형 그리기 완료
-2. set_fill로 채우기 색상 적용
-3. set_stroke로 선 스타일 조정
+📋 drawOrder options
+- 'front' / 'back'     // 맨 앞/뒤
+- 1 / -1               // 한 단계 앞/뒤
+- 'above:target'       // target 위로
+- 'below:target'       // target 아래로
 
 💡 COLOR FORMAT
 - RGBA 배열: [r, g, b, a] (각 0.0 ~ 1.0)
 - 빨강: [1, 0, 0, 1]
-- 반투명 파랑: [0, 0, 1, 0.5]
-
-💡 STROKE OPTIONS
-- width: 선 두께 (기본 1)
-- color: RGBA 배열
-- dash: [on, off] 점선 패턴`,
+- 반투명 파랑: [0, 0, 1, 0.5]`,
 
   transforms: `🔄 TRANSFORMS - 도형 변환
 
-📋 ACTIONS
-- translate [name, dx, dy]: 이동
-- rotate [name, angle, cx?, cy?]: 회전 (도 단위, 반시계방향)
-- scale [name, sx, sy, cx?, cy?]: 크기 조절
-- set_pivot [name, px, py]: 회전/스케일 중심점 설정
-- delete [name]: 삭제
-
-🎯 WORKFLOW
-1. list_entities로 대상 확인
-2. 필요한 변환 적용
-3. get_entity로 결과 확인
+📋 FUNCTIONS (run_cad_code로 사용)
+- translate(name, dx, dy, opts?)        // 이동, opts: {space:'world'|'local'}
+- rotate(name, angle, opts?)            // 회전 (라디안)
+- scale(name, sx, sy, opts?)            // 크기 조절
+- setPivot(name, px, py)                // 회전/스케일 중심점
+- deleteEntity(name)                    // 삭제
+- duplicate(source, newName)            // 복제
+- mirror(source, newName, axis)         // 미러 복제 ('x'|'y')
 
 💡 TIPS
-- rotate/scale의 cx, cy: 변환 중심점 (생략시 도형 중심)
-- 삭제 전 get_entity로 확인 권장`,
+- space 옵션: 'world' (기본) / 'local' (부모 기준)
+- duplicate: 지오메트리, 스타일, 변환 모두 복사
+- mirror: 'x'=좌우 반전, 'y'=상하 반전`,
 
   query: `🔍 QUERY - 씬 조회
 
-📋 ACTIONS
-- list_entities: 모든 엔티티 목록
-- get_entity [name]: 특정 엔티티 상세 정보
-- get_scene_info: 씬 전체 정보 (bounds, count, last_operation)
-- get_selection: 뷰어에서 선택된 도형 조회
+📋 FUNCTIONS (run_cad_code로 사용)
+- exists(name)                          // 존재 여부 (boolean)
+- getEntity(name)                       // 상세 정보 (local/world 좌표)
+- getWorldBounds(name)                  // 월드 바운딩 박스
+- getDrawOrder(groupName?)              // z-order 순서 조회
+- fitToViewport(w, h, opts?)            // 자동 스케일 계산
 
-🎯 WORKFLOW
-1. 작업 시작 전: list_entities로 현재 상태 파악
-2. 사용자가 "이거"라고 말하면: get_selection으로 선택된 도형 확인
-3. 디버깅: get_entity로 특정 엔티티 검증
+📋 CLI COMMANDS
+- run_cad_code --status                 // 프로젝트 요약
+- run_cad_code --selection              // 선택된 도형 조회
+- run_cad_code --capture                // 뷰어 스크린샷
 
 💡 TIPS
-- 작업 전후로 list_entities 호출 권장
-- get_selection으로 사용자가 클릭한 도형 확인 가능
-- capture_viewport로 씬 전체를 시각적으로 확인 및 검증 가능
-- get_scene_info의 bounds로 뷰포트 계산 가능`,
+- getEntity: local/world 좌표 모두 반환
+- fitToViewport: 실제 치수→뷰포트 스케일 계산
+- --selection: 사용자가 클릭한 도형 확인`,
 
   export: `💾 EXPORT - 내보내기
 
-📋 ACTIONS
-- export_json: JSON 형식 (scene.json에 자동 저장)
-- export_svg: SVG 형식
-- capture_viewport: 현재 뷰어를 PNG 이미지로 캡처 (시각적 검토용)
-
-🎯 WORKFLOW
-1. 모든 도형 작업 완료
-2. export_json으로 저장 (자동 저장됨)
-3. capture_viewport로 최종 디자인 시각적 확인
-4. 필요시 export_svg로 벡터 출력
+📋 CLI COMMANDS
+- run_cad_code --capture               // 뷰어 스크린샷 (PNG)
+- npx tsx cad-cli.ts export_json       // JSON 출력
+- npx tsx cad-cli.ts export_svg        // SVG 출력
 
 💡 TIPS
-- scene.json은 매 명령어 후 자동 저장
-- capture_viewport는 로컬 뷰어가 실행 중이어야 함 (기본 http://localhost:5173)
-- SVG는 반환값의 data 필드에 포함`,
+- scene.json은 run_cad_code 실행 시 자동 저장
+- --capture는 뷰어 실행 중이어야 함 (localhost:5173)`,
 
   session: `📁 SESSION - 세션 관리
 
-📋 ACTIONS
-- reset: 새 scene 시작 (모든 엔티티 삭제)
-- status: 현재 세션 상태 확인
-
-🎯 WORKFLOW
-1. 새 작업 시작: reset
-2. 상태 확인: status
-3. 작업 진행...
+📋 CLI COMMANDS
+- npx tsx cad-cli.ts reset             // 새 씬 시작
+- npx tsx cad-cli.ts status            // 현재 상태
+- run_cad_code --clear-sketch          // 스케치 클리어
 
 💡 TIPS
 - reset은 되돌릴 수 없음
-- status로 현재 엔티티 수 확인`,
+- --clear-sketch: 코드 실행/캡처 후 sketch.json 초기화`,
+
   group: `🗂️ GROUP - 그룹화
 
-📋 ACTIONS
-- create_group [name, children]: 여러 도형을 그룹으로 묶기
+📋 FUNCTIONS (run_cad_code로 사용)
+- createGroup(name, children[])        // 그룹 생성
+- addToGroup(groupName, entityName)    // 그룹에 추가
 
 🎯 WORKFLOW
-1. primitives로 개별 도형 그리기 (예: upper_arm, lower_arm, hand)
-2. create_group으로 그룹 생성 (예: left_arm)
-3. 그룹 단위로 변환 적용
+1. primitives로 개별 도형 그리기
+2. createGroup으로 그룹 생성
+3. 그룹 단위로 transforms 적용
 
 💡 TIPS
-- children: 그룹에 포함할 도형 이름 배열
-- 존재하지 않는 도형은 무시됨
-- 빈 children으로도 빈 그룹 생성 가능
-- 그룹도 다른 그룹의 자식이 될 수 있음 (중첩 그룹)
-- add_to_group: 기존 그룹에 엔티티 추가 (다른 그룹에서 자동 이동)
-- remove_from_group: 그룹에서 엔티티 제거 (독립 엔티티로)
+- 중첩 그룹 가능 (그룹이 그룹의 자식)
+- 그룹 변환 시 자식도 함께 변환`,
 
-💡 EXAMPLES
-- create_group '{"name":"left_arm","children":["upper_arm","lower_arm","hand"]}'
-- create_group '{"name":"skeleton","children":["head","torso","left_arm","right_arm"]}'
-- ungroup '{"name":"left_arm"}' → 그룹 해제, 자식들은 독립 엔티티로
-- add_to_group '{"group_name":"left_arm","entity_name":"wrist"}' → 기존 그룹에 추가
-- remove_from_group '{"group_name":"left_arm","entity_name":"hand"}' → 그룹에서 제거`,
+  // ============================================================================
+  // 새로운 도메인: Boolean, Geometry, Text
+  // ============================================================================
 
-  sandbox: `🚀 SANDBOX - run_cad_code 샌드박스 함수
+  boolean: `⚙️ BOOLEAN - 도형 합치기/빼기 (Manifold 엔진)
 
-run_cad_code로 JavaScript 코드를 실행할 때 사용 가능한 함수들입니다.
+📋 FUNCTIONS (run_cad_code로 사용)
+- booleanUnion(a, b, result)           // 합집합 (A + B)
+- booleanDifference(a, b, result)      // 차집합 (A - B)
+- booleanIntersect(a, b, result)       // 교집합 (A ∩ B)
 
-📋 PRIMITIVES (6개)
-- drawCircle(name, x, y, radius)
-- drawRect(name, x, y, width, height)
-- drawLine(name, points[])           // [x1,y1, x2,y2, ...]
-- drawArc(name, cx, cy, radius, startAngle, endAngle)
-- drawPolygon(name, points[])        // [x1,y1, x2,y2, ...] 닫힌 도형
-- drawBezier(name, points[], closed) // ⭐ 베지어 커브
+📋 지원 도형
+- Circle, Rect, Polygon, Arc (닫힌 도형만)
 
-📋 TRANSFORMS (4개)
-- translate(name, dx, dy)
-- rotate(name, angle)                // 라디안 단위!
-- scale(name, sx, sy)
-- setPivot(name, px, py)
-
-📋 STYLE (3개)
-- setFill(name, [r,g,b,a])          // 0.0~1.0
-- setStroke(name, [r,g,b,a], width?)
-- drawOrder(name, 'front'|'back'|N)  // 상대적 z-order 조정
-
-📋 GROUPS (2개)
-- createGroup(name, children[])
-- addToGroup(groupName, entityName)
-
-📋 UTILITY (2개)
-- deleteEntity(name)
-- exists(name)                       // boolean 반환
-
-📋 QUERY (3개)
-- getWorldTransform(name)
-- getWorldPoint(name, x, y)
-- getWorldBounds(name)
-
-⭐ BEZIER 포맷 (중요!)
-points = [startX, startY,           // 시작점 (2개)
-          cp1X, cp1Y, cp2X, cp2Y, endX, endY,  // 세그먼트1 (6개)
-          cp1X, cp1Y, cp2X, cp2Y, endX, endY,  // 세그먼트2 (6개)
-          ...]
-
-💡 EXAMPLE - 산 그리기
-drawBezier("mountain", [
-  -100, 0,                    // 시작점 (왼쪽 바닥)
-  -80, 10, -60, 30, -40, 50,  // 왼쪽 사면
-  -20, 70, 0, 80, 20, 70,     // 정상
-  40, 50, 60, 30, 80, 10,     // 오른쪽 사면
-  100, 0, -100, 0, -100, 0    // 바닥 닫기
-], true);
-setFill("mountain", [0.5, 0.6, 0.7, 1]);
-setStroke("mountain", [0,0,0,0], 0);
+🎯 EXAMPLE
+drawRect('wall', 0, 0, 100, 80);
+drawRect('window', 20, 30, 15, 20);
+booleanDifference('wall', 'window', 'wall_with_hole');
+// → 벽에 창문 구멍 생성
 
 💡 TIPS
-- 좌표계: Y+ 위쪽, 중심 (0,0)
-- 색상: RGBA [0.0~1.0, 0.0~1.0, 0.0~1.0, 0.0~1.0]
-- closed=true: 시작점과 끝점 자동 연결
-- for문, 함수 정의 등 JavaScript 문법 모두 사용 가능`
+- 결과는 항상 Polygon 타입
+- 원본 도형(a, b)은 유지됨
+- 복잡한 형태도 여러 번 조합 가능`,
+
+  geometry: `📐 GEOMETRY - 기하 분석/변형 (Manifold 엔진)
+
+📋 FUNCTIONS (run_cad_code로 사용)
+- offsetPolygon(name, delta, result, join?)  // 확장(+)/축소(-)
+- getArea(name)                        // 면적 계산
+- convexHull(name, result)             // 볼록 껍질 생성
+- decompose(name, prefix)              // 분리된 컴포넌트 추출
+
+📋 offsetPolygon joinType
+- 'round'  // 둥근 모서리 (기본)
+- 'square' // 직각 모서리
+- 'miter'  // 뾰족한 모서리
+
+🎯 EXAMPLE
+drawPolygon('shape', [0,0, 100,0, 100,50, 0,50]);
+offsetPolygon('shape', 10, 'expanded', 'round');
+// → 10단위 확장된 폴리곤 생성
+
+💡 TIPS
+- delta > 0: 확장, delta < 0: 축소
+- getArea: 닫힌 도형만 가능
+- decompose: Boolean 결과가 분리된 경우 사용`,
+
+  text: `📝 TEXT - 텍스트 렌더링 (opentype.js)
+
+📋 FUNCTIONS (run_cad_code로 사용)
+- drawText(name, text, x, y, size, opts?)   // 텍스트→베지어
+- getTextMetrics(text, size, fontPath?)     // 크기 미리 계산
+
+📋 drawText options
+- fontPath: TTF/OTF 경로 (생략 시 시스템 폰트)
+- align: 'left' (기본) | 'center' | 'right'
+- color: [r, g, b, a]
+
+🎯 EXAMPLE
+drawText('title', '안녕하세요', 0, 0, 24);
+drawText('label', 'Center', 100, 50, 16, { align: 'center' });
+const m = getTextMetrics('Hello', 24);
+// m = { width: 58.4, height: 24 }
+
+💡 TIPS
+- 결과는 Bezier 엔티티 (벡터)
+- 한글/영문 모두 지원
+- setFill/setStroke로 스타일링 가능`
 };
 
 function showDomains(): void {
   print(`
 📚 CAD CLI DOMAINS
 
-Available domains:
-  primitives  - 기본 도형 (circle, rect, line, arc)
-  style       - 색상/스타일 (fill, stroke)
-  transforms  - 변환 (translate, rotate, scale, delete)
-  group       - 그룹화 (create_group)
-  query       - 조회 (list_entities, get_entity, get_scene_info)
-  export      - 내보내기 (json, svg)
-  session     - 세션 관리 (reset, status)
-  sandbox     - ⭐ run_cad_code 샌드박스 함수 (drawBezier 등)
+📦 도형 생성
+  primitives  - 기본 도형 (circle, rect, line, arc, polygon, bezier)
+  text        - ⭐ 텍스트 렌더링 (drawText, getTextMetrics)
+
+🔄 도형 조작
+  transforms  - 변환 (translate, rotate, scale, pivot, duplicate, mirror)
+  boolean     - ⭐ 합치기/빼기 (union, difference, intersect)
+  geometry    - ⭐ 기하 분석 (offset, area, convexHull, decompose)
+
+🎨 스타일 & 구조
+  style       - 색상/z-order (fill, stroke, drawOrder)
+  group       - 그룹화 (createGroup, addToGroup)
+
+🔍 조회 & 내보내기
+  query       - 씬 조회 (getEntity, exists, fitToViewport)
+  export      - 내보내기 (capture, json, svg)
+  session     - 세션 관리 (reset, --clear-sketch)
 
 Usage:
   ${CLI_NAME} describe <domain>
@@ -1063,9 +1151,15 @@ Scene file:
   // - run_cad_code --info <name>      → 모듈 상세 정보
   // - run_cad_code --lines <name> <range> → 부분 읽기
   // - run_cad_code --status           → 프로젝트 상태 요약
+  // - run_cad_code --clear-sketch     → 스케치 클리어 (Story 8.2)
   if (command === 'run_cad_code') {
-    let target = args[1];  // main, module name, --delete, --deps, or undefined
-    let newCode = args[2]; // code to write, '-' for stdin, or undefined
+    // Story 8.2: Check for --clear-sketch flag anywhere in args
+    const clearSketchFlag = args.includes('--clear-sketch');
+    // Filter out the flag from args for normal processing
+    const filteredArgs = args.filter(a => a !== '--clear-sketch');
+
+    let target = filteredArgs[1];  // main, module name, --delete, --deps, or undefined
+    let newCode = filteredArgs[2]; // code to write, '-' for stdin, or undefined
 
     // Check for special flags
     const isDeleteMode = target === '--delete';
@@ -1078,7 +1172,7 @@ Scene file:
     const isSelectionMode = target === '--selection';
 
     if (isDeleteMode) {
-      target = args[2]; // module name to delete
+      target = filteredArgs[2]; // module name to delete
     }
 
     // Read from stdin if '-' is specified
@@ -1098,17 +1192,23 @@ Scene file:
     let result: RunCadCodeResult;
 
     if (isSearchMode) {
-      result = handleRunCadCodeSearch(args[2]);
+      result = handleRunCadCodeSearch(filteredArgs[2]);
     } else if (isInfoMode) {
-      result = handleRunCadCodeInfo(args[2]);
+      result = handleRunCadCodeInfo(filteredArgs[2]);
     } else if (isLinesMode) {
-      result = handleRunCadCodeLines(args[2], args[3]);
+      result = handleRunCadCodeLines(filteredArgs[2], filteredArgs[3]);
     } else if (isStatusMode) {
       result = handleRunCadCodeStatus();
     } else if (isDepsMode) {
       result = handleRunCadCodeDeps();
     } else if (isCaptureMode) {
-      result = { handled: true, output: JSON.stringify(await captureViewportResult(), null, 2) };
+      const captureResult = await captureViewportResult();
+      // Story 8.2: Clear sketch after capture if flag is set
+      if (clearSketchFlag && captureResult.success) {
+        clearSketch();
+        (captureResult as Record<string, unknown>).sketchCleared = true;
+      }
+      result = { handled: true, output: JSON.stringify(captureResult, null, 2) };
     } else if (isSelectionMode) {
       result = { handled: true, output: JSON.stringify(getSelectionResult(), null, 2) };
     } else if (isDeleteMode) {
@@ -1119,6 +1219,19 @@ Scene file:
       result = handleRunCadCodeRead(target);
     } else {
       result = await handleRunCadCodeWrite(target, newCode);
+      // Story 8.2: Clear sketch after successful write if flag is set
+      if (clearSketchFlag && result.output) {
+        try {
+          const parsed = JSON.parse(result.output);
+          if (parsed.success) {
+            clearSketch();
+            parsed.sketchCleared = true;
+            result.output = JSON.stringify(parsed, null, 2);
+          }
+        } catch {
+          // Ignore JSON parse errors
+        }
+      }
     }
 
     if (result.output) {

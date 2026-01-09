@@ -2,6 +2,28 @@
 
 CAD 도형을 JavaScript 코드로 생성합니다.
 
+## 도메인 목록 (cad-cli.cmd describe <domain>)
+
+```
+📦 도형 생성
+  primitives  - 기본 도형 (circle, rect, line, arc, polygon, bezier)
+  text        - 텍스트 렌더링 (drawText, getTextMetrics)
+
+🔄 도형 조작
+  transforms  - 변환 (translate, rotate, scale, pivot, duplicate, mirror)
+  boolean     - 합치기/빼기 (union, difference, intersect)
+  geometry    - 기하 분석 (offset, area, convexHull, decompose)
+
+🎨 스타일 & 구조
+  style       - 색상/z-order (fill, stroke, drawOrder)
+  group       - 그룹화 (createGroup, addToGroup)
+
+🔍 조회 & 내보내기
+  query       - 씬 조회 (getEntity, exists, fitToViewport)
+  export      - 내보내기 (capture, json, svg)
+  session     - 세션 관리 (reset, --clear-sketch)
+```
+
 ## run_cad_code (코드 에디터)
 
 **기본 (읽기/쓰기)**
@@ -18,57 +40,101 @@ echo "code" | cad-cli.cmd run_cad_code main -  # stdin
 cad-cli.cmd run_cad_code --status         # 프로젝트 요약
 cad-cli.cmd run_cad_code --info house_lib # 모듈 상세
 cad-cli.cmd run_cad_code --search drawCircle  # 패턴 검색
-cad-cli.cmd run_cad_code --lines house_lib 50-70  # 부분 읽기
+cad-cli.cmd run_cad_code --capture        # 뷰어 스크린샷
+cad-cli.cmd run_cad_code --selection      # 선택된 도형
 ```
 
 **관리**
 ```powershell
 cad-cli.cmd run_cad_code --deps           # 의존성 그래프
 cad-cli.cmd run_cad_code --delete my_module  # 모듈 삭제
+cad-cli.cmd run_cad_code --clear-sketch   # 스케치 클리어
 ```
 
 **규칙**: 문자열은 작은따옴표(`'`) 사용
 
+## 트랜잭션 동작
+
+코드 실행 실패 시 **파일이 변경되지 않습니다** (자동 롤백):
+
+```powershell
+# 기존 코드에 const x = 10;이 있을 때
+cad-cli.cmd run_cad_code main "+const x = 20;"  # 실패 - 변수 재정의
+# → 파일 변경 없음
+
+# 추가 모드에서는 기존 변수 직접 참조 가능
+cad-cli.cmd run_cad_code main "+drawCircle('c', x, 0, 30);"  # 성공
+```
+
 ## 함수 목록
 
-**도형 - 모든 좌표는 중심 기준**
-- `drawCircle(name, x, y, radius)` - (x, y) = 원의 중심
-- `drawRect(name, x, y, width, height)` - (x, y) = 사각형의 중심
-- `drawLine(name, [x1,y1, x2,y2, ...])`
-- `drawPolygon(name, [x1,y1, x2,y2, ...])` - 닫힌 도형
-- `drawArc(name, cx, cy, radius, startAngle, endAngle)` - (cx, cy) = 호의 중심
-- `drawBezier(name, points[], closed)`
+### primitives - 도형 생성
+```javascript
+drawCircle(name, x, y, radius)
+drawRect(name, x, y, width, height)
+drawLine(name, [x1,y1, x2,y2, ...])
+drawPolygon(name, [x1,y1, x2,y2, ...])  // 닫힌 도형
+drawArc(name, cx, cy, radius, startAngle, endAngle)
+drawBezier(name, path)  // SVG path: 'M x,y C cp1 cp2 end Z'
+```
 
-**스타일**
-- `setFill(name, [r,g,b,a])` - 색상 0~1
-- `setStroke(name, [r,g,b,a], width)`
+### text - 텍스트 렌더링
+```javascript
+drawText(name, text, x, y, fontSize, options?)
+// options: { fontPath?, align?: 'left'|'center'|'right', color?: [r,g,b,a] }
+getTextMetrics(text, fontSize, fontPath?)  // { width, height }
+```
 
-**Z-Order** (스코프별 자동 할당, 상대적 조정)
-- `drawOrder(name, 'front')` - 맨 앞으로
-- `drawOrder(name, 'back')` - 맨 뒤로
-- `drawOrder(name, 1)` or `drawOrder(name, -1)` - 단계 이동
-- `drawOrder(name, 'above:target')` - target 위로
-- `getDrawOrder(groupName?)` - 순서 조회
+### transforms - 변환
+```javascript
+translate(name, dx, dy, options?)  // options: { space: 'world'|'local' }
+rotate(name, angle, options?)      // 라디안
+scale(name, sx, sy, options?)
+setPivot(name, px, py)
+deleteEntity(name)
+duplicate(source, newName)         // 엔티티 복제
+mirror(source, newName, axis)      // 미러 복제 ('x'|'y')
+```
 
-**변환 (space 옵션: 'world' | 'local', 기본값 'world')**
-- `translate(name, dx, dy, options?)` - options: { space: 'world' | 'local' }
-- `rotate(name, angle, options?)` - 라디안
-- `scale(name, sx, sy, options?)`
-- `setPivot(name, px, py)`
+### boolean - Boolean 연산 (Manifold)
+```javascript
+booleanUnion(a, b, result)         // 합집합
+booleanDifference(a, b, result)    // 차집합 (A - B)
+booleanIntersect(a, b, result)     // 교집합
+// 지원 도형: Circle, Rect, Polygon, Arc
+```
 
-**그룹**
-- `createGroup(name, [children])`
-- `addToGroup(group, entity)` - 월드 위치 자동 유지
+### geometry - 기하 분석 (Manifold)
+```javascript
+offsetPolygon(name, delta, result, joinType?)  // 확장/축소
+getArea(name)                      // 면적 계산
+convexHull(name, result)           // 볼록 껍질
+decompose(name, prefix)            // 분리된 컴포넌트 추출
+```
 
-**조회**
-- `exists(name)` - boolean
-- `getWorldBounds(name)` - 월드 좌표 바운딩 박스
-- `get_entity(name)` - local/world 좌표 모두 반환
+### style - 스타일
+```javascript
+setFill(name, [r,g,b,a])           // 색상 0~1
+setStroke(name, [r,g,b,a], width?)
+drawOrder(name, 'front'|'back'|N|'above:target')
+getDrawOrder(groupName?)
+```
 
-**삭제**
-- `deleteEntity(name)`
+### group - 그룹화
+```javascript
+createGroup(name, [children])
+addToGroup(groupName, entityName)  // 월드 위치 자동 유지
+```
 
-## get_entity 응답 형식
+### query - 조회
+```javascript
+exists(name)                       // boolean
+getWorldBounds(name)
+getEntity(name)                    // local/world 좌표 모두 반환
+fitToViewport(width, height, opts?)  // 자동 스케일 계산
+```
+
+## getEntity 응답 형식
 
 ```json
 {
@@ -87,74 +153,23 @@ cad-cli.cmd run_cad_code --delete my_module  # 모듈 삭제
 }
 ```
 
-## 클래스 기반 모듈 예시
-
-```powershell
-# house_lib 모듈 생성
-cad-cli.cmd run_cad_code house_lib "
-class House {
-  constructor(name, x, y) {
-    this.name = name;
-    this.x = x;
-    this.y = y;
-    this.parts = [];
-  }
-  // 로컬 좌표 (0,0) 기준으로 부품 생성!
-  drawWall() {
-    drawRect(this.name+'_wall', 0, 15, 40, 30);  // 중심 기준
-    this.parts.push(this.name+'_wall');
-  }
-  drawRoof() {
-    drawPolygon(this.name+'_roof', [-25, 30, 0, 50, 25, 30]);
-    this.parts.push(this.name+'_roof');
-  }
-  build() {
-    this.drawWall();
-    this.drawRoof();
-    createGroup(this.name, this.parts);
-    translate(this.name, this.x, this.y);  // 그룹 이동
-    return this;
-  }
-}
-"
-
-# main에서 사용
-cad-cli.cmd run_cad_code main "
-import 'house_lib';
-new House('h1', 0, 0).build();
-new House('h2', 100, 0).build();
-"
-```
-
 ## 그룹 로컬 좌표 패턴 (필수!)
 
 **핵심**: 부품은 (0,0) 기준 로컬 좌표로 생성 → 그룹 후 translate로 이동
 
 ```javascript
-// ❌ 잘못: this.x, this.y를 부품에 직접 더함 → 그룹 이동 시 2배 이동
+// ❌ 잘못: this.x, this.y를 부품에 직접 더함
 drawRect(name+'_body', this.x, this.y, 20, 40);
 
 // ✅ 올바른: 로컬 좌표 사용 → 그룹 이동으로 최종 위치
-drawRect(name+'_body', 0, 20, 20, 40);  // 중심 기준
+drawRect(name+'_body', 0, 20, 20, 40);
+createGroup(name, [name+'_body']);
 translate(name, this.x, this.y);
-```
-
-## addToGroup 월드 위치 유지
-
-`addToGroup` 호출 시 엔티티의 월드 위치가 자동으로 유지됩니다:
-
-```javascript
-// 스케치 위치에 창문 생성
-drawRect('window', 100, 50, 20, 30);  // world (100, 50)
-
-// 그룹에 추가 - 월드 위치 자동 유지!
-addToGroup('house', 'window');
-// 결과: 로컬 좌표 자동 계산, 월드 위치 동일
 ```
 
 ## 씬 관리
 
-```bash
+```powershell
 cad-cli.cmd status     # 현재 상태
 cad-cli.cmd reset      # 새 씬 시작
 cad-cli.cmd overview   # 전체 구조

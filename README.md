@@ -6,7 +6,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 ## Project Status
 
-**현재 단계**: MVP 구현 완료 (Epic 1~7 done)
+**현재 단계**: MVP + 기하 엔진 통합 (Epic 1~8)
 
 | Epic | 상태 | 설명 |
 |------|------|------|
@@ -17,16 +17,20 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 | Epic 5 | ✅ 완료 | Selection UI (클릭 선택, 하이라이트, AI 전달) |
 | Epic 6 | ✅ 완료 | Electron 통합 (앱 패키징, Windows/Mac 배포) |
 | Epic 7 | ✅ 완료 | Viewer UI 리디자인 (React + 스케치 모드 + Z-Order) |
+| Epic 8 | ✅ 완료 | LLM DX 개선 (트랜잭션, 스케치 클리어, 자동 스케일) |
 
 ### 주요 성과
 
 - **WASM CAD 엔진**: Rust로 작성된 고성능 CAD 커널
 - **Direct-First Architecture**: MCP 없이 Claude Code가 직접 WASM 호출 (< 1ms)
+- **Manifold 기하 엔진**: Boolean 연산, 기하 분석 (offset, area, convexHull)
+- **텍스트 렌더링**: opentype.js 기반 베지어 경로 변환 (한글/영문)
 - **React 기반 Viewer**: 3-패널 레이아웃, 다크/라이트 테마, 리사이즈 가능
 - **스케치 모드**: 펜/지우개 도구로 의도 표현, LLM과 협업
 - **Z-Order 관리**: drawOrder API로 레이어 순서 제어
 - **Dual Coordinate API**: local/world 좌표계 동시 지원
 - **Electron 앱**: Windows/Mac 네이티브 앱 배포
+- **LLM DX 개선**: 트랜잭션 롤백, 스케치 자동 클리어
 
 ## Viewer 사용법
 
@@ -229,15 +233,27 @@ selection.json / sketch.json
 **도형 (Primitives)**
 - `line`, `circle`, `rect`, `arc`, `polygon`, `bezier`
 - Style: `stroke`, `fill` (RGBA)
+- `drawText` - 텍스트를 베지어 경로로 변환 (opentype.js)
 
 **변환 (Transforms)**
 - `translate`, `rotate`, `scale`, `delete`
 - `set_pivot` - 회전/스케일 중심점 설정
 - Dual Coordinate: `{ space: 'world' | 'local' }`
+- `duplicate`, `mirror` - 엔티티 복제/대칭 복제
 
 **그룹화 (Groups)**
 - `create_group`, `add_to_group`
 - 계층적 변환 전파
+
+**Boolean 연산 (Manifold)**
+- `booleanUnion`, `booleanDifference`, `booleanIntersect`
+- 지원 도형: Circle, Rect, Polygon, Arc
+
+**기하 분석 (Manifold)**
+- `offsetPolygon` - 폴리곤 확장/축소
+- `getArea` - 면적 계산
+- `convexHull` - 볼록 껍질 생성
+- `decompose` - 분리된 컴포넌트 추출
 
 **Z-Order**
 - `drawOrder('entity', 'front' | 'back' | N | 'above:target')`
@@ -248,6 +264,33 @@ selection.json / sketch.json
 - `getEntity` - local/world 좌표 모두 반환
 - `getDrawOrder` - 레이어 순서 조회
 - `capture_viewport` - 뷰어 스크린샷
+- `fitToViewport` - 자동 스케일 계산
+
+**LLM DX 개선**
+- 트랜잭션 패턴: 실행 실패 시 자동 롤백
+- `--clear-sketch` 플래그: 스케치 자동 클리어
+- 추가 모드에서 기존 변수 참조 가능
+
+**도메인 구조** (describe <domain>으로 상세 확인)
+```
+📦 도형 생성
+  primitives  - 기본 도형 (circle, rect, line, arc, polygon, bezier)
+  text        - ⭐ 텍스트 렌더링 (drawText, getTextMetrics)
+
+🔄 도형 조작
+  transforms  - 변환 (translate, rotate, scale, pivot, duplicate, mirror)
+  boolean     - ⭐ 합치기/빼기 (union, difference, intersect)
+  geometry    - ⭐ 기하 분석 (offset, area, convexHull, decompose)
+
+🎨 스타일 & 구조
+  style       - 색상/z-order (fill, stroke, drawOrder)
+  group       - 그룹화 (createGroup, addToGroup)
+
+🔍 조회 & 내보내기
+  query       - 씬 조회 (getEntity, exists, fitToViewport)
+  export      - 내보내기 (capture, json, svg)
+  session     - 세션 관리 (reset, --clear-sketch)
+```
 
 **뷰어**
 - React 3-패널 레이아웃 (Layer Panel | Canvas | Info Panel)
@@ -260,9 +303,11 @@ selection.json / sketch.json
 
 | 문서 | 설명 |
 |------|------|
+| [CHANGELOG](CHANGELOG.md) | 버전별 변경사항 |
 | [PRD](docs/prd.md) | 제품 요구사항 정의 |
 | [Architecture](docs/architecture.md) | 기술 아키텍처 설계 |
 | [Epics](docs/epics.md) | 에픽 & 스토리 요약 |
+| [ADR-006](docs/adr/006-geometry-engine.md) | Manifold 기하 엔진 결정 |
 | [AI-Native CAD 제안서](docs/ai-native-cad-proposal.md) | 프로젝트 비전 |
 | [AX 설계 가이드](docs/ax-design-guide.md) | Agent eXperience 원칙 |
 
@@ -279,8 +324,9 @@ selection.json / sketch.json
 | Epic 5 | 3 stories | ✅ done |
 | Epic 6 | 6 stories | ✅ done |
 | Epic 7 | 17 stories | ✅ done |
+| Epic 8 | 4 stories | ✅ done |
 
-**총 54개 스토리 완료**
+**총 58개 스토리 완료**
 
 ## Contributing
 
@@ -296,4 +342,4 @@ MIT
 
 ---
 
-*작성: 2025-12-17 | 최종 업데이트: 2026-01-08*
+*작성: 2025-12-17 | 최종 업데이트: 2026-01-09*
