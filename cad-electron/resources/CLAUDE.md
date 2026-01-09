@@ -85,6 +85,19 @@ drawText(name, text, x, y, fontSize, options?)
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
+**사용 가능한 폰트** (fontPath 생략 시 시스템 한글 폰트 자동 검색):
+
+| 폰트 | fontPath | 용도 |
+|-----|----------|------|
+| 맑은 고딕 | 시스템 자동 | Windows 기본 |
+| Apple SD Gothic | 시스템 자동 | macOS 기본 |
+| 나눔고딕 | `fonts/NanumGothic.ttf` | 기본 고딕 |
+| 나눔명조 | `fonts/NanumMyeongjo.ttf` | 명조체 |
+| 나눔바른고딕 | `fonts/NanumBarunGothic.ttf` | 가독성 고딕 |
+| 마루부리 | `fonts/MaruBuri-Regular.ttf` | 세리프체 |
+| 나눔펜 | `fonts/NanumPen.ttf` | 손글씨 |
+| D2Coding | `fonts/D2Coding-Ver1.3.2-20180524.ttf` | 코딩용 |
+
 ### transforms - 변환
 ```javascript
 translate(name, dx, dy, options?)  // options: { space: 'world'|'local' }

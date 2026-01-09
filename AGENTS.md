@@ -99,6 +99,20 @@ drawText(name, text, x, y, fontSize, options?)
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
+**사용 가능한 폰트** (`cad-tools/fonts/`, fontPath 생략 시 나눔고딕 자동 사용):
+
+| 폰트 | fontPath | 용도 |
+|-----|----------|------|
+| 나눔고딕 | `fonts/NanumGothic.ttf` | 기본 고딕 (default) |
+| 나눔명조 | `fonts/NanumMyeongjo.ttf` | 명조체 |
+| 나눔바른고딕 | `fonts/NanumBarunGothic.ttf` | 가독성 고딕 |
+| 나눔스퀘어Neo | `fonts/NanumSquareNeo.ttf` | 모던 고딕 |
+| 마루부리 | `fonts/MaruBuri-Regular.ttf` | 세리프체 |
+| 나눔펜 | `fonts/NanumPen.ttf` | 손글씨 |
+| 나눔붓 | `fonts/NanumBrush.ttf` | 붓글씨 |
+| D2Coding | `fonts/D2Coding-Ver1.3.2-20180524.ttf` | 코딩용 고정폭 |
+| Noto Sans KR | `fonts/NotoSansKR-Regular.otf` | 구글 한글 (7종) |
+
 #### transforms - 변환
 ```javascript
 translate(name, dx, dy, options?)         // options: { space: 'world'|'local' }

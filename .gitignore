@@ -106,3 +106,5 @@ cad-electron/node_modules/
 
 # Sketch mode temp file (user drawing)
 viewer/sketch.json
+fonts/
+docs/*.zip

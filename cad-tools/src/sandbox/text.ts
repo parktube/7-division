@@ -20,8 +20,8 @@ const fontCache = new Map<string, opentype.Font>();
 
 // Default font paths to search
 const DEFAULT_FONT_PATHS = [
-  // Project local fonts
-  join(__dirname, '../../../fonts'),
+  // Project local fonts (cad-tools/fonts)
+  join(__dirname, '../../fonts'),
   // Linux system fonts
   '/usr/share/fonts/truetype',
   '/usr/share/fonts/opentype',
@@ -33,8 +33,20 @@ const DEFAULT_FONT_PATHS = [
   'C:\\Windows\\Fonts',
 ];
 
-// Common default font names
+// Common default font names (Korean fonts prioritized for CJK support)
 const DEFAULT_FONT_NAMES = [
+  // Korean fonts - Windows
+  'malgun.ttf',                    // 맑은 고딕 (Windows 기본)
+  'NanumGothic.ttf',               // 나눔고딕
+  'NanumBarunGothic.ttf',          // 나눔바른고딕
+  // Korean fonts - macOS
+  'AppleSDGothicNeo.ttc',          // Apple SD 산돌고딕 Neo
+  'AppleGothic.ttf',               // Apple Gothic
+  // Korean fonts - Linux
+  'noto/NotoSansCJK-Regular.ttc',  // Noto Sans CJK
+  'noto-cjk/NotoSansCJKkr-Regular.otf',
+  'nanum/NanumGothic.ttf',
+  // English fallback fonts
   'NotoSans-Regular.ttf',
   'DejaVuSans.ttf',
   'Arial.ttf',

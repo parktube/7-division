@@ -126,6 +126,20 @@ drawText(name, text, x, y, fontSize, options?)
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
+**사용 가능한 폰트** (`fonts/` 폴더, fontPath 생략 시 나눔고딕 자동 사용):
+
+| 폰트 | fontPath | 용도 |
+|-----|----------|------|
+| 나눔고딕 | `fonts/NanumGothic.ttf` | 기본 고딕 (default) |
+| 나눔명조 | `fonts/NanumMyeongjo.ttf` | 명조체 |
+| 나눔바른고딕 | `fonts/NanumBarunGothic.ttf` | 가독성 고딕 |
+| 나눔스퀘어Neo | `fonts/NanumSquareNeo.ttf` | 모던 고딕 |
+| 마루부리 | `fonts/MaruBuri-Regular.ttf` | 세리프체 |
+| 나눔펜 | `fonts/NanumPen.ttf` | 손글씨 |
+| 나눔붓 | `fonts/NanumBrush.ttf` | 붓글씨 |
+| D2Coding | `fonts/D2Coding-Ver1.3.2-20180524.ttf` | 코딩용 고정폭 |
+| Noto Sans KR | `fonts/NotoSansKR-Regular.otf` | 구글 한글 (7종) |
+
 ### transforms - 변환
 ```javascript
 translate(name, dx, dy, options?)  // options: { space: 'world'|'local' }
@@ -278,6 +292,18 @@ getDrawOrder('robot'); // 그룹 내부 순서
 - **좌표**: Y+ 위쪽, 원점 (0,0) 중심
 - **색상**: RGBA `[0~1, 0~1, 0~1, 0~1]` - 예: 빨강 `[1,0,0,1]`
 - **각도**: 라디안
+
+## Quick Start
+
+```bash
+# 1. 뷰어 서버 실행 (별도 터미널)
+cd viewer && npm run dev
+# → http://localhost:5173/
+
+# 2. CAD 명령어 실행 (다른 터미널)
+cd cad-tools
+run_cad_code main "drawCircle('c', 0, 0, 50)"
+```
 
 ## Development Rules
 
