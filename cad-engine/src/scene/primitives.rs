@@ -675,7 +675,7 @@ impl Scene {
             })?
         };
 
-        // 각 hole contour도 최소 3점 필요
+        // 각 hole contour 검증: 최소 3점 + NaN/Infinity 체크
         for (i, hole) in holes.iter().enumerate() {
             if hole.len() < 3 {
                 return Err(JsValue::from_str(&format!(
@@ -683,6 +683,15 @@ impl Scene {
                     i,
                     hole.len()
                 )));
+            }
+            // NaN/Infinity 체크
+            for (j, point) in hole.iter().enumerate() {
+                if !point[0].is_finite() || !point[1].is_finite() {
+                    return Err(JsValue::from_str(&format!(
+                        "[draw_polygon_with_holes] invalid_hole: hole[{}][{}] contains NaN or Infinity",
+                        i, j
+                    )));
+                }
             }
         }
 

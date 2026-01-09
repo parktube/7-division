@@ -745,7 +745,9 @@ export async function runCadCode(
         createSuccess = callCad('draw_line', { name: newName, points: mirroredPoints });
 
       } else {
-        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}'`);
+        // TODO: Arc, Bezier 미러링 지원 추가 예정 (기하학적으로 가능)
+        // TODO: Group 미러링은 자식 순회 방식으로 구현 필요
+        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}' (Arc, Bezier, Group not yet supported)`);
         return false;
       }
 

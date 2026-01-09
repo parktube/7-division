@@ -373,6 +373,10 @@ export class CADExecutor {
               typeof pt[0] !== 'number' || typeof pt[1] !== 'number') {
             return { success: false, error: `draw_polygon_with_holes: holes[${i}][${j}] must be [number, number]` };
           }
+          // NaN/Infinity 검증
+          if (!Number.isFinite(pt[0]) || !Number.isFinite(pt[1])) {
+            return { success: false, error: `draw_polygon_with_holes: holes[${i}][${j}] contains NaN or Infinity` };
+          }
           validatedContour.push([pt[0], pt[1]]);
         }
         holes.push(validatedContour);
