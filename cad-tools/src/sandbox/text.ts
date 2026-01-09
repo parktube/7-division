@@ -320,7 +320,7 @@ function calculateSignedArea(points: [number, number][]): number {
  * @param p0 Start point
  * @param p1 Control point
  * @param p2 End point
- * @param samples Number of samples (excluding start, including end)
+ * @param samples Number of samples (excluding start, including end). Must be >= 1.
  */
 function sampleQuadraticBezier(
   p0: [number, number],
@@ -328,9 +328,11 @@ function sampleQuadraticBezier(
   p2: [number, number],
   samples: number = 4
 ): [number, number][] {
+  // Ensure at least 1 sample (return endpoint)
+  const actualSamples = Math.max(1, Math.floor(samples));
   const points: [number, number][] = [];
-  for (let i = 1; i <= samples; i++) {
-    const t = i / samples;
+  for (let i = 1; i <= actualSamples; i++) {
+    const t = i / actualSamples;
     const mt = 1 - t;
     // B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
     const x = mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0];
@@ -346,7 +348,7 @@ function sampleQuadraticBezier(
  * @param p1 Control point 1
  * @param p2 Control point 2
  * @param p3 End point
- * @param samples Number of samples (excluding start, including end)
+ * @param samples Number of samples (excluding start, including end). Must be >= 1.
  */
 function sampleCubicBezier(
   p0: [number, number],
@@ -355,9 +357,11 @@ function sampleCubicBezier(
   p3: [number, number],
   samples: number = 4
 ): [number, number][] {
+  // Ensure at least 1 sample (return endpoint)
+  const actualSamples = Math.max(1, Math.floor(samples));
   const points: [number, number][] = [];
-  for (let i = 1; i <= samples; i++) {
-    const t = i / samples;
+  for (let i = 1; i <= actualSamples; i++) {
+    const t = i / actualSamples;
     const mt = 1 - t;
     // B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
     const x = mt*mt*mt*p0[0] + 3*mt*mt*t*p1[0] + 3*mt*t*t*p2[0] + t*t*t*p3[0];
@@ -516,6 +520,12 @@ function glyphPathToSvgSubpaths(
 
   // Determine holes by absolute area comparison
   // The subpath with largest absolute area is the outer contour, rest are holes
+  //
+  // LIMITATION: This heuristic assumes a single outer contour per glyph.
+  // Glyphs with multiple independent outer contours of similar size (e.g., ':' or '%')
+  // may have incorrect hole detection. For such cases, the smaller contour would be
+  // incorrectly marked as a hole. This works correctly for typical glyphs with
+  // one outer boundary and internal holes (e.g., 'o', 'e', 'a', '8', Korean 'ㅇ').
   if (rawSubpaths.length === 0) return [];
   if (rawSubpaths.length === 1) {
     // Single subpath = always outer (no hole)

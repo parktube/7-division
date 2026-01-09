@@ -123,7 +123,10 @@ function resolveSketchFile(): string {
     return resolve(process.env.CAD_SKETCH_PATH);
   }
   const repoSketch = resolve(__dirname, '../../viewer/sketch.json');
-  return repoSketch;
+  if (existsSync(repoSketch)) {
+    return repoSketch;
+  }
+  return resolve(defaultUserDataDir(), 'sketch.json');
 }
 const SKETCH_FILE = resolveSketchFile();
 
@@ -598,10 +601,24 @@ async function executeAndCommitScene(code: string): Promise<ExecutionResult> {
  * Provide user-friendly error message for common errors
  */
 function enhanceErrorMessage(error: string, isAppendMode: boolean): string {
-  // Variable redefinition error
-  if (error.includes('redefinition') || error.includes('already been declared')) {
-    const match = error.match(/identifier\s+'?(\w+)'?/i) || error.match(/variable\s+'?(\w+)'?/i);
-    const varName = match ? match[1] : 'unknown';
+  // Variable redefinition error - support multiple error message formats
+  if (error.includes('redefinition') || error.includes('already been declared') || error.includes('has already been declared')) {
+    // Try multiple patterns to extract variable name
+    const patterns = [
+      /identifier\s+'?(\w+)'?/i,
+      /variable\s+'?(\w+)'?/i,
+      /'(\w+)'\s+has already been declared/i,
+      /Identifier\s+'(\w+)'/i,
+      /(\w+)\s+is already defined/i,
+    ];
+    let varName = 'unknown';
+    for (const pattern of patterns) {
+      const match = error.match(pattern);
+      if (match) {
+        varName = match[1];
+        break;
+      }
+    }
     return `Variable '${varName}' already defined in existing code. ${isAppendMode ? 'In append mode, you can reference existing variables directly without re-declaring them.' : ''}`;
   }
   return error;
@@ -673,34 +690,20 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
   // We need to temporarily test as if the module was updated
   const mainCode = existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : '';
 
-  // Safer approach: backup existing module before writing
-  const backupPath = `${modulePath}.bak`;
-  if (existingModuleCode) {
-    writeFileSync(backupPath, existingModuleCode);
-  }
+  // Write module and test execution
+  writeFileSync(modulePath, combinedModuleCode);
+  const result = await executeAndCommitScene(mainCode);
 
-  let result: ExecutionResult;
-  try {
-    // Write module and test execution
-    writeFileSync(modulePath, combinedModuleCode);
-    result = await executeAndCommitScene(mainCode);
-
-    // Rollback module if execution failed
-    if (!result.success) {
-      try {
-        if (existingModuleCode) {
-          writeFileSync(modulePath, existingModuleCode);
-        } else {
-          unlinkSync(modulePath);
-        }
-      } catch (rollbackErr) {
-        logger.error(`[cli] Failed to rollback module ${target}: ${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}`);
+  // Rollback module if execution failed
+  if (!result.success) {
+    try {
+      if (existingModuleCode) {
+        writeFileSync(modulePath, existingModuleCode);
+      } else {
+        unlinkSync(modulePath);
       }
-    }
-  } finally {
-    // Clean up backup file
-    if (existsSync(backupPath)) {
-      unlinkSync(backupPath);
+    } catch (rollbackErr) {
+      logger.error(`[cli] Failed to rollback module ${target}: ${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}`);
     }
   }
 

@@ -1022,9 +1022,10 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
           callCad('scale', { name: newName, sx: transform.scale[0], sy: transform.scale[1], space: 'local' });
         }
-        // Rotate는 미러링 (X축 미러: -angle, Y축 미러: π - angle)
+        // Rotate는 미러링 (Arc 각도 미러링과 동일한 규칙 적용)
+        // X축 미러(좌우 반전): π - angle, Y축 미러(상하 반전): -angle
         if (transform.rotate && transform.rotate !== 0) {
-          const mirroredRotate = axis === 'x' ? -transform.rotate : Math.PI - transform.rotate;
+          const mirroredRotate = axis === 'x' ? Math.PI - transform.rotate : -transform.rotate;
           callCad('rotate', { name: newName, angle: mirroredRotate });
         }
       }
