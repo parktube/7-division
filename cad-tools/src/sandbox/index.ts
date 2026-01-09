@@ -680,7 +680,13 @@ export async function runCadCode(
 
     // mirror(sourceName, newName, axis): 엔티티를 축 기준으로 미러 복제
     // axis: 'x' (좌우 반전) | 'y' (상하 반전)
-    bindCadFunction(vm, 'mirror', (sourceName: string, newName: string, axis: 'x' | 'y') => {
+    // 내부 미러링 헬퍼 (재귀 호출용)
+    const mirrorInternal = (
+      sourceName: string,
+      newName: string,
+      axis: 'x' | 'y',
+      mirrorPoint: (x: number, y: number) => [number, number]
+    ): boolean => {
       const result = executor.exec('get_entity', { name: sourceName });
       if (!result.success || !result.data) {
         logger.error(`[sandbox] mirror: source entity '${sourceName}' not found`);
@@ -690,25 +696,6 @@ export async function runCadCode(
       const entity = JSON.parse(result.data);
       const entityType = entity.type;
       const localGeom = entity.local?.geometry;
-      const worldBounds = entity.world?.bounds;
-
-      if (!localGeom || !worldBounds) {
-        logger.error(`[sandbox] mirror: cannot read geometry from '${sourceName}'`);
-        return false;
-      }
-
-      // 미러 축 계산 (world bounds의 중심점)
-      const centerX = (worldBounds.min_x + worldBounds.max_x) / 2;
-      const centerY = (worldBounds.min_y + worldBounds.max_y) / 2;
-
-      // 좌표 미러 함수
-      const mirrorPoint = (x: number, y: number): [number, number] => {
-        if (axis === 'x') {
-          return [2 * centerX - x, y]; // X축 기준 반전
-        } else {
-          return [x, 2 * centerY - y]; // Y축 기준 반전
-        }
-      };
 
       let createSuccess = false;
 
@@ -824,9 +811,25 @@ export async function runCadCode(
         if (closed) path += ' Z';
         createSuccess = callCad('draw_bezier', { name: newName, path });
 
+      } else if (entityType === 'Group' && entity.children) {
+        // Group 미러링: 자식들을 재귀적으로 미러링 후 새 그룹 생성
+        const mirroredChildren: string[] = [];
+        for (let i = 0; i < entity.children.length; i++) {
+          const childName = entity.children[i];
+          const mirroredChildName = `${newName}_${i}`;
+          const childSuccess = mirrorInternal(childName, mirroredChildName, axis, mirrorPoint);
+          if (childSuccess) {
+            mirroredChildren.push(mirroredChildName);
+          } else {
+            logger.warn(`[sandbox] mirror: failed to mirror child '${childName}'`);
+          }
+        }
+        if (mirroredChildren.length > 0) {
+          createSuccess = callCad('create_group', { name: newName, children: mirroredChildren });
+        }
+
       } else {
-        // TODO: Group 미러링은 자식 순회 방식으로 구현 필요
-        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}' (Group not yet supported)`);
+        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}'`);
         return false;
       }
 
@@ -846,6 +849,38 @@ export async function runCadCode(
       }
 
       return true;
+    };
+
+    bindCadFunction(vm, 'mirror', (sourceName: string, newName: string, axis: 'x' | 'y') => {
+      // 소스 엔티티의 world bounds로 미러 축 계산
+      const result = executor.exec('get_entity', { name: sourceName });
+      if (!result.success || !result.data) {
+        logger.error(`[sandbox] mirror: source entity '${sourceName}' not found`);
+        return false;
+      }
+
+      const entity = JSON.parse(result.data);
+      const worldBounds = entity.world?.bounds;
+
+      if (!worldBounds) {
+        logger.error(`[sandbox] mirror: cannot read world bounds from '${sourceName}'`);
+        return false;
+      }
+
+      // 미러 축 계산 (world bounds의 중심점)
+      const centerX = (worldBounds.min_x + worldBounds.max_x) / 2;
+      const centerY = (worldBounds.min_y + worldBounds.max_y) / 2;
+
+      // 좌표 미러 함수
+      const mirrorPoint = (x: number, y: number): [number, number] => {
+        if (axis === 'x') {
+          return [2 * centerX - x, y]; // X축 기준 반전
+        } else {
+          return [x, 2 * centerY - y]; // Y축 기준 반전
+        }
+      };
+
+      return mirrorInternal(sourceName, newName, axis, mirrorPoint);
     });
 
     // === World Transform API (Phase 2) ===
