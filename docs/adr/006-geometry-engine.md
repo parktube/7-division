@@ -623,6 +623,172 @@ async function drawText(name: string, text: string, x: number, y: number, fontSi
 
 ---
 
+---
+
+## Implementation Status (2026-01-09)
+
+### PR #27: Manifold 통합 + 텍스트 렌더링 완료
+
+#### Manifold 2D Boolean 연산
+
+**구현 위치**: `cad-tools/src/sandbox/manifold.ts`
+
+```typescript
+// 지원 연산
+booleanUnion(nameA, nameB, resultName)      // 합집합
+booleanDifference(nameA, nameB, resultName) // 차집합 (A - B)
+booleanIntersect(nameA, nameB, resultName)  // 교집합
+
+// 기하 분석
+offsetPolygon(name, delta, resultName, joinType?)  // 확장/축소
+getArea(name)                                       // 면적 계산
+convexHull(name, resultName)                        // 볼록 껍질
+decompose(name, prefix)                             // 분리 컴포넌트 추출
+```
+
+**기술 세부사항**:
+- Manifold WASM ~3MB, lazy loading (Boolean 연산 시에만 로드)
+- CrossSection API 기반 2D 연산
+- Polygon → CrossSection → Polygon 변환 래퍼
+- 메모리 관리: `cs.delete()` 자동 호출
+
+**지원 도형**:
+| 도형 | Boolean | 면적 | Offset | 비고 |
+|------|---------|------|--------|------|
+| Circle | ✅ | ✅ | ✅ | 32분할 폴리곤 변환 |
+| Rect | ✅ | ✅ | ✅ | 폴리곤 변환 |
+| Polygon | ✅ | ✅ | ✅ | 네이티브 지원 |
+| Arc | ✅ | ✅ | ✅ | 폴리곤 변환 |
+| Line | ❌ | ❌ | ❌ | 열린 도형 |
+| Bezier | ❌ | ❌ | ❌ | 폴리곤 근사 필요 |
+
+**Holes 지원**:
+- Boolean 결과에 holes 자동 추출
+- `draw_polygon_with_holes` API로 저장
+- Viewer에서 evenodd fill rule 적용
+
+---
+
+#### 텍스트 렌더링
+
+**구현 위치**: `cad-tools/src/sandbox/text.ts`
+
+```typescript
+// API
+drawText(name, text, x, y, fontSize, options?)
+// options: { fontPath?, align?: 'left'|'center'|'right', color?: [r,g,b,a] }
+
+getTextMetrics(text, fontSize, fontPath?)
+// returns: { width, height }
+```
+
+**기술 세부사항**:
+- opentype.js 기반 폰트 파싱
+- 글리프 → 베지어 경로 변환
+- 다중 서브패스 처리: 각 글자를 개별 Bezier로 생성 후 그룹화
+- 시스템 폰트 자동 검색 (Linux/macOS/Windows)
+
+**폰트 검색 순서**:
+1. `options.fontPath` 지정 경로
+2. 프로젝트 `fonts/` 디렉토리
+3. 시스템 폰트 디렉토리
+
+**서브패스 버그 해결**:
+- 문제: `e`, `a` 등 내부 구멍 있는 글자에서 스파이크 발생
+- 원인: 여러 서브패스를 하나의 베지어로 연결 시 불필요한 선 생성
+- 해결: 각 글자를 개별 Bezier 엔티티로 생성 후 그룹화
+
+---
+
+#### Mirror/Duplicate 기능 확장
+
+**구현 위치**: `cad-tools/src/sandbox/index.ts`
+
+```typescript
+// Duplicate - 모든 도형 지원
+duplicate(sourceName, newName)
+
+// Mirror - 모든 도형 + 그룹 지원
+mirror(sourceName, newName, axis)  // axis: 'x' | 'y'
+```
+
+**Mirror 지원 도형**:
+| 도형 | 지원 | 특수 처리 |
+|------|------|----------|
+| Circle | ✅ | 중심점 반전 |
+| Rect | ✅ | 중심점 반전 |
+| Polygon | ✅ | 모든 점 + holes 반전 |
+| Line | ✅ | 모든 점 반전 |
+| Arc | ✅ | 중심점 + 각도 변환 (π-angle / -angle) |
+| Bezier | ✅ | 시작점 + 제어점 + 끝점 반전 |
+| Group | ✅ | 재귀적 자식 미러링 |
+
+**Duplicate Holes 버그 해결**:
+- 문제: `duplicate()` 시 Polygon의 holes가 복사되지 않음
+- 해결: holes 존재 시 `draw_polygon_with_holes` 호출
+
+---
+
+#### Viewer 렌더링 개선
+
+**구현 위치**: `viewer/src/utils/renderEntity.ts`
+
+**변경사항**:
+1. Polygon holes 렌더링 지원 (evenodd fill rule)
+2. 조건부 evenodd 적용 (holes 있을 때만, 성능 최적화)
+3. 렌더 함수 path 생성 여부 반환 (early return 버그 방지)
+
+---
+
+### 입력 검증 강화
+
+**Rust (cad-engine/src/scene/primitives.rs)**:
+```rust
+// holes 좌표 NaN/Infinity 검증
+for (i, hole) in holes.iter().enumerate() {
+    for (j, point) in hole.iter().enumerate() {
+        if !point[0].is_finite() || !point[1].is_finite() {
+            return Err("invalid_hole: contains NaN or Infinity");
+        }
+    }
+}
+```
+
+**TypeScript (cad-tools/src/executor.ts)**:
+```typescript
+// holes 좌표 Number.isFinite 검증
+if (!Number.isFinite(pt[0]) || !Number.isFinite(pt[1])) {
+    return { success: false, error: "contains NaN or Infinity" };
+}
+
+// drawText 입력 검증
+if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize)) {
+    return false;
+}
+```
+
+---
+
+### 성능 최적화
+
+1. **Manifold Lazy Loading**: Boolean 연산 사용 시에만 WASM 로드
+2. **정규식 최적화**: `MANIFOLD_OPERATIONS.some(op => ...)` → 단일 정규식 패턴
+3. **evenodd 조건부 적용**: holes 없으면 기본 fill 사용
+
+---
+
+### Migration Path 업데이트
+
+```
+Phase 1 (완료): 순수 Rust 구현 - 기본 도형
+Phase 2 (완료): Manifold 통합 - 2D CrossSection ✅
+Phase 3 (완료): 텍스트 렌더링 - opentype.js ✅
+Phase 4 (향후): Manifold 3D CSG 활성화
+Phase 5 (향후): ttf-parser Rust 통합 (선택적 최적화)
+```
+
+---
+
 ## Changelog
 
 | Date | Author | Change |
@@ -634,3 +800,6 @@ async function drawText(name: string, text: string, x: number, y: number, fontSi
 | 2026-01-08 | Claude | Extended Research 섹션 추가, 종합 비교표 확장 |
 | 2026-01-08 | Claude | **Decision: Manifold Only 채택, iShape 제거** |
 | 2026-01-08 | Claude | 텍스트 렌더링 통합 계획 추가 (ttf-parser/opentype.js) |
+| 2026-01-09 | Claude | **Implementation Status 추가** - PR #27 구현 완료 기록 |
+| 2026-01-09 | Claude | Manifold Boolean, 텍스트 렌더링, Mirror/Duplicate 구현 상세 |
+| 2026-01-09 | Claude | 입력 검증 강화, 성능 최적화, Migration Path 업데이트 |
