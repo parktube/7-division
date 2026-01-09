@@ -26,6 +26,13 @@ import { convertText, type TextOptions } from './text.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Manifold lazy 초기화: Boolean/기하 연산 사용 시에만 WASM 로드
+const MANIFOLD_OPERATIONS = [
+  'booleanUnion', 'booleanDifference', 'booleanIntersect',
+  'offsetPolygon', 'getArea', 'convexHull', 'decompose'
+] as const;
+const MANIFOLD_PATTERN = new RegExp(`\\b(${MANIFOLD_OPERATIONS.join('|')})\\b`);
+
 // 수정 명령어 목록 (생성 제외)
 const MODIFY_COMMANDS = new Set([
   'translate', 'rotate', 'scale', 'set_pivot',
@@ -370,11 +377,6 @@ export async function runCadCode(
   const lockedEntities = loadLockedEntities();
 
   // Manifold lazy 초기화: Boolean/기하 연산 사용 시에만 WASM 로드
-  const MANIFOLD_OPERATIONS = [
-    'booleanUnion', 'booleanDifference', 'booleanIntersect',
-    'offsetPolygon', 'getArea', 'convexHull', 'decompose'
-  ];
-  const MANIFOLD_PATTERN = new RegExp(`\\b(${MANIFOLD_OPERATIONS.join('|')})\\b`);
   const needsManifold = MANIFOLD_PATTERN.test(code);
   if (needsManifold) {
     await getManifold();  // Singleton이므로 한 번만 로드됨
@@ -503,6 +505,11 @@ export async function runCadCode(
       fontSize: number,
       fontPath?: string
     ) => {
+      // fontSize 검증
+      if (!Number.isFinite(fontSize) || fontSize <= 0) {
+        logger.error(`[sandbox] getTextMetrics: fontSize must be a positive finite number, got ${fontSize}`);
+        return null;
+      }
       const result = convertText(text, 0, 0, fontSize, { fontPath });
       if (!result) {
         return null;
@@ -726,7 +733,13 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
               const { start, segments, closed } = childGeom.Bezier;
               let p = `M ${start[0]},${start[1]}`;
               for (const s of segments) {
-                if (s.length === 3) p += ` C ${s[0][0]},${s[0][1]} ${s[1][0]},${s[1][1]} ${s[2][0]},${s[2][1]}`;
+                if (s.length === 3) {
+                  // Cubic bezier: 2 control points + end point
+                  p += ` C ${s[0][0]},${s[0][1]} ${s[1][0]},${s[1][1]} ${s[2][0]},${s[2][1]}`;
+                } else if (s.length === 2) {
+                  // Quadratic bezier: 1 control point + end point
+                  p += ` Q ${s[0][0]},${s[0][1]} ${s[1][0]},${s[1][1]}`;
+                }
               }
               if (closed) p += ' Z';
               childSuccess = callCad('draw_bezier', { name: dupChildName, path: p });
@@ -913,6 +926,7 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         // 세그먼트 미러링
         for (const seg of segments) {
           if (seg.length === 3) {
+            // Cubic bezier: 2 control points + end point
             const [cp1, cp2, end] = seg;
             const worldCp1 = [cp1[0] + tx, cp1[1] + ty];
             const worldCp2 = [cp2[0] + tx, cp2[1] + ty];
@@ -921,6 +935,14 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
             const [mcp2x, mcp2y] = mirrorPoint(worldCp2[0], worldCp2[1]);
             const [mex, mey] = mirrorPoint(worldEnd[0], worldEnd[1]);
             path += ` C ${mcp1x},${mcp1y} ${mcp2x},${mcp2y} ${mex},${mey}`;
+          } else if (seg.length === 2) {
+            // Quadratic bezier: 1 control point + end point
+            const [cp, end] = seg;
+            const worldCp = [cp[0] + tx, cp[1] + ty];
+            const worldEnd = [end[0] + tx, end[1] + ty];
+            const [mcpx, mcpy] = mirrorPoint(worldCp[0], worldCp[1]);
+            const [mex, mey] = mirrorPoint(worldEnd[0], worldEnd[1]);
+            path += ` Q ${mcpx},${mcpy} ${mex},${mey}`;
           }
         }
         if (closed) path += ' Z';

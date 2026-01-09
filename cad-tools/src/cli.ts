@@ -573,10 +573,10 @@ function handleRunCadCodeRead(target: string): RunCadCodeResult {
 }
 
 /**
- * Execute code without saving to file (for transaction testing)
+ * Execute code and commit scene on success (transactional execution)
  * Returns result with entities created
  */
-async function testExecuteCode(code: string): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
+async function executeAndCommitScene(code: string): Promise<{ success: boolean; error?: string; entities: string[]; warnings?: string[] }> {
   const executor = CADExecutor.create('cad-scene');
   let result: { success: boolean; error?: string; entitiesCreated?: string[]; warnings?: string[] } = { success: true };
 
@@ -634,7 +634,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
     const combinedCode = isAppendMode ? existingCode + '\n' + codeToWrite : codeToWrite;
 
     // Story 8.1 + 8.4: Test execution BEFORE writing file (transaction pattern)
-    const result = await testExecuteCode(combinedCode);
+    const result = await executeAndCommitScene(combinedCode);
 
     // Only save file if execution succeeded
     if (result.success) {
@@ -691,7 +691,7 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
   writeFileSync(modulePath, combinedModuleCode);
 
   // Test execution
-  const result = await testExecuteCode(mainCode);
+  const result = await executeAndCommitScene(mainCode);
 
   // Rollback module if execution failed
   if (!result.success) {

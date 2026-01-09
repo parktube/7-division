@@ -43,7 +43,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - 코드 실행 후 또는 캡처 후 sketch.json 자동 초기화
 - **자동 스케일 계산**: `fitToViewport(width, height, options?)`
   - 실제 치수를 뷰포트에 맞는 스케일로 변환
-  - 복사 가능한 코드 스니펫 반환
+  - 반환: `{ scale, offsetX, offsetY, code }` (code는 복사 가능한 scale() 호출문)
 
 #### 도메인 구조 재설계 (AX 개선)
 - **sandbox 도메인 분리**: 기능별 독립 도메인으로 Progressive Disclosure 강화
@@ -68,9 +68,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Documentation
 
-- ADR-006: Manifold 기하 엔진 구현 상태 추가
+- [ADR-006](docs/adr/006-geometry-engine.md): Manifold 기하 엔진 구현 상태 추가
 - Epic 8: LLM DX 개선 스토리 추가
-- CLAUDE.md: 새 API 문서화 (fitToViewport, --clear-sketch, 트랜잭션)
+- [CLAUDE.md](CLAUDE.md): 새 API 문서화 (fitToViewport, --clear-sketch, 트랜잭션)
 - 데모 스크린샷: Manifold Boolean, Polygon holes
 
 ---
