@@ -650,17 +650,17 @@ export async function runCadCode(
         return false;
       }
 
-      // 3. Copy transform
+      // 3. Copy transform (use space: 'local' since these are local transform values)
       const transform = entity.local?.transform;
       if (transform) {
         if (transform.translate && (transform.translate[0] !== 0 || transform.translate[1] !== 0)) {
-          callCad('translate', { name: newName, dx: transform.translate[0], dy: transform.translate[1] });
+          callCad('translate', { name: newName, dx: transform.translate[0], dy: transform.translate[1], space: 'local' });
         }
         if (transform.rotate && transform.rotate !== 0) {
           callCad('rotate', { name: newName, angle: transform.rotate });
         }
         if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
-          callCad('scale', { name: newName, sx: transform.scale[0], sy: transform.scale[1] });
+          callCad('scale', { name: newName, sx: transform.scale[0], sy: transform.scale[1], space: 'local' });
         }
       }
 
