@@ -374,7 +374,8 @@ export async function runCadCode(
     'booleanUnion', 'booleanDifference', 'booleanIntersect',
     'offsetPolygon', 'getArea', 'convexHull', 'decompose'
   ];
-  const needsManifold = MANIFOLD_OPERATIONS.some(op => new RegExp(`\\b${op}\\b`).test(code));
+  const MANIFOLD_PATTERN = new RegExp(`\\b(${MANIFOLD_OPERATIONS.join('|')})\\b`);
+  const needsManifold = MANIFOLD_PATTERN.test(code);
   if (needsManifold) {
     await getManifold();  // Singleton이므로 한 번만 로드됨
   }
