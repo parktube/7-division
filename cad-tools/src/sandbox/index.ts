@@ -449,6 +449,16 @@ export async function runCadCode(
       fontSize: number,
       options?: TextOptions
     ) => {
+      // NaN/Infinity 검증
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize)) {
+        logger.error(`[sandbox] drawText: x, y, fontSize must be finite numbers`);
+        return false;
+      }
+      if (fontSize <= 0) {
+        logger.error(`[sandbox] drawText: fontSize must be positive`);
+        return false;
+      }
+
       const result = convertText(text, x, y, fontSize, options || {});
       if (!result) {
         logger.error(`[sandbox] drawText: failed to convert text '${text}'`);
@@ -729,7 +739,24 @@ export async function runCadCode(
           const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
           mirroredPoints.push(mx, my);
         }
-        createSuccess = callCad('draw_polygon', { name: newName, points: mirroredPoints });
+
+        // holes 미러링 지원
+        const holes = localGeom.Polygon.holes;
+        if (holes && holes.length > 0) {
+          const mirroredHoles: [number, number][][] = [];
+          for (const hole of holes) {
+            const mirroredHole: [number, number][] = [];
+            for (const pt of hole) {
+              const worldPt = [pt[0] + tx, pt[1] + ty];
+              const [mx, my] = mirrorPoint(worldPt[0], worldPt[1]);
+              mirroredHole.push([mx, my]);
+            }
+            mirroredHoles.push(mirroredHole);
+          }
+          createSuccess = callCad('draw_polygon_with_holes', { name: newName, points: mirroredPoints, holes: mirroredHoles });
+        } else {
+          createSuccess = callCad('draw_polygon', { name: newName, points: mirroredPoints });
+        }
 
       } else if (entityType === 'Line' && localGeom.Line) {
         const transform = entity.local?.transform;
