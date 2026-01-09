@@ -449,7 +449,7 @@ function copyEntityTransform(
     callCad('translate', { name: targetName, dx: transform.translate[0], dy: transform.translate[1], space: 'local' });
   }
   if (transform.rotate && transform.rotate !== 0) {
-    callCad('rotate', { name: targetName, angle: transform.rotate });
+    callCad('rotate', { name: targetName, angle: transform.rotate, angle_unit: 'radian' });
   }
   if (transform.scale && (transform.scale[0] !== 1 || transform.scale[1] !== 1)) {
     callCad('scale', { name: targetName, sx: transform.scale[0], sy: transform.scale[1], space: 'local' });
@@ -527,7 +527,7 @@ function createEntityFromGeometry(
   if (entityType === 'Arc' && localGeom.Arc) {
     const { center, radius, start_angle, end_angle } = localGeom.Arc;
     const [cx, cy] = transformPoint(center[0] + tx, center[1] + ty);
-    return callCad('draw_arc', { name, cx, cy, radius, start_angle, end_angle });
+    return callCad('draw_arc', { name, cx, cy, radius, start_angle, end_angle, angle_unit: 'radian' });
   }
 
   if (entityType === 'Bezier' && localGeom.Bezier) {
@@ -866,19 +866,19 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
 
       let createSuccess = false;
 
-      if (entityType === 'Group' && entity.children) {
+      if (entityType === 'Group') {
         // Group 복제: 자식들을 재귀적으로 복제 후 새 그룹 생성
+        const children = entity.children || [];
         const duplicatedChildren: string[] = [];
-        for (let i = 0; i < entity.children.length; i++) {
-          const childName = entity.children[i];
+        for (let i = 0; i < children.length; i++) {
+          const childName = children[i];
           const dupChildName = `${newName}_${i}`;
           if (duplicateInternal(childName, dupChildName)) {
             duplicatedChildren.push(dupChildName);
           }
         }
-        if (duplicatedChildren.length > 0) {
-          createSuccess = callCad('create_group', { name: newName, children: duplicatedChildren });
-        }
+        // 빈 그룹도 허용 (원본이 빈 그룹이면 복제도 빈 그룹)
+        createSuccess = callCad('create_group', { name: newName, children: duplicatedChildren });
       } else {
         // 일반 엔티티: 헬퍼 함수 사용 (transform 없이 로컬 좌표 그대로)
         createSuccess = createEntityFromGeometry(callCad, newName, entityType, localGeom);
@@ -944,11 +944,12 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
           name: newName, cx, cy, radius, start_angle: newStart, end_angle: newEnd, angle_unit: 'radian'
         });
 
-      } else if (entityType === 'Group' && entity.children) {
+      } else if (entityType === 'Group') {
         // Group 미러링: 자식들을 재귀적으로 미러링 후 새 그룹 생성
+        const children = entity.children || [];
         const mirroredChildren: string[] = [];
-        for (let i = 0; i < entity.children.length; i++) {
-          const childName = entity.children[i];
+        for (let i = 0; i < children.length; i++) {
+          const childName = children[i];
           const mirroredChildName = `${newName}_${i}`;
           if (mirrorInternal(childName, mirroredChildName, axis, mirrorPointFn)) {
             mirroredChildren.push(mirroredChildName);
@@ -956,9 +957,8 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
             logger.warn(`[sandbox] mirror: failed to mirror child '${childName}'`);
           }
         }
-        if (mirroredChildren.length > 0) {
-          createSuccess = callCad('create_group', { name: newName, children: mirroredChildren });
-        }
+        // 빈 그룹도 허용 (원본이 빈 그룹이면 미러도 빈 그룹)
+        createSuccess = callCad('create_group', { name: newName, children: mirroredChildren });
 
       } else if (localGeom) {
         // Circle, Rect, Polygon, Line, Bezier: 헬퍼 함수 사용

@@ -687,10 +687,14 @@ async function handleRunCadCodeWrite(target: string, newCode: string): Promise<R
 
     // Rollback module if execution failed
     if (!result.success) {
-      if (existingModuleCode) {
-        writeFileSync(modulePath, existingModuleCode);
-      } else {
-        unlinkSync(modulePath);
+      try {
+        if (existingModuleCode) {
+          writeFileSync(modulePath, existingModuleCode);
+        } else {
+          unlinkSync(modulePath);
+        }
+      } catch (rollbackErr) {
+        logger.error(`[cli] Failed to rollback module ${target}: ${rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr)}`);
       }
     }
   } finally {
@@ -1227,8 +1231,11 @@ Scene file:
             result.output = JSON.stringify(parsed, null, 2);
           }
         } catch (e) {
-          // JSON parse errors are expected for non-JSON output, log for debugging only
-          if (!(e instanceof SyntaxError)) {
+          // SyntaxError = JSON.parse failed (expected for non-JSON output) → ignore silently
+          // Other errors = unexpected → log for debugging
+          if (e instanceof SyntaxError) {
+            // Expected: result.output is not valid JSON, skip clearSketch
+          } else {
             logger.debug(`[cli] Unexpected error in clearSketch: ${e}`);
           }
         }
