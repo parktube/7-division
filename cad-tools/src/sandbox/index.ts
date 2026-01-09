@@ -775,10 +775,58 @@ export async function runCadCode(
         }
         createSuccess = callCad('draw_line', { name: newName, points: mirroredPoints });
 
+      } else if (entityType === 'Arc' && localGeom.Arc) {
+        const { center, radius, start_angle, end_angle } = localGeom.Arc;
+        const transform = entity.local?.transform;
+        const worldCenter = [
+          center[0] + (transform?.translate?.[0] || 0),
+          center[1] + (transform?.translate?.[1] || 0)
+        ];
+        const [mx, my] = mirrorPoint(worldCenter[0], worldCenter[1]);
+
+        // 각도 미러링: axis='x'(좌우) → π-angle, axis='y'(상하) → -angle, start/end 교환
+        let newStart: number, newEnd: number;
+        if (axis === 'x') {
+          newStart = Math.PI - end_angle;
+          newEnd = Math.PI - start_angle;
+        } else {
+          newStart = -end_angle;
+          newEnd = -start_angle;
+        }
+        createSuccess = callCad('draw_arc', {
+          name: newName, cx: mx, cy: my, radius, start_angle: newStart, end_angle: newEnd
+        });
+
+      } else if (entityType === 'Bezier' && localGeom.Bezier) {
+        const { start, segments, closed } = localGeom.Bezier;
+        const transform = entity.local?.transform;
+        const tx = transform?.translate?.[0] || 0;
+        const ty = transform?.translate?.[1] || 0;
+
+        // 시작점 미러링
+        const worldStart = [start[0] + tx, start[1] + ty];
+        const [msx, msy] = mirrorPoint(worldStart[0], worldStart[1]);
+        let path = `M ${msx},${msy}`;
+
+        // 세그먼트 미러링
+        for (const seg of segments) {
+          if (seg.length === 3) {
+            const [cp1, cp2, end] = seg;
+            const worldCp1 = [cp1[0] + tx, cp1[1] + ty];
+            const worldCp2 = [cp2[0] + tx, cp2[1] + ty];
+            const worldEnd = [end[0] + tx, end[1] + ty];
+            const [mcp1x, mcp1y] = mirrorPoint(worldCp1[0], worldCp1[1]);
+            const [mcp2x, mcp2y] = mirrorPoint(worldCp2[0], worldCp2[1]);
+            const [mex, mey] = mirrorPoint(worldEnd[0], worldEnd[1]);
+            path += ` C ${mcp1x},${mcp1y} ${mcp2x},${mcp2y} ${mex},${mey}`;
+          }
+        }
+        if (closed) path += ' Z';
+        createSuccess = callCad('draw_bezier', { name: newName, path });
+
       } else {
-        // TODO: Arc, Bezier 미러링 지원 추가 예정 (기하학적으로 가능)
         // TODO: Group 미러링은 자식 순회 방식으로 구현 필요
-        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}' (Arc, Bezier, Group not yet supported)`);
+        logger.error(`[sandbox] mirror: unsupported entity type '${entityType}' (Group not yet supported)`);
         return false;
       }
 
