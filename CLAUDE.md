@@ -122,7 +122,7 @@ drawBezier(name, path)  // SVG path: 'M x,y C cp1 cp2 end Z'
 ### text - 텍스트 렌더링
 ```javascript
 drawText(name, text, x, y, fontSize, options?)
-// options: { fontPath?, align?: 'left'|'center'|'right', color?: [r,g,b,a] }
+// y는 텍스트 기준선(baseline). options: { fontPath?, align?: 'left'|'center'|'right', color?: [r,g,b,a] }
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
