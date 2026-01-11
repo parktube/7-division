@@ -96,33 +96,185 @@ export function polygonToCrossSection(
 }
 
 /**
+ * 점이 폴리곤 내부에 있는지 확인 (ray casting algorithm)
+ */
+function pointInContour(
+  point: [number, number],
+  contour: [number, number][]
+): boolean {
+  const [px, py] = point;
+  let inside = false;
+
+  for (let i = 0, j = contour.length - 1; i < contour.length; j = i++) {
+    const [xi, yi] = contour[i];
+    const [xj, yj] = contour[j];
+
+    if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+/**
+ * 컨투어의 signed area 계산 (Shoelace formula)
+ * CCW = positive, CW = negative
+ */
+function signedArea(contour: [number, number][]): number {
+  let area = 0;
+  for (let i = 0; i < contour.length; i++) {
+    const j = (i + 1) % contour.length;
+    area += contour[i][0] * contour[j][1];
+    area -= contour[j][0] * contour[i][1];
+  }
+  return area / 2;
+}
+
+/**
+ * 컨투어 A가 컨투어 B에 완전히 포함되는지 확인
+ * (A의 첫 번째 점이 B 내부에 있으면 포함된 것으로 간주)
+ */
+function contourInsideContour(
+  inner: [number, number][],
+  outer: [number, number][]
+): boolean {
+  if (inner.length === 0) return false;
+  return pointInContour(inner[0], outer);
+}
+
+/**
  * CrossSection을 폴리곤으로 변환
  *
  * manifold-3d의 toPolygons()는 SimplePolygon[] 반환
  * (SimplePolygon = Vec2[] = [number, number][])
- * 방어적으로 반환값이 배열의 배열인지 확인
+ *
+ * 분리된 컨투어(disjoint polygons)를 올바르게 처리:
+ * - 포함 관계에 따라 outer/hole 분류
+ * - 독립된 outer가 여러 개면 가장 큰 것만 반환 + 경고
  */
 export function crossSectionToPolygon(cs: CrossSection): Polygon2D {
   const result = cs.toPolygons();
 
-  // 방어적 타입 정규화: 결과가 다중 contour 배열인지 확인
+  // 방어적 타입 정규화
   if (!Array.isArray(result) || result.length === 0) {
     return [];
   }
 
-  // 첫 번째 요소가 좌표쌍 배열인지 확인 (정상 케이스)
+  // 결과를 Polygon2D 형태로 변환
+  let contours: [number, number][][] = [];
+
   const first = result[0];
   if (Array.isArray(first) && first.length > 0 && Array.isArray(first[0])) {
-    // [[x,y], [x,y], ...] 형태 = 정상적인 contour 배열
+    contours = result as [number, number][][];
+  } else if (Array.isArray(first) && typeof first[0] === 'number') {
+    contours = [result as unknown as [number, number][]];
+  } else {
     return result as Polygon2D;
   }
 
-  // 단일 contour인 경우 배열로 감싸기 (방어적 처리)
-  if (Array.isArray(first) && typeof first[0] === 'number') {
-    return [result as unknown as [number, number][]];
+  // 단일 컨투어면 바로 반환
+  if (contours.length <= 1) {
+    return contours;
   }
 
-  return result as Polygon2D;
+  // 각 컨투어의 면적 계산 및 정렬 (큰 것부터)
+  const contoursWithArea = contours.map((c, idx) => ({
+    contour: c,
+    area: Math.abs(signedArea(c)),
+    idx,
+  }));
+  contoursWithArea.sort((a, b) => b.area - a.area);
+
+  // 포함 관계 분석: 각 컨투어가 어느 컨투어에 포함되는지 확인
+  const parentIdx: (number | null)[] = new Array(contours.length).fill(null);
+
+  for (let i = 0; i < contoursWithArea.length; i++) {
+    const inner = contoursWithArea[i];
+    // 자신보다 큰 컨투어 중 포함하는 가장 작은 것 찾기
+    for (let j = i - 1; j >= 0; j--) {
+      const outer = contoursWithArea[j];
+      if (contourInsideContour(inner.contour, outer.contour)) {
+        parentIdx[inner.idx] = outer.idx;
+        break;
+      }
+    }
+  }
+
+  // outer 컨투어들 식별 (부모가 없거나 부모의 부모가 있는 경우 = 중첩 홀)
+  const isOuter: boolean[] = new Array(contours.length).fill(false);
+  for (let i = 0; i < contours.length; i++) {
+    const parent = parentIdx[i];
+    if (parent === null) {
+      // 부모 없음 = outer
+      isOuter[i] = true;
+    } else {
+      const grandparent = parentIdx[parent];
+      if (grandparent !== null) {
+        // 부모도 hole 안에 있음 = 중첩된 outer (도넛 안의 작은 원)
+        isOuter[i] = true;
+      }
+    }
+  }
+
+  // 독립된 outer 개수 확인
+  const outerIndices = isOuter
+    .map((is, idx) => (is ? idx : -1))
+    .filter((idx) => idx >= 0);
+
+  if (outerIndices.length > 1) {
+    // 분리된 폴리곤 감지 - 경고 출력
+    logger.warn(
+      `[manifold] Disjoint polygons detected: ${outerIndices.length} separate outer contours. ` +
+        `Use decompose() to handle them separately. Returning largest polygon only.`
+    );
+  }
+
+  // 가장 큰 outer와 그에 속하는 hole들만 반환
+  const primaryOuterIdx = contoursWithArea[0].idx;
+  const resultPolygon: Polygon2D = [contours[primaryOuterIdx]];
+
+  // 이 outer에 직접 속하는 hole들 추가
+  for (let i = 0; i < contours.length; i++) {
+    if (parentIdx[i] === primaryOuterIdx && !isOuter[i]) {
+      resultPolygon.push(contours[i]);
+    }
+  }
+
+  return resultPolygon;
+}
+
+/**
+ * CrossSection을 여러 개의 분리된 폴리곤으로 변환
+ * decompose()를 사용하여 분리된 컴포넌트들을 각각 별도 폴리곤으로 반환
+ *
+ * @returns 분리된 폴리곤 배열 (각각이 outer + holes 구조)
+ */
+export function crossSectionToPolygons(cs: CrossSection): Polygon2D[] {
+  // decompose()로 분리된 컴포넌트 추출
+  const components = cs.decompose();
+
+  if (components.length === 0) {
+    return [];
+  }
+
+  const result: Polygon2D[] = [];
+
+  try {
+    for (const comp of components) {
+      const polygon = crossSectionToPolygon(comp);
+      if (polygon.length > 0 && polygon[0].length > 0) {
+        result.push(polygon);
+      }
+    }
+  } finally {
+    // Cleanup all WASM objects
+    for (const comp of components) {
+      comp.delete();
+    }
+  }
+
+  return result;
 }
 
 /**

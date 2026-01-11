@@ -18,6 +18,7 @@ import {
   type BooleanOp,
   polygonToCrossSection,
   crossSectionToPolygon,
+  crossSectionToPolygons,
   JOIN_TYPE_MAP,
 } from './manifold.js';
 import type { CrossSection } from 'manifold-3d';
@@ -1163,7 +1164,7 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       const csB = polygonToCrossSection(manifold, polyB);
 
       let resultCs: CrossSection | null = null;
-      let resultPolygon: Polygon2D;
+      let resultPolygons: Polygon2D[];
       try {
         switch (operation) {
           case 'union':
@@ -1176,7 +1177,8 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
             resultCs = csA.intersect(csB);
             break;
         }
-        resultPolygon = crossSectionToPolygon(resultCs);
+        // 분리된 컴포넌트들을 각각의 폴리곤으로 추출
+        resultPolygons = crossSectionToPolygons(resultCs);
       } finally {
         // Cleanup WASM objects (guaranteed even on exception)
         csA.delete();
@@ -1185,13 +1187,29 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       }
 
       // Check if result is empty
-      if (resultPolygon.length === 0 || resultPolygon[0].length === 0) {
+      if (resultPolygons.length === 0) {
         logger.warn(`[sandbox] Boolean ${operation}: result is empty`);
         return false;
       }
 
-      // Create result entity (holes 자동 처리)
-      return createPolygonEntity(callCad, resultName, resultPolygon);
+      // 분리된 폴리곤이 여러 개인 경우 각각 별도 엔티티로 생성
+      if (resultPolygons.length > 1) {
+        logger.info(
+          `[sandbox] Boolean ${operation}: created ${resultPolygons.length} disjoint entities ` +
+            `(${resultName}_0 to ${resultName}_${resultPolygons.length - 1})`
+        );
+        let allSuccess = true;
+        for (let i = 0; i < resultPolygons.length; i++) {
+          const entityName = `${resultName}_${i}`;
+          if (!createPolygonEntity(callCad, entityName, resultPolygons[i])) {
+            allSuccess = false;
+          }
+        }
+        return allSuccess;
+      }
+
+      // 단일 폴리곤인 경우 기존 이름 사용
+      return createPolygonEntity(callCad, resultName, resultPolygons[0]);
     };
 
     bindCadFunction(vm, 'booleanUnion', (nameA: string, nameB: string, resultName: string) => {
