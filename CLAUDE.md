@@ -126,19 +126,23 @@ drawText(name, text, x, y, fontSize, options?)
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
-**사용 가능한 폰트** (`fonts/` 폴더, fontPath 생략 시 나눔고딕 자동 사용):
+**폰트 검색 순서** (fontPath 생략 시):
+1. 프로젝트 `cad-tools/fonts/` 디렉터리 (로컬 폰트)
+2. 시스템 폰트 디렉터리:
+   - Linux: `/usr/share/fonts/truetype`, `/usr/share/fonts/opentype`
+   - macOS: `/System/Library/Fonts`, `/Library/Fonts`
+   - Windows: `C:\Windows\Fonts`
 
-| 폰트 | fontPath | 용도 |
-|-----|----------|------|
-| 나눔고딕 | `fonts/NanumGothic.ttf` | 기본 고딕 (default) |
-| 나눔명조 | `fonts/NanumMyeongjo.ttf` | 명조체 |
-| 나눔바른고딕 | `fonts/NanumBarunGothic.ttf` | 가독성 고딕 |
-| 나눔스퀘어Neo | `fonts/NanumSquareNeo.ttf` | 모던 고딕 |
-| 마루부리 | `fonts/MaruBuri-Regular.ttf` | 세리프체 |
-| 나눔펜 | `fonts/NanumPen.ttf` | 손글씨 |
-| 나눔붓 | `fonts/NanumBrush.ttf` | 붓글씨 |
-| D2Coding | `fonts/D2Coding-Ver1.3.2-20180524.ttf` | 코딩용 고정폭 |
-| Noto Sans KR | `fonts/NotoSansKR-Regular.otf` | 구글 한글 (7종) |
+**권장 폰트** (로컬 설치 시 `cad-tools/fonts/`에 배치):
+
+| 폰트 | fontPath 예시 | 용도 |
+|-----|-------------|------|
+| 나눔고딕 | `NanumGothic.ttf` | 기본 고딕 |
+| 나눔명조 | `NanumMyeongjo.ttf` | 명조체 |
+| D2Coding | `D2Coding.ttf` | 코딩용 고정폭 |
+| Noto Sans KR | `NotoSansKR-Regular.otf` | 구글 한글 |
+
+> Note: `fonts/` 디렉터리는 `.gitignore`에 포함됨. 필요한 폰트는 직접 다운로드하거나 시스템 폰트 사용.
 
 ### transforms - 변환
 ```javascript
