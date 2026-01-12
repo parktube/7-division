@@ -163,3 +163,91 @@ i_overlay = "4.0"
 - iOverlay는 f64 좌표를 네이티브로 지원
 - 결과 폴리곤의 외곽선은 반시계방향, 홀은 시계방향
 - 자기교차(self-intersection) 도형도 처리 가능
+
+---
+
+## 결론: Manifold WASM 채택
+
+> **Status**: Superseded by PR #27
+
+이 RFC에서 검토한 iOverlay 대신 **Manifold WASM**을 선택하여 Boolean 연산을 구현했습니다.
+
+### 선택 이유
+
+| 항목 | iOverlay | Manifold |
+|------|----------|----------|
+| 타입 | 2D 전용 | 2D + 3D 확장 가능 |
+| API | 저수준 (직접 폴리곤 변환 필요) | 고수준 CrossSection API |
+| 성능 | 좋음 | < 1ms (WASM 직접 호출) |
+| 유지보수 | Rust 단독 | 활발한 커뮤니티 |
+| 라이선스 | MIT | Apache 2.0 |
+
+### 상세 기술 비교
+
+#### iOverlay의 한계 (RFC에서 지적한 문제)
+
+**결과 타입 변환 문제**
+```
+Rect + Rect → Polygon (타입 정보 손실)
+Circle + Circle → Polygon
+```
+- 원본 도형의 메타데이터 유지 불가
+- 후속 편집 시 "이게 원래 원이었는지, 사각형이었는지" 알 수 없음
+
+**곡선 근사화 문제**
+```
+Circle → 64-gon (64개 직선으로 변환)
+Arc → 선형화
+Bezier → 선형화
+```
+- 확대 시 각진 모서리가 보임
+- 정밀도 ↔ 성능 트레이드오프 직접 관리 필요
+- 수학적 정확성 손실
+
+#### Manifold의 장점
+
+**일관된 CrossSection API**
+```typescript
+// Manifold - 깔끔한 고수준 API
+const a = new CrossSection(polygonA);
+const b = new CrossSection(polygonB);
+const result = a.subtract(b);  // 구멍 뚫기
+```
+
+**추가 기하 연산 내장**
+```typescript
+offsetPolygon(name, delta)  // 확장/축소
+convexHull(name)            // 볼록 껍질
+getArea(name)               // 면적 계산
+decompose(name)             // 컴포넌트 분리
+```
+- iOverlay는 Boolean만 지원, 나머지는 직접 구현 필요
+
+**3D 확장 가능성**
+- Manifold는 원래 3D 메쉬 엔진
+- 향후 3D CAD 확장 시 동일 라이브러리 사용 가능
+- iOverlay는 2D 전용
+
+### PoC 비교 결과
+
+| 평가 항목 | iOverlay (이 RFC) | Manifold (PR #27) |
+|----------|------------------|-------------------|
+| Boolean 연산 | ✅ 동작 | ✅ 동작 |
+| 결과 타입 | Polygon only | Polygon (동일) |
+| 곡선 처리 | 직선 근사 필요 | 직선 근사 필요 |
+| 추가 기하 연산 | ❌ 직접 구현 | ✅ offset, hull, area 내장 |
+| API 사용성 | 저수준 | 고수준 CrossSection |
+| 3D 확장성 | ❌ 2D 전용 | ✅ 3D 메쉬 지원 |
+| 커뮤니티 | 소규모 | 활발 (Google 등 사용) |
+
+### 구현 완료 (PR #27)
+
+- **Boolean 연산**: `booleanUnion`, `booleanDifference`, `booleanIntersect`
+- **기하 분석**: `offsetPolygon`, `convexHull`, `getArea`, `decompose`
+- **텍스트 렌더링**: `drawText`, `getTextMetrics` (opentype.js)
+- **한글 폰트**: 자동 검색 및 프로젝트 폰트 지원
+
+---
+
+📎 관련: PR #27 (feature/manifold-integration)
+📄 ADR: `docs/adr/006-geometry-engine.md`
