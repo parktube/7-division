@@ -21,19 +21,53 @@ fn entity_to_svg_element(entity: &Entity, indent: &str) -> String {
                 indent, points_str, style_attr, transform_attr
             ) + "\n"
         }
-        Geometry::Polygon { points } => {
+        Geometry::Polygon { points, holes } => {
             if points.len() < 3 {
                 return String::new();
             }
-            let points_str: String = points
-                .iter()
-                .map(|p| format!("{},{}", p[0], p[1]))
-                .collect::<Vec<_>>()
-                .join(" ");
-            format!(
-                r#"{}<polygon points="{}" {}{}/>"#,
-                indent, points_str, style_attr, transform_attr
-            ) + "\n"
+
+            // holes가 있으면 <path>로, 없으면 <polygon>으로 렌더링
+            if holes.is_empty() {
+                let points_str: String = points
+                    .iter()
+                    .map(|p| format!("{},{}", p[0], p[1]))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                format!(
+                    r#"{}<polygon points="{}" {}{}/>"#,
+                    indent, points_str, style_attr, transform_attr
+                ) + "\n"
+            } else {
+                // holes가 있으면 <path>로 변환 (fill-rule="evenodd" 사용)
+                let mut path_data = String::new();
+
+                // 외곽 contour
+                if let Some((first, rest)) = points.split_first() {
+                    path_data.push_str(&format!("M {},{}", first[0], first[1]));
+                    for p in rest {
+                        path_data.push_str(&format!(" L {},{}", p[0], p[1]));
+                    }
+                    path_data.push_str(" Z");
+                }
+
+                // holes (inner contours)
+                for hole in holes {
+                    if hole.len() >= 3
+                        && let Some((first, rest)) = hole.split_first()
+                    {
+                        path_data.push_str(&format!(" M {},{}", first[0], first[1]));
+                        for p in rest {
+                            path_data.push_str(&format!(" L {},{}", p[0], p[1]));
+                        }
+                        path_data.push_str(" Z");
+                    }
+                }
+
+                format!(
+                    r#"{}<path d="{}" fill-rule="evenodd" {}{}/>"#,
+                    indent, path_data, style_attr, transform_attr
+                ) + "\n"
+            }
         }
         Geometry::Circle { center, radius } => {
             format!(

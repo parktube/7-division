@@ -34,15 +34,16 @@ function isBezier(geo: Entity['geometry']): geo is BezierGeometry {
   return isObject(geo) && 'Bezier' in geo
 }
 
-// Geometry rendering functions
-function renderCircle(ctx: CanvasRenderingContext2D, geo: CircleGeometry) {
+// Geometry rendering functions - return true if path was created
+function renderCircle(ctx: CanvasRenderingContext2D, geo: CircleGeometry): boolean {
   const { center, radius } = geo.Circle
   ctx.beginPath()
   ctx.arc(center[0], center[1], radius, 0, Math.PI * 2)
   ctx.closePath()
+  return true
 }
 
-function renderRect(ctx: CanvasRenderingContext2D, geo: RectGeometry) {
+function renderRect(ctx: CanvasRenderingContext2D, geo: RectGeometry): boolean {
   const { center, width, height } = geo.Rect
   // center에서 좌하단 origin 계산
   const x = center[0] - width / 2
@@ -50,40 +51,58 @@ function renderRect(ctx: CanvasRenderingContext2D, geo: RectGeometry) {
   ctx.beginPath()
   ctx.rect(x, y, width, height)
   ctx.closePath()
+  return true
 }
 
-function renderLine(ctx: CanvasRenderingContext2D, geo: LineGeometry) {
+function renderLine(ctx: CanvasRenderingContext2D, geo: LineGeometry): boolean {
   const points = geo.Line.points
-  if (points.length < 2) return
+  if (points.length < 2) return false
 
   ctx.beginPath()
   ctx.moveTo(points[0][0], points[0][1])
   for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i][0], points[i][1])
   }
+  return true
 }
 
-function renderPolygon(ctx: CanvasRenderingContext2D, geo: PolygonGeometry) {
-  const points = geo.Polygon.points
-  if (points.length < 3) return
+function renderPolygon(ctx: CanvasRenderingContext2D, geo: PolygonGeometry): boolean {
+  const { points, holes } = geo.Polygon
+  if (points.length < 3) return false
 
   ctx.beginPath()
+
+  // 외곽선 (outer contour)
   ctx.moveTo(points[0][0], points[0][1])
   for (let i = 1; i < points.length; i++) {
     ctx.lineTo(points[i][0], points[i][1])
   }
   ctx.closePath()
+
+  // 구멍들 (holes) - evenodd fill rule로 구멍 생성
+  if (holes && holes.length > 0) {
+    for (const hole of holes) {
+      if (hole.length < 3) continue
+      ctx.moveTo(hole[0][0], hole[0][1])
+      for (let i = 1; i < hole.length; i++) {
+        ctx.lineTo(hole[i][0], hole[i][1])
+      }
+      ctx.closePath()
+    }
+  }
+  return true
 }
 
-function renderArc(ctx: CanvasRenderingContext2D, geo: ArcGeometry) {
+function renderArc(ctx: CanvasRenderingContext2D, geo: ArcGeometry): boolean {
   const { center, radius, start_angle, end_angle } = geo.Arc
   ctx.beginPath()
   ctx.arc(center[0], center[1], radius, start_angle, end_angle)
+  return true
 }
 
-function renderBezier(ctx: CanvasRenderingContext2D, geo: BezierGeometry) {
+function renderBezier(ctx: CanvasRenderingContext2D, geo: BezierGeometry): boolean {
   const { start, segments, closed } = geo.Bezier
-  if (segments.length === 0) return
+  if (segments.length === 0) return false
 
   ctx.beginPath()
   ctx.moveTo(start[0], start[1])
@@ -99,14 +118,20 @@ function renderBezier(ctx: CanvasRenderingContext2D, geo: BezierGeometry) {
   if (closed) {
     ctx.closePath()
   }
+  return true
 }
 
 // Style application
-function applyStyle(ctx: CanvasRenderingContext2D, style: Style) {
+function applyStyle(ctx: CanvasRenderingContext2D, style: Style, hasHoles = false) {
   if (style.fill) {
     const [r, g, b, a] = style.fill.color
     ctx.fillStyle = `rgba(${r * 255}, ${g * 255}, ${b * 255}, ${a})`
-    ctx.fill()
+    // holes가 있을 때만 evenodd 사용 (성능 최적화)
+    if (hasHoles) {
+      ctx.fill('evenodd')
+    } else {
+      ctx.fill()
+    }
   }
 
   if (style.stroke) {
@@ -144,21 +169,26 @@ function renderEntity(
       renderEntity(ctx, child, findEntity, hiddenIds)
     }
   } else if (geo !== 'Empty') {
-    // Render geometry
+    // Render geometry - only apply style if path was created
+    let hasHoles = false
+    let pathCreated = false
     if (isCircle(geo)) {
-      renderCircle(ctx, geo)
+      pathCreated = renderCircle(ctx, geo)
     } else if (isRect(geo)) {
-      renderRect(ctx, geo)
+      pathCreated = renderRect(ctx, geo)
     } else if (isLine(geo)) {
-      renderLine(ctx, geo)
+      pathCreated = renderLine(ctx, geo)
     } else if (isPolygon(geo)) {
-      renderPolygon(ctx, geo)
+      pathCreated = renderPolygon(ctx, geo)
+      hasHoles = (geo.Polygon.holes?.length ?? 0) > 0
     } else if (isArc(geo)) {
-      renderArc(ctx, geo)
+      pathCreated = renderArc(ctx, geo)
     } else if (isBezier(geo)) {
-      renderBezier(ctx, geo)
+      pathCreated = renderBezier(ctx, geo)
     }
-    applyStyle(ctx, entity.style)
+    if (pathCreated) {
+      applyStyle(ctx, entity.style, hasHoles)
+    }
   }
 
   ctx.restore()
