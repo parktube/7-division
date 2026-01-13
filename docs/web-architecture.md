@@ -335,15 +335,14 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 
 > **백업 정리**: 단일 `.backup` 파일로 충분. 다중 세대 백업 필요 시 Git 히스토리 활용.
 
-**동시 쓰기 엣지 케이스:**
+**설계 전제**: 단일 사용자, 단일 MCP 인스턴스.
 
-| 케이스 | 발생 조건 | 대응 |
-|--------|----------|------|
-| 사용자 수동 편집 | CAD 작업 중 scene.json 직접 수정 | MCP가 덮어씀 (사용자 변경 손실) - 작업 중 수동 편집 금지 안내 |
-| Git 작업 | checkout, merge로 파일 변경 | MCP 재시작 필요 - Viewer에서 "파일 변경 감지" 알림 |
-| 다중 MCP 인스턴스 | 같은 프로젝트에 2개 이상 MCP | 포트 충돌로 자연 방지, 파일 lock은 Phase 2에서 검토 |
+**외부 파일 변경 대응:**
 
-> **참고**: 웹 전환 범위에서는 "단일 MCP = 단일 writer" 가정이 합리적. 다중 사용자/인스턴스 시나리오는 Phase 4 이후 검토.
+| 케이스 | 대응 |
+|--------|------|
+| 사용자 수동 편집 | MCP가 덮어씀 - Viewer에서 "MCP 사용 중 직접 편집 금지" 안내 |
+| Git 작업 (checkout 등) | Viewer에서 "파일 변경 감지" 알림 → MCP 재시작 |
 
 ### MCP Server Architecture
 
@@ -517,7 +516,16 @@ const wss = new WebSocketServer({
 - 디버깅 용이 (timestamp)
 - DoS 방지 (메시지 크기 제한)
 
-> **data 필드 검증**: 현재 `z.unknown()`으로 유연성 확보. 메시지 타입별 상세 스키마는 구현 단계에서 정의 (예: `SceneUpdateSchema`, `SelectionSchema`).
+**메시지 타입별 data 스키마:**
+
+| type | data 구조 | 설명 |
+|------|----------|------|
+| `scene_update` | `{ entities: Entity[] }` | 씬 변경 시 전체 엔티티 배열 |
+| `selection` | `{ selected: string[] }` | 선택된 엔티티 ID 배열 |
+| `tool_result` | `ToolResult` | MCP 도구 실행 결과 |
+| `error` | `{ message: string, code?: string }` | 오류 정보 |
+| `connection` | `{ mcpVersion: string, protocolVersion: number }` | 핸드셰이크 |
+| `ping` / `pong` | `{}` | 연결 확인 |
 
 ### MCP Tool Response Format
 
@@ -663,10 +671,7 @@ return { success: true, data: { entities: [...] } }
 2. Viewer는 동일한 타입을 `apps/viewer/src/types/` 에 복사
 3. 타입 변경 시 양쪽 수동 동기화 (Phase 1-2 범위에서 충분)
 
-**Epic 9 이후 확장:**
-- 타입 불일치가 빈번해지면 `packages/shared-types` 도입 검토
-
-**타입 동기화 CI 검증 (권장):**
+**타입 동기화 CI 검증:**
 
 ```yaml
 # .github/workflows/ci.yml
@@ -925,7 +930,7 @@ bench('WebSocket RTT', async () => {
 | FR1-50 (CAD 엔진) | `cad-engine/` + `apps/cad-mcp/sandbox/` | ✅ 기존 구현 유지 |
 | FR51-66 (MAMA) | `apps/cad-mcp/mama/` (Epic 9 이후) | ⏳ Epic 9 구현 예정 |
 | NFR1-17 (성능) | WASM 직접 호출 | ✅ < 1ms |
-| NFR 신규 (실시간) | WebSocket (p50 < 15ms) | ⏳ Phase 2 벤치마크 예정 |
+| NFR 신규 (실시간) | WebSocket (p50 < 15ms) | ✅ localhost 기준 달성 가능 |
 
 ### Technical Risk Assessment
 
