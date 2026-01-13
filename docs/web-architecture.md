@@ -331,7 +331,9 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 |------|----------|
 | 동시 쓰기 | MCP 단일 프로세스가 유일한 writer |
 | 불완전한 쓰기 | temp file → atomic rename |
-| 파일 손상 | scene.json.backup 자동 생성 |
+| 파일 손상 | scene.json.backup 자동 생성 (단일 세대, 덮어쓰기) |
+
+> **백업 정리**: 단일 `.backup` 파일로 충분. 다중 세대 백업 필요 시 Git 히스토리 활용.
 
 **동시 쓰기 엣지 케이스:**
 
@@ -515,6 +517,8 @@ const wss = new WebSocketServer({
 - 디버깅 용이 (timestamp)
 - DoS 방지 (메시지 크기 제한)
 
+> **data 필드 검증**: 현재 `z.unknown()`으로 유연성 확보. 메시지 타입별 상세 스키마는 구현 단계에서 정의 (예: `SceneUpdateSchema`, `SelectionSchema`).
+
 ### MCP Tool Response Format
 
 **기존 패턴 유지 + actionHints 확장:**
@@ -605,6 +609,8 @@ class WebSocketManager {
 | 4 | 8초 | 15초 |
 | 5 | 16초 | 31초 |
 | 실패 | - | Onboarding UI |
+
+> **동기화 범위**: MVP에서는 `selectionQueue`만 처리 (사용자 선택 상태). 툴바/레이어 변경 등은 MCP 요청이므로 연결 필수 → 끊김 시 UI에서 비활성화.
 
 ### Testing Patterns
 
@@ -897,12 +903,15 @@ if (FEATURE_FLAGS.MAMA_ENABLED) {
 // apps/cad-mcp/src/__benchmarks__/ws-latency.bench.ts
 import { bench } from 'vitest';
 
+// 벤치마크: 성능 측정만 (assertion 없음)
 bench('WebSocket RTT', async () => {
   const start = performance.now();
   await sendAndWaitForResponse({ type: 'ping' });
-  const rtt = performance.now() - start;
-  expect(rtt).toBeLessThan(50); // p95 목표
+  return performance.now() - start; // RTT 반환
 });
+
+// 별도 테스트에서 p95 검증
+// test('WebSocket RTT p95 < 50ms', async () => { ... });
 ```
 
 **기존 측정 근거:**
