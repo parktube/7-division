@@ -158,14 +158,14 @@ cad-electron/       →        (제거)
 |---------|------|------|------|----------|
 | WebSocket Server | ws (Node.js) | 8.19.x | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
 | WebSocket Client | native WebSocket | - | Viewer → MCP 연결 | - |
-| MCP SDK | @modelcontextprotocol/sdk | >=1.25.2 | Claude Code stdio 연동 | **필수**: ReDoS/DNS rebinding 패치 (CVE-2025-66414) |
+| MCP SDK | @modelcontextprotocol/sdk | >=1.25.2 | Claude Code stdio 연동 | **필수**: ReDoS 패치 (v1.25.2), DNS rebinding 보호 포함 |
 | 런타임 검증 | Zod | 4.x | 메시지 타입 검증 | 신규 추가 |
 | 포트 탐색 | get-port | 7.x | 포트 충돌 시 자동 할당 | - |
 | 모노레포 | pnpm workspace | 10.x | 패키지 관리, 의존성 공유 | - |
 
 **보안 요구사항:**
-- MCP SDK는 반드시 >=1.25.2 사용 (v1.25.2에서 ReDoS 취약점 패치, DNS rebinding 보호 추가)
-- `enableDnsRebindingProtection` 옵션 활성화 필수
+- MCP SDK는 반드시 >=1.25.2 사용 (ReDoS 취약점 패치 포함)
+- `enableDnsRebindingProtection` 옵션 활성화 필수 (DNS rebinding 공격 방지)
 
 ### Rationale for Migration (Not New Starter)
 
