@@ -65,8 +65,12 @@ pub enum Geometry {
         end_angle: f64,   // 라디안, 양수 = 반시계방향 (CCW)
     },
     /// 다각형 (닫힌 경로, fill 지원)
+    /// holes가 있으면 winding rule로 구멍 렌더링
     Polygon {
         points: Vec<[f64; 2]>,
+        /// 구멍들 (inner contours) - 각 구멍은 점들의 배열
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        holes: Vec<Vec<[f64; 2]>>,
     },
     /// 베지어 커브 (큐빅 베지어 세그먼트들)
     /// 각 세그먼트: [시작점, 제어점1, 제어점2, 끝점]

@@ -596,6 +596,7 @@ impl Scene {
         // Calculate geometry center for default pivot
         let geometry = Geometry::Polygon {
             points: point_pairs,
+            holes: Vec::new(),
         };
         let (min, max) = Self::geometry_bounds(&geometry);
         let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
@@ -623,6 +624,111 @@ impl Scene {
 
         self.entities.push(entity);
         self.last_operation = Some(format!("draw_polygon({})", name));
+        Ok(name.to_string())
+    }
+
+    /// 구멍이 있는 다각형을 생성합니다 (Boolean 연산 결과용).
+    ///
+    /// # Arguments
+    /// * `name` - Entity 이름
+    /// * `points` - 외곽선 좌표 [x1, y1, x2, y2, ...]
+    /// * `holes_json` - 구멍들의 JSON 배열 (예: `[[[x1,y1],[x2,y2],...], ...]`)
+    /// * `style_json` - 스타일 JSON
+    ///
+    /// # Errors
+    /// * name 중복 시 에러
+    /// * 외곽선 3점 미만 시 에러
+    /// * holes_json 파싱 에러
+    pub fn draw_polygon_with_holes(
+        &mut self,
+        name: &str,
+        points: Float64Array,
+        holes_json: &str,
+        style_json: &str,
+    ) -> Result<String, JsValue> {
+        // name 중복 체크
+        if self.has_entity(name) {
+            return Err(JsValue::from_str(&format!(
+                "[draw_polygon_with_holes] duplicate_name: Entity '{}' already exists",
+                name
+            )));
+        }
+
+        // 외곽선 좌표 파싱
+        let point_pairs = parse_line_points(points.to_vec()).map_err(|msg| {
+            JsValue::from_str(&format!("[draw_polygon_with_holes] invalid_input: {}", msg))
+        })?;
+
+        // 최소 3점 필요
+        if point_pairs.len() < 3 {
+            return Err(JsValue::from_str(
+                "[draw_polygon_with_holes] invalid_input: Polygon requires at least 3 points",
+            ));
+        }
+
+        // holes_json 파싱: [[[x,y], [x,y], ...], ...]
+        let holes: Vec<Vec<[f64; 2]>> = if holes_json.is_empty() || holes_json == "[]" {
+            Vec::new()
+        } else {
+            serde_json::from_str::<Vec<Vec<[f64; 2]>>>(holes_json).map_err(|e| {
+                JsValue::from_str(&format!("[draw_polygon_with_holes] invalid_holes: {}", e))
+            })?
+        };
+
+        // 각 hole contour 검증: 최소 3점 + NaN/Infinity 체크
+        for (i, hole) in holes.iter().enumerate() {
+            if hole.len() < 3 {
+                return Err(JsValue::from_str(&format!(
+                    "[draw_polygon_with_holes] invalid_hole: hole[{}] requires at least 3 points, got {}",
+                    i,
+                    hole.len()
+                )));
+            }
+            // NaN/Infinity 체크
+            for (j, point) in hole.iter().enumerate() {
+                if !point[0].is_finite() || !point[1].is_finite() {
+                    return Err(JsValue::from_str(&format!(
+                        "[draw_polygon_with_holes] invalid_hole: hole[{}][{}] contains NaN or Infinity",
+                        i, j
+                    )));
+                }
+            }
+        }
+
+        // 스타일 파싱 (실패 시 기본 스타일 + 경고 로그)
+        let style = parse_style_with_warning(style_json, "draw_polygon_with_holes");
+
+        // Calculate geometry center for default pivot
+        let geometry = Geometry::Polygon {
+            points: point_pairs,
+            holes,
+        };
+        let (min, max) = Self::geometry_bounds(&geometry);
+        let pivot = [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0];
+
+        // Auto-increment z_order
+        let z_order = self.allocate_z_order();
+
+        let entity = Entity {
+            id: generate_id(),
+            entity_type: EntityType::Polygon,
+            geometry,
+            transform: Transform {
+                pivot,
+                ..Transform::default()
+            },
+            style,
+            metadata: Metadata {
+                name: name.to_string(),
+                z_index: z_order,
+                ..Default::default()
+            },
+            parent_id: None,
+            children: Vec::new(),
+        };
+
+        self.entities.push(entity);
+        self.last_operation = Some(format!("draw_polygon_with_holes({})", name));
         Ok(name.to_string())
     }
 

@@ -135,8 +135,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
   const {
     // Default to Vite dev server, fall back to static server
     url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
-    width = 1600,
-    height = 1000,
+    width = 2400,
+    height = 1500,
     outputPath = defaultOutputPath,
     waitMs = 2000,  // Wait for sketch to load
     forceMethod,
@@ -203,12 +203,12 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       type WindowWithZoom = Window & { __setZoom?: (z: number) => void };
       const win = window as WindowWithZoom;
       if (win.__setZoom) {
-        win.__setZoom(3);
+        win.__setZoom(1);
         return true;
       }
       return false;
     });
-    logger.debug('Zoom setting', { zoomApplied, targetZoom: 3 });
+    logger.debug('Zoom setting', { zoomApplied, targetZoom: 1 });
     await new Promise(resolve => setTimeout(resolve, 500)); // Wait for zoom to apply
 
     // Find the canvas container element

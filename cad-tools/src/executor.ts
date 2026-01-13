@@ -121,6 +121,9 @@ export class CADExecutor {
         case 'draw_polygon':
           return this.drawPolygon(input);
 
+        case 'draw_polygon_with_holes':
+          return this.drawPolygonWithHoles(input);
+
         case 'draw_bezier':
           return this.drawBezier(input);
 
@@ -334,6 +337,56 @@ export class CADExecutor {
     const styleJson = this.toJson(input.style);
 
     const result = this.scene.draw_polygon(name, points, styleJson);
+    return { success: true, entity: result, type: 'polygon' };
+  }
+
+  /**
+   * 구멍이 있는 다각형을 그립니다 (Boolean 연산 결과용).
+   * @param input.name - Entity 이름
+   * @param input.points - 외곽선 좌표 [x1, y1, x2, y2, ...]
+   * @param input.holes - 구멍들의 좌표 배열 [[[x1,y1],[x2,y2],...], ...]
+   * @param input.style - 스타일 (선택)
+   */
+  private drawPolygonWithHoles(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', points: 'number[]' });
+    if (error) return { success: false, error: `draw_polygon_with_holes: ${error}` };
+
+    const name = input.name as string;
+    const points = new Float64Array(input.points as number[]);
+
+    // holes 타입 검증
+    const rawHoles = input.holes;
+    const holes: [number, number][][] = [];
+    if (rawHoles !== undefined && rawHoles !== null) {
+      if (!Array.isArray(rawHoles)) {
+        return { success: false, error: 'draw_polygon_with_holes: holes must be an array' };
+      }
+      for (let i = 0; i < rawHoles.length; i++) {
+        const contour = rawHoles[i];
+        if (!Array.isArray(contour)) {
+          return { success: false, error: `draw_polygon_with_holes: holes[${i}] must be an array` };
+        }
+        const validatedContour: [number, number][] = [];
+        for (let j = 0; j < contour.length; j++) {
+          const pt = contour[j];
+          if (!Array.isArray(pt) || pt.length !== 2 ||
+              typeof pt[0] !== 'number' || typeof pt[1] !== 'number') {
+            return { success: false, error: `draw_polygon_with_holes: holes[${i}][${j}] must be [number, number]` };
+          }
+          // NaN/Infinity 검증
+          if (!Number.isFinite(pt[0]) || !Number.isFinite(pt[1])) {
+            return { success: false, error: `draw_polygon_with_holes: holes[${i}][${j}] contains NaN or Infinity` };
+          }
+          validatedContour.push([pt[0], pt[1]]);
+        }
+        holes.push(validatedContour);
+      }
+    }
+
+    const holesJson = JSON.stringify(holes);
+    const styleJson = this.toJson(input.style);
+
+    const result = this.scene.draw_polygon_with_holes(name, points, holesJson, styleJson);
     return { success: true, entity: result, type: 'polygon' };
   }
 
