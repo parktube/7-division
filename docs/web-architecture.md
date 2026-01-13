@@ -130,10 +130,11 @@ cad-electron/       →        (제거)
 
 | 컴포넌트 | 기술 | 버전 | 용도 | 보안 노트 |
 |---------|------|------|------|----------|
-| WebSocket Server | ws (Node.js) | 8.18.3 | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
+| WebSocket Server | ws (Node.js) | 8.18.x | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
 | WebSocket Client | native WebSocket | - | Viewer → MCP 연결 | - |
 | MCP SDK | @modelcontextprotocol/sdk | >=1.25.2 | Claude Code stdio 연동 | **필수**: ReDoS/DNS rebinding 패치 (CVE-2025-66414) |
 | 런타임 검증 | Zod | 3.x | 메시지 타입 검증 | 신규 추가 |
+| 포트 탐색 | get-port | 7.x | 포트 충돌 시 자동 할당 | - |
 | 모노레포 | pnpm workspace | 9.x | 패키지 관리, 의존성 공유 | - |
 
 **보안 요구사항:**
@@ -201,7 +202,7 @@ const wss = new WebSocketServer({
 |------|-----|
 | 프로토콜 | WebSocket (ws://) |
 | 기본 포트 | 3000 (환경변수 `CAD_MCP_PORT`로 변경 가능) |
-| 지연시간 | ~15ms |
+| 지연시간 | p50 < 15ms, p95 < 50ms (목표) |
 | 양방향 | O |
 
 **포트 충돌 완화 전략:**
@@ -868,7 +869,7 @@ bench('WebSocket RTT', async () => {
 | FR1-50 (CAD 엔진) | `cad-engine/` + `apps/cad-mcp/sandbox/` | ✅ 기존 구현 유지 |
 | FR51-66 (MAMA) | `apps/cad-mcp/mama/` (Post-MVP) | ⏳ Epic 9 구현 예정 |
 | NFR1-17 (성능) | WASM 직접 호출 | ✅ < 1ms |
-| NFR 신규 (실시간) | WebSocket (~15ms) | ⏳ Phase 2 벤치마크 예정 |
+| NFR 신규 (실시간) | WebSocket (p50 < 15ms) | ⏳ Phase 2 벤치마크 예정 |
 
 ### Technical Risk Assessment
 
