@@ -374,10 +374,12 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 
 **외부 파일 변경 대응:**
 
-| 케이스 | 대응 |
-|--------|------|
-| 사용자 수동 편집 | MCP가 덮어씀 - Viewer에서 "MCP 사용 중 직접 편집 금지" 안내 |
-| Git 작업 (checkout 등) | Viewer에서 "파일 변경 감지" 알림 → MCP 재시작 |
+| 케이스 | 대응 | 상태 |
+|--------|------|------|
+| 사용자 수동 편집 | MCP가 덮어씀 - Viewer에서 "MCP 사용 중 직접 편집 금지" 안내 | Phase 1 |
+| Git 작업 (checkout 등) | MCP 재시작 필요 (파일 감시 미구현) | Phase 1 |
+
+> **Phase 1 제약**: MCP 실행 중 Git 작업(checkout, merge 등) 후에는 MCP 재시작 필요. 파일 변경 자동 감지(fs.watch)는 Epic 9 이후 검토.
 
 ### MCP Server Architecture
 
