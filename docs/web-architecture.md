@@ -825,6 +825,42 @@ if (FEATURE_FLAGS.MAMA_ENABLED) {
 
 ## Architecture Validation
 
+### Performance Validation Plan
+
+**WebSocket 성능 목표:**
+
+| 메트릭 | 목표 | 측정 방법 |
+|--------|------|----------|
+| RTT (Round-Trip Time) | p50 < 15ms, p95 < 50ms | synthetic harness |
+| 메시지 처리량 | 100+ msg/sec | stress test |
+| 메모리 사용량 | < 100MB (1000 엔티티) | heap snapshot |
+
+**Phase별 검증 체크리스트:**
+
+| Phase | 검증 항목 | 도구 |
+|-------|----------|------|
+| Phase 1 | WebSocket RTT 측정 | `console.time()` + 로깅 |
+| Phase 2 | MCP → Viewer E2E 지연 | Vitest 벤치마크 |
+| Phase 3 | 브라우저 호환성 (Chrome, Firefox, Safari) | 수동 테스트 |
+
+**벤치마크 스크립트 (Phase 2):**
+
+```typescript
+// apps/cad-mcp/src/__benchmarks__/ws-latency.bench.ts
+import { bench } from 'vitest';
+
+bench('WebSocket RTT', async () => {
+  const start = performance.now();
+  await sendAndWaitForResponse({ type: 'ping' });
+  const rtt = performance.now() - start;
+  expect(rtt).toBeLessThan(50); // p95 목표
+});
+```
+
+**기존 측정 근거:**
+- 파일 폴링 500ms: 현재 cad-tools의 `setInterval` 기반 감시
+- WebSocket 15-50ms: localhost 환경 기준, 네트워크 홉 없음
+
 ### Requirements Coverage
 
 | 요구사항 | 아키텍처 커버리지 | 검증 |
@@ -832,7 +868,7 @@ if (FEATURE_FLAGS.MAMA_ENABLED) {
 | FR1-50 (CAD 엔진) | `cad-engine/` + `apps/cad-mcp/sandbox/` | ✅ 기존 구현 유지 |
 | FR51-66 (MAMA) | `apps/cad-mcp/mama/` (Post-MVP) | ⏳ Epic 9 구현 예정 |
 | NFR1-17 (성능) | WASM 직접 호출 | ✅ < 1ms |
-| NFR 신규 (실시간) | WebSocket (~15ms) | ✅ 파일 폴링 대비 30x 개선 |
+| NFR 신규 (실시간) | WebSocket (~15ms) | ⏳ Phase 2 벤치마크 예정 |
 
 ### Technical Risk Assessment
 
