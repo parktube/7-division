@@ -419,6 +419,8 @@ export class CadMcpServer {
 npx @ai-native-cad/mcp start
 ```
 
+> **npm 패키지 관리**: `unpublish`는 72시간 이내만 가능. 운영 환경에서는 `npm deprecate` 권장. (상세: Rollback Strategy 섹션)
+
 **버전 동기화 정책:**
 
 | 항목 | 정책 |
