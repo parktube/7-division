@@ -130,7 +130,7 @@ cad-electron/       →        (제거)
 
 | 컴포넌트 | 기술 | 버전 | 용도 | 보안 노트 |
 |---------|------|------|------|----------|
-| WebSocket Server | ws (Node.js) | 8.18.x | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
+| WebSocket Server | ws (Node.js) | 8.19.x | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
 | WebSocket Client | native WebSocket | - | Viewer → MCP 연결 | - |
 | MCP SDK | @modelcontextprotocol/sdk | >=1.25.2 | Claude Code stdio 연동 | **필수**: ReDoS/DNS rebinding 패치 (CVE-2025-66414) |
 | 런타임 검증 | Zod | 3.x | 메시지 타입 검증 | 신규 추가 |
@@ -322,6 +322,16 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 | 동시 쓰기 | MCP 단일 프로세스가 유일한 writer |
 | 불완전한 쓰기 | temp file → atomic rename |
 | 파일 손상 | scene.json.backup 자동 생성 |
+
+**동시 쓰기 엣지 케이스:**
+
+| 케이스 | 발생 조건 | 대응 |
+|--------|----------|------|
+| 사용자 수동 편집 | CAD 작업 중 scene.json 직접 수정 | MCP가 덮어씀 (사용자 변경 손실) - 작업 중 수동 편집 금지 안내 |
+| Git 작업 | checkout, merge로 파일 변경 | MCP 재시작 필요 - Viewer에서 "파일 변경 감지" 알림 |
+| 다중 MCP 인스턴스 | 같은 프로젝트에 2개 이상 MCP | 포트 충돌로 자연 방지, 파일 lock은 Phase 2에서 검토 |
+
+> **참고**: MVP에서는 "단일 MCP = 단일 writer" 가정이 합리적. 다중 사용자/인스턴스 시나리오는 Phase 3 이후 검토.
 
 ### MCP Server Architecture
 
