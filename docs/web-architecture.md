@@ -97,6 +97,16 @@ _This document builds collaboratively through step-by-step discovery. Sections a
  [Onboarding UI]            [Retry + Guide]
 ```
 
+**온보딩 에러 시나리오 및 복구:**
+
+| 에러 | 원인 | 사용자 메시지 | 복구 방법 |
+|------|------|--------------|----------|
+| MCP 설치 실패 | npm/npx 환경 문제 | "Node.js가 설치되어 있는지 확인하세요" | Node.js 설치 링크 제공 |
+| 포트 충돌 | 3000번 포트 사용 중 | "다른 앱이 포트를 사용 중입니다" | 자동 fallback (3001-3003) |
+| 방화벽 차단 | localhost 연결 차단 | "방화벽 설정을 확인하세요" | 방화벽 예외 추가 가이드 |
+| MCP 크래시 | 런타임 오류 | "MCP가 예기치 않게 종료되었습니다" | 재시작 명령어 + 로그 위치 안내 |
+| 버전 불일치 | MCP/Viewer 버전 차이 | "MCP 업데이트가 필요합니다" | `npx @ai-native-cad/mcp@latest start` |
+
 ## Technology Stack Evaluation
 
 ### Primary Technology Domain
@@ -916,6 +926,14 @@ bench('WebSocket RTT', async () => {
 | npm 패키지 배포 | 낮음 | 표준 npm 배포 프로세스 | 경험 보유 |
 | 브라우저 CORS | 낮음 | localhost 예외 | 해결됨 |
 | MAMA 통합 복잡성 | 중간 | Post-MVP로 분리 | 범위 조정됨 |
+
+**위험 완화 구현 상세:**
+
+| 위험 | 구체적 구현 패턴 | 참조 |
+|------|-----------------|------|
+| WebSocket 연결 불안정 | Exponential backoff (1s→2s→4s→8s→16s), maxReconnectAttempts=5, setTimeout 기반 (재귀 X), 재연결 중 selection 큐잉 | [Reconnection Policy](#reconnection-policy) |
+| 브라우저 CORS | localhost는 CORS 예외 (브라우저 기본 정책), 프로덕션에서도 `127.0.0.1` 바인딩으로 외부 접근 차단 | [Security Model](#security-model) |
+| MAMA 통합 | `MAMA_ENABLED` feature flag로 미완성 기능 숨김, actionHints 확장 가능한 스키마, Epic 9 전용 opt-in | [Phase Compatibility](#phase-compatibility-rollback-strategy) |
 
 ### Pattern Consistency Check
 
