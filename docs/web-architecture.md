@@ -49,7 +49,7 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 
 1. **실시간 동기화**: scene.json 변경 → WebSocket → Viewer 갱신
 2. **모듈 시스템**: MCP가 모듈 파일 저장/로드, Viewer에서 표시
-3. **MAMA 통합**: cad-mcp 내부에 MAMA 포함 (별도 패키지 불필요)
+3. **MAMA 통합 (Epic 9 이후)**: cad-mcp 내부에 MAMA 포함 예정 (별도 패키지 불필요)
 4. **오프라인 우선**: CAD 기능은 API 없이 로컬에서 동작
 
 ### Web as Entry Point 전략
@@ -168,7 +168,7 @@ cad-electron/       →        (제거)
 
 **보안 요구사항:**
 - MCP SDK는 반드시 >=1.25.2 사용 (ReDoS 취약점 패치 포함)
-- `enableDnsRebindingProtection` 옵션 활성화 필수 (DNS rebinding 공격 방지)
+- `enableDnsRebindingProtection`: HTTP transport 사용 시 필수. **stdio transport는 네트워크 미사용으로 해당 없음** (Line 228-234 참조)
 
 ### Rationale for Migration (Not New Starter)
 
@@ -458,9 +458,11 @@ function checkCompatibility(
   viewerVersion: string,
   minViewerVersion: string
 ): CompatibilityResult {
-  const [mcpMajor, mcpMinor] = mcpVersion.split('.').map(Number);
-  const [viewerMajor, viewerMinor] = viewerVersion.split('.').map(Number);
-  const [minMajor, minMinor] = minViewerVersion.split('.').map(Number);
+  // Pre-release 버전 제거 (예: "1.23.0-beta.0" → "1.23.0")
+  const cleanVersion = (v: string) => v.split('-')[0];
+  const [mcpMajor, mcpMinor] = cleanVersion(mcpVersion).split('.').map(Number);
+  const [viewerMajor, viewerMinor] = cleanVersion(viewerVersion).split('.').map(Number);
+  const [minMajor, minMinor] = cleanVersion(minViewerVersion).split('.').map(Number);
 
   const result: CompatibilityResult = {
     isCompatible: true,
@@ -690,8 +692,11 @@ interface ToolResult {
 |---------|----------|----------|
 | **Viewer** | WebSocket 연결 실패 | 재연결 시도 → Onboarding UI |
 | **Viewer** | 메시지 파싱 실패 | console.error + 무시 |
+| **Viewer** | 메시지 크기 초과 (close 1009) | "메시지 크기 초과" 알림 + 재연결 |
 | **MCP** | WASM 실행 에러 | ToolResult.error 반환 |
 | **MCP** | WebSocket 연결 끊김 | 로그 + 재연결 대기 |
+
+> **Note**: `ws` 라이브러리는 `maxPayload`(10MB) 초과 시 close code 1009 반환 후 연결 종료. Viewer는 이를 감지하여 사용자에게 알림 표시.
 
 **재연결 정책 (Exponential Backoff):**
 
@@ -894,7 +899,7 @@ r2-7f-division/                          # 프로젝트 루트
 │           │   ├── executor.ts
 │           │   └── bindings.ts
 │           ├── capture/                 # 기존 capture.ts
-│           └── mama/                    # (Epic 9 이후: Epic 9)
+│           └── mama/                    # (Epic 9 이후)
 │
 ├── docs/
 │   ├── prd.md
@@ -1057,9 +1062,11 @@ bench('WebSocket RTT', async () => {
 // test('WebSocket RTT p95 < 50ms', async () => { ... });
 ```
 
+> **측정 범위**: Application-level 메시지 왕복 시간 (네트워크 + JSON 파싱). WASM 실행 시간은 별도 벤치마크(cad-engine)에서 측정. E2E 레이턴시 = WebSocket RTT + WASM 실행 (< 1ms).
+
 **기존 측정 근거:**
 - 파일 폴링 500ms: 현재 cad-tools의 `setInterval` 기반 감시
-- WebSocket 15-50ms: localhost 환경 기준, 네트워크 홉 없음
+- WebSocket 15-50ms: localhost 환경 기준, 네트워크 홉 없음 (Application-level RTT)
 
 ### Requirements Coverage
 
