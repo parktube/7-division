@@ -119,6 +119,9 @@ function checkBrowserSupport(): { supported: boolean; reason?: string } {
   if (!('WebSocket' in window)) {
     return { supported: false, reason: 'WebSocket 미지원 브라우저' };
   }
+  if (typeof WebAssembly === 'undefined') {
+    return { supported: false, reason: 'WebAssembly 미지원 브라우저' };
+  }
   return { supported: true };
 }
 ```
@@ -211,9 +214,25 @@ const wss = new WebSocketServer({
 });
 ```
 
+**MCP SDK 보안 설정:**
+
+```typescript
+// MCP 서버 초기화 시 DNS rebinding 보호 활성화
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+
+const mcpServer = new Server(
+  { name: 'ai-native-cad', version: '1.0.0' },
+  { capabilities: { tools: {} } }
+);
+
+// stdio transport는 DNS rebinding 위험 없음 (네트워크 미사용)
+// HTTP transport 사용 시에만 enableDnsRebindingProtection 필요
+```
+
 **Rationale:**
 - 로컬 개발 도구이므로 원격 접근 불필요
-- MCP SDK `enableDnsRebindingProtection` 활성화로 DNS rebinding 공격 방지
+- MCP stdio transport는 네트워크 미사용으로 DNS rebinding 위험 없음
+- WebSocket 서버는 127.0.0.1 바인딩으로 외부 접근 차단
 - 단순성 우선 (인증 로직 없이 빠른 개발)
 
 **Epic 9 이후 확장 시:**
@@ -717,8 +736,8 @@ class WebSocketManager {
   }
 
   syncOnReconnect() {
-    // 큐잉된 selection 동기화
-    if (this.selectionQueue.length > 0) {
+    // 연결 상태 확인 후 큐잉된 selection 동기화
+    if (this.isConnected && this.selectionQueue.length > 0) {
       this.send({ type: 'selection', data: { selected: this.selectionQueue } });
       this.selectionQueue = [];
     }
@@ -1025,11 +1044,9 @@ if (FEATURE_FLAGS.MAMA_ENABLED) {
 // apps/cad-mcp/src/__benchmarks__/ws-latency.bench.ts
 import { bench } from 'vitest';
 
-// 벤치마크: 성능 측정만 (assertion 없음)
+// 벤치마크: tinybench가 자동으로 실행 시간 측정
 bench('WebSocket RTT', async () => {
-  const start = performance.now();
   await sendAndWaitForResponse({ type: 'ping' });
-  return performance.now() - start; // RTT 반환
 });
 
 // 별도 테스트에서 p95 검증
