@@ -172,7 +172,7 @@ cad-electron/       →        (제거)
 - Deployment: GitHub Pages (Viewer) + npm (MCP)
 - 보안 모델: localhost-only (인증 없음, 로컬 접근만 허용)
 
-**Deferred Decisions (Post-MVP):**
+**Deferred Decisions (Epic 9 이후):**
 - isomorphic-git 내장 버전관리
 - WSS (Secure WebSocket) - 현재는 localhost ws:// 사용
 
@@ -200,7 +200,7 @@ const wss = new WebSocketServer({
 - MCP SDK `enableDnsRebindingProtection` 활성화로 DNS rebinding 공격 방지
 - 단순성 우선 (인증 로직 없이 빠른 개발)
 
-**Post-MVP 확장 시:**
+**Epic 9 이후 확장 시:**
 - 원격 접근 필요 시 WSS + 토큰 인증 추가
 - mTLS 또는 JWT handshake 고려
 
@@ -343,7 +343,7 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 | Git 작업 | checkout, merge로 파일 변경 | MCP 재시작 필요 - Viewer에서 "파일 변경 감지" 알림 |
 | 다중 MCP 인스턴스 | 같은 프로젝트에 2개 이상 MCP | 포트 충돌로 자연 방지, 파일 lock은 Phase 2에서 검토 |
 
-> **참고**: MVP에서는 "단일 MCP = 단일 writer" 가정이 합리적. 다중 사용자/인스턴스 시나리오는 Phase 3 이후 검토.
+> **참고**: 웹 전환 범위에서는 "단일 MCP = 단일 writer" 가정이 합리적. 다중 사용자/인스턴스 시나리오는 Phase 4 이후 검토.
 
 ### MCP Server Architecture
 
@@ -420,7 +420,7 @@ function isCompatible(mcpVersion: string, viewerVersion: string): boolean {
 
 ### Future Extension: isomorphic-git
 
-**상태: Post-MVP**
+**상태: Epic 9 이후**
 
 LLM이 직접 버전관리를 "이해하고" 수행하는 시스템:
 
@@ -610,7 +610,7 @@ class WebSocketManager {
 | 5 | 16초 | 31초 |
 | 실패 | - | Onboarding UI |
 
-> **동기화 범위**: MVP에서는 `selectionQueue`만 처리 (사용자 선택 상태). 툴바/레이어 변경 등은 MCP 요청이므로 연결 필수 → 끊김 시 UI에서 비활성화.
+> **동기화 범위**: Phase 1-3에서는 `selectionQueue`만 처리 (사용자 선택 상태). 툴바/레이어 변경 등은 MCP 요청이므로 연결 필수 → 끊김 시 UI에서 비활성화.
 
 ### Testing Patterns
 
@@ -663,7 +663,7 @@ return { success: true, data: { entities: [...] } }
 2. Viewer는 동일한 타입을 `apps/viewer/src/types/` 에 복사
 3. 타입 변경 시 양쪽 수동 동기화 (Phase 1-2 범위에서 충분)
 
-**Post-MVP 확장:**
+**Epic 9 이후 확장:**
 - 타입 불일치가 빈번해지면 `packages/shared-types` 도입 검토
 
 **타입 동기화 CI 검증 (권장):**
@@ -749,7 +749,7 @@ r2-7f-division/                          # 프로젝트 루트
 │           │   ├── executor.ts
 │           │   └── bindings.ts
 │           ├── capture/                 # 기존 capture.ts
-│           └── mama/                    # (Post-MVP: Epic 9)
+│           └── mama/                    # (Epic 9 이후: Epic 9)
 │
 ├── docs/
 │   ├── prd.md
@@ -806,7 +806,7 @@ r2-7f-division/                          # 프로젝트 루트
 |------|---------|------|
 | Epic 1-8 | `cad-engine/`, `apps/cad-mcp/sandbox/` | CAD 엔진 + 샌드박스 |
 | 웹 아키텍처 | `apps/viewer/`, `apps/cad-mcp/ws/` | WebSocket 통신 |
-| Epic 9 (Post-MVP) | `apps/cad-mcp/mama/` | MAMA 통합 |
+| Epic 9 (Epic 9 이후) | `apps/cad-mcp/mama/` | MAMA 통합 |
 
 ### Implementation Phases
 
@@ -815,7 +815,7 @@ r2-7f-division/                          # 프로젝트 루트
 | **Phase 1** | 모노레포 전환 + WebSocket | pnpm workspace, useWebSocket |
 | **Phase 2** | MCP 서버 완성 | @ai-native-cad/mcp (npm) |
 | **Phase 3** | GitHub Pages 배포 | 온보딩 UI, 자동 배포 |
-| **Phase 4** | MAMA 통합 (Post-MVP) | Epic 9 구현 |
+| **Phase 4** | MAMA 통합 (Epic 9 이후) | Epic 9 구현 |
 
 ### Phase 전환 호환성 & 롤백 전략
 
@@ -923,7 +923,7 @@ bench('WebSocket RTT', async () => {
 | 요구사항 | 아키텍처 커버리지 | 검증 |
 |---------|-----------------|------|
 | FR1-50 (CAD 엔진) | `cad-engine/` + `apps/cad-mcp/sandbox/` | ✅ 기존 구현 유지 |
-| FR51-66 (MAMA) | `apps/cad-mcp/mama/` (Post-MVP) | ⏳ Epic 9 구현 예정 |
+| FR51-66 (MAMA) | `apps/cad-mcp/mama/` (Epic 9 이후) | ⏳ Epic 9 구현 예정 |
 | NFR1-17 (성능) | WASM 직접 호출 | ✅ < 1ms |
 | NFR 신규 (실시간) | WebSocket (p50 < 15ms) | ⏳ Phase 2 벤치마크 예정 |
 
@@ -934,7 +934,7 @@ bench('WebSocket RTT', async () => {
 | WebSocket 연결 불안정 | 중간 | 재연결 로직 + 온보딩 UI | 설계 완료 |
 | npm 패키지 배포 | 낮음 | 표준 npm 배포 프로세스 | 경험 보유 |
 | 브라우저 CORS | 낮음 | localhost 예외 | 해결됨 |
-| MAMA 통합 복잡성 | 중간 | Post-MVP로 분리 | 범위 조정됨 |
+| MAMA 통합 복잡성 | 중간 | Epic 9 이후로 분리 | 범위 조정됨 |
 
 **위험 완화 구현 상세:**
 
@@ -968,7 +968,7 @@ bench('WebSocket RTT', async () => {
 
 | 항목 | 상태 |
 |------|------|
-| 요구사항 커버리지 | ✅ 100% (MVP 범위) |
+| 요구사항 커버리지 | ✅ 100% (웹 전환 범위) |
 | 기술 위험 | ✅ 관리 가능 |
 | 패턴 일관성 | ✅ 검증됨 |
 | 구현 준비도 | ✅ Ready |
