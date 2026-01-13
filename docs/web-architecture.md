@@ -106,6 +106,22 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 | 방화벽 차단 | localhost 연결 차단 | "방화벽 설정을 확인하세요" | 방화벽 예외 추가 가이드 |
 | MCP 크래시 | 런타임 오류 | "MCP가 예기치 않게 종료되었습니다" | 재시작 명령어 + 로그 위치 안내 |
 | 버전 불일치 | MCP/Viewer 버전 차이 | "MCP 업데이트가 필요합니다" | `npx @ai-native-cad/mcp@latest start` |
+| VPN/프록시 | WebSocket 차단 | "VPN이 연결을 차단할 수 있습니다" | localhost 예외 설정 또는 VPN 일시 비활성화 |
+| 브라우저 미지원 | IE, 구형 브라우저 | "최신 브라우저를 사용하세요" | Chrome/Firefox/Safari 권장 |
+| npm PATH 누락 | npx 명령어 없음 | "터미널을 새로 열거나 PATH를 확인하세요" | 터미널 재시작 또는 Node.js 재설치 |
+| MCP 무응답 | 프로세스 hang | "MCP가 응답하지 않습니다" | `pkill -f cad-mcp` 후 재시작 |
+
+**브라우저 호환성 체크:**
+
+```typescript
+// Viewer 시작 시 실행
+function checkBrowserSupport(): { supported: boolean; reason?: string } {
+  if (!('WebSocket' in window)) {
+    return { supported: false, reason: 'WebSocket 미지원 브라우저' };
+  }
+  return { supported: true };
+}
+```
 
 ## Technology Stack Evaluation
 
@@ -143,9 +159,9 @@ cad-electron/       →        (제거)
 | WebSocket Server | ws (Node.js) | 8.19.x | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
 | WebSocket Client | native WebSocket | - | Viewer → MCP 연결 | - |
 | MCP SDK | @modelcontextprotocol/sdk | >=1.25.2 | Claude Code stdio 연동 | **필수**: ReDoS/DNS rebinding 패치 (CVE-2025-66414) |
-| 런타임 검증 | Zod | 3.x | 메시지 타입 검증 | 신규 추가 |
+| 런타임 검증 | Zod | 4.x | 메시지 타입 검증 | 신규 추가 |
 | 포트 탐색 | get-port | 7.x | 포트 충돌 시 자동 할당 | - |
-| 모노레포 | pnpm workspace | 9.x | 패키지 관리, 의존성 공유 | - |
+| 모노레포 | pnpm workspace | 10.x | 패키지 관리, 의존성 공유 | - |
 
 **보안 요구사항:**
 - MCP SDK는 반드시 >=1.25.2 사용 (v1.25.2에서 ReDoS 취약점 패치, DNS rebinding 보호 추가)
@@ -405,17 +421,62 @@ interface ConnectionMessage {
   timestamp: number;
 }
 
+// 호환성 체크 결과
+interface CompatibilityResult {
+  isCompatible: boolean;
+  warnings: string[];
+  disabledFeatures: string[];
+  requiresUpgrade: 'mcp' | 'viewer' | null;
+}
+
 // Viewer 호환성 체크
-function isCompatible(mcpVersion: string, viewerVersion: string): boolean {
-  const [mcpMajor] = mcpVersion.split('.').map(Number);
-  const [viewerMajor] = viewerVersion.split('.').map(Number);
-  return mcpMajor === viewerMajor; // Major 버전 일치 필요
+function checkCompatibility(
+  mcpVersion: string,
+  viewerVersion: string,
+  minViewerVersion: string
+): CompatibilityResult {
+  const [mcpMajor, mcpMinor] = mcpVersion.split('.').map(Number);
+  const [viewerMajor, viewerMinor] = viewerVersion.split('.').map(Number);
+  const [minMajor, minMinor] = minViewerVersion.split('.').map(Number);
+
+  const result: CompatibilityResult = {
+    isCompatible: true,
+    warnings: [],
+    disabledFeatures: [],
+    requiresUpgrade: null,
+  };
+
+  // Major 버전 불일치: 호환 불가
+  if (mcpMajor !== viewerMajor) {
+    result.isCompatible = false;
+    result.requiresUpgrade = mcpMajor > viewerMajor ? 'viewer' : 'mcp';
+    return result;
+  }
+
+  // Viewer가 minViewerVersion 미만
+  if (viewerMajor < minMajor || (viewerMajor === minMajor && viewerMinor < minMinor)) {
+    result.isCompatible = false;
+    result.requiresUpgrade = 'viewer';
+    return result;
+  }
+
+  // Minor 버전 차이: 경고 + 일부 기능 비활성화
+  if (mcpMinor > viewerMinor) {
+    result.warnings.push(`MCP(${mcpVersion})가 Viewer(${viewerVersion})보다 최신입니다.`);
+    result.disabledFeatures.push('새 MCP 기능');
+  }
+
+  return result;
 }
 ```
 
 **불일치 시 UX:**
-- 경고 배너: "MCP 버전이 오래되었습니다. `npx @ai-native-cad/mcp start`로 업데이트하세요."
-- 기본 기능은 동작, 신규 기능은 비활성화
+
+| 상태 | 동작 | 메시지 |
+|------|------|--------|
+| Major 불일치 | 연결 차단 | "MCP 업데이트 필요: `npx @ai-native-cad/mcp start`" |
+| Minor 불일치 | 경고 배너 | "일부 기능 비활성화됨. 최신 버전 권장." |
+| 호환 | 정상 연결 | - |
 
 ### Future Extension: isomorphic-git
 
@@ -455,9 +516,12 @@ diff(sha1, sha2)     // 두 커밋 간 차이 비교 (sha: Git 커밋 해시)
 **결정: Type + Data 구조**
 
 ```typescript
+// 메시지 타입별 data 구조는 하단 Zod 스키마 참조
+type WSMessageType = 'scene_update' | 'selection' | 'connection' | 'error' | 'ping' | 'pong';
+
 interface WSMessage {
-  type: 'scene_update' | 'selection' | 'connection' | 'error';
-  data: unknown;
+  type: WSMessageType;
+  data: Record<string, unknown>;  // 타입별 구조는 Zod 스키마로 검증
   timestamp: number;
 }
 
@@ -472,12 +536,61 @@ interface WSMessage {
 ```typescript
 import { z } from 'zod';
 
-// Zod 스키마 정의
-const WSMessageSchema = z.object({
-  type: z.enum(['scene_update', 'selection', 'connection', 'error']),
-  data: z.unknown(),
-  timestamp: z.number(),
+// 타입별 data 스키마 정의
+const SceneUpdateDataSchema = z.object({
+  entities: z.array(z.record(z.unknown())),
 });
+
+const SelectionDataSchema = z.object({
+  selected: z.array(z.string()),
+});
+
+const ConnectionDataSchema = z.object({
+  mcpVersion: z.string(),
+  protocolVersion: z.number().int().positive(),
+  minViewerVersion: z.string().optional(),
+});
+
+const ErrorDataSchema = z.object({
+  message: z.string(),
+  code: z.string().optional(),
+});
+
+// Discriminated Union으로 타입별 검증
+const WSMessageSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('scene_update'),
+    data: SceneUpdateDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('selection'),
+    data: SelectionDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('connection'),
+    data: ConnectionDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('error'),
+    data: ErrorDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('ping'),
+    data: z.object({}),
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('pong'),
+    data: z.object({}),
+    timestamp: z.number().int().positive(),
+  }),
+]);
+
+type WSMessage = z.infer<typeof WSMessageSchema>;
 
 // 검증 함수
 function validateMessage(raw: unknown): WSMessage {
@@ -491,6 +604,8 @@ ws.on('message', (raw: string) => {
     const message = validateMessage(parsed);
     handleMessage(message);
   } catch (e) {
+    // 상세 에러는 서버 로그에만 기록 (프로덕션 보안)
+    console.error('Message validation failed:', e);
     ws.send(JSON.stringify({
       type: 'error',
       data: { message: 'Invalid message format' },
@@ -509,6 +624,8 @@ const wss = new WebSocketServer({
   maxPayload: 10 * 1024 * 1024, // 10MB 메시지 크기 제한
 });
 ```
+
+> **대용량 씬 처리**: 10MB는 대부분의 CAD 씬(~5000 엔티티)에 충분. 초대형 씬이 필요해지면 청킹(chunked transfer) 또는 증분 업데이트(incremental diff) 패턴 도입 가능.
 
 **Rationale:**
 - 타입 안전성 보장 (컴파일타임 + 런타임)
