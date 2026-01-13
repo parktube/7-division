@@ -6,8 +6,8 @@ inputDocuments:
   - docs/epic-9-proposal.md
   - docs/ux-design-specification.md
 workflowType: 'architecture'
-lastStep: 6
-project_name: 'r2-7f-division'
+lastStep: 7
+project_name: 'AI-Native CAD'
 user_name: 'Hoons'
 date: '2026-01-13'
 outputFile: 'web-architecture.md'
@@ -128,12 +128,17 @@ cad-electron/       →        (제거)
 
 ### New Technologies to Add
 
-| 컴포넌트 | 기술 | 용도 |
-|---------|------|------|
-| WebSocket Server | ws (Node.js) | MCP → Viewer 실시간 푸시 |
-| WebSocket Client | native WebSocket | Viewer → MCP 연결 |
-| MCP SDK | @modelcontextprotocol/sdk | Claude Code stdio 연동 |
-| 모노레포 | pnpm workspace | 패키지 관리, 의존성 공유 |
+| 컴포넌트 | 기술 | 버전 | 용도 | 보안 노트 |
+|---------|------|------|------|----------|
+| WebSocket Server | ws (Node.js) | 8.18.3 | MCP → Viewer 실시간 푸시 | maxPayload 설정 필수 |
+| WebSocket Client | native WebSocket | - | Viewer → MCP 연결 | - |
+| MCP SDK | @modelcontextprotocol/sdk | >=1.25.2 | Claude Code stdio 연동 | **필수**: ReDoS/DNS rebinding 패치 (CVE-2025-66414) |
+| 런타임 검증 | Zod | 3.x | 메시지 타입 검증 | 신규 추가 |
+| 모노레포 | pnpm workspace | 9.x | 패키지 관리, 의존성 공유 | - |
+
+**보안 요구사항:**
+- MCP SDK는 반드시 >=1.25.2 사용 (v1.25.2에서 ReDoS 취약점 패치, DNS rebinding 보호 추가)
+- `enableDnsRebindingProtection` 옵션 활성화 필수
 
 ### Rationale for Migration (Not New Starter)
 
@@ -154,9 +159,39 @@ cad-electron/       →        (제거)
 **Important Decisions (Shape Architecture):**
 - MCP Server 구조: stdio + WebSocket 듀얼 서버
 - Deployment: GitHub Pages (Viewer) + npm (MCP)
+- 보안 모델: localhost-only (인증 없음, 로컬 접근만 허용)
 
 **Deferred Decisions (Post-MVP):**
 - isomorphic-git 내장 버전관리
+- WSS (Secure WebSocket) - 현재는 localhost ws:// 사용
+
+### Security Model
+
+**결정: Localhost-Only (Phase 1-3)**
+
+| 항목 | 결정 | 근거 |
+|------|------|------|
+| 인증 | 없음 | localhost 접근만 허용 |
+| 프로토콜 | ws:// | 로컬 환경에서 TLS 불필요 |
+| 접근 제한 | 127.0.0.1 바인딩 | 외부 네트워크 접근 차단 |
+
+```typescript
+// WebSocket 서버: localhost만 바인딩
+const wss = new WebSocketServer({
+  host: '127.0.0.1',  // localhost만 접근 가능
+  port,
+  maxPayload: 10 * 1024 * 1024,
+});
+```
+
+**Rationale:**
+- 로컬 개발 도구이므로 원격 접근 불필요
+- MCP SDK `enableDnsRebindingProtection` 활성화로 DNS rebinding 공격 방지
+- 단순성 우선 (인증 로직 없이 빠른 개발)
+
+**Post-MVP 확장 시:**
+- 원격 접근 필요 시 WSS + 토큰 인증 추가
+- mTLS 또는 JWT handshake 고려
 
 ### Communication Architecture
 
@@ -164,10 +199,38 @@ cad-electron/       →        (제거)
 
 | 항목 | 값 |
 |------|-----|
-| 프로토콜 | WebSocket |
-| 포트 | 3000 (로컬) |
+| 프로토콜 | WebSocket (ws://) |
+| 기본 포트 | 3000 (환경변수 `CAD_MCP_PORT`로 변경 가능) |
 | 지연시간 | ~15ms |
 | 양방향 | O |
+
+**포트 충돌 완화 전략:**
+
+```typescript
+// MCP 서버: 환경변수 → 자동 할당 fallback
+import getPort from 'get-port';
+
+const port = process.env.CAD_MCP_PORT
+  ? parseInt(process.env.CAD_MCP_PORT)
+  : await getPort({ port: [3000, 3001, 3002, 3003] });
+
+console.log(`MCP WebSocket server on port ${port}`);
+```
+
+```typescript
+// Viewer: 다중 포트 시도 후 온보딩 UI
+const DEFAULT_PORTS = [3000, 3001, 3002, 3003];
+
+async function connectToMCP() {
+  for (const port of DEFAULT_PORTS) {
+    try {
+      await tryConnect(`ws://localhost:${port}`);
+      return; // 성공
+    } catch (e) { continue; }
+  }
+  showOnboardingUI(); // 모든 포트 실패
+}
+```
 
 **데이터 흐름:**
 ```
@@ -227,6 +290,38 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer
 - 프로젝트별 독립성
 - 기존 cad-tools 방식과 호환
 
+**scene.json 무결성 전략:**
+
+```typescript
+import { writeFile, rename, copyFile } from 'fs/promises';
+import { join } from 'path';
+
+async function saveSceneAtomic(projectDir: string, scene: SceneData) {
+  const targetPath = join(projectDir, 'scene.json');
+  const tempPath = join(projectDir, '.scene.json.tmp');
+  const backupPath = join(projectDir, 'scene.json.backup');
+
+  // 1. 임시 파일에 쓰기
+  await writeFile(tempPath, JSON.stringify(scene, null, 2));
+
+  // 2. 기존 파일 백업 (존재하는 경우)
+  try {
+    await copyFile(targetPath, backupPath);
+  } catch (e) {
+    // 첫 저장 시에는 기존 파일 없음
+  }
+
+  // 3. 임시 파일을 최종 위치로 이동 (atomic)
+  await rename(tempPath, targetPath);
+}
+```
+
+| 위험 | 완화 전략 |
+|------|----------|
+| 동시 쓰기 | MCP 단일 프로세스가 유일한 writer |
+| 불완전한 쓰기 | temp file → atomic rename |
+| 파일 손상 | scene.json.backup 자동 생성 |
+
 ### MCP Server Architecture
 
 **결정: stdio + WebSocket 듀얼 서버**
@@ -267,9 +362,38 @@ export class CadMcpServer {
 npx @ai-native-cad/mcp start
 ```
 
-**버전 동기화:**
-- Viewer가 MCP 버전 체크
-- 불일치 시 업데이트 안내 표시
+**버전 동기화 정책:**
+
+| 항목 | 정책 |
+|------|------|
+| 교환 시점 | WebSocket 연결 핸드셰이크 시 |
+| 호환성 기준 | Major 버전 일치 필수 |
+| 불일치 시 동작 | 경고 배너 + 제한 기능 모드 |
+| 업데이트 방법 | `npx @ai-native-cad/mcp start` 재실행 |
+
+```typescript
+// 연결 시 초기 핸드셰이크 메시지
+interface ConnectionMessage {
+  type: 'connection';
+  data: {
+    mcpVersion: string;       // "1.2.3"
+    protocolVersion: number;  // 1
+    minViewerVersion: string; // "1.0.0"
+  };
+  timestamp: number;
+}
+
+// Viewer 호환성 체크
+function isCompatible(mcpVersion: string, viewerVersion: string): boolean {
+  const [mcpMajor] = mcpVersion.split('.').map(Number);
+  const [viewerMajor] = viewerVersion.split('.').map(Number);
+  return mcpMajor === viewerMajor; // Major 버전 일치 필요
+}
+```
+
+**불일치 시 UX:**
+- 경고 배너: "MCP 버전이 오래되었습니다. `npx @ai-native-cad/mcp start`로 업데이트하세요."
+- 기본 기능은 동작, 신규 기능은 비활성화
 
 ### Future Extension: isomorphic-git
 
@@ -280,9 +404,9 @@ LLM이 직접 버전관리를 "이해하고" 수행하는 시스템:
 ```javascript
 // 샌드박스 바인딩 (향후 추가)
 snapshot(message)    // 현재 상태 저장
-getHistory()         // 이력 조회
-restore(version)     // 복원
-diff(v1, v2)        // 비교
+getHistory()         // 이력 조회 → [{ sha, message, timestamp }, ...]
+restore(sha)         // 특정 커밋으로 복원
+diff(sha1, sha2)     // 두 커밋 간 차이 비교 (sha: Git 커밋 해시)
 ```
 
 **사용 시나리오:**
@@ -321,10 +445,54 @@ interface WSMessage {
 { type: 'error', data: { message: 'WASM error' }, timestamp: 1704067200200 }
 ```
 
+**런타임 메시지 검증 (Zod):**
+
+```typescript
+import { z } from 'zod';
+
+// Zod 스키마 정의
+const WSMessageSchema = z.object({
+  type: z.enum(['scene_update', 'selection', 'connection', 'error']),
+  data: z.unknown(),
+  timestamp: z.number(),
+});
+
+// 검증 함수
+function validateMessage(raw: unknown): WSMessage {
+  return WSMessageSchema.parse(raw); // 실패 시 예외 발생
+}
+
+// WebSocket 서버에서 사용
+ws.on('message', (raw: string) => {
+  try {
+    const parsed = JSON.parse(raw);
+    const message = validateMessage(parsed);
+    handleMessage(message);
+  } catch (e) {
+    ws.send(JSON.stringify({
+      type: 'error',
+      data: { message: 'Invalid message format' },
+      timestamp: Date.now()
+    }));
+  }
+});
+```
+
+**서버 보안 설정:**
+
+```typescript
+// WebSocket 서버 옵션
+const wss = new WebSocketServer({
+  port,
+  maxPayload: 10 * 1024 * 1024, // 10MB 메시지 크기 제한
+});
+```
+
 **Rationale:**
-- 타입 안전성 보장
+- 타입 안전성 보장 (컴파일타임 + 런타임)
 - 기존 scene.json 구조와 일관성
 - 디버깅 용이 (timestamp)
+- DoS 방지 (메시지 크기 제한)
 
 ### MCP Tool Response Format
 
@@ -347,10 +515,69 @@ interface ToolResult {
 
 | 컴포넌트 | 에러 유형 | 처리 방식 |
 |---------|----------|----------|
-| **Viewer** | WebSocket 연결 실패 | Onboarding UI 표시 |
+| **Viewer** | WebSocket 연결 실패 | 재연결 시도 → Onboarding UI |
 | **Viewer** | 메시지 파싱 실패 | console.error + 무시 |
 | **MCP** | WASM 실행 에러 | ToolResult.error 반환 |
 | **MCP** | WebSocket 연결 끊김 | 로그 + 재연결 대기 |
+
+**재연결 정책 (Exponential Backoff):**
+
+```typescript
+class WebSocketManager {
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private baseReconnectDelay = 1000; // 1초
+
+  private async reconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      this.showError('MCP 연결 실패');
+      this.showOnboardingUI();
+      return;
+    }
+
+    const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts);
+    this.showStatus(`재연결 시도 중... (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+
+    await sleep(delay);
+    this.reconnectAttempts++;
+
+    try {
+      await this.connect();
+      this.reconnectAttempts = 0; // 성공 시 리셋
+      this.showStatus('연결됨');
+      this.syncOnReconnect(); // 재연결 후 동기화
+    } catch (e) {
+      this.reconnect(); // 재귀적 재시도
+    }
+  }
+
+  // 연결 끊김 중 사용자 작업 큐잉
+  private selectionQueue: string[] = [];
+
+  queueSelection(entityId: string) {
+    if (!this.isConnected) {
+      this.selectionQueue.push(entityId);
+    }
+  }
+
+  syncOnReconnect() {
+    // 큐잉된 selection 동기화
+    if (this.selectionQueue.length > 0) {
+      this.send({ type: 'selection', data: { selected: this.selectionQueue } });
+      this.selectionQueue = [];
+    }
+  }
+}
+```
+
+| 시도 | 대기시간 | 총 경과 |
+|------|---------|---------|
+| 1 | 1초 | 1초 |
+| 2 | 2초 | 3초 |
+| 3 | 4초 | 7초 |
+| 4 | 8초 | 15초 |
+| 5 | 16초 | 31초 |
+| 실패 | - | Onboarding UI |
 
 ### Testing Patterns
 
@@ -378,7 +605,7 @@ interface ToolResult {
 ws.send({ scene: {...} })
 
 // ✅ 올바름: type 필드 포함
-ws.send({ type: 'scene_update', data: { scene: {...} }, timestamp: Date.now() })
+ws.send({ type: 'scene_update', data: { entities: [...] }, timestamp: Date.now() })
 
 // ❌ 잘못: success 없는 도구 응답
 return { entities: [...] }
@@ -388,6 +615,35 @@ return { success: true, data: { entities: [...] } }
 ```
 
 ## Project Structure & Boundaries
+
+### Shared Types Strategy
+
+**결정: apps/cad-mcp 내부에서 정의, Viewer는 복사**
+
+| 옵션 | 장점 | 단점 | 결정 |
+|------|------|------|------|
+| `packages/shared-types` | 완전한 타입 공유 | 초기 설정 복잡 | ❌ |
+| `apps/cad-mcp` 내부 | 단순, MCP가 source of truth | Viewer에서 import 불가 | ✅ |
+
+**구현 방식:**
+1. `apps/cad-mcp/src/types/` 에 모든 타입 정의
+2. Viewer는 동일한 타입을 `apps/viewer/src/types/` 에 복사
+3. 타입 변경 시 양쪽 수동 동기화 (Phase 1-2 범위에서 충분)
+
+**Post-MVP 확장:**
+- 타입 불일치가 빈번해지면 `packages/shared-types` 도입 검토
+- CI에서 타입 일치 검증 스크립트 추가 가능
+
+```typescript
+// apps/cad-mcp/src/types/ws-message.ts
+export interface WSMessage {
+  type: 'scene_update' | 'selection' | 'connection' | 'error';
+  data: unknown;
+  timestamp: number;
+}
+
+// apps/viewer/src/types/ws-message.ts (동일하게 복사)
+```
 
 ### Complete Project Directory Structure
 
@@ -440,7 +696,7 @@ r2-7f-division/                          # 프로젝트 루트
 │           ├── server.ts                # MCP + WebSocket 서버
 │           ├── mcp/
 │           │   ├── tools.ts             # MCP 도구 정의
-│           │   └── handlers.ts
+│           │   └── handlers.ts          # MCP 도구 핸들러
 │           ├── ws/
 │           │   ├── server.ts            # WebSocket 서버
 │           │   └── messages.ts          # 메시지 타입
@@ -516,6 +772,56 @@ r2-7f-division/                          # 프로젝트 루트
 | **Phase 2** | MCP 서버 완성 | @ai-native-cad/mcp (npm) |
 | **Phase 3** | GitHub Pages 배포 | 온보딩 UI, 자동 배포 |
 | **Phase 4** | MAMA 통합 (Post-MVP) | Epic 9 구현 |
+
+### Phase 전환 호환성 & 롤백 전략
+
+**Phase 1 → Phase 2 전환:**
+
+| 상태 | useWebSocket | MCP 서버 | 동작 |
+|------|--------------|---------|------|
+| Phase 1 개발 중 | 구현됨 | 미완성 | Mock 서버로 테스트 |
+| Phase 2 완료 | 구현됨 | 완성 | 실제 연결 |
+
+```typescript
+// Phase 1: Mock WebSocket for development
+const useMockWebSocket = process.env.NODE_ENV === 'development' && !process.env.MCP_URL;
+```
+
+**Phase 2 → Phase 3 전환:**
+
+| 단계 | 배포 위치 | 사용자 경험 |
+|------|----------|------------|
+| 1 | npm (beta) | 얼리 어답터 테스트 |
+| 2 | npm (stable) | 공식 릴리즈 |
+| 3 | GitHub Pages | 웹 접근 가능 |
+
+**Breaking Changes 처리:**
+- Major 버전 변경 시 1개 이전 버전 호환성 유지
+- 연결 시 버전 체크 후 경고 표시
+
+**롤백 절차:**
+
+```bash
+# npm 패키지 롤백
+npm unpublish @ai-native-cad/mcp@x.y.z  # 문제 버전 제거
+npm publish --tag latest                 # 이전 안정 버전 재지정
+
+# GitHub Pages 롤백
+git revert HEAD  # 이전 커밋으로
+git push origin gh-pages
+```
+
+**Feature Flag (MAMA/Epic 9):**
+```typescript
+// 미완성 기능 숨기기
+const FEATURE_FLAGS = {
+  MAMA_ENABLED: process.env.MAMA_ENABLED === 'true',
+};
+
+if (FEATURE_FLAGS.MAMA_ENABLED) {
+  // MAMA 관련 UI/기능 활성화
+}
+```
 
 ## Architecture Validation
 
