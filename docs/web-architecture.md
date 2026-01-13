@@ -528,8 +528,9 @@ class WebSocketManager {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private baseReconnectDelay = 1000; // 1초
+  private reconnectTimer: number | null = null;
 
-  private async reconnect() {
+  private scheduleReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.showError('MCP 연결 실패');
       this.showOnboardingUI();
@@ -539,17 +540,22 @@ class WebSocketManager {
     const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts);
     this.showStatus(`재연결 시도 중... (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
 
-    await sleep(delay);
-    this.reconnectAttempts++;
+    // setTimeout으로 재귀 대신 반복 (콜스택 안전)
+    this.reconnectTimer = setTimeout(async () => {
+      this.reconnectAttempts++;
+      try {
+        await this.connect();
+        this.reconnectAttempts = 0; // 성공 시 리셋
+        this.showStatus('연결됨');
+        this.syncOnReconnect();
+      } catch (e) {
+        this.scheduleReconnect(); // 다음 시도 예약
+      }
+    }, delay);
+  }
 
-    try {
-      await this.connect();
-      this.reconnectAttempts = 0; // 성공 시 리셋
-      this.showStatus('연결됨');
-      this.syncOnReconnect(); // 재연결 후 동기화
-    } catch (e) {
-      this.reconnect(); // 재귀적 재시도
-    }
+  dispose() {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
   }
 
   // 연결 끊김 중 사용자 작업 큐잉
@@ -633,7 +639,18 @@ return { success: true, data: { entities: [...] } }
 
 **Post-MVP 확장:**
 - 타입 불일치가 빈번해지면 `packages/shared-types` 도입 검토
-- CI에서 타입 일치 검증 스크립트 추가 가능
+
+**타입 동기화 CI 검증 (권장):**
+
+```yaml
+# .github/workflows/ci.yml
+- name: Verify type sync
+  run: |
+    diff apps/cad-mcp/src/types/ws-message.ts apps/viewer/src/types/ws-message.ts
+    diff apps/cad-mcp/src/types/tool-result.ts apps/viewer/src/types/tool-result.ts
+```
+
+타입 파일이 불일치하면 CI 실패 → 수동 동기화 강제
 
 ```typescript
 // apps/cad-mcp/src/types/ws-message.ts
@@ -803,14 +820,24 @@ const useMockWebSocket = process.env.NODE_ENV === 'development' && !process.env.
 **롤백 절차:**
 
 ```bash
-# npm 패키지 롤백
+# npm 패키지 롤백 (72시간 이내만 가능)
 npm unpublish @ai-native-cad/mcp@x.y.z  # 문제 버전 제거
-npm publish --tag latest                 # 이전 안정 버전 재지정
+
+# 72시간 이후 또는 의존성 있는 경우: deprecate 사용 (권장)
+npm deprecate @ai-native-cad/mcp@x.y.z "보안 이슈로 사용 중단. x.y.z+1로 업그레이드하세요."
+
+# 이전 안정 버전을 latest로 재지정
+npm dist-tag add @ai-native-cad/mcp@x.y.z-1 latest
 
 # GitHub Pages 롤백
 git revert HEAD  # 이전 커밋으로
 git push origin gh-pages
 ```
+
+**npm unpublish 제약사항:**
+- 발행 후 72시간 이내에만 unpublish 가능
+- 다른 패키지가 의존하면 unpublish 불가
+- 운영 환경에서는 `npm deprecate`가 더 안전
 
 **Feature Flag (MAMA/Epic 9):**
 ```typescript
