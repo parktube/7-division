@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - feature/manifold-integration
+## [0.2.0] - 2026-01-13
 
 ### Added
 
@@ -89,4 +89,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-*작성: 2026-01-09*
+*작성: 2026-01-09 | 최종 업데이트: 2026-01-13*

@@ -3,7 +3,7 @@
 > **협업 리더**: @parktube
 > **Repository**: https://github.com/parktube/7-division
 
-**현재 상태**: Epic 1~7 완료 (MVP 완성)
+**현재 상태**: Epic 1~8 완료 (MVP + Manifold 기하 엔진)
 
 ## Quick Start
 
@@ -65,11 +65,14 @@ npx tsx cad-cli.ts run_cad_code main "+setFill('c1', [1, 0, 0, 1])"  # + prefix 
 | 카테고리 | 함수 | 설명 |
 |---------|------|------|
 | **Primitives** | `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`, `drawArc`, `drawBezier` | 도형 생성 (중심 좌표 기준) |
+| **Text** | `drawText`, `getTextMetrics` | 텍스트 렌더링 (opentype.js) |
 | **Style** | `setFill`, `setStroke` | 색상/선 스타일 (RGBA 0~1) |
-| **Transform** | `translate`, `rotate`, `scale`, `setPivot` | 변환 (rotate는 라디안) |
+| **Transform** | `translate`, `rotate`, `scale`, `setPivot`, `duplicate`, `mirror` | 변환 (rotate는 라디안) |
+| **Boolean** | `booleanUnion`, `booleanDifference`, `booleanIntersect` | Boolean 연산 (Manifold) |
+| **Geometry** | `offsetPolygon`, `getArea`, `convexHull`, `decompose` | 기하 분석 (Manifold) |
 | **Z-Order** | `drawOrder`, `getDrawOrder` | 레이어 순서 관리 |
 | **Groups** | `createGroup`, `addToGroup` | 그룹화 |
-| **Query** | `exists`, `getEntity`, `getWorldBounds` | 조회 |
+| **Query** | `exists`, `getEntity`, `getWorldBounds`, `fitToViewport` | 조회 |
 | **Delete** | `deleteEntity` | 삭제 |
 
 ### 예시: 간단한 집 그리기
@@ -407,4 +410,4 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-*최종 업데이트: 2026-01-08*
+*최종 업데이트: 2026-01-13*
