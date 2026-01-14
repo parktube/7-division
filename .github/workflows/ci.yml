@@ -58,6 +58,60 @@ jobs:
           path: cad-engine/pkg/
           retention-days: 1
 
+  # TypeScript 빌드 및 테스트 (pnpm monorepo)
+  typescript:
+    name: TypeScript Build & Tests
+    runs-on: ubuntu-latest
+    needs: rust  # WASM 빌드 완료 후 실행
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Download WASM Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: wasm-pkg
+          path: cad-engine/pkg/
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build shared package first
+        run: pnpm --filter @ai-native-cad/shared build
+
+      - name: ESLint (all packages)
+        run: pnpm -r lint
+
+      - name: TypeScript Type Check
+        run: pnpm -r typecheck
+
+      - name: Build all packages
+        run: pnpm -r build
+
+      - name: Run Tests
+        run: pnpm -r test
+
   # WASM 통합 테스트
   integration:
     name: WASM Integration Test

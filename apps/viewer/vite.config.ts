@@ -86,9 +86,10 @@ function dataMiddleware() {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss(), dataMiddleware()],
-  base: './', // Electron file:// protocol support
+  // GitHub Pages uses /7-division/, local dev uses ./
+  base: mode === 'production' ? (process.env.VITE_BASE_PATH || './') : './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -108,4 +109,4 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
   },
-})
+}))
