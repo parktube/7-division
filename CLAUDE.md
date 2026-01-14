@@ -7,8 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **7-division (도화지)**: AI-Native CAD 프로젝트
 
 - **비전**: "AI가 만들고, AI가 사용한다" - LLM이 도구를 조작하고, 인간은 의도/검증
-- **현재 단계**: Epic 1~8 완료 (MVP + Manifold 기하 엔진)
+- **현재 단계**: Epic 9 진행 중 (웹 아키텍처 전환)
 - **아키텍처**: Direct-First (MCP 없이 WASM 직접 호출, < 1ms)
+- **구조**: pnpm workspace 모노레포
+  - `apps/viewer` - React 뷰어
+  - `apps/cad-mcp` - MCP 서버 & CLI
+  - `packages/shared` - 공유 타입 (Zod 스키마)
 
 ## Key Documents
 
@@ -23,7 +27,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **run_cad_code = JavaScript IDE for CAD**
 
 ```bash
-cd cad-tools
+cd apps/cad-mcp
 ```
 
 ### 도메인 목록 (`describe <domain>`으로 상세 확인)
@@ -127,13 +131,13 @@ getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
 **폰트 검색 순서** (fontPath 생략 시):
-1. 프로젝트 `cad-tools/fonts/` 디렉터리 (로컬 폰트)
+1. 프로젝트 `apps/cad-mcp/fonts/` 디렉터리 (로컬 폰트)
 2. 시스템 폰트 디렉터리:
    - Linux: `/usr/share/fonts/truetype`, `/usr/share/fonts/opentype`
    - macOS: `/System/Library/Fonts`, `/Library/Fonts`
    - Windows: `C:\Windows\Fonts`
 
-**권장 폰트** (로컬 설치 시 `cad-tools/fonts/`에 배치):
+**권장 폰트** (로컬 설치 시 `apps/cad-mcp/fonts/`에 배치):
 
 | 폰트 | fontPath 예시 | 용도 |
 |-----|-------------|------|
@@ -300,18 +304,21 @@ getDrawOrder('robot'); // 그룹 내부 순서
 ## Quick Start
 
 ```bash
-# 1. 뷰어 서버 실행 (별도 터미널)
-cd viewer && npm run dev
+# 1. 의존성 설치 (pnpm 워크스페이스)
+npx pnpm install
+
+# 2. 뷰어 서버 실행 (별도 터미널)
+npx pnpm dev
 # → http://localhost:5173/
 
-# 2. CAD 명령어 실행 (다른 터미널)
-cd cad-tools
+# 3. CAD 명령어 실행 (다른 터미널)
+cd apps/cad-mcp
 run_cad_code main "drawCircle('c', 0, 0, 50)"
 ```
 
 ## Development Rules
 
-- **Console 금지**: `logger` 사용 (`cad-tools/src/logger.ts`)
+- **Console 금지**: `logger` 사용 (`apps/cad-mcp/src/logger.ts`)
 - **Pre-commit**: `npm install` 후 자동 실행 (fmt, eslint --fix)
 - **CI**: fmt → clippy → test → build (Rust), eslint → tsc → vitest (TS)
 - **Git**: `main` 브랜치, SSH 키 `github.com-jungjaehoon`
