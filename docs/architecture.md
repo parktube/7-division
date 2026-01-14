@@ -218,6 +218,7 @@ cad-engine/         →        cad-engine/           (그대로)
 cad-tools/          →        apps/cad-mcp/         (MCP 서버 추가)
 viewer/             →        apps/viewer/          (WebSocket 추가)
 cad-electron/       →        (제거)
+                             packages/shared/      (신규: Zod 스키마, 타입)
                              pnpm-workspace.yaml   (신규)
 ```
 
@@ -268,7 +269,7 @@ const mcpServer = new Server(
 | 항목 | 값 |
 |------|-----|
 | 프로토콜 | WebSocket (ws://) |
-| 기본 포트 | 3000 (환경변수 `CAD_MCP_PORT`로 변경 가능) |
+| 기본 포트 | 3001 (환경변수 `CAD_MCP_PORT`로 변경 가능) |
 | 지연시간 | p50 < 15ms, p95 < 50ms (목표) |
 | 양방향 | O |
 
@@ -279,14 +280,14 @@ import getPort from 'get-port';
 
 const port = process.env.CAD_MCP_PORT
   ? parseInt(process.env.CAD_MCP_PORT)
-  : await getPort({ port: [3000, 3001, 3002, 3003] });
+  : await getPort({ port: [3001, 3002, 3003, 3004] });
 
 console.log(`MCP WebSocket server on port ${port}`);
 ```
 
 ```typescript
 // Viewer: 다중 포트 시도 후 온보딩 UI
-const DEFAULT_PORTS = [3000, 3001, 3002, 3003];
+const DEFAULT_PORTS = [3001, 3002, 3003, 3004];
 
 async function connectToMCP() {
   for (const port of DEFAULT_PORTS) {
@@ -422,7 +423,7 @@ export class CadMcpServer {
 | 통신 | 프로토콜 | 용도 |
 |------|---------|------|
 | Claude Code ↔ MCP | stdio | MCP 도구 호출 |
-| MCP ↔ Viewer | WebSocket (3000) | 실시간 동기화 |
+| MCP ↔ Viewer | WebSocket (3001) | 실시간 동기화 |
 
 ### 2.5 Deployment Strategy
 
@@ -755,25 +756,52 @@ return { success: true, data: { entities: [...] } }
 
 #### Shared Types Strategy
 
-**결정: apps/cad-mcp 내부에서 정의, Viewer는 복사**
+**결정: packages/shared 공유 패키지**
 
 | 옵션 | 장점 | 단점 | 결정 |
 |------|------|------|------|
-| `packages/shared-types` | 완전한 타입 공유 | 초기 설정 복잡 | ❌ |
-| `apps/cad-mcp` 내부 | 단순, MCP가 source of truth | Viewer에서 import 불가 | ✅ |
+| `packages/shared` | 타입 일치 100% 보장, DRY | 초기 설정 (tsconfig references) | ✅ |
+| `apps/cad-mcp` 내부 복사 | 단순 | 수동 동기화, 불일치 위험 | ❌ |
 
 **구현 방식:**
-1. `apps/cad-mcp/src/types/` 에 모든 타입 정의
-2. Viewer는 동일한 타입을 `apps/viewer/src/types/` 에 복사
-3. 타입 변경 시 양쪽 수동 동기화
+1. `packages/shared/src/schemas.ts` - Zod 스키마 정의
+2. `packages/shared/src/types.ts` - TypeScript 타입 export
+3. apps/viewer, apps/cad-mcp에서 `@ai-native-cad/shared` import
 
-**타입 동기화 CI 검증:**
+**패키지 설정:**
 
 ```yaml
-# .github/workflows/ci.yml
-- name: Verify type sync
-  run: |
-    diff apps/cad-mcp/src/types/ws-message.ts apps/viewer/src/types/ws-message.ts
+# pnpm-workspace.yaml
+packages:
+  - 'apps/*'
+  - 'packages/*'
+```
+
+```json
+// packages/shared/package.json
+{
+  "name": "@ai-native-cad/shared",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts"
+}
+```
+
+**공유 타입 예시:**
+
+```typescript
+// packages/shared/src/schemas.ts
+import { z } from 'zod';
+
+export const SceneUpdateSchema = z.object({
+  type: z.literal('scene_update'),
+  data: z.object({
+    entities: z.array(z.unknown()),
+  }),
+  timestamp: z.number(),
+});
+
+export type SceneUpdate = z.infer<typeof SceneUpdateSchema>;
 ```
 
 #### Complete Project Directory Structure
@@ -834,6 +862,15 @@ r2-7f-division/                          # 프로젝트 루트
 │           │   ├── executor.ts
 │           │   └── bindings.ts
 │           └── capture/                 # 기존 capture.ts
+│
+├── packages/
+│   └── shared/                          # 공유 타입/스키마
+│       ├── package.json                 # @ai-native-cad/shared
+│       ├── tsconfig.json
+│       └── src/
+│           ├── index.ts                 # 진입점
+│           ├── schemas.ts               # Zod 스키마
+│           └── types.ts                 # TypeScript 타입
 │
 ├── docs/
 │   ├── prd.md

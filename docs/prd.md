@@ -212,7 +212,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 | ID | 요구사항 | 설명 |
 |----|---------|------|
-| FR51 | 모노레포 전환 | pnpm workspace (apps/viewer, apps/cad-mcp) |
+| FR51 | 모노레포 전환 | pnpm workspace (apps/viewer, apps/cad-mcp, packages/shared) |
 | FR52 | WebSocket 통신 | MCP ↔ Viewer 실시간 동기화 |
 | FR53 | MCP stdio 서버 | Claude Code 연동 |
 | FR54 | MCP WebSocket 서버 | Viewer 연동 |
