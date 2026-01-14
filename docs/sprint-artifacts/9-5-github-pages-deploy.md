@@ -15,9 +15,9 @@ so that **앱 설치 없이 브라우저만으로 CAD를 사용할 수 있다** 
    **Then** 정적 파일이 GitHub Pages에 배포된다
    **And** https://parktube.github.io/7-division/ 에서 접근 가능하다
 
-2. **Given** Viewer가 로드될 때
+2. **Given** Viewer가 로드될 때 (Story 9.7 완료 후 검증)
    **When** MCP 서버가 연결되지 않은 상태면
-   **Then** 온보딩 UI가 표시된다 (Story 9.7 의존)
+   **Then** 온보딩 UI가 표시된다
 
 3. **Given** 새 커밋이 main 브랜치에 푸시될 때
    **When** CI가 통과하면

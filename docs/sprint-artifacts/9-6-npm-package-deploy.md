@@ -108,7 +108,7 @@ npx @ai-native-cad/mcp start
     "prepublishOnly": "pnpm run build && pnpm run copy-wasm"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "publishConfig": {
     "access": "public"

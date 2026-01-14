@@ -26,7 +26,8 @@ so that **Viewer와 MCP 서버 간 코드 공유 및 버전 관리가 용이해�
 
 2. **Given** packages/shared에 Zod 스키마가 정의되었을 때
    **When** apps/viewer와 apps/cad-mcp에서 import하면
-   **Then** 타입 체크가 통과한다
+   **Then** 타입 체크가 통과한다 (컴파일 타임)
+   **And** Zod 스키마 검증이 런타임에 동작한다
    **And** 동일한 스키마를 공유한다
 
 3. **Given** 루트 package.json이 있을 때
@@ -123,7 +124,7 @@ export type SceneUpdate = z.infer<typeof SceneUpdateSchema>;
 **최종 디렉토리 구조:**
 
 ```
-r2-7f-division/
+7-division/
 ├── apps/
 │   ├── viewer/                    # React Viewer (기존 viewer/)
 │   │   ├── package.json

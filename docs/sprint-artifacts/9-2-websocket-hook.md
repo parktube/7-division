@@ -176,6 +176,7 @@ apps/viewer/src/
 
 - **선행 스토리**: Story 9.1 (모노레포 설정 - packages/shared 필요)
 - **후행 스토리**: Story 9.3 (MCP WebSocket 서버 - 연결 대상)
+- **관련 스토리**: Story 9.7 (온보딩 UI - showOnboardingUI 메서드 사용)
 
 ### Testing Requirements
 

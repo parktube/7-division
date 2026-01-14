@@ -98,7 +98,7 @@ export interface SemVer {
 }
 
 export function parseSemVer(version: string): SemVer {
-  // Pre-release 버전 제거 (예: "1.23.0-beta.0" → "1.23.0")
+  // 버전 비교를 위해 base 버전 추출 (예: "1.23.0-beta.0" → "1.23.0", prerelease는 별도 보존)
   const cleanVersion = version.split('-')[0];
   const [major, minor, patch] = cleanVersion.split('.').map(Number);
 

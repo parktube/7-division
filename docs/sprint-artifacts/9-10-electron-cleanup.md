@@ -167,7 +167,7 @@ pnpm -r build
 ### File Structure (최종)
 
 ```
-r2-7f-division/
+7-division/
 ├── apps/
 │   ├── viewer/            # React Viewer
 │   └── cad-mcp/           # MCP Server

@@ -276,7 +276,7 @@ pnpm-workspace.yaml
 **And** 기존 기능이 동일하게 동작한다
 
 **Technical Notes:**
-- pnpm 9.x 사용
+- pnpm 10.x 사용
 - packages/shared에 Zod 스키마, 타입 정의 배치
 - tsconfig.json references 설정
 

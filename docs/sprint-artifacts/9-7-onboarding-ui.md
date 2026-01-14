@@ -11,7 +11,7 @@ so that **어떻게 시작해야 하는지 즉시 알 수 있다** (FR57).
 ## Acceptance Criteria
 
 1. **Given** Viewer가 로드되고 MCP가 연결되지 않았을 때
-   **When** 5초간 연결 시도가 실패하면
+   **When** 5초 타임아웃 후에도 연결되지 않으면
    **Then** 온보딩 오버레이가 표시된다:
    - "MCP 서버 미연결"
    - "npx @ai-native-cad/mcp start" 복사 버튼
@@ -75,7 +75,7 @@ so that **어떻게 시작해야 하는지 즉시 알 수 있다** (FR57).
 
 **Source:** [docs/architecture.md Part 2.6]
 
-온보딩 UI는 WebSocket 연결 실패 후 사용자에게 가이드를 제공합니다. 재연결 정책 (Exponential Backoff) 5회 실패 후 표시됩니다.
+온보딩 UI는 WebSocket 연결 실패 후 사용자에게 가이드를 제공합니다. 5초 타임아웃 후 표시되며, 백그라운드에서 재연결 시도는 계속됩니다 (Story 9.2 Exponential Backoff).
 
 ### Technical Requirements
 

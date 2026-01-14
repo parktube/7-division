@@ -125,11 +125,20 @@ export class CadWebSocketServer {
   }
 
   broadcast(message: WSMessage): void {
-    const data = JSON.stringify(message);
-    for (const client of this.clients) {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(data);
+    try {
+      const data = JSON.stringify(message);
+      for (const client of this.clients) {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(data);
+          } catch (e) {
+            // 전송 실패 클라이언트는 제거 (Task 3.3 참조)
+            this.clients.delete(client);
+          }
+        }
       }
+    } catch (e) {
+      console.error('Failed to serialize message:', e);
     }
   }
 
