@@ -54,13 +54,20 @@ cd apps/cad-mcp
 
 ### run_cad_code 명령어
 
-**기본 (읽기/쓰기)**
+**기본 (읽기/쓰기/수정)**
 ```bash
 run_cad_code                              # 프로젝트 구조
 run_cad_code main                         # main 읽기
 run_cad_code main "drawCircle('c', 0, 0, 50)"  # 덮어쓰기
 run_cad_code main "+drawRect('r', 0, 0, 30, 30)" # 추가 (+ prefix)
 echo "code" | run_cad_code main -         # stdin 멀티라인
+```
+
+**부분 수정 (MCP 전용)**
+```javascript
+// old_code → new_code 교체 (Claude Code Edit 도구와 유사)
+run_cad_code(file='main', old_code='setFill(c, [1,0,0,1])', new_code='setFill(c, [0,1,0,1])')
+// old_code가 없으면 에러, 실패 시 자동 롤백
 ```
 
 **탐색**
@@ -300,6 +307,19 @@ getDrawOrder('robot'); // 그룹 내부 순서
 - **좌표**: Y+ 위쪽, 원점 (0,0) 중심
 - **색상**: RGBA `[0~1, 0~1, 0~1, 0~1]` - 예: 빨강 `[1,0,0,1]`
 - **각도**: 라디안
+
+## Data Storage
+
+모든 CAD 데이터는 `~/.ai-native-cad/` 디렉토리에 저장됩니다:
+
+```
+~/.ai-native-cad/
+├── scene.json       # 씬 상태 (엔티티, 변환 등)
+├── scene.code.js    # main 코드 파일
+└── modules/         # 저장된 모듈 (.js 파일)
+```
+
+CLI와 MCP가 동일한 경로를 사용하여 상태가 항상 동기화됩니다.
 
 ## Quick Start
 

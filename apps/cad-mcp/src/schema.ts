@@ -68,34 +68,92 @@ export const CAD_TOOLS: Record<string, ToolSchema> = {
   // === 핵심 도구 ===
   run_cad_code: {
     name: 'run_cad_code',
-    description: `JavaScript 코드를 실행하여 CAD 도형을 생성/수정합니다.
-사용 가능한 함수: drawCircle, drawRect, drawLine, drawArc, drawPolygon, drawBezier, drawText,
-setFill, setStroke, drawOrder, translate, rotate, scale, setPivot, deleteEntity,
-createGroup, addToGroup, getEntity, exists, getWorldBounds, getDrawOrder,
-booleanUnion, booleanDifference, booleanIntersect, offsetPolygon, getArea, convexHull, decompose,
-duplicate, mirror, getTextMetrics, fitToViewport.
-함수 시그니처는 describe 도구로 확인하세요.`,
+    description: `CAD 코드 에디터 - JavaScript 코드 실행/읽기/수정 (핵심 도구).
+
+📝 CODE EDITOR MODES
+1. 구조 보기: file/code 없이 호출 → 프로젝트 파일 목록, main 코드, 엔티티
+2. 파일 읽기: file='main' (또는 모듈명), code 없음 → 해당 파일 코드 반환
+3. 코드 실행: code만 제공 → 즉시 실행 (main에 저장 안 됨)
+4. 파일 쓰기: file + code → 해당 파일에 코드 저장 후 실행
+5. 코드 추가: file + code('+' prefix) → 기존 코드에 추가
+6. 부분 수정: file + old_code + new_code → old_code를 new_code로 교체
+
+📋 FUNCTIONS BY DOMAIN
+- primitives: drawCircle, drawRect, drawLine, drawArc, drawPolygon, drawBezier, drawText
+- style: setFill(name, [r,g,b,a]), setStroke(name, color, width?), drawOrder(name, mode)
+- transforms: translate, rotate, scale, setPivot, deleteEntity
+- groups: createGroup(name, [children]), addToGroup
+- query: getEntity, exists, getWorldBounds, getDrawOrder
+- boolean: booleanUnion, booleanDifference, booleanIntersect
+- geometry: offsetPolygon, getArea, convexHull, decompose
+- utility: duplicate, mirror
+
+🔧 BOOLEAN USE CASES
+- 초승달/도넛/구멍: booleanDifference(base, cutter, result)
+- 복잡한 도형 합치기: booleanUnion(a, b, result)
+- 겹치는 영역만: booleanIntersect(a, b, result)
+
+🎨 COORDINATE & STYLE
+- Origin (0,0) at center, Y+ up
+- Colors: RGBA [0-1, 0-1, 0-1, 0-1] (예: 빨강 [1,0,0,1])
+- 외곽선 제거: setStroke(name, [0,0,0,0], 0)
+
+⚠️ CRITICAL RULES
+- 문자열은 작은따옴표(') 사용: drawCircle('name', 0, 0, 50)
+- 수정 시 reset 금지! 기존 엔티티 직접 수정 (setFill, translate 등)
+- 실행 실패 시 파일 변경 없음 (자동 롤백)
+
+🏠 GROUP PATTERN
+✅ drawRect('wall', 0, 0, w, h) → createGroup('house', ['wall']) → translate('house', 100, 50)
+
+💡 TIP: describe(domain) 으로 함수 시그니처 확인`,
     parameters: {
       type: 'object',
       properties: {
+        file: {
+          type: 'string',
+          description: `대상 파일명 (optional).
+- 'main': 메인 코드 파일
+- '<module_name>': 저장된 모듈
+- 생략 시: code만 있으면 즉시 실행, 둘 다 없으면 프로젝트 구조 반환`,
+        },
         code: {
           type: 'string',
-          description: `실행할 JavaScript 코드.
-예시:
-- drawCircle('head', 0, 50, 30)
-- drawRect('body', -20, -30, 40, 60)
-- setFill('head', [1, 0.8, 0.6, 1])
-- translate('body', 10, 0)`,
+          description: `실행할 JavaScript 코드 (optional).
+- 일반 코드: 파일에 저장 (file 지정 시) 또는 즉시 실행
+- '+' prefix: 기존 코드에 추가 (예: "+translate('c1', 10, 0)")
+- 생략 시: file만 있으면 읽기, 둘 다 없으면 구조 보기`,
+        },
+        old_code: {
+          type: 'string',
+          description: `교체할 기존 코드 (부분 수정 모드). new_code와 함께 사용.
+- file + old_code + new_code → old_code를 new_code로 교체
+- old_code가 없으면 에러`,
+        },
+        new_code: {
+          type: 'string',
+          description: `새로운 코드 (부분 수정 모드). old_code와 함께 사용.
+- 빈 문자열 가능 (해당 부분 삭제)`,
         },
       },
-      required: ['code'],
+      required: [],
     },
   },
 
   // === 탐색용 도구 ===
   describe: {
     name: 'describe',
-    description: '도메인별 함수 목록과 시그니처를 반환합니다. 함수 사용법을 알고 싶을 때 사용',
+    description: `도메인별 함수 시그니처와 예제를 반환합니다.
+
+📋 AVAILABLE DOMAINS
+primitives, style, transforms, groups, query, boolean, geometry, utility
+
+🎯 WHEN TO USE
+- 함수 파라미터가 기억나지 않을 때
+- 새로운 도메인 탐색 시
+- 예제 코드가 필요할 때
+
+💡 TIP: run_cad_code 실행 전 시그니처 확인 권장`,
     parameters: {
       type: 'object',
       properties: {
@@ -110,7 +168,21 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   list_domains: {
     name: 'list_domains',
-    description: '사용 가능한 도메인 목록을 반환합니다. 어떤 기능이 있는지 탐색할 때 먼저 호출',
+    description: `사용 가능한 도메인 목록을 반환합니다.
+
+🎯 WHEN TO USE
+- 처음 시작할 때 전체 구조 파악
+- 어떤 기능이 있는지 탐색
+
+📋 DOMAINS
+- primitives: 도형 생성 (circle, rect, line, arc, polygon, bezier, text)
+- style: 스타일링 (fill, stroke, z-order)
+- transforms: 변환 (translate, rotate, scale, pivot, delete)
+- groups: 그룹화 (create, add)
+- query: 조회 (getEntity, exists, bounds)
+- boolean: 집합 연산 (union, difference, intersect)
+- geometry: 기하 분석 (offset, area, hull, decompose)
+- utility: 유틸 (duplicate, mirror)`,
     parameters: {
       type: 'object',
       properties: {},
@@ -120,7 +192,13 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   list_tools: {
     name: 'list_tools',
-    description: '도메인별 함수 목록을 반환합니다. 도메인 생략 시 전체 함수 반환',
+    description: `도메인별 함수 목록을 반환합니다.
+
+🎯 WHEN TO USE
+- 특정 도메인의 함수 목록 확인
+- 도메인 생략 시 전체 함수 반환
+
+💡 TIP: 함수 시그니처가 필요하면 describe(domain) 사용`,
     parameters: {
       type: 'object',
       properties: {
@@ -132,7 +210,13 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   get_tool_schema: {
     name: 'get_tool_schema',
-    description: '특정 함수의 상세 시그니처를 반환합니다. 파라미터 확인 시 사용',
+    description: `특정 함수의 상세 시그니처를 반환합니다.
+
+🎯 WHEN TO USE
+- 단일 함수의 파라미터 상세 확인
+- 옵션 파라미터 확인이 필요할 때
+
+💡 TIP: 여러 함수가 필요하면 describe(domain) 사용`,
     parameters: {
       type: 'object',
       properties: {
@@ -144,7 +228,13 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   request_tool: {
     name: 'request_tool',
-    description: '필요한 함수가 없을 때 개발자에게 요청합니다',
+    description: `필요한 함수가 없을 때 개발자에게 요청합니다.
+
+🎯 WHEN TO USE
+- 기존 함수로 해결 불가능할 때
+- 새로운 기능이 필요할 때
+
+⚠️ NOTE: 요청은 즉시 반영되지 않음. 기존 함수로 대안 먼저 고려`,
     parameters: {
       type: 'object',
       properties: {
@@ -164,7 +254,18 @@ duplicate, mirror, getTextMetrics, fitToViewport.
   // === 조회/내보내기 도구 ===
   get_scene_info: {
     name: 'get_scene_info',
-    description: 'Scene의 현재 상태를 반환합니다. 이름, 엔티티 개수, 전체 bounds 등',
+    description: `Scene의 현재 상태를 반환합니다.
+
+📋 RETURNS
+- entityCount: 전체 엔티티 개수
+- groupCount: 그룹 개수
+- bounds: 전체 씬의 경계 박스 (min_x, min_y, max_x, max_y)
+
+🎯 WHEN TO USE
+- 작업 시작 전 씬 상태 확인
+- 엔티티 수 파악
+
+💡 TIP: 상세 구조는 overview 사용`,
     parameters: {
       type: 'object',
       properties: {},
@@ -174,7 +275,15 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   export_json: {
     name: 'export_json',
-    description: 'Scene을 JSON으로 내보냅니다',
+    description: `Scene을 JSON으로 내보냅니다.
+
+🎯 WHEN TO USE
+- 씬 데이터 백업
+- 다른 시스템과 데이터 교환
+- 디버깅용 전체 씬 구조 확인
+
+📋 RETURNS
+전체 씬 데이터 (entities, groups, styles, transforms)`,
     parameters: {
       type: 'object',
       properties: {},
@@ -184,7 +293,15 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   export_svg: {
     name: 'export_svg',
-    description: 'Scene을 SVG로 내보냅니다. 벡터 그래픽 파일로 저장하거나 웹에서 표시할 때 사용',
+    description: `Scene을 SVG로 내보냅니다.
+
+🎯 WHEN TO USE
+- 벡터 그래픽으로 저장
+- 웹/문서에 삽입용 이미지 생성
+- 인쇄용 고해상도 출력
+
+📋 RETURNS
+SVG 문자열 (viewBox 자동 계산)`,
     parameters: {
       type: 'object',
       properties: {},
@@ -195,7 +312,17 @@ duplicate, mirror, getTextMetrics, fitToViewport.
   // === 세션 관리 도구 ===
   reset: {
     name: 'reset',
-    description: 'Scene의 모든 엔티티를 삭제하고 초기화합니다',
+    description: `Scene의 모든 엔티티를 삭제하고 초기화합니다.
+
+⚠️ CRITICAL: 이 작업은 되돌릴 수 없습니다!
+
+🎯 WHEN TO USE
+- 완전히 새로운 작업 시작
+- 테스트 후 정리
+
+❌ AVOID: 일부 수정이 필요할 때 reset 대신 개별 수정 권장
+- setFill, translate 등으로 기존 엔티티 직접 수정
+- deleteEntity로 특정 엔티티만 삭제`,
     parameters: {
       type: 'object',
       properties: {},
@@ -205,7 +332,18 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   capture: {
     name: 'capture',
-    description: '뷰어의 현재 화면을 PNG 이미지로 캡처합니다. 캡처된 이미지 경로를 반환합니다',
+    description: `뷰어의 현재 화면을 PNG 이미지로 캡처합니다.
+
+🎯 WHEN TO USE
+- 작업 결과 시각적 확인
+- 진행 상황 스크린샷
+
+📋 RETURNS
+캡처된 이미지 파일 경로
+
+⚠️ REQUIREMENTS
+- 뷰어가 실행 중이어야 함 (localhost:5173 또는 GitHub Pages)
+- 로컬 뷰어 사용 시: CAD_VIEWER_URL=http://localhost:5173`,
     parameters: {
       type: 'object',
       properties: {
@@ -220,7 +358,14 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   get_selection: {
     name: 'get_selection',
-    description: '뷰어에서 현재 선택된 엔티티 목록을 반환합니다',
+    description: `뷰어에서 현재 선택된 엔티티 목록을 반환합니다.
+
+🎯 WHEN TO USE
+- 사용자가 선택한 엔티티 확인
+- 선택 기반 작업 수행
+
+📋 RETURNS
+선택된 엔티티 이름 배열: ['entity1', 'entity2', ...]`,
     parameters: {
       type: 'object',
       properties: {},
@@ -231,7 +376,26 @@ duplicate, mirror, getTextMetrics, fitToViewport.
   // === 모듈 관리 도구 ===
   save_module: {
     name: 'save_module',
-    description: '재사용 가능한 코드를 모듈로 저장합니다',
+    description: `재사용 가능한 코드를 모듈로 저장합니다.
+
+🎯 WHEN TO USE
+- 반복 사용할 클래스/함수 정의
+- 라이브러리 패턴 구현
+
+📋 EXAMPLE
+\`\`\`javascript
+// house_lib 모듈
+class House {
+  constructor(name, x, y) { ... }
+  build() {
+    drawRect(this.name+'_wall', 0, 15, 40, 30);
+    createGroup(this.name, [...]);
+    translate(this.name, this.x, this.y);
+  }
+}
+\`\`\`
+
+💡 TIP: import 'module_name'으로 run_cad_code에서 사용`,
     parameters: {
       type: 'object',
       properties: {
@@ -250,7 +414,14 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   list_modules: {
     name: 'list_modules',
-    description: '저장된 모든 모듈 목록을 반환합니다',
+    description: `저장된 모든 모듈 목록을 반환합니다.
+
+🎯 WHEN TO USE
+- 사용 가능한 모듈 확인
+- 세션 시작 시 기존 모듈 파악
+
+📋 RETURNS
+모듈 이름 배열: ['house_lib', 'tree_lib', ...]`,
     parameters: {
       type: 'object',
       properties: {},
@@ -260,7 +431,14 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   get_module: {
     name: 'get_module',
-    description: '저장된 모듈의 코드를 반환합니다',
+    description: `저장된 모듈의 코드를 반환합니다.
+
+🎯 WHEN TO USE
+- 모듈 내용 확인
+- 모듈 수정 전 현재 코드 조회
+
+📋 RETURNS
+모듈의 JavaScript 코드 문자열`,
     parameters: {
       type: 'object',
       properties: {
@@ -275,7 +453,13 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   delete_module: {
     name: 'delete_module',
-    description: '저장된 모듈을 삭제합니다',
+    description: `저장된 모듈을 삭제합니다.
+
+⚠️ NOTE: 이 작업은 되돌릴 수 없습니다
+
+🎯 WHEN TO USE
+- 더 이상 필요 없는 모듈 정리
+- 모듈 재작성 전 삭제`,
     parameters: {
       type: 'object',
       properties: {
@@ -291,7 +475,16 @@ duplicate, mirror, getTextMetrics, fitToViewport.
   // === 씬 조회 도구 ===
   list_groups: {
     name: 'list_groups',
-    description: 'Scene의 모든 그룹 목록을 반환합니다',
+    description: `Scene의 모든 그룹 목록을 반환합니다.
+
+🎯 WHEN TO USE
+- 그룹 구조 파악
+- 특정 그룹 존재 확인
+
+📋 RETURNS
+그룹 이름 배열: ['robot', 'house1', ...]
+
+💡 TIP: 전체 계층 구조는 overview 사용`,
     parameters: {
       type: 'object',
       properties: {},
@@ -301,7 +494,25 @@ duplicate, mirror, getTextMetrics, fitToViewport.
 
   overview: {
     name: 'overview',
-    description: 'Scene의 구조를 트리 형태로 반환합니다 (그룹, 엔티티 계층)',
+    description: `Scene의 구조를 트리 형태로 반환합니다.
+
+🎯 WHEN TO USE
+- 씬의 전체 구조 파악
+- 그룹-엔티티 계층 관계 확인
+- 디버깅용 상태 확인
+
+📋 RETURNS
+트리 구조 텍스트:
+\`\`\`
+scene (5 entities)
+├─ robot (group)
+│  ├─ head
+│  ├─ body
+│  └─ arm_l
+├─ house1 (group)
+│  ├─ wall
+│  └─ roof
+\`\`\``,
     parameters: {
       type: 'object',
       properties: {},

@@ -20,7 +20,7 @@ const fontCache = new Map<string, opentype.Font>();
 
 // Default font paths to search
 const DEFAULT_FONT_PATHS = [
-  // Project local fonts (cad-tools/fonts)
+  // Project local fonts (apps/cad-mcp/fonts)
   join(__dirname, '../../fonts'),
   // Linux system fonts
   '/usr/share/fonts/truetype',

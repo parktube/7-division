@@ -11,7 +11,7 @@ describe('CADExecutor', () => {
 
   beforeEach(() => {
     // 테스트 격리: 임시 디렉토리에 빈 tool-requests.json 생성
-    tempRequestsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cad-tools-requests-'));
+    tempRequestsDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cad-mcp-requests-'));
     const requestsPath = path.join(tempRequestsDir, 'tool-requests.json');
     fs.writeFileSync(requestsPath, '[]\n');
     ToolRegistry.resetInstance();

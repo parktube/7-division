@@ -133,8 +133,9 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     : resolve(__dirname, '../../viewer/capture.png');
 
   const {
-    // Default to GitHub Pages, can override with CAD_VIEWER_URL for local dev
-    url = process.env.CAD_VIEWER_URL || 'https://parktube.github.io/7-division/',
+    // Default to localhost:5173 for local dev, fallback to GitHub Pages
+    // Can override with CAD_VIEWER_URL environment variable
+    url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
     width = 2400,
     height = 1500,
     outputPath = defaultOutputPath,

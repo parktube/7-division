@@ -30,6 +30,9 @@ import {
   getModuleList,
   getCodeImports,
   readFileOrEmpty,
+  STATE_DIR,
+  SCENE_CODE_FILE,
+  MODULES_DIR,
 } from './run-cad-code/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -97,12 +100,11 @@ function resolveSceneFile(): string {
 }
 
 const SCENE_FILE = resolveSceneFile();
-const STATE_DIR = process.env.CAD_STATE_DIR ? resolve(process.env.CAD_STATE_DIR) : dirname(SCENE_FILE);
+// STATE_DIR, SCENE_CODE_FILE, MODULES_DIR는 run-cad-code/constants.ts에서 import
+// CLI와 MCP가 동일한 경로 (~/.ai-native-cad/) 사용하도록 통일
 const STATE_FILE = process.env.CAD_STATE_PATH
   ? resolve(process.env.CAD_STATE_PATH)
   : resolve(STATE_DIR, '.cad-state.json');
-const SCENE_CODE_FILE = resolve(STATE_DIR, 'scene.code.js');
-const MODULES_DIR = resolve(STATE_DIR, '.cad-modules');
 
 // Selection file path for get_selection and --selection
 function resolveSelectionFile(): string {
@@ -169,7 +171,7 @@ function getSelectionResult(): { success: boolean; selection?: unknown; error?: 
 
 /** Helper: Capture viewport result (used by both capture_viewport command and --capture flag) */
 async function captureViewportResult(): Promise<{ success: boolean; path?: string; error?: string; message?: string; hint: string }> {
-  // Use app internal path (viewer/capture.png relative to cad-tools)
+  // Use app internal path (viewer/capture.png relative to apps/cad-mcp)
   const outputPath = resolve(__dirname, '../../viewer/capture.png');
   const { captureViewport } = await import('./capture.js');
   const result = await captureViewport({
