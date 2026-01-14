@@ -1,6 +1,11 @@
 import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import type { Scene } from '@/types/scene'
 import { safeValidateMessage, type ConnectionData } from '@ai-native-cad/shared'
+import {
+  VIEWER_VERSION,
+  checkVersionCompatibility,
+  type VersionCompatibility,
+} from '@/utils/version'
 
 // Connection states
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected'
@@ -17,6 +22,7 @@ interface WebSocketStore {
   selection: string[]
   connectionState: ConnectionState
   connectionData: ConnectionData | null
+  versionStatus: VersionCompatibility | null
   error: string | null
   listeners: Set<() => void>
 }
@@ -26,6 +32,7 @@ const store: WebSocketStore = {
   selection: [],
   connectionState: 'disconnected',
   connectionData: null,
+  versionStatus: null,
   error: null,
   listeners: new Set(),
 }
@@ -54,6 +61,7 @@ export interface UseWebSocketResult {
   selection: string[]
   connectionState: ConnectionState
   connectionData: ConnectionData | null
+  versionStatus: VersionCompatibility | null
   error: string | null
   reconnect: () => void
   sendPing: () => void
@@ -102,9 +110,17 @@ export function useWebSocket(): UseWebSocketResult {
         case 'selection':
           updateStore({ selection: message.data.selected })
           break
-        case 'connection':
-          updateStore({ connectionData: message.data })
+        case 'connection': {
+          const versionStatus = checkVersionCompatibility(
+            VIEWER_VERSION,
+            message.data.mcpVersion
+          )
+          updateStore({
+            connectionData: message.data,
+            versionStatus,
+          })
           break
+        }
         case 'error':
           updateStore({ error: message.data.message })
           break
@@ -213,6 +229,7 @@ export function useWebSocket(): UseWebSocketResult {
     selection: storeState.selection,
     connectionState: storeState.connectionState,
     connectionData: storeState.connectionData,
+    versionStatus: storeState.versionStatus,
     error: storeState.error,
     reconnect,
     sendPing,
