@@ -58,7 +58,7 @@ jobs:
           path: cad-engine/pkg/
           retention-days: 1
 
-  # TypeScript 빌드 및 테스트
+  # TypeScript 빌드 및 테스트 (pnpm monorepo)
   typescript:
     name: TypeScript Build & Tests
     runs-on: ubuntu-latest
@@ -70,8 +70,23 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: cad-tools/package-lock.json
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Download WASM Artifacts
         uses: actions/download-artifact@v4
@@ -79,53 +94,20 @@ jobs:
           name: wasm-pkg
           path: cad-engine/pkg/
 
-      - name: Install dependencies (cad-tools)
-        working-directory: cad-tools
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install
 
-      - name: ESLint
-        working-directory: cad-tools
-        run: npm run lint
+      - name: ESLint (all packages)
+        run: pnpm -r lint
 
       - name: TypeScript Type Check
-        working-directory: cad-tools
-        run: npm run typecheck
+        run: pnpm -r typecheck
 
-      - name: TypeScript Build
-        working-directory: cad-tools
-        run: npm run build
+      - name: Build all packages
+        run: pnpm -r build
 
       - name: Run Tests
-        working-directory: cad-tools
-        run: npm run test
-
-  # Electron 빌드 확인
-  electron:
-    name: Electron Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: |
-            cad-electron/package-lock.json
-            viewer/package-lock.json
-
-      - name: Install dependencies (viewer)
-        working-directory: viewer
-        run: npm ci
-
-      - name: Install dependencies (cad-electron)
-        working-directory: cad-electron
-        run: npm ci
-
-      - name: Build Electron app (bundle only)
-        working-directory: cad-electron
-        run: npm run build
+        run: pnpm -r test
 
   # WASM 통합 테스트
   integration:
