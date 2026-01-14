@@ -407,7 +407,7 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 // apps/cad-mcp/src/server.ts
 export class CadMcpServer {
   private mcpServer: Server;          // @modelcontextprotocol/sdk (stdio)
-  private wsServer: WebSocketServer;  // ws (port 3000)
+  private wsServer: WebSocketServer;  // ws (port 3001)
   private engine: CadEngine;          // WASM
 
   async handleToolCall(name: string, args: unknown) {
@@ -474,13 +474,12 @@ interface CompatibilityResult {
 function checkCompatibility(
   mcpVersion: string,
   viewerVersion: string,
-  minViewerVersion: string
+  minViewerVersion?: string
 ): CompatibilityResult {
   // Pre-release 버전 제거 (예: "1.23.0-beta.0" → "1.23.0")
   const cleanVersion = (v: string) => v.split('-')[0];
   const [mcpMajor] = cleanVersion(mcpVersion).split('.').map(Number);
   const [viewerMajor, viewerMinor] = cleanVersion(viewerVersion).split('.').map(Number);
-  const [minMajor, minMinor] = cleanVersion(minViewerVersion).split('.').map(Number);
 
   const result: CompatibilityResult = {
     isCompatible: true,
@@ -496,11 +495,14 @@ function checkCompatibility(
     return result;
   }
 
-  // Viewer가 minViewerVersion 미만
-  if (viewerMajor < minMajor || (viewerMajor === minMajor && viewerMinor < minMinor)) {
-    result.isCompatible = false;
-    result.requiresUpgrade = 'viewer';
-    return result;
+  // Viewer가 minViewerVersion 미만 (minViewerVersion 제공 시만 체크)
+  if (minViewerVersion) {
+    const [minMajor, minMinor] = cleanVersion(minViewerVersion).split('.').map(Number);
+    if (viewerMajor < minMajor || (viewerMajor === minMajor && viewerMinor < minMinor)) {
+      result.isCompatible = false;
+      result.requiresUpgrade = 'viewer';
+      return result;
+    }
   }
 
   return result;
@@ -891,7 +893,7 @@ r2-7f-division/                          # 프로젝트 루트
 | 경계 | 프로토콜 | 소스 → 타겟 |
 |------|---------|------------|
 | Claude Code → MCP | stdio | 외부 → apps/cad-mcp |
-| MCP → Viewer | WebSocket (3000) | apps/cad-mcp → apps/viewer |
+| MCP → Viewer | WebSocket (3001) | apps/cad-mcp → apps/viewer |
 | MCP → WASM | 함수 호출 | apps/cad-mcp → cad-engine/pkg |
 
 **Component Communication:**
@@ -913,7 +915,7 @@ r2-7f-division/                          # 프로젝트 루트
 │                       apps/cad-mcp               │           │
 │  ┌─────────────┐    ┌─────────────┐    ┌───────▼─────┐     │
 │  │ MCP Server  │───▶│   Sandbox   │───▶│ WS Server   │     │
-│  │   (stdio)   │    │   (WASM)    │    │  (port 3000)│     │
+│  │   (stdio)   │    │   (WASM)    │    │  (port 3001)│     │
 │  └──────▲──────┘    └─────────────┘    └─────────────┘     │
 └─────────│────────────────────────────────────────────────────┘
           │
