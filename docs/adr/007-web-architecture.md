@@ -29,6 +29,36 @@ Electron을 제거하고 **Web + Local MCP** 아키텍처를 채택합니다.
 | 배포 | GitHub Pages + npm | 앱 설치 없이 즉시 시작 가능 |
 | 보안 | localhost-only (127.0.0.1) | 로컬 개발 도구, 원격 접근 불필요 |
 | MCP | stdio + WebSocket 듀얼 | Claude Code + Viewer 동시 지원 |
+| 포트 | 3001 (fallback: 3002, 3003) | React dev server 3000 충돌 회피 |
+| 공유 타입 | 하이브리드 전략 | DRY vs npx 원클릭 트레이드오프 |
+
+### 공유 타입 전략
+
+**하이브리드 접근** - DRY 원칙과 npx 원클릭 실행 UX를 모두 만족:
+
+| 패키지 | 전략 | 이유 |
+|--------|------|------|
+| `apps/viewer` | `@ai-native-cad/shared` workspace 의존 | 빌드 타임 타입 체크, GitHub Pages 배포 |
+| `apps/cad-mcp` | `src/shared/` 로컬 복사본 | `npx @ai-native-cad/mcp start` 원클릭 실행 (의존성 설치 없이) |
+
+**동기화**: `packages/shared`와 `apps/cad-mcp/src/shared`는 100% 동일해야 함. 스키마 변경 시 diff 검증 필요.
+
+### 포트 Fallback 메커니즘
+
+```
+시도 순서: 3001 → 3002 → 3003
+실패 시: "All ports in use" 에러
+```
+
+- **3001**: 기본 포트 (React dev server 3000과 충돌 회피)
+- **3002-3003**: 다중 인스턴스 지원
+
+### Heartbeat
+
+| 측 | 주기 | Timeout |
+|----|------|---------|
+| 서버 (MCP) | 15초 ping | 30초 후 terminate |
+| 클라이언트 (Viewer) | 10초 ping | 서버 timeout 전 응답 보장 |
 
 ### 아키텍처
 
