@@ -19,13 +19,14 @@ function SelectionSync() {
 
 // Component to manage WebSocket connection and onboarding
 function WebSocketManager() {
-  const { connectionState, versionStatus, reconnect } = useWebSocket()
+  const { connectionState, versionStatus, retryCount, maxRetriesReached } = useWebSocket()
 
   return (
     <Onboarding
       connectionState={connectionState}
       versionStatus={versionStatus}
-      onReconnect={reconnect}
+      retryCount={retryCount}
+      maxRetriesReached={maxRetriesReached}
     />
   )
 }
