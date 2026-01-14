@@ -1,6 +1,6 @@
 # Story 9.10: Electron 제거 및 정리
 
-Status: in-progress
+Status: done
 
 ## Story
 
