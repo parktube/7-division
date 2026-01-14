@@ -133,8 +133,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     : resolve(__dirname, '../../viewer/capture.png');
 
   const {
-    // Default to Vite dev server, fall back to static server
-    url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
+    // Default to GitHub Pages, can override with CAD_VIEWER_URL for local dev
+    url = process.env.CAD_VIEWER_URL || 'https://parktube.github.io/7-division/',
     width = 2400,
     height = 1500,
     outputPath = defaultOutputPath,

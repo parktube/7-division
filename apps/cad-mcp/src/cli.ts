@@ -822,7 +822,7 @@ const DOMAIN_DESCRIPTIONS: Record<string, string> = {
 
 💡 TIPS
 - scene.json은 run_cad_code 실행 시 자동 저장
-- --capture는 뷰어 실행 중이어야 함 (localhost:5173)`,
+- --capture는 뷰어 접속 가능해야 함 (GitHub Pages 또는 로컬)`,
 
   session: `📁 SESSION - 세션 관리
 
