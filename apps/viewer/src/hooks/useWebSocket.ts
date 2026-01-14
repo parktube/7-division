@@ -18,19 +18,15 @@ const HEARTBEAT_INTERVAL = 30000 // 30s
 
 // Find available WebSocket server
 async function findAvailablePort(): Promise<string | null> {
-  console.log('[WS] Starting port discovery...')
   for (const port of WS_PORTS) {
     try {
       const url = `ws://localhost:${port}`
-      console.log(`[WS] Testing ${url}...`)
       const result = await testConnection(url)
-      console.log(`[WS] ${url} result:`, result)
       if (result) return url
-    } catch (e) {
-      console.log(`[WS] ${port} error:`, e)
+    } catch {
+      // Port not available, try next
     }
   }
-  console.log('[WS] No available port found')
   return null
 }
 
@@ -190,7 +186,6 @@ export function useWebSocket(): UseWebSocketResult {
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const raw = JSON.parse(event.data)
-      console.log('[WS] Received message:', raw.type)
       const message = safeValidateMessage(raw)
 
       if (!message) {
@@ -200,7 +195,6 @@ export function useWebSocket(): UseWebSocketResult {
 
       switch (message.type) {
         case 'scene_update':
-          console.log('[WS] Scene update received, entities:', message.data.scene?.entities?.length)
           // Type assertion required: shared SceneSchema uses z.unknown() for geometry
           // Runtime safety ensured by Zod validation; see packages/shared/src/ws-messages.ts
           updateStore({ scene: message.data.scene as Scene })
@@ -235,18 +229,11 @@ export function useWebSocket(): UseWebSocketResult {
   }, [updateStore])
 
   const connect = useCallback(async () => {
-    console.log('[WS] connect() called, mounted:', mountedRef.current, 'isConnecting:', isConnecting)
     if (!mountedRef.current) return
 
     // Prevent concurrent connection attempts (multiple hook instances)
-    if (isConnecting) {
-      console.log('[WS] Already connecting, skipping')
-      return
-    }
-    if (globalWs?.readyState === WebSocket.OPEN) {
-      console.log('[WS] Already connected, skipping')
-      return
-    }
+    if (isConnecting) return
+    if (globalWs?.readyState === WebSocket.OPEN) return
 
     isConnecting = true
     clearTimers()
@@ -256,7 +243,6 @@ export function useWebSocket(): UseWebSocketResult {
       // Find available port if not cached
       if (!cachedWsUrl) {
         cachedWsUrl = await findAvailablePort()
-        console.log('[WS] Found URL:', cachedWsUrl)
         if (!cachedWsUrl) {
           isConnecting = false
           updateStore({
@@ -269,22 +255,18 @@ export function useWebSocket(): UseWebSocketResult {
         await new Promise(resolve => setTimeout(resolve, 200))
       }
 
-      console.log('[WS] Connecting to', cachedWsUrl)
       const ws = new WebSocket(cachedWsUrl)
       globalWs = ws
 
       ws.onopen = () => {
-        console.log('[WS] onopen, mounted:', mountedRef.current)
         isConnecting = false
         if (!mountedRef.current) return
-        console.log('[WS] Setting connectionState to connected')
         updateStore({
           connectionState: 'connected',
           error: null,
           retryCount: 0,
           maxRetriesReached: false,
         })
-        console.log('[WS] Store after update:', store.connectionState)
 
         // Start heartbeat
         globalHeartbeatInterval = setInterval(() => {
@@ -301,7 +283,6 @@ export function useWebSocket(): UseWebSocketResult {
       ws.onmessage = handleMessage
 
       ws.onclose = () => {
-        console.log('[WS] onclose, mounted:', mountedRef.current)
         isConnecting = false
         globalWs = null
         if (!mountedRef.current) return

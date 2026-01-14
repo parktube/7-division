@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { WebSocket, WebSocketServer } from 'ws'
 import { CADWebSocketServer } from '../src/ws-server.js'
-import type { Scene } from '@ai-native-cad/shared'
+import type { Scene } from '../src/shared/index.js'
 
 describe('CADWebSocketServer', () => {
   let server: CADWebSocketServer
@@ -189,7 +189,10 @@ describe('CADWebSocketServer', () => {
         const port = await server.start()
         expect(port).toBe(3002)
       } finally {
-        blockingServer.close()
+        // Wait for close to complete
+        await new Promise<void>((resolve) => {
+          blockingServer.close(() => resolve())
+        })
       }
     })
 
@@ -206,9 +209,10 @@ describe('CADWebSocketServer', () => {
       try {
         await expect(server.start()).rejects.toThrow('All ports 3001-3003 are in use')
       } finally {
-        for (const ws of blockingServers) {
-          ws.close()
-        }
+        // Wait for all servers to close
+        await Promise.all(
+          blockingServers.map(ws => new Promise<void>(resolve => ws.close(() => resolve())))
+        )
       }
     })
   })

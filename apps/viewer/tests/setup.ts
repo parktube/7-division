@@ -8,6 +8,9 @@ class MockWebSocket {
   static CLOSING = 2
   static CLOSED = 3
 
+  // Control whether port discovery succeeds (for testing findAvailablePort)
+  static portDiscoveryEnabled = true
+
   url: string
   readyState: number = MockWebSocket.CONNECTING
   onopen: ((event: Event) => void) | null = null
@@ -16,10 +19,24 @@ class MockWebSocket {
   onerror: ((event: Event) => void) | null = null
 
   private static instances: MockWebSocket[] = []
+  private isPortTest: boolean = false
 
   constructor(url: string) {
     this.url = url
     MockWebSocket.instances.push(this)
+
+    // Auto-open for port discovery when enabled
+    // This simulates a successful port test so findAvailablePort() can complete
+    if (MockWebSocket.portDiscoveryEnabled) {
+      this.isPortTest = true
+      // Use queueMicrotask to allow event handlers to be set first
+      queueMicrotask(() => {
+        if (this.isPortTest && this.onopen) {
+          this.readyState = MockWebSocket.OPEN
+          this.onopen(new Event('open'))
+        }
+      })
+    }
   }
 
   send(data: string) {
@@ -70,6 +87,12 @@ class MockWebSocket {
 
   static clearInstances() {
     MockWebSocket.instances = []
+    MockWebSocket.portDiscoveryEnabled = true
+  }
+
+  // Mark this WebSocket as the main connection (not a port test)
+  markAsMainConnection() {
+    this.isPortTest = false
   }
 }
 
