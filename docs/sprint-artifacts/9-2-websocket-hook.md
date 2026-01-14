@@ -90,6 +90,21 @@ so that **MCP 서버와 실시간 통신이 가능하다** (FR52).
 - [ ] [AI-Review][LOW] Heartbeat 응답 타임아웃 미구현 - pong 미수신 시 연결 상태 감지 불가 [useWebSocket.ts]
 - [ ] [AI-Review][LOW] Module-level store singleton - 병렬 테스트에 불리 (__resetStoreForTesting으로 완화됨) [useWebSocket.ts:43-46]
 
+---
+
+> 3차 코드 리뷰 날짜: 2026-01-14 | 리뷰어: Claude Opus 4.5
+
+**🔴 HIGH (수정 완료)**
+- [x] [AI-Review][HIGH] 테스트 15개 실패 - findAvailablePort() 포트 탐색 로직 추가로 인한 regression
+  - 원인: commit 2e37dce에서 `findAvailablePort()` 추가 후 테스트 미업데이트
+  - URL 변경: `ws://127.0.0.1:3001` → `ws://localhost:3001`
+  - MockWebSocket이 포트 탐색용 인스턴스와 실제 연결 인스턴스를 구분 못함
+  - 해결:
+    1. `setup.ts`: MockWebSocket에 `portDiscoveryEnabled` 플래그 추가
+    2. `useWebSocket.test.ts`: `waitForConnection()`, `getMainWebSocket()` 헬퍼 추가
+    3. 모든 테스트를 async/await 패턴으로 전환
+    4. cleanup 테스트: global WebSocket은 unmount 시 닫지 않음 (설계 의도 반영)
+
 ## Dev Notes
 
 ### Architecture Compliance

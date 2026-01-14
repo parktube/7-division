@@ -25,10 +25,10 @@ so that **Viewer와 MCP 서버 간 코드 공유 및 버전 관리가 용이해�
    **And** 기존 기능이 동일하게 동작한다
 
 2. **Given** packages/shared에 Zod 스키마가 정의되었을 때
-   **When** apps/viewer와 apps/cad-mcp에서 import하면
+   **When** apps/viewer에서 `@ai-native-cad/shared`를 import하면
    **Then** 타입 체크가 통과한다 (컴파일 타임)
    **And** Zod 스키마 검증이 런타임에 동작한다
-   **And** 동일한 스키마를 공유한다
+   > Note: apps/cad-mcp는 npm standalone 배포를 위해 로컬 복사본 사용 (Story 9-6 참조)
 
 3. **Given** 루트 package.json이 있을 때
    **When** 기존 스크립트(build, test, lint)를 실행하면
@@ -55,7 +55,7 @@ so that **Viewer와 MCP 서버 간 코드 공유 및 버전 관리가 용이해�
 
 - [x] Task 4: 패키지 의존성 설정 (AC: #2)
   - [x] 4.1 apps/viewer/package.json에 @ai-native-cad/shared 의존성 추가
-  - [x] 4.2 apps/cad-mcp/package.json에 @ai-native-cad/shared 의존성 추가
+  - [x] 4.2 ~~apps/cad-mcp/package.json에 @ai-native-cad/shared 의존성 추가~~ → Story 9-6에서 로컬 복사본으로 변경
   - [x] 4.3 tsconfig.json references 설정
 
 - [x] Task 5: 루트 스크립트 업데이트 (AC: #3)
