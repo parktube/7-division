@@ -19,9 +19,15 @@ function SelectionSync() {
 
 // Component to manage WebSocket connection and onboarding
 function WebSocketManager() {
-  const { connectionState, reconnect } = useWebSocket()
+  const { connectionState, versionStatus, reconnect } = useWebSocket()
 
-  return <Onboarding connectionState={connectionState} onReconnect={reconnect} />
+  return (
+    <Onboarding
+      connectionState={connectionState}
+      versionStatus={versionStatus}
+      onReconnect={reconnect}
+    />
+  )
 }
 
 export default function App() {
