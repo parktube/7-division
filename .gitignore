@@ -94,19 +94,8 @@ apps/viewer/scene.code.js
 apps/viewer/*.png
 apps/viewer/selection.json
 
-# Electron runtime files
-cad-electron/src/renderer/scene.json
-cad-electron/src/renderer/.cad-modules/
-cad-electron/src/renderer/scene.code.js
-cad-electron/src/renderer/selection.json
-
 # Local QA notes (not committed)
 docs/qa/
-
-# Electron build outputs
-cad-electron/dist/
-cad-electron/out/
-cad-electron/node_modules/
 
 # Sketch mode temp file (user drawing)
 apps/viewer/sketch.json
