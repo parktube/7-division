@@ -42,8 +42,10 @@ export default function Canvas() {
   const [isSpacePressed, setIsSpacePressed] = useState(false)
 
   // Cache CSS variables to avoid getComputedStyle on every render
-  // Re-computed when theme changes
+  // Re-computed when theme changes (theme triggers recalc even though not directly used)
   const cssVars = useMemo(() => {
+    // theme dependency triggers recomputation when theme toggles
+    void theme
     const computedStyle = getComputedStyle(document.documentElement)
     return {
       bgCanvas: computedStyle.getPropertyValue('--bg-canvas').trim() || '#e8e8e8',

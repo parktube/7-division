@@ -33,6 +33,9 @@
     ],
     "apps/viewer/src/**/*.{ts,tsx}": [
       "npx pnpm --filter @ai-native-cad/viewer lint --fix"
+    ],
+    "packages/shared/src/**/*.ts": [
+      "npx pnpm --filter @ai-native-cad/shared lint --fix"
     ]
   }
 }

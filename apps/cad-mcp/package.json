@@ -40,7 +40,6 @@
     "wasm"
   ],
   "dependencies": {
-    "@ai-native-cad/shared": "workspace:*",
     "@anthropic-ai/sdk": "^0.71.2",
     "@modelcontextprotocol/sdk": "^1.25.2",
     "es-module-lexer": "^2.0.0",

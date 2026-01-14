@@ -191,11 +191,69 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const page = await browser.newPage();
     await page.setViewport({ width, height });
 
+    // Capture browser console logs for debugging
+    const consoleLogs: string[] = [];
+    page.on('console', (msg) => {
+      consoleLogs.push(`[${msg.type()}] ${msg.text()}`);
+    });
+
     // Navigate to viewer with increased timeout
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait for scene and sketch to render
-    await new Promise(resolve => setTimeout(resolve, waitMs));
+    // Wait for WebSocket connection and scene to load
+    // Instead of fixed timeout, wait for scene to have entities
+    let sceneLoaded = false;
+    const maxWaitTime = waitMs;
+    const checkInterval = 500;
+    let elapsed = 0;
+
+    while (elapsed < maxWaitTime && !sceneLoaded) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      elapsed += checkInterval;
+
+      // Check if scene has entities
+      sceneLoaded = await page.evaluate(() => {
+        // Check if there are any rendered entities in the canvas
+        const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+        if (!canvas) return false;
+
+        // Check WebSocket connection state from window
+        type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
+        const win = window as WindowWithWS;
+
+        // If we have entity count exposed, use it
+        if (typeof win.__sceneEntityCount === 'number') {
+          return win.__sceneEntityCount > 0;
+        }
+
+        // Fallback: check if canvas has been drawn to (not just background)
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return false;
+
+        // Sample some pixels to see if anything is drawn
+        const imageData = ctx.getImageData(canvas.width / 2, canvas.height / 2, 1, 1);
+        const [r, g, b] = imageData.data;
+        // Background is light gray (~230,230,230), check if different
+        return r !== 230 || g !== 230 || b !== 230;
+      });
+
+      logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);
+    }
+
+    // Log WebSocket status for debugging
+    const wsStatus = await page.evaluate(() => {
+      type WindowWithDebug = Window & {
+        __wsConnectionState?: string;
+        __sceneEntityCount?: number;
+      };
+      const win = window as WindowWithDebug;
+      return {
+        connectionState: win.__wsConnectionState || 'unknown',
+        entityCount: win.__sceneEntityCount ?? -1,
+      };
+    });
+    logger.debug('WebSocket status', wsStatus);
+    logger.debug('Console logs from browser', { logs: consoleLogs.slice(-20) });
 
     // Set zoom level (3x for better precision)
     const zoomApplied = await page.evaluate(() => {

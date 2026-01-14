@@ -4,6 +4,8 @@
  *
  * Usage:
  *   npx @ai-native-cad/mcp start
+ *
+ * Note: --help/--version 옵션 불필요 (MCP는 stdio 프로토콜 사용, CLI 도구 아님)
  */
 
 import { runMCPServer } from './mcp-server.js'
@@ -14,11 +16,6 @@ if (command === 'start') {
   runMCPServer()
 } else {
   // eslint-disable-next-line no-console
-  console.log(`AI-Native CAD MCP Server
-
-Usage:
-  npx @ai-native-cad/mcp start   Start MCP server (stdio + WebSocket)
-
-WebSocket server runs on ws://127.0.0.1:3001`)
-  process.exit(0)
+  console.log('Usage: npx @ai-native-cad/mcp start')
+  process.exit(command ? 1 : 0)
 }

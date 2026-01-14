@@ -13,7 +13,9 @@ export interface AgentOptions {
   maxIterations?: number;
 }
 
-export const DEFAULT_DOMAINS: DomainName[] = ['primitives', 'style', 'transforms', 'query', 'registry', 'export'];
+// NOTE: This runtime uses the old individual tool approach.
+// With Story 9.4, MCP uses run_cad_code as single entry point instead.
+export const DEFAULT_DOMAINS: DomainName[] = ['primitives', 'style', 'transforms', 'query', 'groups', 'utility'];
 export const DEFAULT_MAX_ITERATIONS = 10;
 
 /**
