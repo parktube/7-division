@@ -1,9 +1,11 @@
 import { PanelLayout } from '@/components/Layout'
 import { TopBar } from '@/components/TopBar'
 import { StatusBar } from '@/components/StatusBar'
+import { Onboarding } from '@/components/Onboarding'
 import { ViewportProvider } from '@/contexts/ViewportContext'
 import { UIProvider } from '@/contexts/UIContext'
 import { useSelectionSync } from '@/hooks/useSelectionSync'
+import { useWebSocket } from '@/hooks/useWebSocket'
 import { initDataServer } from '@/utils/dataUrl'
 
 // Initialize data server URL from query params (for Electron)
@@ -15,11 +17,19 @@ function SelectionSync() {
   return null
 }
 
+// Component to manage WebSocket connection and onboarding
+function WebSocketManager() {
+  const { connectionState, reconnect } = useWebSocket()
+
+  return <Onboarding connectionState={connectionState} onReconnect={reconnect} />
+}
+
 export default function App() {
   return (
     <UIProvider>
       <ViewportProvider>
         <SelectionSync />
+        <WebSocketManager />
         <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
           <TopBar />
           <main className="flex-1 min-h-0 overflow-hidden">
