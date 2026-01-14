@@ -1,0 +1,74 @@
+# generated: 2026-01-14
+# project: r2-7f-division
+# project_key: ai-native-cad
+# tracking_system: file-system
+# story_location: docs/sprint-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
+#   - ready-for-dev: Draft approved and story context created
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-01-14
+project: r2-7f-division
+project_key: ai-native-cad
+tracking_system: file-system
+story_location: docs/sprint-artifacts
+
+development_status:
+  # Epic 1-8: Completed (MVP + Manifold)
+  epic-1: done
+  epic-1-retrospective: completed
+  epic-2: done
+  epic-2-retrospective: completed
+  epic-3: done
+  epic-3-retrospective: completed
+  epic-4: done
+  epic-4-retrospective: completed
+  epic-5: done
+  epic-5-retrospective: completed
+  epic-6: done
+  epic-6-retrospective: completed
+  epic-7: done
+  epic-7-retrospective: completed
+  epic-8: done
+  epic-8-retrospective: completed
+
+  # Epic 9: Web Architecture Transition
+  epic-9: in-progress
+  9-1-monorepo-setup: ready-for-dev
+  9-2-websocket-hook: backlog
+  9-3-mcp-websocket-server: backlog
+  9-4-mcp-stdio-server: backlog
+  9-5-github-pages-deploy: backlog
+  9-6-npm-package-deploy: backlog
+  9-7-onboarding-ui: backlog
+  9-8-version-compatibility: backlog
+  9-9-performance-benchmark: backlog
+  9-10-electron-cleanup: backlog
+  epic-9-retrospective: optional
