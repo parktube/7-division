@@ -1,7 +1,7 @@
 {
-  "name": "cad-tools",
+  "name": "@ai-native-cad/mcp",
   "version": "0.1.0",
-  "description": "LLM-agnostic CAD tool definitions and executor",
+  "description": "MCP Server for AI-Native CAD",
   "license": "MIT",
   "author": "parktube",
   "repository": {
@@ -33,12 +33,14 @@
     "src"
   ],
   "dependencies": {
+    "@ai-native-cad/shared": "workspace:*",
     "@anthropic-ai/sdk": "^0.71.2",
     "es-module-lexer": "^2.0.0",
     "manifold-3d": "^3.3.2",
     "opentype.js": "^1.3.4",
     "puppeteer": "^24.34.0",
-    "quickjs-emscripten": "0.31.0"
+    "quickjs-emscripten": "0.31.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

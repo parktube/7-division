@@ -1,22 +1,21 @@
 {
   "name": "7-division",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI-Native CAD Engine",
   "type": "module",
   "scripts": {
     "setup": "rustup update && rustup target add wasm32-unknown-unknown && cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046",
-    "build": "wasm-pack build cad-engine --target nodejs",
-    "build:release": "wasm-pack build cad-engine --target nodejs --release",
-    "build:tools": "cd cad-tools && npm run build",
-    "capture:screen": "node cad-tools/dist/cli.js run_cad_code --capture",
-    "test": "cargo test --manifest-path cad-engine/Cargo.toml",
-    "test:tools": "cd cad-tools && npm run test",
-    "test:wasm": "npm run build:release && node test-wasm.mjs",
-    "test:wasm:dev": "npm run build && node test-wasm.mjs",
-    "test:all": "npm run test && npm run test:tools",
-    "prepare": "husky",
+    "build:wasm": "wasm-pack build cad-engine --target nodejs",
+    "build:wasm:release": "wasm-pack build cad-engine --target nodejs --release",
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @ai-native-cad/viewer dev",
+    "test": "pnpm -r test",
+    "test:wasm": "npm run build:wasm:release && node test-wasm.mjs",
+    "test:rust": "cargo test --manifest-path cad-engine/Cargo.toml",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
     "lint:rs": "cargo fmt --manifest-path cad-engine/Cargo.toml -- --check && cargo clippy --manifest-path cad-engine/Cargo.toml -- -D warnings",
-    "lint:ts": "cd cad-tools && npm run lint"
+    "prepare": "husky"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -29,8 +28,11 @@
     "cad-engine/**/*.rs": [
       "bash -c 'cargo fmt --manifest-path cad-engine/Cargo.toml -- --check && cargo clippy --manifest-path cad-engine/Cargo.toml -- -D warnings'"
     ],
-    "cad-tools/src/**/*.ts": [
-      "npx --prefix cad-tools eslint --fix"
+    "apps/cad-mcp/src/**/*.ts": [
+      "npx pnpm --filter @ai-native-cad/mcp lint --fix"
+    ],
+    "apps/viewer/src/**/*.{ts,tsx}": [
+      "npx pnpm --filter @ai-native-cad/viewer lint --fix"
     ]
   }
 }

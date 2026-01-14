@@ -1,4 +1,4 @@
-import '../cad-engine/pkg/cad_engine.js';
+import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
 import { writeFileSync } from 'fs';
 

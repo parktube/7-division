@@ -6,7 +6,7 @@
  * 핵심: LLM은 객체로 style 전달, Executor가 WASM용 JSON 문자열로 변환
  */
 
-import { Scene } from '../../cad-engine/pkg/cad_engine.js';
+import { Scene } from '../../../cad-engine/pkg/cad_engine.js';
 import { ToolRegistry } from './tool-registry.js';
 import { normalizeAngle, type AngleUnit } from './angle-utils.js';
 import { logger } from './logger.js';

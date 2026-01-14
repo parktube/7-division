@@ -1,21 +1,23 @@
 {
-  "name": "viewer",
+  "name": "@ai-native-cad/viewer",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@ai-native-cad/shared": "workspace:*",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-resizable-panels": "^4.3.0"
+    "react-resizable-panels": "^4.3.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

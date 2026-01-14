@@ -4,7 +4,7 @@
  * LLM이 코드 작성 없이 직접 tool_use로 CAD 도구를 사용하는지 검증
  */
 
-import '../cad-engine/pkg/cad_engine.js';
+import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
 import { AnthropicProvider } from './src/providers/anthropic.js';
 import { runAgentLoop } from './src/runtime.js';

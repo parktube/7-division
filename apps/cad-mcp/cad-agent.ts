@@ -9,7 +9,7 @@
  *   npx tsx cad-agent.ts --scene my-scene "사각형 추가해줘"
  */
 
-import '../cad-engine/pkg/cad_engine.js';
+import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
 import { AnthropicProvider } from './src/providers/anthropic.js';
 import { runAgentLoop } from './src/runtime.js';

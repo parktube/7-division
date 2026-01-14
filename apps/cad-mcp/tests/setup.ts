@@ -5,4 +5,4 @@
 
 // @ts-ignore - WASM module lacks type declarations
 // Node.js target WASM: 모듈 로드 시 __wbindgen_start() 자동 호출
-import '../../cad-engine/pkg/cad_engine.js';
+import '../../../cad-engine/pkg/cad_engine.js';

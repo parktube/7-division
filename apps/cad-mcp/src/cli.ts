@@ -12,7 +12,7 @@
  *   node cli.js list_entities
  */
 
-import '../../cad-engine/pkg/cad_engine.js';
+import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor, type ToolResult } from './executor.js';
 // captureViewport is dynamically imported only when needed (puppeteer not bundled in packaged app)
 import { writeFileSync, readFileSync, existsSync, mkdirSync, readdirSync, unlinkSync, copyFileSync } from 'fs';
