@@ -20,7 +20,8 @@ date: '2025-12-14'
 
 **Author:** Hoons
 **Date:** 2025-01-06
-**Status:** MVP 완료, Epic 7 진행 중
+**Last Updated:** 2026-01-14
+**Status:** Epic 1~8 완료, Epic 9 (웹 아키텍처) 계획 중
 
 ---
 
@@ -40,14 +41,14 @@ AI는 자동 생성기가 아닌 협업적 창작 파트너로서, 질문하고 
 2. **AX-UX 대칭**: AI에게 ActionHints, 인간에게 DesignHints - 둘 다 더 나은 결과로 유도
 3. **도구 허들 제로**: 조작은 AI가, 의사결정은 인간이 - 학습 곡선 6개월 → 0분
 4. **사용자 성장**: 결과물 + CAD 지식 습득 (대화하며 자연스럽게 배움)
-5. **Direct-First Architecture**: MCP 없이 WASM 직접 실행, 오프라인 우선
+5. **Web-First Architecture**: 웹 브라우저 + Local MCP, 설치 없이 즉시 시작
 
 ## Project Classification
 
-**Technical Type:** Desktop App (Electron + WASM 기반)
+**Technical Type:** Web App (브라우저 + Local MCP)
 **Domain:** Design Tools / Creative
 **Complexity:** High (새로운 패러다임)
-**Project Context:** Greenfield - 백지에서 시작
+**Project Context:** Epic 1~8 완료, 웹 전환 진행 중
 
 ---
 
@@ -129,23 +130,35 @@ interface DesignHints {
 
 ## Technical Architecture
 
-### 현재 구현 (MVP 완료)
+### 목표 아키텍처
 
 ```
-Claude Code CLI → cad-tools (WASM) → scene.json → Canvas 2D Viewer
+Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web)
+                           │
+                      WASM Engine
+                      File System
 ```
 
-- **CAD 엔진**: Rust → WASM, circle/rect/line/polygon/arc/bezier + group + pivot
-- **뷰어**: Canvas 2D (viewer/), Electron 앱 (cad-electron/)
-- **출력**: scene.json, SVG export
-- **CLI**: `run_cad_code` - JavaScript 코드로 도형 생성
+- **CAD 엔진**: Rust → WASM (도형, 변환, Boolean, 텍스트)
+- **MCP 서버**: Claude Code 연동 (stdio) + Viewer 연동 (WebSocket)
+- **뷰어**: React 19 + GitHub Pages 호스팅
+- **배포**: `npx @ai-native-cad/mcp start` + 웹 브라우저
 
-### Epic 7에서 변경 예정
+### 핵심 결정
 
-```
-viewer/ (React + Vite) → 단일 소스
-cad-electron/ → viewer/dist 직접 로드
-```
+| 항목 | 결정 | 근거 |
+|------|------|------|
+| 통신 | WebSocket | 파일 폴링 대비 30배 빠름 (~15ms) |
+| 배포 | GitHub Pages + npm | 설치 없이 즉시 시작, 업데이트 간편 |
+| 보안 | localhost-only | 로컬 개발 도구, 원격 접근 불필요 |
+
+### 완료된 기반 (Epic 1~8)
+
+- WASM 엔진, 도형 6종, Boolean 연산, 텍스트 렌더링
+- React 뷰어 (3패널, 스케치 모드)
+- CLI `run_cad_code`
+
+상세: architecture.md 참조
 
 ---
 
@@ -174,111 +187,106 @@ cad-electron/ → viewer/dist 직접 로드
 
 ### Technical Success
 
-- WASM 엔진 직접 실행 성공
-- SVG 출력 정상 동작
-- Claude Code에서 도구 호출 원활
-- **Electron 앱 빌드 및 배포 성공**
+- ✅ WASM 엔진 직접 실행 성공
+- ✅ SVG 출력 정상 동작
+- ✅ Claude Code에서 도구 호출 원활
+- MCP + WebSocket 실시간 동기화 (진행 중)
+- GitHub Pages 배포 성공 (진행 중)
 
 ---
 
 ## Functional Requirements
 
-### 완료된 요구사항 (FR1~FR29) ✅
+### 완료 (FR1~FR50) ✅
 
-기초 도형, 스타일, 변환, 그룹화, 피봇, Selection UI, Electron 앱 - 모두 완료. 상세는 [epics.md](./epics.md) 참조.
+| Epic | FR | 요약 |
+|------|-----|------|
+| 1~3 | FR1~FR20 | 도형, 스타일, 변환, Canvas 뷰어 |
+| 4~5 | FR21~FR29 | 그룹화, 피봇, Selection UI |
+| 7 | FR31~FR42 | 3패널, 트리뷰, 스케치 모드, 이중 좌표 |
+| 8 | FR43~FR50 | Boolean 연산, 기하 분석, 텍스트 렌더링 |
 
-### 인간-LLM 협업 UI (FR31~FR40) - 진행 중
+상세: [epics.md](./epics.md) 참조
+
+### 진행 중: 웹 아키텍처 (FR51~FR58)
 
 | ID | 요구사항 | 설명 |
 |----|---------|------|
-| FR31 | 3패널 레이아웃 | Layer Panel / Canvas / Info Panel 구성 |
-| FR32 | 패널 리사이즈 | 드래그로 패널 너비 조절 |
-| FR33 | 계층 트리뷰 | JS 코드의 그룹/오브젝트를 트리로 표시 |
-| FR34 | 그룹 탐색 | 그룹 선택, 확장, 중첩 그룹 탐색 |
-| FR35 | 다중 선택 | Ctrl/Shift + 클릭으로 복수 선택 |
-| FR36 | Visible 토글 | 끄면 Canvas에서 숨김 |
-| FR37 | Lock 가드 | 잠긴 엔티티 수정 시 LLM에 경고 반환 |
-| FR38 | 스케치 모드 | Canvas에 그리기/지우기 UI, 투명 오버레이 |
-| FR39 | 스케치 캡쳐 | capture_viewport로 스케치 포함 캡쳐 → Vision 해석 |
-| FR40 | 단일 소스 | viewer/가 유일한 소스, 웹/Electron 동일 코드 |
+| FR51 | 모노레포 전환 | pnpm workspace (apps/viewer, apps/cad-mcp) |
+| FR52 | WebSocket 통신 | MCP ↔ Viewer 실시간 동기화 |
+| FR53 | MCP stdio 서버 | Claude Code 연동 |
+| FR54 | MCP WebSocket 서버 | Viewer 연동 |
+| FR55 | GitHub Pages 배포 | 정적 호스팅 |
+| FR56 | npm 패키지 배포 | @ai-native-cad/mcp |
+| FR57 | 온보딩 UI | MCP 미연결 시 가이드 |
+| FR58 | 버전 호환성 체크 | MCP ↔ Viewer 버전 검증 |
 
 ## Non-Functional Requirements
 
-### 완료 (NFR1~NFR17) ✅
+### 완료 (NFR1~NFR20) ✅
 
-그룹 중첩, 선택 반응 100ms, 앱 시작 5초, 오프라인 동작 - 모두 충족.
+성능, 오프라인 동작, 패널 리사이즈 60fps - 모두 충족.
 
-### 진행 중 (NFR18~NFR20)
+### 진행 중: 웹 아키텍처
 
-| ID | 요구사항 | 설명 |
+| ID | 요구사항 | 목표 |
 |----|---------|------|
-| NFR18 | 패널 리사이즈 성능 | 60fps 유지 |
-| NFR19 | 렌더링 동등성 | React 전환 후 기존과 동일 품질 |
-| NFR20 | 웹/Electron 동등성 | 동일 기능 동작 |
+| NFR21 | WebSocket RTT | p50 < 15ms, p95 < 50ms |
+| NFR22 | 첫 온보딩 | < 1분 (npx 한 줄) |
+| NFR23 | 브라우저 호환 | Chrome, Firefox, Safari |
 
 ---
 
 ## Product Scope
 
-### MVP ✅ 완료
+### 완료 (Epic 1~8) ✅
 
-기초 도형, 스타일, 변환, 그룹화, 피봇, Selection UI, Electron 앱 - 모두 완료.
+| Epic | 산출물 |
+|------|--------|
+| 1~3 | WASM 엔진, 도형 6종, Canvas 뷰어 |
+| 4~5 | 그룹/피봇, Selection UI |
+| 7 | React 뷰어, 3패널, 스케치 모드 |
+| 8 | Manifold Boolean, 텍스트 렌더링 |
 
-### Epic 7: 인간-LLM 협업 UI - 진행 중
+### 현재 진행: Epic 9 - 웹 아키텍처 전환
 
-**목적**: LLM이 만든 코드와 유저 인터랙션의 양방향 연결
+**목표**: 웹 브라우저에서 즉시 사용, 1분 이내 온보딩
 
-#### Layer Panel - LLM 코드 ↔ 유저 선택 연동
-
-| 기능 | 설명 |
-|------|------|
-| 계층 표시 | JS 코드의 그룹/오브젝트가 트리로 표시 |
-| 그룹 선택 | 그룹 클릭 → 전체 선택 |
-| 그룹 확장 | 펼쳐서 내부 오브젝트 개별 선택 |
-| 중첩 그룹 | 그룹 안의 그룹 탐색 |
-| 다중 선택 | Ctrl/Shift + 클릭 |
-| Visible | 끄면 Canvas에서 숨김 |
-| Lock | **잠기면 LLM이 수정 불가** (경고 반환) |
-
-#### Canvas - 유저 스케치 → 캡쳐 이미지 → LLM Vision
-
-| 기능 | 설명 |
-|------|------|
-| 스케치 모드 | 그리기/지우기/전체삭제 툴바 |
-| 스케치 레이어 | CAD 씬 위 투명 오버레이 (휘발성) |
-| 캡쳐 전달 | capture_viewport로 스케치 포함 PNG → Vision 해석 |
-| Grid Overlay | 캡쳐 시 눈금자 포함 → Vision이 좌표 파악 |
-
-```
-┌─────────────┬──────────────────────┬─────────────┐
-│   Layer     │       Canvas         │    Info     │
-│   Panel     │                      │   Panel     │
-│             │  - 렌더링            │             │
-│  - 트리뷰   │  - Pan/Zoom          │  - 선택정보 │
-│  - Lock     │  - 스케치 모드       │  - Bounds   │
-│  - Visible  │  - capture → LLM    │             │
-└─────────────┴──────────────────────┴─────────────┘
-```
-
-**성공 지표**:
-- [ ] 유저가 레이어에서 선택 → LLM이 해당 엔티티 인식
-- [ ] Lock된 엔티티 수정 시도 → LLM에 경고 반환
-- [ ] 유저 스케치 + 캡쳐 → LLM Vision이 의도 해석
+| Phase | 범위 | 산출물 |
+|-------|------|--------|
+| 1 | 모노레포 + WebSocket | pnpm workspace, useWebSocket |
+| 2 | MCP 서버 | @ai-native-cad/mcp (npm) |
+| 3 | 배포 | GitHub Pages, 온보딩 UI |
+| 4 | 안정화 | 버전 호환성, 에러 복구 |
 
 ### Post-MVP
 
 | 항목 | 설명 |
 |------|------|
-| ActionHints 확장 | DesignHints 포함 협업 경험 |
+| MAMA 통합 | 세션 연속성, 결정 저장 |
 | DXF 출력 | 2D 업계 표준 |
 | 3D 확장 | STEP/STL, wgpu |
-| Gateway + 채팅 UI | 별도 서비스 |
 
 ---
 
 ## Deployment Strategy
 
-- **데스크톱**: Electron (~100MB), Windows/Mac/Linux
+### 웹 배포
+
+| 컴포넌트 | 위치 | 방법 |
+|---------|------|------|
+| Viewer | GitHub Pages | 자동 배포 (gh-pages) |
+| MCP | npm registry | `npx @ai-native-cad/mcp start` |
+
+### 사용자 시작 흐름
+
+```
+1. 웹 브라우저에서 Viewer 접속
+2. "MCP 연결 필요" 가이드 확인
+3. npx @ai-native-cad/mcp start (터미널)
+4. 자동 연결 → 사용 시작
+```
+
 - **AI 연결**: Claude Code 사용 (API 키 관리 위임)
 - **오프라인**: CAD 기능은 API 없이 동작
 
@@ -308,16 +316,19 @@ cad-electron/ → viewer/dist 직접 로드
 
 ## Definition of Done
 
-### MVP ✅ 완료
+### 완료 (Epic 1~8) ✅
 
-WASM 엔진, 도형 6종, 그룹/피봇, Selection UI, Electron 앱 - 모두 완료.
+- ✅ WASM 엔진, 도형 6종, 그룹/피봇
+- ✅ React 뷰어, 3패널, 스케치 모드
+- ✅ Boolean 연산, 텍스트 렌더링
 
-### Epic 7: 인간-LLM 협업 UI (진행 중)
+### 현재 목표: Epic 9 - 웹 아키텍처
 
-- [ ] Layer Panel 트리뷰 + 그룹 탐색 + 다중 선택
-- [ ] Lock 가드 (잠긴 엔티티 수정 시 LLM 경고)
-- [ ] 스케치 모드 (그리기/지우기 UI + 캡쳐 전달)
-- [ ] Grid Overlay (Vision 좌표 감지용)
-- [ ] 웹/Electron 동일 동작
+- [ ] 모노레포 전환 (pnpm workspace)
+- [ ] WebSocket 실시간 동기화
+- [ ] MCP 서버 (stdio + WebSocket)
+- [ ] GitHub Pages 배포
+- [ ] 온보딩 UI (MCP 연결 가이드)
+- [ ] npm 패키지 배포
 
 ---
