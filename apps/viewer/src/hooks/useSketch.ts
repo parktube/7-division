@@ -115,8 +115,9 @@ export function useSketch() {
   }, [])
 
   const endStroke = useCallback(() => {
-    if (currentStrokeRef.current && currentStrokeRef.current.points.length > 1) {
-      setStrokes(prev => [...prev, currentStrokeRef.current!])
+    const stroke = currentStrokeRef.current
+    if (stroke && stroke.points.length > 1) {
+      setStrokes(prev => [...prev, stroke])
     }
     currentStrokeRef.current = null
     setIsDrawing(false)

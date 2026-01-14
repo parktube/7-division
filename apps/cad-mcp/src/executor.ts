@@ -6,7 +6,7 @@
  * 핵심: LLM은 객체로 style 전달, Executor가 WASM용 JSON 문자열로 변환
  */
 
-import { Scene } from '../../../cad-engine/pkg/cad_engine.js';
+import { Scene } from '../wasm/cad_engine.js';
 import { ToolRegistry } from './tool-registry.js';
 import { normalizeAngle, type AngleUnit } from './angle-utils.js';
 import { logger } from './logger.js';
@@ -947,6 +947,158 @@ export class CADExecutor {
       throw new Error('Executor not initialized or already freed');
     }
     return this.scene.export_json();
+  }
+
+  /**
+   * Scene JSON에서 복원 (영속성)
+   * 저장된 씬 JSON을 파싱해서 엔티티들을 재생성합니다.
+   */
+  importScene(sceneJson: string): { restored: number; errors: string[] } {
+    if (!this.initialized) {
+      throw new Error('Executor not initialized or already freed');
+    }
+
+    const errors: string[] = [];
+    let restored = 0;
+
+    try {
+      const scene = JSON.parse(sceneJson);
+      const entities = scene.entities || [];
+
+      // 그룹이 아닌 엔티티부터 먼저 생성 (의존성 순서)
+      // Note: 씬 JSON에서는 entity_type 필드 사용
+      const nonGroups = entities.filter((e: Record<string, unknown>) => e.entity_type !== 'Group');
+      const groups = entities.filter((e: Record<string, unknown>) => e.entity_type === 'Group');
+
+      // 1. 기본 도형들 생성
+      for (const entity of nonGroups) {
+        const entityName = (entity.metadata as Record<string, unknown>)?.name as string || entity.id;
+        try {
+          this.restoreEntity(entity);
+          restored++;
+        } catch (e) {
+          errors.push(`${entityName}: ${e}`);
+        }
+      }
+
+      // 2. 그룹 생성 (자식이 이미 존재해야 함)
+      for (const group of groups) {
+        const groupName = (group.metadata as Record<string, unknown>)?.name as string || group.id;
+        try {
+          this.restoreGroup(group);
+          restored++;
+        } catch (e) {
+          errors.push(`${groupName}: ${e}`);
+        }
+      }
+
+      return { restored, errors };
+    } catch (e) {
+      errors.push(`JSON parse error: ${e}`);
+      return { restored, errors };
+    }
+  }
+
+  /**
+   * 개별 엔티티 복원 (내부용)
+   * 씬 JSON 구조: { entity_type, geometry, style, metadata: { name } }
+   */
+  private restoreEntity(entity: Record<string, unknown>): void {
+    const metadata = entity.metadata as Record<string, unknown> | undefined;
+    const name = (metadata?.name as string) || (entity.id as string);
+    const type = entity.entity_type as string;
+    const geometry = entity.geometry as Record<string, unknown>;
+    const style = entity.style as Record<string, unknown> | undefined;
+
+    // 타입별 도형 생성
+    switch (type) {
+      case 'Circle': {
+        const data = geometry.Circle as { center: number[]; radius: number };
+        this.exec('draw_circle', { name, x: data.center[0], y: data.center[1], radius: data.radius });
+        break;
+      }
+      case 'Rect': {
+        const data = geometry.Rect as { center: number[]; width: number; height: number };
+        // Rect는 center 기준이므로 좌하단으로 변환
+        const x = data.center[0] - data.width / 2;
+        const y = data.center[1] - data.height / 2;
+        this.exec('draw_rect', { name, x, y, width: data.width, height: data.height });
+        break;
+      }
+      case 'Polygon': {
+        const data = geometry.Polygon as { points: number[][] };
+        const points = data.points.flat();
+        this.exec('draw_polygon', { name, points });
+        break;
+      }
+      case 'Line': {
+        const data = geometry.Line as { points: number[][] };
+        const points = data.points.flat();
+        this.exec('draw_line', { name, points });
+        break;
+      }
+      case 'Arc': {
+        const data = geometry.Arc as { center: number[]; radius: number; start_angle: number; end_angle: number };
+        this.exec('draw_arc', {
+          name,
+          cx: data.center[0],
+          cy: data.center[1],
+          radius: data.radius,
+          startAngle: data.start_angle,
+          endAngle: data.end_angle,
+        });
+        break;
+      }
+      case 'Bezier': {
+        const data = geometry.Bezier as { path: string };
+        this.exec('draw_bezier', { name, path: data.path });
+        break;
+      }
+      case 'Text': {
+        const data = geometry.Text as { text: string; position: number[]; font_size: number };
+        this.exec('draw_text', { name, text: data.text, x: data.position[0], y: data.position[1], fontSize: data.font_size });
+        break;
+      }
+      default:
+        throw new Error(`Unknown entity type: ${type}`);
+    }
+
+    // 스타일 복원
+    // 씬 JSON 스타일 구조: { fill: { color: [] }, stroke: { color: [], width } }
+    if (style) {
+      const fill = style.fill as Record<string, unknown> | undefined;
+      const stroke = style.stroke as Record<string, unknown> | undefined;
+
+      if (fill?.color) {
+        // set_fill expects { name, fill: { color: [r,g,b,a] } }
+        const result = this.exec('set_fill', { name, fill: { color: fill.color } });
+        if (!result.success) {
+          logger.warn(`Failed to restore fill for ${name}: ${result.error}`);
+        }
+      }
+      if (stroke?.color) {
+        // set_stroke expects { name, stroke: { color: [r,g,b,a], width } }
+        const result = this.exec('set_stroke', { name, stroke: { color: stroke.color, width: stroke.width } });
+        if (!result.success) {
+          logger.warn(`Failed to restore stroke for ${name}: ${result.error}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * 그룹 복원 (내부용)
+   * 씬 JSON 그룹 구조: { entity_type: 'Group', metadata: { name }, computed: { children } }
+   */
+  private restoreGroup(group: Record<string, unknown>): void {
+    const metadata = group.metadata as Record<string, unknown> | undefined;
+    const name = (metadata?.name as string) || (group.id as string);
+    const computed = group.computed as Record<string, unknown> | undefined;
+    const children = computed?.children as string[] | undefined;
+
+    if (children && children.length > 0) {
+      this.exec('create_group', { name, children });
+    }
   }
 
   /**

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { WebSocket } from 'ws'
+import { WebSocket, WebSocketServer } from 'ws'
 import { CADWebSocketServer } from '../src/ws-server.js'
 import type { Scene } from '@ai-native-cad/shared'
 
@@ -172,6 +172,124 @@ describe('CADWebSocketServer', () => {
       expect(receivedSelection).toEqual(selection)
 
       client.close()
+    })
+  })
+
+  describe('port auto-discovery', () => {
+    it('should try next port when default port is in use', async () => {
+      // Occupy port 3001 with a blocking server
+      const blockingServer = new WebSocketServer({ host: '127.0.0.1', port: 3001 })
+
+      await new Promise<void>((resolve) => {
+        blockingServer.on('listening', resolve)
+      })
+
+      try {
+        // CADWebSocketServer should fallback to 3002
+        const port = await server.start()
+        expect(port).toBe(3002)
+      } finally {
+        blockingServer.close()
+      }
+    })
+
+    it('should throw when all ports are in use', async () => {
+      // Occupy all ports 3001-3003
+      const blockingServers: WebSocketServer[] = []
+
+      for (let p = 3001; p <= 3003; p++) {
+        const ws = new WebSocketServer({ host: '127.0.0.1', port: p })
+        await new Promise<void>((resolve) => ws.on('listening', resolve))
+        blockingServers.push(ws)
+      }
+
+      try {
+        await expect(server.start()).rejects.toThrow('All ports 3001-3003 are in use')
+      } finally {
+        for (const ws of blockingServers) {
+          ws.close()
+        }
+      }
+    })
+  })
+
+  describe('error handling', () => {
+    it('should handle invalid JSON messages gracefully', async () => {
+      const port = await server.start()
+
+      const client = new WebSocket(`ws://127.0.0.1:${port}`)
+
+      await new Promise<void>((resolve) => client.on('open', resolve))
+
+      // Wait for connection message
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Send invalid JSON
+      client.send('not valid json')
+
+      // Server should not crash, client should still be connected
+      await new Promise((r) => setTimeout(r, 50))
+      expect(server.getClientCount()).toBe(1)
+
+      client.close()
+    })
+
+    it('should handle invalid message types gracefully', async () => {
+      const port = await server.start()
+
+      const client = new WebSocket(`ws://127.0.0.1:${port}`)
+
+      await new Promise<void>((resolve) => client.on('open', resolve))
+
+      // Wait for connection message
+      await new Promise((r) => setTimeout(r, 50))
+
+      // Send invalid message type (valid JSON but invalid schema)
+      client.send(JSON.stringify({
+        type: 'unknown_type',
+        data: {},
+        timestamp: Date.now(),
+      }))
+
+      // Server should not crash
+      await new Promise((r) => setTimeout(r, 50))
+      expect(server.getClientCount()).toBe(1)
+
+      client.close()
+    })
+
+    it('should broadcast error messages', async () => {
+      const port = await server.start()
+
+      const client = new WebSocket(`ws://127.0.0.1:${port}`)
+
+      await new Promise<void>((resolve) => client.on('open', resolve))
+
+      let errorReceived = false
+      client.on('message', (data) => {
+        const msg = JSON.parse(data.toString())
+        if (msg.type === 'error') {
+          expect(msg.data.message).toBe('Test error')
+          expect(msg.data.code).toBe('TEST_CODE')
+          errorReceived = true
+        }
+      })
+
+      // Wait for connection message
+      await new Promise((r) => setTimeout(r, 50))
+
+      server.broadcastError('Test error', 'TEST_CODE')
+
+      await new Promise((r) => setTimeout(r, 50))
+      expect(errorReceived).toBe(true)
+
+      client.close()
+    })
+  })
+
+  describe('client limit', () => {
+    it('should expose max clients value', () => {
+      expect(server.getMaxClients()).toBe(10)
     })
   })
 })

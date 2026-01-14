@@ -21,15 +21,17 @@ function formatMessage(level: LogLevel, message: string, context?: LogContext): 
 export const logger = {
   debug(message: string, context?: LogContext): void {
     if (isDev) {
+      // Use stderr to avoid interfering with MCP stdio protocol
       // eslint-disable-next-line no-console
-      console.log(formatMessage('debug', message, context));
+      console.error(formatMessage('debug', message, context));
     }
   },
 
   info(message: string, context?: LogContext): void {
     if (isDev) {
+      // Use stderr to avoid interfering with MCP stdio protocol
       // eslint-disable-next-line no-console
-      console.log(formatMessage('info', message, context));
+      console.error(formatMessage('info', message, context));
     }
   },
 

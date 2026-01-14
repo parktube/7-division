@@ -55,6 +55,16 @@ async function runBenchmark(): Promise<BenchmarkResult> {
     ws.on('open', async () => {
       clearTimeout(connectTimeout)
 
+      // Wait for initial connection message from server
+      await new Promise<void>((res) => {
+        ws.once('message', (data) => {
+          const msg = JSON.parse(data.toString())
+          if (msg.type === 'connection') {
+            res()
+          }
+        })
+      })
+
       const runIteration = () => {
         if (iteration >= ITERATIONS) {
           ws.close()

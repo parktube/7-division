@@ -9,26 +9,44 @@
 
 import { WebSocketServer, WebSocket } from 'ws'
 import type { IncomingMessage } from 'http'
+import { readFileSync } from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 import { logger } from './logger.js'
 import {
   safeValidateMessage,
   type Scene,
   type ConnectionData,
-} from '@ai-native-cad/shared'
+} from './shared/index.js'
 
 const DEFAULT_PORT = 3001
 const MAX_PORT = 3003
 const PROTOCOL_VERSION = 1
-const MCP_VERSION = '0.1.0'
+const HEARTBEAT_INTERVAL_MS = 15000 // 15 seconds
+const MAX_CLIENTS = 10 // Maximum concurrent connections (local tool, low risk)
+
+// Read version from package.json to stay in sync
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
+)
+const MCP_VERSION: string = packageJson.version
 
 export interface WSServerState {
   scene: Scene | null
   selection: string[]
 }
 
+// Extended WebSocket with heartbeat tracking
+interface ExtendedWebSocket extends WebSocket {
+  isAlive?: boolean
+  heartbeatTimeout?: ReturnType<typeof setTimeout>
+}
+
 export class CADWebSocketServer {
   private wss: WebSocketServer | null = null
-  private clients: Set<WebSocket> = new Set()
+  private clients: Set<ExtendedWebSocket> = new Set()
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null
   private state: WSServerState = {
     scene: null,
     selection: [],
@@ -58,8 +76,9 @@ export class CADWebSocketServer {
 
   private tryPort(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Use 0.0.0.0 to allow WSL2 → Windows browser connections
       const wss = new WebSocketServer({
-        host: '127.0.0.1',
+        host: '0.0.0.0',
         port,
       })
 
@@ -70,11 +89,7 @@ export class CADWebSocketServer {
       })
 
       wss.on('error', (err: NodeJS.ErrnoException) => {
-        if (err.code === 'EADDRINUSE') {
-          reject(err)
-        } else {
-          reject(err)
-        }
+        reject(err)
       })
     })
   }
@@ -82,8 +97,19 @@ export class CADWebSocketServer {
   private setupHandlers(): void {
     if (!this.wss) return
 
-    this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    // Start heartbeat interval for client timeout detection
+    this.startHeartbeat()
+
+    this.wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
+      // Check client limit
+      if (this.clients.size >= MAX_CLIENTS) {
+        logger.warn(`Max clients (${MAX_CLIENTS}) reached, rejecting connection`)
+        ws.close(1013, 'Maximum clients reached')
+        return
+      }
+
       logger.info(`Client connected from ${req.socket.remoteAddress}`)
+      ws.isAlive = true
       this.clients.add(ws)
 
       // Send initial state on connection
@@ -103,7 +129,13 @@ export class CADWebSocketServer {
         })
       }
 
+      // Handle pong responses for heartbeat
+      ws.on('pong', () => {
+        ws.isAlive = true
+      })
+
       ws.on('message', (data: Buffer) => {
+        ws.isAlive = true // Any message counts as alive
         this.handleMessage(ws, data)
       })
 
@@ -117,6 +149,33 @@ export class CADWebSocketServer {
         this.clients.delete(ws)
       })
     })
+  }
+
+  /**
+   * Start heartbeat interval for client timeout detection
+   * Sends ping to all clients every 15 seconds
+   * Terminates connections that don't respond within 30 seconds
+   */
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(() => {
+      for (const ws of this.clients) {
+        if (ws.isAlive === false) {
+          logger.warn('Client timed out (30s no response), terminating')
+          ws.terminate()
+          this.clients.delete(ws)
+          continue
+        }
+        ws.isAlive = false
+        ws.ping()
+      }
+    }, HEARTBEAT_INTERVAL_MS)
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval)
+      this.heartbeatInterval = null
+    }
   }
 
   private handleMessage(ws: WebSocket, data: Buffer): void {
@@ -163,6 +222,14 @@ export class CADWebSocketServer {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message))
     }
+  }
+
+  /**
+   * Set initial scene state before server starts (no broadcast)
+   * Use this to avoid flickering when viewer connects before scene is restored
+   */
+  setInitialScene(scene: Scene): void {
+    this.state.scene = scene
   }
 
   /**
@@ -231,6 +298,8 @@ export class CADWebSocketServer {
    */
   stop(): Promise<void> {
     return new Promise((resolve) => {
+      this.stopHeartbeat()
+
       if (this.wss) {
         // Close all client connections
         for (const client of this.clients) {
@@ -247,6 +316,13 @@ export class CADWebSocketServer {
         resolve()
       }
     })
+  }
+
+  /**
+   * Get maximum allowed clients
+   */
+  getMaxClients(): number {
+    return MAX_CLIENTS
   }
 }
 

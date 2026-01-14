@@ -1,6 +1,6 @@
 # Story 9.5: GitHub Pages 배포
 
-Status: drafted
+Status: in-progress
 
 ## Story
 
@@ -29,38 +29,56 @@ so that **앱 설치 없이 브라우저만으로 CAD를 사용할 수 있다** 
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Vite 빌드 설정 (AC: #1)
-  - [ ] 1.1 apps/viewer/vite.config.ts에 base path 설정 (/7-division/)
-  - [ ] 1.2 빌드 출력 디렉토리 확인 (dist/)
-  - [ ] 1.3 정적 자산 경로 확인 (WASM 파일 등)
+- [x] Task 1: Vite 빌드 설정 (AC: #1)
+  - [x] 1.1 apps/viewer/vite.config.ts에 base path 설정 (/7-division/)
+  - [x] 1.2 빌드 출력 디렉토리 확인 (dist/)
+  - [x] 1.3 정적 자산 경로 확인 (WASM 파일 등)
 
-- [ ] Task 2: GitHub Actions 워크플로우 생성 (AC: #1, #3)
-  - [ ] 2.1 .github/workflows/deploy-viewer.yml 생성
-  - [ ] 2.2 main 브랜치 push 트리거 설정
-  - [ ] 2.3 pnpm setup step 추가
-  - [ ] 2.4 빌드 step (pnpm --filter @ai-native-cad/viewer build)
-  - [ ] 2.5 GitHub Pages 배포 step (actions/deploy-pages)
+- [x] Task 2: GitHub Actions 워크플로우 생성 (AC: #1, #3)
+  - [x] 2.1 .github/workflows/deploy-pages.yml 생성
+  - [x] 2.2 main 브랜치 push 트리거 설정
+  - [x] 2.3 pnpm setup step 추가
+  - [x] 2.4 빌드 step (pnpm --filter @ai-native-cad/viewer build)
+  - [x] 2.5 GitHub Pages 배포 step (actions/deploy-pages)
 
-- [ ] Task 3: GitHub Pages 설정 (AC: #1)
+- [ ] Task 3: GitHub Pages 설정 (AC: #1) **← 미완료**
   - [ ] 3.1 Repository Settings → Pages → Source 설정
   - [ ] 3.2 GitHub Actions 소스 선택
   - [ ] 3.3 배포 확인 (https://parktube.github.io/7-division/)
 
-- [ ] Task 4: 캐시 무효화 전략 (AC: #4)
-  - [ ] 4.1 Vite 빌드 파일명에 해시 포함 확인
-  - [ ] 4.2 index.html 캐시 헤더 설정 (no-cache 또는 짧은 max-age)
-  - [ ] 4.3 서비스 워커 캐시 전략 검토 (필요시)
+- [x] Task 4: 캐시 무효화 전략 (AC: #4)
+  - [x] 4.1 Vite 빌드 파일명에 해시 포함 확인
+  - [x] 4.2 index.html 캐시 헤더 설정 (no-cache 또는 짧은 max-age)
+  - [x] 4.3 서비스 워커 캐시 전략 검토 (필요시)
 
-- [ ] Task 5: WASM 파일 처리 (AC: #1)
-  - [ ] 5.1 WASM 파일 빌드 출력 경로 확인
-  - [ ] 5.2 GitHub Pages에 WASM MIME 타입 지원 확인
-  - [ ] 5.3 WASM 로드 경로 수정 (상대 → base path 적용)
+- [x] Task 5: WASM 파일 처리 (AC: #1)
+  - [x] 5.1 WASM 파일 빌드 출력 경로 확인
+  - [x] 5.2 GitHub Pages에 WASM MIME 타입 지원 확인
+  - [x] 5.3 WASM 로드 경로 수정 (상대 → base path 적용)
 
-- [ ] Task 6: 배포 검증 (AC: #1~#4)
-  - [ ] 6.1 수동 배포 테스트 (workflow_dispatch)
-  - [ ] 6.2 배포된 URL 접근 확인
+- [ ] Task 6: 배포 검증 (AC: #1~#4) **← 미완료**
+  - [ ] 6.1 main 브랜치 머지 후 워크플로우 실행
+  - [ ] 6.2 배포된 URL 접근 확인 (https://parktube.github.io/7-division/)
   - [ ] 6.3 WASM 로드 동작 확인
-  - [ ] 6.4 MCP 미연결 시 온보딩 UI 확인 (Story 9.7 이후)
+  - [ ] 6.4 MCP 미연결 시 온보딩 UI 확인
+
+### Review Follow-ups (AI)
+
+> 코드 리뷰 날짜: 2026-01-14 | 리뷰어: Claude Opus 4.5
+
+**❌ AC 검증 결과 (2026-01-14 재검증)**
+- AC #1 ❌ https://parktube.github.io/7-division/ **404 Not Found** - 실제 배포 안됨
+- AC #3 ❌ main 브랜치 머지 및 워크플로우 실행 필요
+- AC #4 ⏳ 배포 후 검증 필요
+
+**🔴 CRITICAL (배포 차단)**
+- [ ] [AI-Review][CRITICAL] GitHub Pages 실제 배포 안됨 - main 머지 후 워크플로우 실행 필요
+- [ ] [AI-Review][CRITICAL] Repository Settings → Pages 설정 확인 필요
+
+**🟢 구현 완료 (코드)**
+- ✓ deploy-pages.yml 워크플로우 파일 존재
+- ✓ WASM 빌드 → Viewer 빌드 순서 올바르게 설정됨
+- ✓ 환경 변수로 base path 분리 (VITE_BASE_PATH)
 
 ## Dev Notes
 
@@ -235,4 +253,15 @@ Claude Opus 4.5
 ### Completion Notes List
 
 ### File List
+
+**구현된 파일:**
+```
+.github/workflows/deploy-pages.yml   # GitHub Pages 배포 워크플로우
+apps/viewer/vite.config.ts           # base path 설정 (VITE_BASE_PATH)
+```
+
+**남은 작업:**
+- main 브랜치 머지
+- GitHub Actions 워크플로우 실행
+- Repository Settings → Pages 설정 확인
 
