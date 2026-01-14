@@ -14,7 +14,7 @@ export type ConnectionState = 'connecting' | 'connected' | 'disconnected'
 const WS_PORTS = [3001, 3002, 3003]
 const INITIAL_RETRY_DELAY = 1000 // 1s
 const MAX_RETRY_ATTEMPTS = 5 // 1s→2s→4s→8s→16s, then stop
-const HEARTBEAT_INTERVAL = 30000 // 30s
+const HEARTBEAT_INTERVAL = 10000 // 10s (server times out at 30s, so send more frequently)
 
 // Find available WebSocket server
 async function findAvailablePort(): Promise<string | null> {
