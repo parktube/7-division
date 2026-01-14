@@ -1,6 +1,6 @@
 ---
 status: ready-for-dev
-currentEpic: 7
+currentEpic: 9
 stepsCompleted:
   - step-01-validate-prerequisites
   - step-02-design-epics
@@ -30,6 +30,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 6 | Electron 앱 | ✅ 완료 |
 | 7 | 인간-LLM 협업 UI | ✅ 완료 |
 | 8 | Manifold 기하 엔진 + 텍스트 렌더링 | ✅ 완료 |
+| 9 | 웹 아키텍처 전환 | 📋 계획됨 |
 
 ---
 
@@ -52,6 +53,32 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR41 | 좌표 정보 표시 | Info Panel에서 로컬/월드 좌표 토글 표시 |
 | FR42 | 이중 좌표 API | 변환 API에 space 옵션 ('world' \| 'local') 지원 |
 
+### Epic 8 Functional Requirements (완료)
+
+| ID | 기능 | 설명 |
+|----|------|------|
+| FR43 | 추가 모드 변수 접근 | + prefix로 기존 변수/함수 참조 |
+| FR44 | 스케치 자동 클리어 | --clear-sketch 플래그로 sketch.json 초기화 |
+| FR45 | 자동 스케일 계산 | fitToViewport() 함수로 최적 스케일 계산 |
+| FR46 | 실행 트랜잭션 | 에러 시 파일/씬 롤백 |
+| FR47 | Boolean 연산 | Manifold union/difference/intersect |
+| FR48 | 기하 분석 | offset, convexHull, area, decompose |
+| FR49 | 텍스트 렌더링 | opentype.js 기반 Polygon 변환 |
+| FR50 | 한글 폰트 자동 검색 | 플랫폼별 시스템 폰트 탐색 |
+
+### Epic 9 Functional Requirements
+
+| ID | 기능 | 설명 |
+|----|------|------|
+| FR51 | 모노레포 전환 | pnpm workspace로 프로젝트 재구성 |
+| FR52 | WebSocket 통신 | Viewer ↔ MCP 실시간 통신 |
+| FR53 | MCP stdio 서버 | Claude Code 연동 (JSON-RPC) |
+| FR54 | MCP WebSocket 서버 | Viewer 연동 (브로드캐스트) |
+| FR55 | GitHub Pages 배포 | Viewer 정적 호스팅 |
+| FR56 | npm 패키지 배포 | @ai-native-cad/mcp |
+| FR57 | 온보딩 UI | MCP 미연결 시 가이드 |
+| FR58 | 버전 호환성 체크 | MCP ↔ Viewer 버전 검증 |
+
 ### Non-Functional Requirements
 
 | ID | 요구사항 | 설명 |
@@ -59,19 +86,26 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | NFR18 | 패널 리사이즈 성능 | 60fps 유지 |
 | NFR19 | 렌더링 동등성 | React 전환 후 기존과 동일 품질 |
 | NFR20 | 웹/Electron 동등성 | 동일 기능 동작 |
+| NFR21 | WebSocket 지연시간 | RTT p50 < 15ms, p95 < 50ms |
+| NFR22 | 온보딩 시간 | 1분 이내 시작 가능 |
+| NFR23 | 보안 | localhost-only 바인딩 (127.0.0.1) |
 
-### Additional Requirements
+### Technical Stack
 
-**기술 스택:**
-- React 19.2+ / TypeScript 5.7+
-- Vite 7.3+ / TailwindCSS 4.x
-- react-resizable-panels / Lucide React
-- Inter + JetBrains Mono 폰트
-
-**아키텍처:**
-- 단일 소스 패턴 (viewer/ → web + Electron)
+**현재 (Epic 1-8):**
+- React 19 + TypeScript 5.7 + Vite
+- TailwindCSS 4.x + Lucide React
+- Rust → WASM (CAD 엔진)
+- Manifold WASM (기하 연산)
+- opentype.js (텍스트 렌더링)
 - scene.json 폴링 (100ms)
-- selection.json 확장 (lock, hidden 필드)
+
+**Epic 9 이후:**
+- pnpm 모노레포 (apps/viewer, apps/cad-mcp, packages/shared)
+- WebSocket 실시간 통신 (폴링 → ws://)
+- MCP Server (stdio + WebSocket 듀얼)
+- GitHub Pages + npm 패키지 배포
+- Electron 제거
 
 **UX/접근성:**
 - WCAG AA 준수
@@ -97,21 +131,37 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | NFR20 | 7.1 | Web/Electron 동등성 |
 | FR41 | 7.5 | 좌표 정보 표시 |
 | FR42 | 7.5 | 이중 좌표 API |
-
----
-
-## Epic List
-
-### Epic 8: Manifold 기하 엔진 + 텍스트 렌더링 ✅
-고급 기하 연산과 텍스트 렌더링으로 CAD 기능을 확장한다
-
-**FRs covered:** FR43-FR50
+| FR43 | 8 | 추가 모드 변수 접근 |
+| FR44 | 8 | 스케치 자동 클리어 |
+| FR45 | 8 | 자동 스케일 계산 |
+| FR46 | 8 | 실행 트랜잭션 |
+| FR47 | 8 | Boolean 연산 |
+| FR48 | 8 | 기하 분석 |
+| FR49 | 8 | 텍스트 렌더링 |
+| FR50 | 8 | 한글 폰트 자동 검색 |
+| FR51 | 9.1 | 모노레포 전환 |
+| FR52 | 9.2 | WebSocket 통신 |
+| FR54 | 9.3 | MCP WebSocket 서버 |
+| FR53 | 9.4 | MCP stdio 서버 |
+| FR55 | 9.5 | GitHub Pages 배포 |
+| FR56 | 9.6 | npm 패키지 배포 |
+| FR57 | 9.7 | 온보딩 UI |
+| FR58 | 9.8 | 버전 호환성 체크 |
+| NFR21 | 9.9 | WebSocket 지연시간 |
 
 ---
 
 ## 완료된 Epics (요약)
 
-### Epic 7: 인간-LLM 협업 UI (완료)
+### Epic 8: Manifold 기하 엔진 + 텍스트 렌더링 ✅
+
+고급 기하 연산과 텍스트 렌더링으로 CAD 기능 확장 (FR43-FR50)
+
+- **DX 개선**: 추가 모드 변수 접근, 스케치 자동 클리어, 자동 스케일 계산, 실행 트랜잭션(롤백)
+- **Manifold 기하**: Boolean 연산 (union/difference/intersect), offset, convexHull, area, decompose
+- **텍스트**: opentype.js 기반 렌더링, 한글 폰트 자동 검색 (Win/Mac/Linux)
+
+### Epic 7: 인간-LLM 협업 UI ✅
 
 - React 19 + TypeScript + Vite 뷰어
 - 3패널 레이아웃 (Layer / Canvas / Info)
@@ -121,299 +171,388 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 - 이중 좌표 시스템 (Local/World)
 - Electron 통합
 
-### Epic 1-3: MVP 기초 (완료)
+### Epic 1-6: MVP 기초 ✅
 
-- WASM CAD 엔진 (Rust → WASM)
-- 기초 도형 6종 (Circle, Rect, Line, Polygon, Arc, Bezier)
-- 스타일 시스템 (Fill, Stroke)
-- 변환 (Translate, Rotate, Scale)
-- Canvas 2D 뷰어
-- JSON/SVG Export
-
-### Epic 4-5: 그룹화 및 선택 (완료)
-
-- Group/Ungroup
-- Pivot 설정
-- 계층적 변환
-- 클릭 선택
-- 다중 선택
-- selection.json 연동
-
-### Epic 6: Electron 앱 (완료)
-
-- electron-vite 기반 앱
-- File polling 아키텍처
-- Windows/Mac 빌드
-- Claude Code 연동 가이드
+- **Epic 1-3**: WASM CAD 엔진, 기초 도형 6종, 스타일/변환, Canvas 2D 뷰어, JSON/SVG Export
+- **Epic 4-5**: Group/Ungroup, Pivot 설정, 계층적 변환, 클릭/다중 선택, selection.json
+- **Epic 6**: electron-vite 기반 앱, File polling, Windows/Mac 빌드
 
 ---
 
-## Epic 8: Manifold 기하 엔진 + 텍스트 렌더링
+## Epic 9: 웹 아키텍처 전환
 
-**목표**: 고급 기하 연산과 텍스트 렌더링으로 CAD 기능을 확장한다
+**목표**: Electron 앱을 웹 기반으로 전환하여 배포/유지보수 단순화
 
 ### 배경
 
-MVP 이후 필요해진 기능들:
-- Boolean 연산 (union, difference, intersect) - 복합 도형 생성
-- 기하 분석 (offset, convexHull, area, decompose) - 정밀 작업
-- 텍스트 렌더링 (다양한 한글 폰트) - 도면 주석/라벨
-- DX 개선 (변수 접근, 트랜잭션) - LLM 생산성
+| 문제 | Electron | Web + Local MCP |
+|------|----------|-----------------|
+| 업데이트 | 앱 재배포 + 사용자 재설치 | GitHub Pages 배포만 |
+| 유지보수 | 두 플랫폼 (Win/Mac) 빌드 | 웹 하나만 |
+| 온보딩 | 5분+ (다운로드, 설치) | 1분 이내 |
+| 개발 속도 | 느림 (electron-vite) | 빠름 (Vite HMR) |
+
+### Definition of Done (DoD)
+
+1. 기존 모든 테스트 통과 (Vitest, Clippy)
+2. WebSocket RTT p50 < 15ms, p95 < 50ms
+3. GitHub Pages에서 Viewer 정상 로드
+4. `npx @ai-native-cad/mcp start` 동작 확인
+5. `cad-electron/` 디렉토리 완전 제거
 
 ### FR Coverage Map
 
 | 요구사항 | Story | 설명 |
 |----------|-------|------|
-| FR43 | 8.1 | 추가 모드 변수 접근 |
-| FR44 | 8.2 | 스케치 자동 클리어 |
-| FR45 | 8.3 | 자동 스케일 계산 |
-| FR46 | 8.4 | 실행 트랜잭션 |
-| FR47 | 8.5 | Manifold Boolean 연산 |
-| FR48 | 8.6 | Manifold 기하 분석 |
-| FR49 | 8.7 | 텍스트 렌더링 |
-| FR50 | 8.8 | 한글 폰트 자동 검색 |
+| FR51 | 9.1 | 모노레포 전환 (pnpm workspace) |
+| FR52 | 9.2 | WebSocket 통신 (Viewer ↔ MCP) |
+| FR54 | 9.3 | MCP WebSocket 서버 (Viewer 연동) |
+| FR53 | 9.4 | MCP stdio 서버 (Claude Code 연동) |
+| FR55 | 9.5 | GitHub Pages 배포 |
+| FR56 | 9.6 | npm 패키지 배포 (@ai-native-cad/mcp) |
+| FR57 | 9.7 | 온보딩 UI (MCP 미연결 시 가이드) |
+| FR58 | 9.8 | 버전 호환성 체크 (MCP ↔ Viewer) |
+| NFR21 | 9.9 | 성능 벤치마크 (로컬 실행) |
+| - | 9.10 | Electron 제거 및 정리 |
+
+### Implementation Phases
+
+**Phase 1: 모노레포 전환 + WebSocket (Story 9.1~9.2)**
+- pnpm workspace 설정
+- viewer/ → apps/viewer/
+- cad-tools/ → apps/cad-mcp/
+- useWebSocket hook 구현
+- 품질 게이트: pnpm -r build 성공
+
+**Phase 2: MCP 서버 완성 (Story 9.3~9.4)**
+- WebSocket 서버 구현 (9.3 선행)
+- stdio 서버가 WebSocket으로 브로드캐스트 (9.4)
+- 기존 cad-tools/src/sandbox/ 재활용
+- 품질 게이트: 기존 테스트 100% 통과
+
+**Phase 3: 배포 파이프라인 (Story 9.5~9.8)**
+- GitHub Pages 정적 배포
+- npm registry 배포 (@ai-native-cad/mcp)
+- 온보딩 UI (MCP 연결 가이드)
+- 버전 호환성 체크
+- 품질 게이트: E2E 시나리오 통과
+
+**Phase 4: 성능 검증 & 정리 (Story 9.9~9.10)**
+- WebSocket 벤치마크 (로컬 실행, CI 게이트 아님)
+- cad-electron/ 디렉토리 완전 제거
+- 문서 정리 (CLAUDE.md, README.md)
+- 품질 게이트: DoD 5개 항목 충족
+
+### 제거 대상
+
+- `cad-electron/` 디렉토리 전체
+
+### 상세 설계
+
+architecture.md Part 2 참조
 
 ---
 
-### Story 8.1: 코드 추가 모드 변수 접근 ✅
+### Story 9.1: 모노레포 전환 (pnpm workspace)
 
-As a **LLM**,
-I want **+ prefix로 코드를 추가할 때 기존 모듈의 변수/함수에 접근할 수 있기를**,
-So that **전체 코드를 다시 작성하지 않고 점진적으로 확장할 수 있다** (FR43).
+As a **개발자**,
+I want **프로젝트를 pnpm workspace 모노레포로 전환하기를**,
+So that **Viewer와 MCP 서버 간 코드 공유 및 버전 관리가 용이해진다** (FR51).
 
 **Acceptance Criteria:**
 
-**Given** main 모듈에 `const W = 13550;`이 정의되어 있을 때
-**When** `run_cad_code main "+drawRect('r', W/2, 0, 100, 100)"`를 실행하면
-**Then** W 변수를 참조하여 정상 실행된다
-**And** 새 코드가 기존 코드 뒤에 추가된다
-
-**Given** main 모듈에 `function wall(id, x, y, w, h) {...}`가 정의되어 있을 때
-**When** `run_cad_code main "+wall('new_wall', 0, 0, 100, 10)"`를 실행하면
-**Then** wall 함수를 호출하여 정상 실행된다
-
-**Given** 추가할 코드에 동일한 변수명이 있을 때
-**When** `run_cad_code main "+const W = 500;"`를 실행하면
-**Then** 명확한 에러 메시지가 반환된다: "Variable 'W' already defined. Use a different name or modify existing code."
+**Given** 현재 viewer/, cad-tools/ 디렉토리 구조가 있을 때
+**When** 모노레포 전환을 완료하면
+**Then** 다음 구조가 생성된다:
+```
+apps/
+  viewer/        # React Viewer
+  cad-mcp/       # MCP Server + CLI
+packages/
+  shared/        # 공유 타입/유틸
+pnpm-workspace.yaml
+```
+**And** `pnpm -r build` 명령이 모든 패키지를 빌드한다
+**And** 기존 기능이 동일하게 동작한다
 
 **Technical Notes:**
-- 기존 코드와 추가 코드를 결합하여 단일 스크립트로 실행
-- 변수 충돌 시 사전 검사하여 실행 전 에러 반환
+- pnpm 10.x 사용
+- packages/shared에 Zod 스키마, 타입 정의 배치
+- tsconfig.json references 설정
 
 ---
 
-### Story 8.2: 스케치 자동 클리어 ✅
+### Story 9.2: WebSocket Hook 구현
 
-As a **LLM**,
-I want **스케치 기반 작업 완료 후 스케치를 자동으로 클리어하는 옵션이 있기를**,
-So that **매번 수동으로 sketch.json을 비우지 않아도 된다** (FR44).
+As a **Viewer 개발자**,
+I want **useWebSocket 커스텀 훅을 구현하기를**,
+So that **MCP 서버와 실시간 통신이 가능하다** (FR52).
 
 **Acceptance Criteria:**
 
-**Given** 스케치가 그려져 있고 run_cad_code로 구현을 완료했을 때
-**When** `--clear-sketch` 플래그와 함께 실행하면
-**Then** 코드 실행 후 sketch.json이 `{"strokes":[]}`로 초기화된다
-**And** 다음 캡처에서 빨간 스케치 선이 보이지 않는다
+**Given** MCP 서버가 ws://localhost:3001에서 실행 중일 때
+**When** Viewer가 useWebSocket 훅으로 연결하면
+**Then** scene/selection 업데이트가 실시간으로 수신된다
+**And** 연결 상태(connecting, connected, disconnected)가 추적된다
 
-**Given** 스케치 클리어 없이 실행할 때
-**When** 플래그 없이 `run_cad_code main "..."`를 실행하면
-**Then** sketch.json은 변경되지 않는다 (기존 동작 유지)
+**Given** MCP 서버와 연결이 끊어졌을 때
+**When** 자동 재연결이 시도되면
+**Then** 지수 백오프(1s→2s→4s→8s→16s, max 30s)가 적용된다
+**And** 연결 복구 시 최신 상태가 동기화된다
 
-**Given** capture 명령 실행 시
-**When** `run_cad_code --capture --clear-sketch`를 실행하면
-**Then** 캡처 후 sketch.json이 클리어된다
+**Given** 메시지가 수신될 때
+**When** scene_update 타입이면
+**Then** SceneStore가 업데이트된다
+**And** useWebSocket이 반환하는 scene 상태가 갱신된다
 
 **Technical Notes:**
-- `--clear-sketch` 플래그 추가
-- sketch.json 경로: `viewer/sketch.json`
+- ws 네이티브 WebSocket 사용 (라이브러리 없음)
+- Zod로 메시지 런타임 검증
+- React 19 호환 (useSyncExternalStore 패턴)
 
 ---
 
-### Story 8.3: 자동 스케일 계산 함수 ✅
+### Story 9.3: MCP WebSocket 서버
 
-As a **LLM**,
-I want **실제 치수(mm)와 뷰포트 크기를 입력하면 최적 스케일을 계산해주는 함수가 있기를**,
-So that **스케일 값을 시행착오 없이 빠르게 결정할 수 있다** (FR45).
+As a **MCP 서버 개발자**,
+I want **WebSocket 서버를 구현하기를**,
+So that **Viewer가 실시간으로 scene 업데이트를 받을 수 있다** (FR54).
 
 **Acceptance Criteria:**
 
-**Given** 평면도 실제 크기가 13550mm × 11800mm일 때
-**When** `fitToViewport(13550, 11800)` 또는 `--fit 13550x11800` 옵션을 사용하면
-**Then** 뷰포트(기본 1600×1000)에 맞는 최적 스케일이 계산된다
-**And** 적절한 여백(10%)이 포함된다
-**And** 결과 예: `{ scale: 0.042, offsetX: -285, offsetY: -248 }`
+**Given** MCP 서버가 시작될 때
+**When** WebSocket 서버가 ws://127.0.0.1:3001에서 리슨하면
+**Then** Viewer 클라이언트가 연결할 수 있다
+**And** 127.0.0.1만 바인딩된다 (보안)
 
-**Given** 커스텀 뷰포트 크기를 지정할 때
-**When** `fitToViewport(13550, 11800, { viewport: [800, 600] })`를 실행하면
-**Then** 해당 뷰포트 크기에 맞는 스케일이 계산된다
+**Given** 클라이언트가 연결되었을 때
+**When** 초기 연결 후
+**Then** 현재 scene/selection 상태가 즉시 전송된다
 
-**Given** 계산된 스케일을 적용할 때
-**When** 반환된 값을 코드에 사용하면
-**Then** 도면이 뷰포트 중앙에 적절한 크기로 표시된다
+**Given** 여러 클라이언트가 연결되었을 때
+**When** scene이 업데이트되면
+**Then** 모든 클라이언트에 브로드캐스트된다
+
+**Given** 클라이언트가 ping을 보낼 때
+**When** 서버가 수신하면
+**Then** pong 응답이 반환된다 (heartbeat)
 
 **Technical Notes:**
-- Sandbox에 `fitToViewport(realWidth, realHeight, options?)` 함수 추가
-- 반환값: `{ scale, offsetX, offsetY, code }` (code는 복사 가능한 스니펫)
+- ws 라이브러리 사용 (Node.js)
+- 포트 충돌 시 3001→3002→3003 자동 탐색
+- 메시지 포맷: Zod 스키마 검증
 
 ---
 
-### Story 8.4: 실행 트랜잭션 (롤백) ✅
+### Story 9.4: MCP stdio 서버
 
-As a **LLM**,
-I want **코드 실행 실패 시 파일이 변경되지 않기를**,
-So that **에러 발생 시 중복 정의나 불완전한 코드가 파일에 남지 않는다** (FR46).
+As a **Claude Code 사용자**,
+I want **stdio 기반 MCP 서버가 동작하기를**,
+So that **Claude Code에서 CAD 도구를 호출하고 Viewer에 실시간 반영된다** (FR53).
 
 **Acceptance Criteria:**
 
-**Given** 추가 모드로 코드를 실행할 때
-**When** 코드에 문법 오류나 런타임 에러가 있으면
-**Then** 파일은 원래 상태로 유지된다 (변경되지 않음)
-**And** 에러 메시지가 반환된다
+**Given** Claude Code가 MCP 서버에 연결되었을 때
+**When** run_cad_code 도구를 호출하면
+**Then** WASM 엔진에서 코드가 실행된다
+**And** 결과가 WebSocket으로 Viewer에 브로드캐스트된다 (Story 9.3 의존)
 
-**Given** 코드가 성공적으로 실행될 때
-**When** 모든 엔티티가 정상 생성되면
-**Then** 파일이 업데이트된다
+**Given** stdio로 JSON-RPC 요청이 들어올 때
+**When** 유효한 MCP 프로토콜이면
+**Then** 도구 목록, 도구 실행, 리소스 접근이 가능하다
 
-**Given** 부분 실행 후 에러가 발생할 때
-**When** 일부 엔티티만 생성되고 에러가 발생하면
-**Then** 씬도 원래 상태로 롤백된다 (부분 생성된 엔티티 제거)
+**Given** describe 명령이 호출될 때
+**When** 도메인 이름이 전달되면
+**Then** 해당 도메인의 함수 목록과 시그니처가 반환된다
 
 **Technical Notes:**
-- 실행 전 파일 백업 (메모리)
-- 에러 발생 시 백업에서 복원
-- scene.json도 트랜잭션 범위에 포함
+- @modelcontextprotocol/sdk 사용
+- 기존 cad-tools/src/sandbox/ 코드 재활용
+- stdio + WebSocket 동시 운영 (듀얼 서버)
 
 ---
 
-### Story 8.5: Manifold Boolean 연산 ✅
+### Story 9.5: GitHub Pages 배포
 
-As a **LLM**,
-I want **Manifold WASM을 통해 Boolean 연산(union, difference, intersect)을 실행할 수 있기를**,
-So that **복잡한 복합 도형을 정밀하게 생성할 수 있다** (FR47).
+As a **사용자**,
+I want **GitHub Pages에서 Viewer에 접근할 수 있기를**,
+So that **앱 설치 없이 브라우저만으로 CAD를 사용할 수 있다** (FR55).
 
 **Acceptance Criteria:**
 
-**Given** Circle, Rect, Polygon 등 기본 도형이 있을 때
-**When** `booleanUnion('circle1', 'rect1', 'result')`를 실행하면
-**Then** 두 도형의 합집합인 새 도형 'result'가 생성된다
+**Given** apps/viewer가 빌드될 때
+**When** GitHub Actions가 실행되면
+**Then** 정적 파일이 GitHub Pages에 배포된다
+**And** https://<user>.github.io/7-division/ 에서 접근 가능하다
 
-**Given** 두 겹치는 도형이 있을 때
-**When** `booleanDifference('base', 'hole', 'result')`를 실행하면
-**Then** base에서 hole을 뺀 도형이 생성된다 (구멍 뚫기)
+**Given** Viewer가 로드될 때
+**When** MCP 서버가 연결되지 않은 상태면
+**Then** 온보딩 UI가 표시된다 (Story 9.7)
 
-**Given** 두 겹치는 도형이 있을 때
-**When** `booleanIntersect('a', 'b', 'result')`를 실행하면
-**Then** 겹치는 영역만 남는다
+**Given** 새 커밋이 main 브랜치에 푸시될 때
+**When** CI가 통과하면
+**Then** 자동으로 재배포된다
 
 **Technical Notes:**
-- Manifold WASM 직접 호출 (< 1ms 성능)
-- 결과는 Polygon 타입으로 저장
-- CrossSection API 사용 (2D 연산)
+- GitHub Actions workflow 설정
+- Vite base path 설정 (/7-division/)
+- 캐시 무효화 전략 (hash in filename)
 
 ---
 
-### Story 8.6: Manifold 기하 분석 ✅
+### Story 9.6: npm 패키지 배포
 
-As a **LLM**,
-I want **offset, convexHull, area, decompose 등 기하 분석 함수를 사용할 수 있기를**,
-So that **정밀한 기하 조작과 분석이 가능하다** (FR48).
+As a **사용자**,
+I want **`npx @ai-native-cad/mcp start`로 MCP 서버를 시작할 수 있기를**,
+So that **한 줄 명령으로 로컬 개발 환경이 준비된다** (FR56).
 
 **Acceptance Criteria:**
 
-**Given** Polygon 도형이 있을 때
-**When** `offsetPolygon('wall', 5, 'wall_thick')`을 실행하면
-**Then** 벽 두께가 5만큼 확장된 도형이 생성된다
-**And** 음수 delta는 축소를 의미한다
+**Given** npm registry에 @ai-native-cad/mcp가 배포되었을 때
+**When** `npx @ai-native-cad/mcp start`를 실행하면
+**Then** MCP 서버(stdio + WebSocket)가 시작된다
+**And** "Server running at ws://127.0.0.1:3001" 메시지가 출력된다
 
-**Given** 여러 점으로 이루어진 도형이 있을 때
-**When** `convexHull('shape', 'hull')`을 실행하면
-**Then** 볼록 껍질(Convex Hull)이 생성된다
+**Given** 패키지를 배포할 때
+**When** npm publish를 실행하면
+**Then** WASM 바이너리가 패키지에 포함된다
+**And** 의존성 설치 없이 바로 실행 가능하다
 
-**Given** 닫힌 도형이 있을 때
-**When** `getArea('shape')`를 호출하면
-**Then** 면적(부호 있는)이 반환된다
+**Given** 버전을 업데이트할 때
+**When** package.json 버전을 올리고 publish하면
+**Then** 새 버전이 npm에 배포된다
 
-**Given** 분리된 여러 컴포넌트가 있을 때
-**When** `decompose('multi', 'part')`를 실행하면
-**Then** 각 컴포넌트가 'part_0', 'part_1' 등으로 분리된다
+**Pre-requisite:**
+- @ai-native-cad npm 스코프 가용성 확인 (또는 대안 네임스페이스)
 
 **Technical Notes:**
-- Manifold CrossSection.offset() 사용
-- joinType: 'miter' | 'round' | 'square' 지원
-- decompose는 Boolean 연산 후 분리된 조각 추출에 유용
+- npm org 생성 필요 (@ai-native-cad)
+- bin 필드로 CLI 진입점 설정
+- prepublishOnly 스크립트로 WASM 빌드
 
 ---
 
-### Story 8.7: 텍스트 렌더링 (opentype.js) ✅
+### Story 9.7: 온보딩 UI
 
-As a **LLM**,
-I want **텍스트를 CAD 도형(Polygon)으로 렌더링할 수 있기를**,
-So that **도면에 주석, 라벨, 제목을 추가할 수 있다** (FR49).
+As a **신규 사용자**,
+I want **MCP 미연결 시 연결 가이드가 표시되기를**,
+So that **어떻게 시작해야 하는지 즉시 알 수 있다** (FR57).
 
 **Acceptance Criteria:**
 
-**Given** 텍스트와 폰트가 지정되었을 때
-**When** `drawText('label', '거실', 100, 50, 24)`를 실행하면
-**Then** 해당 위치에 텍스트가 Polygon 도형으로 렌더링된다
+**Given** Viewer가 로드되고 MCP가 연결되지 않았을 때
+**When** 5초간 연결 시도가 실패하면
+**Then** 온보딩 오버레이가 표시된다:
+  - "MCP 서버 미연결"
+  - "npx @ai-native-cad/mcp start" 복사 버튼
+  - 연결 재시도 버튼
 
-**Given** 한글/영문 혼합 텍스트일 때
-**When** 한글 폰트로 렌더링하면
-**Then** 모든 문자가 정확히 렌더링된다 (복잡한 글리프 포함: 뷁, 쀍, 퓶 등)
+**Given** 온보딩 UI가 표시된 상태에서
+**When** MCP 서버가 연결되면
+**Then** 온보딝 오버레이가 자동으로 사라진다
+**And** 정상 UI가 표시된다
 
-**Given** 정렬 옵션이 지정되었을 때
-**When** `drawText('t', 'Center', 0, 0, 20, { align: 'center' })`
-**Then** 텍스트가 중앙 정렬된다
-
-**Given** 텍스트 크기를 알아야 할 때
-**When** `getTextMetrics('텍스트', 24)`를 호출하면
-**Then** `{ width, height }` 정보가 반환된다
+**Given** 복사 버튼을 클릭했을 때
+**When** 클립보드에 복사되면
+**Then** "복사됨!" 피드백이 표시된다
 
 **Technical Notes:**
-- opentype.js로 TTF/OTF 파싱
-- 글리프 → SVG path → Polygon 변환
-- 다중 서브패스(구멍) 올바르게 처리 (한글 'ㅇ', 영문 'e' 등)
+- 연결 상태 기반 조건부 렌더링
+- localStorage로 "다시 보지 않기" 옵션 (선택)
 
 ---
 
-### Story 8.8: 한글 폰트 자동 검색 ✅
+### Story 9.8: 버전 호환성 체크
 
-As a **LLM/사용자**,
-I want **fontPath를 생략해도 시스템에서 한글 폰트가 자동 검색되기를**,
-So that **폰트 설정 없이 바로 한글 텍스트를 사용할 수 있다** (FR50).
+As a **사용자**,
+I want **MCP와 Viewer 버전 불일치 시 경고를 받기를**,
+So that **호환성 문제로 인한 버그를 예방할 수 있다** (FR58).
 
 **Acceptance Criteria:**
 
-**Given** Windows 시스템에서
-**When** `drawText('t', '안녕', 0, 0, 20)` (fontPath 생략)
-**Then** 맑은 고딕(malgun.ttf)이 자동으로 사용된다
+**Given** Viewer와 MCP 서버가 연결될 때
+**When** 버전 핸드셰이크가 완료되면
+**Then** 호환성이 검증된다:
+  - Major 버전 불일치: 에러 표시 + 연결 차단
+  - Minor 버전 불일치: 경고 표시 + 연결 유지
 
-**Given** macOS 시스템에서
-**When** fontPath 없이 drawText 실행
-**Then** Apple SD Gothic이 자동으로 사용된다
+**Given** Viewer 버전이 1.2.x이고 MCP가 1.3.x일 때
+**When** 연결되면
+**Then** "MCP 서버가 더 새로운 버전입니다. 업데이트를 권장합니다." 경고
 
-**Given** Linux 시스템에서
-**When** fontPath 없이 drawText 실행
-**Then** Noto Sans CJK 또는 나눔고딕이 자동으로 사용된다
-
-**Given** 프로젝트 fonts/ 폴더에 폰트가 있을 때
-**When** fontPath로 상대 경로 지정 (`fonts/NanumGothic.ttf`)
-**Then** 해당 폰트가 사용된다
-
-**사용 가능한 폰트** (`fonts/` 폴더):
-
-| 폰트 | fontPath | 용도 |
-|-----|----------|------|
-| 나눔고딕 | `fonts/NanumGothic.ttf` | 기본 고딕 (default) |
-| 나눔명조 | `fonts/NanumMyeongjo.ttf` | 명조체 |
-| 나눔바른고딕 | `fonts/NanumBarunGothic.ttf` | 가독성 고딕 |
-| 마루부리 | `fonts/MaruBuri-Regular.ttf` | 세리프체 |
-| 나눔펜 | `fonts/NanumPen.ttf` | 손글씨 |
-| D2Coding | `fonts/D2Coding-Ver1.3.2-20180524.ttf` | 코딩용 |
+**Given** Viewer 버전이 2.x이고 MCP가 1.x일 때
+**When** 연결을 시도하면
+**Then** "호환되지 않는 버전입니다. MCP를 업데이트하세요." 에러
+**And** 연결이 차단된다
 
 **Technical Notes:**
-- DEFAULT_FONT_NAMES에 한글 폰트 우선 배치
-- 플랫폼별 폰트 경로 자동 탐색
-- 프로젝트 fonts/ 폴더 우선 검색
+- SemVer 파싱 (major.minor.patch)
+- WebSocket 연결 시 version 필드 교환
+- 에러 시 오프라인 모드로 동작 (읽기 전용)
+
+---
+
+### Story 9.9: 성능 벤치마크
+
+As a **개발자**,
+I want **WebSocket 성능을 측정할 수 있기를**,
+So that **NFR21 (RTT p50 < 15ms, p95 < 50ms)을 검증할 수 있다** (NFR21).
+
+**Acceptance Criteria:**
+
+**Given** MCP 서버가 실행 중일 때
+**When** `npm run benchmark` (로컬)를 실행하면
+**Then** 100회 왕복 시간이 측정된다
+**And** p50, p95, max 지표가 출력된다
+
+**Given** 벤치마크 결과가
+**When** p50 < 15ms, p95 < 50ms이면
+**Then** PASS로 표시된다
+**And** 그렇지 않으면 WARN으로 표시된다 (실패 아님)
+
+**Note:**
+- **로컬 실행 전용** - CI 게이트로 사용하지 않음
+- 네트워크 환경에 따라 결과 가변
+
+**Technical Notes:**
+- 로컬 개발 환경에서 수동 실행
+- console.time/timeEnd 또는 performance.now() 사용
+- 결과는 참고용 (CI 블로킹 아님)
+
+---
+
+### Story 9.10: Electron 제거 및 정리
+
+As a **개발자**,
+I want **cad-electron/ 디렉토리를 완전히 제거하기를**,
+So that **더 이상 Electron 관련 코드를 유지보수하지 않아도 된다**.
+
+**Acceptance Criteria:**
+
+**Given** Epic 9의 모든 스토리가 완료되었을 때
+**When** cad-electron/ 디렉토리를 삭제하면
+**Then** Git에서 완전히 제거된다
+**And** package.json의 electron 관련 의존성이 제거된다
+
+**Given** CLAUDE.md를 업데이트할 때
+**When** Electron 관련 내용을 제거하면
+**Then** 웹 아키텍처 기반으로 문서가 갱신된다
+
+**Given** README.md를 업데이트할 때
+**When** 설치/실행 가이드를 변경하면
+**Then** `npx @ai-native-cad/mcp start` 기반으로 안내된다
+
+**Definition of Done 확인:**
+- [ ] 기존 모든 테스트 통과
+- [ ] WebSocket RTT p50 < 15ms, p95 < 50ms (로컬 확인)
+- [ ] GitHub Pages에서 Viewer 정상 로드
+- [ ] `npx @ai-native-cad/mcp start` 동작
+- [ ] `cad-electron/` 완전 제거
+
+**Technical Notes:**
+- git rm -r cad-electron/
+- CI 워크플로우에서 Electron 빌드 제거
+- 최종 검증 후 main 브랜치에 머지
 
 ---
 
