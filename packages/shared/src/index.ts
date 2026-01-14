@@ -1,6 +1,7 @@
 // WebSocket message types and schemas
 export {
   WSMessageSchema,
+  SceneSchema,
   SceneUpdateDataSchema,
   SelectionDataSchema,
   ConnectionDataSchema,
@@ -12,6 +13,7 @@ export {
 export type {
   WSMessage,
   WSMessageType,
+  Scene,
   SceneUpdateData,
   SelectionData,
   ConnectionData,

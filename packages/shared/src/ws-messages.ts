@@ -1,8 +1,80 @@
 import { z } from 'zod';
 
-// Data Schemas
+// Scene entity schemas (mirrors apps/viewer/src/types/scene.ts)
+const TransformSchema = z.object({
+  translate: z.tuple([z.number(), z.number()]),
+  rotate: z.number(),
+  scale: z.tuple([z.number(), z.number()]),
+  pivot: z.tuple([z.number(), z.number()]).optional(),
+});
+
+const StyleSchema = z.object({
+  fill: z.object({ color: z.tuple([z.number(), z.number(), z.number(), z.number()]) }).nullable().optional(),
+  stroke: z.object({
+    width: z.number(),
+    color: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+    dash: z.array(z.number()).nullable().optional(),
+    cap: z.string().optional(),
+    join: z.string().optional(),
+  }).nullable().optional(),
+});
+
+const MetadataSchema = z.object({
+  name: z.string().optional(),
+  layer: z.string().nullable().optional(),
+  locked: z.boolean().optional(),
+  z_index: z.number().optional(),
+});
+
+const BoundsSchema = z.object({
+  min: z.tuple([z.number(), z.number()]),
+  max: z.tuple([z.number(), z.number()]),
+});
+
+const ComputedSchema = z.object({
+  world_bounds: BoundsSchema.optional(),
+  local_bounds: BoundsSchema.optional(),
+  center: z.tuple([z.number(), z.number()]).optional(),
+  size: z.tuple([z.number(), z.number()]).optional(),
+});
+
+const EntitySchema = z.object({
+  id: z.string(),
+  entity_type: z.enum(['Circle', 'Rect', 'Line', 'Polygon', 'Arc', 'Bezier', 'Group']),
+  geometry: z.unknown(), // Complex union, validated at runtime
+  transform: TransformSchema,
+  style: StyleSchema,
+  metadata: MetadataSchema.optional(),
+  children: z.array(z.string()).optional(),
+  parent_id: z.string().optional(),
+  computed: ComputedSchema.optional(),
+});
+
+const SceneTreeNodeSchema: z.ZodType<{
+  id: string;
+  name: string;
+  type: string;
+  zOrder: number;
+  children?: unknown[];
+}> = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  zOrder: z.number(),
+  children: z.lazy(() => z.array(SceneTreeNodeSchema)).optional(),
+});
+
+// Full Scene schema
+export const SceneSchema = z.object({
+  name: z.string().optional(),
+  entities: z.array(EntitySchema),
+  tree: z.array(SceneTreeNodeSchema).optional(),
+  last_operation: z.string().nullable().optional(),
+});
+
+// Data Schemas for WebSocket messages
 export const SceneUpdateDataSchema = z.object({
-  entities: z.array(z.record(z.unknown())),
+  scene: SceneSchema,
 });
 
 export const SelectionDataSchema = z.object({
@@ -57,6 +129,7 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
 // Type exports
 export type WSMessage = z.infer<typeof WSMessageSchema>;
 export type WSMessageType = WSMessage['type'];
+export type Scene = z.infer<typeof SceneSchema>;
 export type SceneUpdateData = z.infer<typeof SceneUpdateDataSchema>;
 export type SelectionData = z.infer<typeof SelectionDataSchema>;
 export type ConnectionData = z.infer<typeof ConnectionDataSchema>;
