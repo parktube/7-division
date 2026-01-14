@@ -22,3 +22,12 @@ export { AnthropicProvider, type AnthropicProviderOptions } from './providers/an
 
 // Logger
 export { logger } from './logger.js';
+
+// WebSocket Server
+export {
+  CADWebSocketServer,
+  getWSServer,
+  startWSServer,
+  stopWSServer,
+  type WSServerState,
+} from './ws-server.js';
