@@ -397,9 +397,21 @@ async function saveSceneAtomic(projectDir: string, scene: SceneData) {
 | 케이스 | 대응 | 상태 |
 |--------|------|------|
 | 사용자 수동 편집 | MCP가 덮어씀 - Viewer에서 "MCP 사용 중 직접 편집 금지" 안내 | Phase 1 |
-| Git 작업 (checkout 등) | MCP 재시작 필요 (파일 감시 미구현) | Phase 1 |
+| Git 작업 (checkout 등) | ⚠️ MCP 재시작 필요 (파일 감시 미구현) | Phase 1 |
 
-> **Phase 1 제약**: MCP 실행 중 Git 작업(checkout, merge 등) 후에는 MCP 재시작 필요. 파일 변경 자동 감지(fs.watch)는 향후 검토.
+> **⚠️ Phase 1 UX 제약**: MCP 실행 중 Git 작업(checkout, merge 등) 후에는 **MCP 재시작 필수**. 재시작하지 않으면 오래된 scene.json 사용으로 데이터 불일치 발생.
+
+**CLI 시작 시 경고 메시지 (구현 권장):**
+```
+$ npx @ai-native-cad/mcp start
+✓ MCP Server started on port 3001
+
+⚠️  Phase 1 제약사항:
+   Git checkout/merge 후에는 MCP를 재시작하세요.
+   (자동 파일 감지는 향후 추가 예정)
+```
+
+> **향후 개선**: fs.watch 기반 자동 재로드 기능은 Phase 2 이후 검토 예정.
 
 #### MCP Server Architecture
 
