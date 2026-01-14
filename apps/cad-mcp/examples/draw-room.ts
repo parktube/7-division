@@ -1,5 +1,5 @@
 /**
- * cad-tools를 사용하여 방 그리기
+ * CAD MCP를 사용하여 방 그리기
  *
  * style은 객체로 직접 전달 (JSON.stringify 불필요!)
  */

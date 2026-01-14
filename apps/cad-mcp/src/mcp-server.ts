@@ -39,8 +39,9 @@ import { homedir } from 'os'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-// 모듈 디렉토리 (viewer 기준)
-const MODULES_DIR = resolve(__dirname, '../../viewer/.cad-modules')
+// run-cad-code 모듈에서 공유 상수 가져오기 (CLI와 경로 통일)
+import { SCENE_CODE_FILE, MODULES_DIR } from './run-cad-code/constants.js'
+
 const SELECTION_FILE = resolve(__dirname, '../../viewer/selection.json')
 
 // 씬 영속성 파일 경로 (~/.ai-native-cad/scene.json)
@@ -123,8 +124,176 @@ function getModuleList(): string[] {
   }
 }
 
+/**
+ * Read main code file
+ */
+function readMainCode(): string {
+  try {
+    return existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Write main code file
+ */
+function writeMainCode(code: string): void {
+  const dir = dirname(SCENE_CODE_FILE)
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  writeFileSync(SCENE_CODE_FILE, code, 'utf-8')
+}
+
+/**
+ * Get scene entity names from executor
+ */
+function getSceneEntities(exec: CADExecutor): string[] {
+  try {
+    const sceneJson = exec.exportScene()
+    const scene = JSON.parse(sceneJson) as Scene
+    return scene.entities?.map(e => e.metadata?.name).filter((n): n is string => !!n) || []
+  } catch {
+    return []
+  }
+}
+
 const MCP_SERVER_NAME = 'ai-native-cad'
 const MCP_SERVER_VERSION = '0.1.0'
+
+/**
+ * Response Hints System - LLM에게 다음 행동 제안
+ * SpineLift MCP 패턴 참고: 도구 응답에 contextual hints 추가
+ */
+const TOOL_HINTS: Record<string, string[]> = {
+  // 핵심 도구 - 모드별 힌트
+  run_cad_code_structure: [
+    'file="main"으로 main 코드 읽기',
+    'file="main", code="..."로 코드 저장',
+  ],
+  run_cad_code_read: [
+    'code="..."로 이 파일에 저장',
+    'code="+..."로 코드 추가',
+  ],
+  run_cad_code_execute: [
+    '수정 시 reset 대신 기존 엔티티 직접 수정 (setFill, translate 등)',
+    'file="main"과 함께 호출하면 코드가 저장됨',
+    'capture로 결과 시각적 확인',
+  ],
+  run_cad_code_write: [
+    '코드 추가: code="+새코드"',
+    'capture로 결과 시각적 확인',
+    'getEntity()로 좌표/크기 확인',
+  ],
+  run_cad_code_append: [
+    '수정 시 reset 대신 기존 엔티티 직접 수정',
+    'capture로 결과 시각적 확인',
+  ],
+  run_cad_code_edit: [
+    'capture로 결과 시각적 확인',
+    '추가 수정: old_code/new_code로 다른 부분도 수정 가능',
+  ],
+  // 기존 호환용
+  run_cad_code: [
+    '수정 시 reset 대신 기존 엔티티 직접 수정 (setFill, translate 등)',
+    'capture로 결과 시각적 확인',
+    'getEntity()로 좌표/크기 확인',
+  ],
+
+  // 탐색 도구
+  describe: [
+    'run_cad_code로 함수 실행',
+    '다른 도메인도 탐색해보세요',
+  ],
+  list_domains: [
+    'describe(domain)으로 함수 시그니처 확인',
+    'run_cad_code로 실제 실행',
+  ],
+  list_tools: [
+    'describe(domain)으로 상세 시그니처 확인',
+  ],
+  get_tool_schema: [
+    'run_cad_code로 함수 실행',
+  ],
+
+  // 조회 도구
+  get_scene_info: [
+    'overview로 상세 구조 확인',
+    'run_cad_code + getEntity()로 특정 엔티티 조회',
+  ],
+  export_json: [
+    'export_svg로 벡터 이미지도 내보내기',
+  ],
+  export_svg: [
+    '파일로 저장하여 활용',
+  ],
+
+  // 세션 도구
+  reset: [
+    'run_cad_code로 새로운 씬 생성 시작',
+  ],
+  capture: [
+    '이미지로 형태/레이아웃 파악',
+    'getEntity()로 정확한 좌표 확인',
+  ],
+  get_selection: [
+    'run_cad_code + getEntity()로 선택된 엔티티 상세 조회',
+    '선택 기반 변환: translate, rotate, scale',
+  ],
+
+  // 모듈 도구
+  save_module: [
+    "run_cad_code에서 import 'module_name'으로 사용",
+    'list_modules로 저장 확인',
+  ],
+  list_modules: [
+    'get_module로 코드 내용 확인',
+    "run_cad_code에서 import 'name'으로 사용",
+  ],
+  get_module: [
+    'save_module로 수정 후 재저장',
+    "run_cad_code에서 import 'name'으로 사용",
+  ],
+  delete_module: [
+    'list_modules로 남은 모듈 확인',
+  ],
+
+  // 씬 조회 도구
+  list_groups: [
+    'overview로 전체 계층 구조 확인',
+    'run_cad_code + getEntity()로 그룹 상세 조회',
+  ],
+  overview: [
+    'run_cad_code + getEntity()로 특정 엔티티 조회',
+    '그룹 수정: translate, rotate, scale',
+  ],
+}
+
+/**
+ * Get hints for a tool response
+ */
+function getToolHints(toolName: string): string[] {
+  return TOOL_HINTS[toolName] || ['overview로 현재 씬 상태 확인']
+}
+
+/**
+ * Enrich response with contextual hints
+ */
+function enrichResponse(
+  toolName: string,
+  result: unknown,
+  success: boolean
+): { data: unknown; hints: string[] } {
+  const hints = success
+    ? getToolHints(toolName)
+    : ['오류 확인 후 재시도', 'describe(domain)으로 함수 사용법 확인']
+
+  return {
+    data: result,
+    hints,
+  }
+}
 
 // Singleton executor for scene state
 let executor: CADExecutor | null = null
@@ -276,25 +445,216 @@ export async function createMCPServer(): Promise<Server> {
 
     try {
       switch (name) {
-        // === 핵심 도구: run_cad_code (Story 9.4 단일 진입점) ===
+        // === 핵심 도구: run_cad_code - 코드 에디터 (Story 9.4) ===
         case 'run_cad_code': {
-          const code = (args as Record<string, unknown>)?.code as string
-          if (!code) {
+          const file = (args as Record<string, unknown>)?.file as string | undefined
+          const code = (args as Record<string, unknown>)?.code as string | undefined
+          const oldCode = (args as Record<string, unknown>)?.old_code as string | undefined
+          const newCode = (args as Record<string, unknown>)?.new_code as string | undefined
+          const exec = getExecutor()
+
+          // Mode 1: 프로젝트 구조 (file/code 둘 다 없음)
+          if (!file && !code) {
+            const modules = getModuleList()
+            const mainCode = readMainCode()
+            const entities = getSceneEntities(exec)
+            const enriched = enrichResponse('run_cad_code_structure', {
+              success: true,
+              files: ['main', ...modules],
+              main: mainCode || '// 빈 프로젝트입니다. file="main", code="..." 로 코드를 작성하세요.',
+              entities,
+            }, true)
             return {
-              content: [{ type: 'text', text: 'Error: code parameter is required' }],
-              isError: true,
+              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
             }
           }
-          const result = await executeRunCadCode(code)
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result.result, null, 2) }],
+
+          // Mode 6: 부분 수정 (file + old_code + new_code) - Mode 2보다 먼저 체크
+          if (file && oldCode !== undefined && newCode !== undefined) {
+            let fileCode: string
+            if (file === 'main') {
+              fileCode = readMainCode()
+            } else {
+              const modPath = getModulePath(file)
+              if (!existsSync(modPath)) {
+                return {
+                  content: [{ type: 'text', text: JSON.stringify({
+                    success: false,
+                    error: `'${file}' 파일을 찾을 수 없습니다.`,
+                    availableFiles: ['main', ...getModuleList()],
+                  }, null, 2) }],
+                  isError: true,
+                }
+              }
+              fileCode = readFileSync(modPath, 'utf-8')
             }
-          } else {
-            return {
-              content: [{ type: 'text', text: result.error || 'Code execution failed' }],
-              isError: true,
+
+            // old_code가 파일에 존재하는지 확인
+            if (!fileCode.includes(oldCode)) {
+              return {
+                content: [{ type: 'text', text: JSON.stringify({
+                  success: false,
+                  error: `old_code를 찾을 수 없습니다.`,
+                  file,
+                  old_code: oldCode,
+                  hint: 'file을 먼저 읽어서 정확한 코드를 확인하세요.',
+                }, null, 2) }],
+                isError: true,
+              }
             }
+
+            // 교체 수행
+            const updatedCode = fileCode.replace(oldCode, newCode)
+
+            // 저장
+            if (file === 'main') {
+              writeMainCode(updatedCode)
+            } else {
+              writeFileSync(getModulePath(file), updatedCode, 'utf-8')
+            }
+
+            // main 재실행
+            const mainCode = readMainCode()
+            const result = await executeRunCadCode(mainCode)
+
+            if (result.success) {
+              const enriched = enrichResponse('run_cad_code_edit', {
+                success: true,
+                file,
+                mode: 'edit',
+                replaced: { old: oldCode, new: newCode },
+                entities: getSceneEntities(exec),
+              }, true)
+              return {
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+              }
+            } else {
+              // 실패 시 롤백
+              if (file === 'main') {
+                writeMainCode(fileCode)
+              } else {
+                writeFileSync(getModulePath(file), fileCode, 'utf-8')
+              }
+              const enriched = enrichResponse('run_cad_code_edit', {
+                success: false,
+                file,
+                mode: 'edit',
+                error: result.error,
+                hint: '코드 실행 실패로 변경이 롤백되었습니다.',
+              }, false)
+              return {
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+                isError: true,
+              }
+            }
+          }
+
+          // Mode 2: 파일 읽기 (file만 있고 code 없음)
+          if (file && !code) {
+            let fileCode: string
+            if (file === 'main') {
+              fileCode = readMainCode()
+            } else {
+              const modPath = getModulePath(file)
+              if (!existsSync(modPath)) {
+                return {
+                  content: [{ type: 'text', text: JSON.stringify({
+                    success: false,
+                    error: `'${file}' 파일을 찾을 수 없습니다.`,
+                    availableFiles: ['main', ...getModuleList()],
+                  }, null, 2) }],
+                  isError: true,
+                }
+              }
+              fileCode = readFileSync(modPath, 'utf-8')
+            }
+            const enriched = enrichResponse('run_cad_code_read', {
+              success: true,
+              file,
+              code: fileCode,
+            }, true)
+            return {
+              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+            }
+          }
+
+          // Mode 3: 코드 실행만 (code만 있고 file 없음) - 저장 안 함
+          if (!file && code) {
+            const result = await executeRunCadCode(code)
+            if (result.success) {
+              const enriched = enrichResponse('run_cad_code_execute', result.result, true)
+              return {
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+              }
+            } else {
+              const enriched = enrichResponse('run_cad_code_execute', { error: result.error }, false)
+              return {
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+                isError: true,
+              }
+            }
+          }
+
+          // Mode 4 & 5: 파일 쓰기/추가 (file + code)
+          if (file && code) {
+            const isAppend = code.startsWith('+')
+            const actualCode = isAppend ? code.slice(1) : code
+            let finalCode: string
+
+            if (file === 'main') {
+              if (isAppend) {
+                const existing = readMainCode()
+                finalCode = existing ? `${existing}\n${actualCode}` : actualCode
+              } else {
+                finalCode = actualCode
+              }
+              writeMainCode(finalCode)
+            } else {
+              // 모듈 파일
+              ensureModulesDir()
+              const modPath = getModulePath(file)
+              if (isAppend) {
+                const existing = existsSync(modPath) ? readFileSync(modPath, 'utf-8') : ''
+                finalCode = existing ? `${existing}\n${actualCode}` : actualCode
+              } else {
+                finalCode = actualCode
+              }
+              writeFileSync(modPath, finalCode, 'utf-8')
+            }
+
+            // 저장 후 main 실행 (모듈 변경 시에도 main 재실행)
+            const mainCode = readMainCode()
+            const result = await executeRunCadCode(mainCode)
+            const hintKey = isAppend ? 'run_cad_code_append' : 'run_cad_code_write'
+
+            if (result.success) {
+              const enriched = enrichResponse(hintKey, {
+                success: true,
+                file,
+                mode: isAppend ? 'append' : 'write',
+                entities: getSceneEntities(exec),
+              }, true)
+              return {
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+              }
+            } else {
+              const enriched = enrichResponse(hintKey, {
+                success: false,
+                file,
+                mode: isAppend ? 'append' : 'write',
+                error: result.error,
+              }, false)
+              return {
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
+                isError: true,
+              }
+            }
+          }
+
+          // Fallback (shouldn't reach here)
+          return {
+            content: [{ type: 'text', text: 'Error: Invalid parameter combination' }],
+            isError: true,
           }
         }
 
@@ -315,15 +675,13 @@ export async function createMCPServer(): Promise<Server> {
             name: fn,
             ...FUNCTION_SIGNATURES[fn],
           }))
+          const enriched = enrichResponse('describe', {
+            domain,
+            description: DOMAIN_METADATA[domain as DomainName].description,
+            functions: signatures,
+          }, true)
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                domain,
-                description: DOMAIN_METADATA[domain as DomainName].description,
-                functions: signatures,
-              }, null, 2),
-            }],
+            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
           }
         }
 
@@ -333,8 +691,9 @@ export async function createMCPServer(): Promise<Server> {
             description: meta.description,
             functionCount: DOMAINS[name as DomainName].length,
           }))
+          const enriched = enrichResponse('list_domains', domainList, true)
           return {
-            content: [{ type: 'text', text: JSON.stringify(domainList, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
           }
         }
 
@@ -350,13 +709,15 @@ export async function createMCPServer(): Promise<Server> {
                 isError: true,
               }
             }
+            const enriched = enrichResponse('list_tools', DOMAINS[domain as DomainName], true)
             return {
-              content: [{ type: 'text', text: JSON.stringify(DOMAINS[domain as DomainName], null, 2) }],
+              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
             }
           }
           // Return all functions grouped by domain
+          const enriched = enrichResponse('list_tools', DOMAINS, true)
           return {
-            content: [{ type: 'text', text: JSON.stringify(DOMAINS, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
           }
         }
 
@@ -372,11 +733,9 @@ export async function createMCPServer(): Promise<Server> {
               isError: true,
             }
           }
+          const enriched = enrichResponse('get_tool_schema', { name: toolName, ...FUNCTION_SIGNATURES[toolName] }, true)
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({ name: toolName, ...FUNCTION_SIGNATURES[toolName] }, null, 2),
-            }],
+            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
           }
         }
 
@@ -398,7 +757,8 @@ export async function createMCPServer(): Promise<Server> {
         case 'get_scene_info': {
           const result = executeQueryTool('get_scene_info', {})
           if (result.success) {
-            return { content: [{ type: 'text', text: JSON.stringify(result.result, null, 2) }] }
+            const enriched = enrichResponse('get_scene_info', result.result, true)
+            return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
           } else {
             return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
           }
@@ -407,7 +767,8 @@ export async function createMCPServer(): Promise<Server> {
         case 'export_json': {
           const result = executeQueryTool('export_json', {})
           if (result.success) {
-            return { content: [{ type: 'text', text: JSON.stringify(result.result, null, 2) }] }
+            const enriched = enrichResponse('export_json', result.result, true)
+            return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
           } else {
             return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
           }
@@ -418,7 +779,9 @@ export async function createMCPServer(): Promise<Server> {
           const exec = getExecutor()
           const result = exec.exec('export_svg', {})
           if (result.success && result.data) {
-            return { content: [{ type: 'text', text: result.data }] }
+            // SVG는 그대로 반환하되, hints는 별도 라인으로 추가
+            const hints = getToolHints('export_svg')
+            return { content: [{ type: 'text', text: `${result.data}\n\n💡 Hints: ${hints.join(', ')}` }] }
           } else {
             return { content: [{ type: 'text', text: result.error || 'Failed to export SVG' }], isError: true }
           }
@@ -436,7 +799,8 @@ export async function createMCPServer(): Promise<Server> {
             wsServer.broadcastScene(scene)
             // Clear saved scene file (reset = start fresh)
             saveScene(exec)
-            return { content: [{ type: 'text', text: JSON.stringify({ success: true, message: 'Scene reset' }) }] }
+            const enriched = enrichResponse('reset', { success: true, message: 'Scene reset' }, true)
+            return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
           } else {
             return { content: [{ type: 'text', text: result.error || 'Failed to reset' }], isError: true }
           }
@@ -447,16 +811,14 @@ export async function createMCPServer(): Promise<Server> {
           try {
             const result = await captureViewport()
             if (result.success && result.path) {
+              const enriched = enrichResponse('capture', {
+                success: true,
+                path: result.path,
+                message: 'Viewport captured. Use Read tool to view the image.',
+                clearSketch: clearSketch || false,
+              }, true)
               return {
-                content: [{
-                  type: 'text',
-                  text: JSON.stringify({
-                    success: true,
-                    path: result.path,
-                    message: 'Viewport captured. Use Read tool to view the image.',
-                    clearSketch: clearSketch || false,
-                  }, null, 2),
-                }],
+                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
               }
             } else {
               return { content: [{ type: 'text', text: result.error || 'Capture failed' }], isError: true }
@@ -470,18 +832,17 @@ export async function createMCPServer(): Promise<Server> {
         case 'get_selection': {
           try {
             if (!existsSync(SELECTION_FILE)) {
-              return { content: [{ type: 'text', text: JSON.stringify({ selected: [], locked: [], hidden: [] }) }] }
+              const enriched = enrichResponse('get_selection', { selected: [], locked: [], hidden: [] }, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
             }
             const data = JSON.parse(readFileSync(SELECTION_FILE, 'utf-8'))
+            const enriched = enrichResponse('get_selection', {
+              selected: data.selected_entities || [],
+              locked: data.locked_entities || [],
+              hidden: data.hidden_entities || [],
+            }, true)
             return {
-              content: [{
-                type: 'text',
-                text: JSON.stringify({
-                  selected: data.selected_entities || [],
-                  locked: data.locked_entities || [],
-                  hidden: data.hidden_entities || [],
-                }, null, 2),
-              }],
+              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
             }
           } catch (e) {
             const error = e instanceof Error ? e.message : String(e)
@@ -500,11 +861,9 @@ export async function createMCPServer(): Promise<Server> {
             ensureModulesDir()
             const modulePath = getModulePath(moduleName)
             writeFileSync(modulePath, code, 'utf-8')
+            const enriched = enrichResponse('save_module', { success: true, name: moduleName, path: modulePath }, true)
             return {
-              content: [{
-                type: 'text',
-                text: JSON.stringify({ success: true, name: moduleName, path: modulePath }, null, 2),
-              }],
+              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
             }
           } catch (e) {
             const error = e instanceof Error ? e.message : String(e)
@@ -514,11 +873,9 @@ export async function createMCPServer(): Promise<Server> {
 
         case 'list_modules': {
           const modules = getModuleList()
+          const enriched = enrichResponse('list_modules', { modules, count: modules.length }, true)
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({ modules, count: modules.length }, null, 2),
-            }],
+            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
           }
         }
 
@@ -532,11 +889,9 @@ export async function createMCPServer(): Promise<Server> {
             return { content: [{ type: 'text', text: `Module not found: ${moduleName}` }], isError: true }
           }
           const code = readFileSync(modulePath, 'utf-8')
+          const enriched = enrichResponse('get_module', { name: moduleName, code }, true)
           return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({ name: moduleName, code }, null, 2),
-            }],
+            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
           }
         }
 
@@ -551,11 +906,9 @@ export async function createMCPServer(): Promise<Server> {
           }
           try {
             unlinkSync(modulePath)
+            const enriched = enrichResponse('delete_module', { success: true, deleted: moduleName }, true)
             return {
-              content: [{
-                type: 'text',
-                text: JSON.stringify({ success: true, deleted: moduleName }, null, 2),
-              }],
+              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
             }
           } catch (e) {
             const error = e instanceof Error ? e.message : String(e)
@@ -571,7 +924,8 @@ export async function createMCPServer(): Promise<Server> {
             try {
               const entities = JSON.parse(result.data)
               const groups = entities.filter((e: { type: string }) => e.type === 'Group')
-              return { content: [{ type: 'text', text: JSON.stringify(groups, null, 2) }] }
+              const enriched = enrichResponse('list_groups', groups, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
             } catch {
               return { content: [{ type: 'text', text: result.data }] }
             }
@@ -597,7 +951,8 @@ export async function createMCPServer(): Promise<Server> {
                 }))
               }
               const tree = buildTree(rootEntities)
-              return { content: [{ type: 'text', text: JSON.stringify({ tree, totalCount: entities.length }, null, 2) }] }
+              const enriched = enrichResponse('overview', { tree, totalCount: entities.length }, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
             } catch {
               return { content: [{ type: 'text', text: result.data }] }
             }

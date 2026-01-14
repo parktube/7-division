@@ -73,7 +73,12 @@ describe('schema', () => {
       const runCadCode = CAD_TOOLS['run_cad_code'];
       expect(runCadCode).toBeDefined();
       expect(runCadCode.name).toBe('run_cad_code');
-      expect(runCadCode.parameters.required).toContain('code');
+      // code, file, old_code, new_code 모두 optional (코드 에디터 모드 지원)
+      expect(runCadCode.parameters.required).toEqual([]);
+      expect(runCadCode.parameters.properties).toHaveProperty('code');
+      expect(runCadCode.parameters.properties).toHaveProperty('file');
+      expect(runCadCode.parameters.properties).toHaveProperty('old_code');
+      expect(runCadCode.parameters.properties).toHaveProperty('new_code');
     });
 
     it('should have describe tool for exploration', () => {

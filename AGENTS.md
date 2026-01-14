@@ -2,10 +2,35 @@
 
 AI 에이전트(Claude, Gemini, Cursor, Copilot 등)를 위한 개발 규칙.
 
+## 아키텍처 개요
+
+```
+GitHub Pages (Viewer)          Local MCP Server
+       │                              │
+       │ WebSocket (ws://127.0.0.1:3001)
+       └──────────────────────────────┘
+                     │
+               Claude Code CLI
+                     │ WASM 직접 호출
+               Rust CAD 엔진
+```
+
+**데이터 저장**: `~/.ai-native-cad/`
+```
+~/.ai-native-cad/
+├── scene.json       # 씬 상태
+├── scene.code.js    # main 코드 파일
+└── modules/         # 저장된 모듈
+```
+
 ## CAD CLI 사용법
 
 ```bash
-cd cad-tools
+# MCP 서버 시작 (npx로 바로 시작)
+npx @ai-native-cad/mcp start
+
+# 또는 로컬 개발
+cd apps/cad-mcp
 npx tsx cad-cli.ts <command> [args]
 ```
 
@@ -67,6 +92,14 @@ run_cad_code --clear-sketch               # 스케치만 클리어
 
 **규칙**: JavaScript 문자열은 작은따옴표(`'`) 사용
 
+### 부분 수정 모드 (MCP)
+
+```javascript
+// old_code → new_code 교체 (Claude Code Edit 도구와 유사)
+run_cad_code(file='main', old_code='setFill(c, [1,0,0,1])', new_code='setFill(c, [0,1,0,1])')
+// old_code가 없으면 에러, 실패 시 자동 롤백
+```
+
 ### 트랜잭션 동작
 
 코드 실행 실패 시 **파일이 변경되지 않습니다** (자동 롤백):
@@ -99,7 +132,7 @@ drawText(name, text, x, y, fontSize, options?)
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
-**사용 가능한 폰트** (`cad-tools/fonts/`, fontPath 생략 시 나눔고딕 자동 사용):
+**사용 가능한 폰트** (`apps/cad-mcp/fonts/`, fontPath 생략 시 시스템 폰트 자동 검색):
 
 | 폰트 | fontPath | 용도 |
 |-----|----------|------|
@@ -211,7 +244,8 @@ drawBezier('s_curve', 'M 0,0 C 20,50 40,-50 60,0 S 100,-50 120,0');
 ### 모듈 시스템
 
 ```bash
-# house_lib 모듈 생성
+# house_lib 모듈 생성 (로컬 개발 환경)
+cd apps/cad-mcp
 npx tsx cad-cli.ts run_cad_code house_lib "
 class House {
   constructor(name, x, y) {
@@ -229,7 +263,7 @@ class House {
 "
 
 # main에서 사용
-npx tsx cad-cli.ts run_cad_code main "
+run_cad_code main "
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
@@ -300,8 +334,9 @@ npx tsx cad-cli.ts capture_viewport  # 뷰어 스크린샷 캡처 (PNG)
 
 ### 결과 확인
 
-- Scene은 `viewer/scene.json`에 자동 저장됩니다
-- 뷰어: `node viewer/server.cjs` 실행 후 http://localhost:8000
+- Scene은 `~/.ai-native-cad/scene.json`에 자동 저장됩니다
+- 뷰어: https://parktube.github.io/7-division/ (GitHub Pages)
+- 로컬 개발: `pnpm --filter @ai-native-cad/viewer dev` → http://localhost:5173
 
 ### Z-Order 가이드
 
@@ -366,7 +401,7 @@ npx tsx cad-cli.ts rotate '{"name":"arm","angle":0.785}'
 npx tsx cad-cli.ts scale '{"name":"body","sx":1.5,"sy":1.5}'
 ```
 
-## TypeScript (`cad-tools/`)
+## TypeScript (`apps/cad-mcp/`)
 
 **Console 금지** - `logger` 사용:
 
@@ -377,6 +412,18 @@ logger.error("always"); // 항상 출력
 ```
 
 **ESLint**: `no-console: error`, `no-unused-vars` (`_` prefix 허용)
+
+## 프로젝트 구조
+
+```
+7-division/
+├── apps/
+│   ├── viewer/        # React 웹 뷰어 (GitHub Pages)
+│   └── cad-mcp/       # MCP 서버 & CLI
+├── packages/
+│   └── shared/        # 공유 타입 (Zod 스키마)
+└── cad-engine/        # Rust CAD 엔진 (WASM)
+```
 
 ## Rust (`cad-engine/`)
 

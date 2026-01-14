@@ -214,6 +214,20 @@ GitHub Pages (Viewer)          Local MCP Server
                Rust CAD 엔진
 ```
 
+### Data Storage
+
+모든 CAD 데이터는 `~/.ai-native-cad/` 디렉토리에 저장됩니다:
+
+```
+~/.ai-native-cad/
+├── scene.json       # 씬 상태 (엔티티, 스타일, 그룹 등)
+├── scene.code.js    # main 코드 파일
+└── modules/         # 저장된 모듈 (재사용 가능한 코드)
+```
+
+- **CLI와 MCP가 동일한 경로 사용** - 상태 동기화 보장
+- **홈 디렉토리 기반** - 어느 위치에서든 일관된 접근
+
 - **브라우저 Viewer**: GitHub Pages에서 호스팅, WebSocket으로 MCP 서버와 통신
 - **로컬 MCP 서버**: WASM 엔진 실행, scene/selection 데이터 제공
 - **Claude Code**: MCP 서버를 통해 CAD 도구 사용
@@ -261,6 +275,7 @@ GitHub Pages (Viewer)          Local MCP Server
 - 트랜잭션 패턴: 실행 실패 시 자동 롤백
 - `--clear-sketch` 플래그: 스케치 자동 클리어
 - 추가 모드에서 기존 변수 참조 가능
+- 부분 수정 모드 (old_code/new_code): Claude Code Edit 도구와 유사한 코드 편집
 
 **도메인 구조** (describe <domain>으로 상세 확인)
 ```
