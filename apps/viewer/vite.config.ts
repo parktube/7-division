@@ -86,10 +86,17 @@ function dataMiddleware() {
   }
 }
 
+// package.json에서 버전 읽기
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'))
+
 export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss(), dataMiddleware()],
   // GitHub Pages uses /7-division/, local dev uses ./
   base: mode === 'production' ? (process.env.VITE_BASE_PATH || './') : './',
+  // 빌드 시점에 버전 주입
+  define: {
+    __APP_VERSION__: JSON.stringify(packageJson.version),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

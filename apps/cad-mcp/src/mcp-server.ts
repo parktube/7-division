@@ -32,12 +32,17 @@ import { runCadCode } from './sandbox/index.js'
 import type { Scene } from './shared/index.js'
 import { captureViewport } from './capture.js'
 import { existsSync, readFileSync, writeFileSync, unlinkSync, readdirSync, mkdirSync } from 'fs'
-import { resolve, dirname } from 'path'
+import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { homedir } from 'os'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+// package.json에서 버전 동적 로드 (하드코딩 방지)
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
+)
 
 // run-cad-code 모듈에서 공유 상수 가져오기 (CLI와 경로 통일)
 import { SCENE_CODE_FILE, MODULES_DIR } from './run-cad-code/constants.js'
@@ -160,7 +165,7 @@ function getSceneEntities(exec: CADExecutor): string[] {
 }
 
 const MCP_SERVER_NAME = 'ai-native-cad'
-const MCP_SERVER_VERSION = '0.1.0'
+const MCP_SERVER_VERSION: string = packageJson.version
 
 /**
  * Response Hints System - LLM에게 다음 행동 제안
