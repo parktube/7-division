@@ -8,8 +8,9 @@
  */
 
 // Viewer version (Vite에서 빌드 시점에 주입)
-declare const __APP_VERSION__: string
-export const VIEWER_VERSION = __APP_VERSION__
+declare const __APP_VERSION__: string | undefined
+export const VIEWER_VERSION =
+  typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0-test'
 
 export interface SemVer {
   major: number

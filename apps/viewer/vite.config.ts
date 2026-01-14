@@ -114,6 +114,10 @@ export default defineConfig(({ mode }) => ({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    // Vitest에서도 __APP_VERSION__ 주입
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version),
+    },
   },
 }))
