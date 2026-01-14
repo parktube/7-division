@@ -94,6 +94,11 @@ jobs:
           name: wasm-pkg
           path: cad-engine/pkg/
 
+      - name: Copy WASM to cad-mcp
+        run: |
+          mkdir -p apps/cad-mcp/wasm
+          cp -r cad-engine/pkg/* apps/cad-mcp/wasm/
+
       - name: Install dependencies
         run: pnpm install
 
