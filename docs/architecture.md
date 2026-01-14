@@ -103,7 +103,9 @@ cad-tools (WASM)
 
 #### Technical Constraints & Dependencies
 
-1. **WASM 위치 결정 (Option A)**: MCP에서 실행, Viewer는 렌더링만
+1. **WASM 위치 결정**: MCP 서버에서 실행 (Option A 선택), Viewer는 렌더링만 담당
+   - Option A (채택): MCP에서 WASM 실행 → 파일 영속성, 단일 연산 경로
+   - Option B (기각): Viewer에서 WASM 실행 → 브라우저 휘발성, 복잡한 동기화
 2. **Electron 제외**: 웹 전용으로 단순화, 유지보수 부담 제거
 3. **모듈 파일 영속성**: MCP가 파일 관리, 브라우저는 휘발성
 4. **GitHub Pages 제약**: 정적 파일만, 서버 로직 불가
