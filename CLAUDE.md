@@ -7,8 +7,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **7-division (도화지)**: AI-Native CAD 프로젝트
 
 - **비전**: "AI가 만들고, AI가 사용한다" - LLM이 도구를 조작하고, 인간은 의도/검증
-- **현재 단계**: Epic 9 진행 중 (웹 아키텍처 전환)
-- **아키텍처**: Direct-First (MCP 없이 WASM 직접 호출, < 1ms)
+- **현재 단계**: Epic 1~9 완료 (MVP + 웹 아키텍처)
+- **아키텍처**: Web + Local MCP (GitHub Pages 뷰어 + 로컬 MCP 서버)
 - **구조**: pnpm workspace 모노레포
   - `apps/viewer` - React 뷰어
   - `apps/cad-mcp` - MCP 서버 & CLI
@@ -303,15 +303,28 @@ getDrawOrder('robot'); // 그룹 내부 순서
 
 ## Quick Start
 
-```bash
-# 1. 의존성 설치 (pnpm 워크스페이스)
-npx pnpm install
+### 웹 버전 (권장)
 
-# 2. 뷰어 서버 실행 (별도 터미널)
-npx pnpm dev
+```bash
+# 1. MCP 서버 시작
+npx @ai-native-cad/mcp start
+
+# 2. Viewer 열기
+# → https://parktube.github.io/7-division/
+```
+
+### 로컬 개발
+
+```bash
+# 의존성 설치
+pnpm install
+
+# MCP 서버 + Viewer 개발 모드 (각각 별도 터미널)
+pnpm --filter @ai-native-cad/mcp start
+pnpm --filter @ai-native-cad/viewer dev
 # → http://localhost:5173/
 
-# 3. CAD 명령어 실행 (다른 터미널)
+# CAD 명령어 실행
 cd apps/cad-mcp
 run_cad_code main "drawCircle('c', 0, 0, 50)"
 ```

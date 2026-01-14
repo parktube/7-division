@@ -54,15 +54,15 @@ development_status:
   epic-8-retrospective: completed
 
   # Epic 9: Web Architecture Transition
-  epic-9: in-progress
-  9-1-monorepo-setup: ready-for-dev
-  9-2-websocket-hook: drafted
-  9-3-mcp-websocket-server: drafted
-  9-4-mcp-stdio-server: drafted
-  9-5-github-pages-deploy: drafted
-  9-6-npm-package-deploy: drafted
-  9-7-onboarding-ui: drafted
-  9-8-version-compatibility: drafted
-  9-9-performance-benchmark: drafted
-  9-10-electron-cleanup: drafted
+  epic-9: done
+  9-1-monorepo-setup: done
+  9-2-websocket-hook: done
+  9-3-mcp-websocket-server: done
+  9-4-mcp-stdio-server: done
+  9-5-github-pages-deploy: done
+  9-6-npm-package-deploy: done
+  9-7-onboarding-ui: done
+  9-8-version-compatibility: done
+  9-9-performance-benchmark: done
+  9-10-electron-cleanup: done
   epic-9-retrospective: optional

@@ -1,6 +1,6 @@
 # Story 9.1: 모노레포 전환 (pnpm workspace)
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 
@@ -68,6 +68,25 @@ so that **Viewer와 MCP 서버 간 코드 공유 및 버전 관리가 용이해�
   - [ ] 6.2 pnpm -r build 성공 확인
   - [ ] 6.3 기존 기능 동작 테스트 (run_cad_code, viewer dev)
   - [ ] 6.4 타입 체크 통과 확인
+
+### Review Follow-ups (AI)
+
+> 코드 리뷰 날짜: 2026-01-14 | 리뷰어: Claude Opus 4.5
+
+**🔴 HIGH (반드시 수정)**
+- [ ] [AI-Review][HIGH] Status를 "done"으로 업데이트 필요 - 실제 구현 완료됨 [9-1-monorepo-setup.md:3]
+- [ ] [AI-Review][HIGH] 모든 Tasks/Subtasks를 [x]로 마킹 필요 - 실제로는 완료됨 [9-1-monorepo-setup.md:39-70]
+- [ ] [AI-Review][HIGH] File List에 변경된 93개 파일 목록 추가 필요 [9-1-monorepo-setup.md:215]
+
+**🟡 MEDIUM (권장 수정)**
+- [ ] [AI-Review][MEDIUM] packages/shared 테스트 추가 필요 - 공유 패키지에 테스트 없음 [packages/shared/]
+- [ ] [AI-Review][MEDIUM] apps/viewer 테스트 추가 필요 - --passWithNoTests로 우회 중 [apps/viewer/package.json:11]
+- [ ] [AI-Review][MEDIUM] packages/shared lint 설정 추가 필요 - eslint 미설정 [packages/shared/]
+- [ ] [AI-Review][MEDIUM] packages/shared README.md 추가 필요 - 문서화 부재 [packages/shared/]
+
+**🟢 LOW (개선 권장)**
+- [ ] [AI-Review][LOW] apps/viewer/src/types/scene.ts와 packages/shared 타입 통합 검토 [apps/viewer/src/types/scene.ts]
+- [ ] [AI-Review][LOW] packages/shared에 lint 스크립트 추가 - pnpm -r lint 시 건너뜀 [packages/shared/package.json]
 
 ## Dev Notes
 
