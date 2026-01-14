@@ -31,3 +31,10 @@ export {
   stopWSServer,
   type WSServerState,
 } from './ws-server.js';
+
+// MCP Server
+export {
+  createMCPServer,
+  startMCPServer,
+  runMCPServer,
+} from './mcp-server.js';

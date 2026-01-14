@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/parktube/7-division.git",
-    "directory": "cad-tools"
+    "directory": "apps/cad-mcp"
   },
   "keywords": [
     "cad",
@@ -15,11 +15,15 @@
     "ai",
     "wasm",
     "tool-use",
-    "anthropic"
+    "anthropic",
+    "mcp"
   ],
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "ai-native-cad-mcp": "./dist/mcp-cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -35,6 +39,7 @@
   "dependencies": {
     "@ai-native-cad/shared": "workspace:*",
     "@anthropic-ai/sdk": "^0.71.2",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "es-module-lexer": "^2.0.0",
     "manifold-3d": "^3.3.2",
     "opentype.js": "^1.3.4",
