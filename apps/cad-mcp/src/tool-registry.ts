@@ -4,9 +4,22 @@
  */
 
 import { DOMAINS, DOMAIN_METADATA, CAD_TOOLS, type DomainName, type ToolSchema } from './schema.js';
+import { getAllExecutorTools, getToolsForDomains } from './discovery.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from './logger.js';
+
+// Executor tools 캐싱 (snake_case 도구들)
+let executorToolsMap: Map<string, ToolSchema> | null = null;
+function getExecutorToolsMap(): Map<string, ToolSchema> {
+  if (!executorToolsMap) {
+    executorToolsMap = new Map();
+    for (const tool of getAllExecutorTools()) {
+      executorToolsMap.set(tool.name, tool);
+    }
+  }
+  return executorToolsMap;
+}
 
 /**
  * 도메인 정보 (LLM 응답용)
@@ -81,24 +94,30 @@ export class ToolRegistry {
 
   /**
    * 도메인별 도구 목록 반환
-   * @param domain 도메인 이름 (생략 시 전체)
+   * 도메인 지정 시 executor 호환 도구 (snake_case) 반환
+   * @param domain 도메인 이름 (생략 시 전체 MCP 도구)
    */
   listTools(domain?: string): { domain: string | null; tools: ToolSummary[] } {
     if (domain && domain in DOMAINS) {
-      const toolNames = DOMAINS[domain as DomainName];
+      // 도메인 지정 시 executor 도구 반환 (snake_case, runtime.ts 호환)
+      const executorTools = getToolsForDomains([domain as DomainName]);
       return {
         domain,
-        tools: toolNames.map((name) => ({
-          name,
-          description: CAD_TOOLS[name]?.description || '',
+        tools: executorTools.map((tool) => ({
+          name: tool.name,
+          description: tool.description,
         })),
       };
     }
 
-    // 전체 도구 반환
+    // 전체 도구 반환 (MCP 도구 + executor 도구)
+    const mcpTools = Object.values(CAD_TOOLS);
+    const executorTools = getAllExecutorTools();
+    const allTools = [...mcpTools, ...executorTools];
+
     return {
       domain: null,
-      tools: Object.values(CAD_TOOLS).map((tool) => ({
+      tools: allTools.map((tool) => ({
         name: tool.name,
         description: tool.description,
       })),
@@ -107,20 +126,31 @@ export class ToolRegistry {
 
   /**
    * 도구 스키마 조회
+   * MCP 도구와 executor 도구 모두 검색
    * @returns 스키마 또는 null (존재하지 않는 경우)
    */
   getToolSchema(name: string): ToolSchema | null {
-    return CAD_TOOLS[name] || null;
+    // MCP 도구 먼저 검색
+    if (CAD_TOOLS[name]) {
+      return CAD_TOOLS[name];
+    }
+    // Executor 도구 검색 (snake_case)
+    const executorTools = getExecutorToolsMap();
+    return executorTools.get(name) || null;
   }
 
   /**
    * 유사 도구 이름 검색 (prefix/contains 매칭)
+   * MCP 도구와 executor 도구 모두 검색
    * - prefix: 검색어 앞 4글자로 시작하는 도구
    * - contains: 검색어를 포함하는 도구
    * - reverse: 도구 이름이 검색어에 포함되는 경우
    */
   findSimilar(name: string): string[] {
-    const allTools = Object.keys(CAD_TOOLS);
+    const mcpTools = Object.keys(CAD_TOOLS);
+    const executorTools = Array.from(getExecutorToolsMap().keys());
+    const allTools = [...new Set([...mcpTools, ...executorTools])];
+
     const prefix = name.slice(0, 4).toLowerCase();
     const searchTerm = name.toLowerCase();
 

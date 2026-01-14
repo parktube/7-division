@@ -29,10 +29,10 @@ describe('AnthropicProvider', () => {
 
   describe('convertToolSchema', () => {
     it('should convert canonical schema to Anthropic format', () => {
-      const canonical = CAD_TOOLS['draw_rect'];
+      const canonical = CAD_TOOLS['run_cad_code'];
       const anthropic = provider.convertToolSchema(canonical);
 
-      expect(anthropic).toHaveProperty('name', 'draw_rect');
+      expect(anthropic).toHaveProperty('name', 'run_cad_code');
       expect(anthropic).toHaveProperty('description');
       expect(anthropic).toHaveProperty('input_schema');
       expect(anthropic.input_schema).toHaveProperty('type', 'object');
@@ -49,8 +49,8 @@ describe('AnthropicProvider', () => {
           {
             type: 'tool_use',
             id: 'call_123',
-            name: 'draw_rect',
-            input: { name: 'wall', x: 0, y: 0, width: 100, height: 50 },
+            name: 'run_cad_code',
+            input: { code: "drawRect('wall', 0, 0, 100, 50)" },
           },
         ],
         stop_reason: 'tool_use',
@@ -60,8 +60,8 @@ describe('AnthropicProvider', () => {
 
       expect(toolCalls).toHaveLength(1);
       expect(toolCalls[0].id).toBe('call_123');
-      expect(toolCalls[0].name).toBe('draw_rect');
-      expect(toolCalls[0].input.name).toBe('wall');
+      expect(toolCalls[0].name).toBe('run_cad_code');
+      expect(toolCalls[0].input.code).toContain('drawRect');
       expect(isComplete).toBe(false);
     });
 

@@ -170,8 +170,8 @@ describe('runAgentLoop', () => {
       domains: ['primitives'],
     });
 
-    // Should only have primitives tools (4 tools)
-    expect(provider.sentTools).toHaveLength(4);
+    // Should only have primitives tools (7 tools: draw_circle, draw_rect, draw_line, draw_arc, draw_polygon, draw_bezier, draw_text)
+    expect(provider.sentTools).toHaveLength(7);
   });
 
   it('should throw on max iterations exceeded', async () => {
@@ -202,7 +202,7 @@ describe('runAgentLoop', () => {
 
     await runAgentLoop(provider, executor, 'Test');
 
-    // Default: primitives (4) + style (4) + transforms (4) + query (3) + registry (4) + export (2) = 21 tools
-    expect(provider.sentTools).toHaveLength(21);
+    // Default: primitives (7) + style (5) + transforms (4) + query (3) + groups (2) + utility (1) = 22 tools
+    expect(provider.sentTools).toHaveLength(22);
   });
 });
