@@ -25,6 +25,8 @@
     "ai-native-cad-mcp": "./dist/mcp-cli.js"
   },
   "scripts": {
+    "start": "node dist/mcp-cli.js start",
+    "dev": "tsx src/mcp-cli.ts start",
     "build": "tsc",
     "build:wasm": "wasm-pack build ../../cad-engine --target nodejs --release && mkdir -p wasm && cp -r ../../cad-engine/pkg/* wasm/",
     "prepublishOnly": "npm run build:wasm && npm run build",
