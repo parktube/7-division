@@ -10,6 +10,7 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  max_files: 200
 
   tools:
     clippy:
