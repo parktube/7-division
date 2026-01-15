@@ -45,11 +45,14 @@ function renderCircle(ctx: CanvasRenderingContext2D, geo: CircleGeometry): boole
 
 function renderRect(ctx: CanvasRenderingContext2D, geo: RectGeometry): boolean {
   const { center, width, height } = geo.Rect
-  // center에서 좌하단 origin 계산
-  const x = center[0] - width / 2
-  const y = center[1] - height / 2
+  const hw = width / 2
+  const hh = height / 2
+  // ctx.rect()는 Y-flip 후 height 방향이 일관되지 않아 명시적 path 사용
   ctx.beginPath()
-  ctx.rect(x, y, width, height)
+  ctx.moveTo(center[0] - hw, center[1] - hh) // bottom-left
+  ctx.lineTo(center[0] + hw, center[1] - hh) // bottom-right
+  ctx.lineTo(center[0] + hw, center[1] + hh) // top-right
+  ctx.lineTo(center[0] - hw, center[1] + hh) // top-left
   ctx.closePath()
   return true
 }

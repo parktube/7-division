@@ -23,7 +23,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 ### 주요 성과
 
 - **WASM CAD 엔진**: Rust로 작성된 고성능 CAD 커널
-- **Direct-First Architecture**: MCP 없이 Claude Code가 직접 WASM 호출 (< 1ms)
+- **MCP 도메인 도구**: cad_code, discovery, scene, export, module
 - **Manifold 기하 엔진**: Boolean 연산, 기하 분석 (offset, area, convexHull)
 - **텍스트 렌더링**: opentype.js 기반 베지어 경로 변환 (한글/영문)
 - **React 기반 Viewer**: 3-패널 레이아웃, 다크/라이트 테마, 리사이즈 가능
@@ -31,7 +31,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 - **Z-Order 관리**: drawOrder API로 레이어 순서 제어
 - **Dual Coordinate API**: local/world 좌표계 동시 지원
 - **웹 아키텍처**: GitHub Pages + 로컬 MCP 서버
-- **LLM DX 개선**: 트랜잭션 롤백, 스케치 자동 클리어
+- **씬 영속성**: scene.json 자동 저장/복원
 
 ## Viewer 사용법
 
@@ -163,9 +163,9 @@ pnpm --filter @ai-native-cad/viewer dev
 │   │       └── types/      # TypeScript 타입 정의
 │   └── cad-mcp/            # MCP 서버 (npm 패키지)
 │       └── src/
-│           ├── cli.ts      # CAD CLI 진입점
-│           ├── ws-server.ts # WebSocket 서버
-│           └── mcp-server.ts # MCP stdio 서버
+│           ├── mcp-server.ts # MCP stdio 서버
+│           ├── ws-server.ts  # WebSocket 서버
+│           └── executor.ts   # CAD 명령 실행
 ├── packages/
 │   └── shared/             # 공유 타입 (WebSocket 메시지 등)
 ├── cad-engine/             # Rust CAD 엔진 (WASM)
@@ -209,9 +209,9 @@ GitHub Pages (Viewer)          Local MCP Server
                      │
               scene/selection 동기화
                      │
-               Claude Code CLI
-                     │ WASM 직접 호출
-               Rust CAD 엔진
+                Claude Code
+                     │ MCP 도구 호출
+               Rust CAD 엔진 (WASM)
 ```
 
 ### Data Storage
@@ -220,13 +220,13 @@ GitHub Pages (Viewer)          Local MCP Server
 
 ```
 ~/.ai-native-cad/
-├── scene.json       # 씬 상태 (엔티티, 스타일, 그룹 등)
+├── scene.json       # 씬 상태 (자동 저장/복원)
 ├── scene.code.js    # main 코드 파일
-└── modules/         # 저장된 모듈 (재사용 가능한 코드)
+└── modules/         # 저장된 모듈
 ```
 
-- **CLI와 MCP가 동일한 경로 사용** - 상태 동기화 보장
-- **홈 디렉토리 기반** - 어느 위치에서든 일관된 접근
+- **씬 영속성**: MCP 서버 재시작 시 scene.json에서 자동 복원
+- **홈 디렉토리 기반**: 어느 위치에서든 일관된 접근
 
 - **브라우저 Viewer**: GitHub Pages에서 호스팅, WebSocket으로 MCP 서버와 통신
 - **로컬 MCP 서버**: WASM 엔진 실행, scene/selection 데이터 제공
@@ -277,25 +277,22 @@ GitHub Pages (Viewer)          Local MCP Server
 - 추가 모드에서 기존 변수 참조 가능
 - 부분 수정 모드 (old_code/new_code): Claude Code Edit 도구와 유사한 코드 편집
 
-**도메인 구조** (describe <domain>으로 상세 확인)
+**MCP 도메인 도구**
+
+| 도구 | 설명 |
+|------|------|
+| `cad_code` | JavaScript 코드 실행/편집 |
+| `discovery` | 함수 탐색 (list_domains, describe) |
+| `scene` | 씬 상태 조회 (info, overview) |
+| `export` | 내보내기 (json, svg, capture) |
+| `module` | 모듈 관리 (save, list, get, delete) |
+
+**Sandbox 함수 도메인** (`discovery describe <domain>`)
 ```
-📦 도형 생성
-  primitives  - 기본 도형 (circle, rect, line, arc, polygon, bezier)
-  text        - ⭐ 텍스트 렌더링 (drawText, getTextMetrics)
-
-🔄 도형 조작
-  transforms  - 변환 (translate, rotate, scale, pivot, duplicate, mirror)
-  boolean     - ⭐ 합치기/빼기 (union, difference, intersect)
-  geometry    - ⭐ 기하 분석 (offset, area, convexHull, decompose)
-
-🎨 스타일 & 구조
-  style       - 색상/z-order (fill, stroke, drawOrder)
-  group       - 그룹화 (createGroup, addToGroup)
-
-🔍 조회 & 내보내기
-  query       - 씬 조회 (getEntity, exists, fitToViewport)
-  export      - 내보내기 (capture, json, svg)
-  session     - 세션 관리 (reset, --clear-sketch)
+📦 primitives, text
+🔄 transforms, boolean, geometry
+🎨 style, groups
+🔍 query, utility
 ```
 
 **뷰어**
@@ -349,4 +346,4 @@ MIT
 
 ---
 
-*작성: 2025-12-17 | 최종 업데이트: 2026-01-14*
+*작성: 2025-12-17 | 최종 업데이트: 2026-01-15*

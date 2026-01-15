@@ -20,10 +20,17 @@ import {
 } from './shared/index.js'
 
 const DEFAULT_PORT = 3001
-const MAX_PORT = 3003
+const DEFAULT_MAX_PORT = 3003
 const PROTOCOL_VERSION = 1
 const HEARTBEAT_INTERVAL_MS = 15000 // 15 seconds
 const MAX_CLIENTS = 10 // Maximum concurrent connections (local tool, low risk)
+
+export interface CADWebSocketServerOptions {
+  /** Starting port (default: 3001) */
+  startPort?: number
+  /** Maximum port to try (default: 3003) */
+  maxPort?: number
+}
 
 // Read version from package.json to stay in sync
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -52,21 +59,28 @@ export class CADWebSocketServer {
     selection: [],
   }
   private port: number = DEFAULT_PORT
+  private readonly startPort: number
+  private readonly maxPort: number
+
+  constructor(options?: CADWebSocketServerOptions) {
+    this.startPort = options?.startPort ?? DEFAULT_PORT
+    this.maxPort = options?.maxPort ?? DEFAULT_MAX_PORT
+  }
 
   /**
    * Start the WebSocket server
-   * Tries ports 3001, 3002, 3003 until one is available
+   * Tries ports until one is available
    */
   async start(): Promise<number> {
-    for (let port = DEFAULT_PORT; port <= MAX_PORT; port++) {
+    for (let port = this.startPort; port <= this.maxPort; port++) {
       try {
         await this.tryPort(port)
         this.port = port
         logger.info(`WebSocket server started on ws://127.0.0.1:${port}`)
         return port
       } catch {
-        if (port === MAX_PORT) {
-          throw new Error(`All ports ${DEFAULT_PORT}-${MAX_PORT} are in use`)
+        if (port === this.maxPort) {
+          throw new Error(`All ports ${this.startPort}-${this.maxPort} are in use`)
         }
         logger.warn(`Port ${port} in use, trying ${port + 1}`)
       }

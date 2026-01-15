@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.1] - 2026-01-15
+
+### Fixed
+
+#### Scene Restore 버그 수정
+- **Rect 렌더링 수정**: Canvas API `ctx.rect()` 이 Y-flip 변환에서 정상 동작하지 않는 문제
+  - 명시적 `moveTo/lineTo` 경로로 변경
+- **Group 복원 수정**: `computed.children` 대신 `children` 직접 접근
+  - 계층 구조 복원 정확도 개선
+- **Transform 복원 추가**: `translate`, `rotate`, `scale` 변환 복원 로직 구현
+- **Arc 파라미터명 수정**: `startAngle/endAngle` → `start_angle/end_angle`
+  - API 스키마와 일치
+
+#### MCP Import 전처리
+- **import 문 처리**: MCP 서버에 `preprocessCode()` 추가
+  - CLI와 동일한 모듈 import 동작 보장
+
+### Changed
+
+- **ws-server 포트 설정**: 테스트용 포트 범위 설정 옵션 추가
+  - `CADWebSocketServerOptions.startPort/maxPort`
+  - 테스트가 실행 중인 MCP 서버와 충돌하지 않음
+
+### Tests
+
+- **importScene 테스트 추가**: 11개 새 테스트 케이스
+  - Rect, Circle, Line, Polygon, Arc, Transform, Group, Style 복원
+  - Empty scene, invalid JSON, multiple entities 처리
+
+---
+
 ## [0.3.0] - 2026-01-14
 
 ### Added
@@ -136,4 +167,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-*작성: 2026-01-09 | 최종 업데이트: 2026-01-14*
+*작성: 2026-01-09 | 최종 업데이트: 2026-01-15*

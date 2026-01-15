@@ -121,3 +121,56 @@ export function extractLines(code: string, start: number, end: number): string {
   const endIdx = Math.min(lines.length, end);
   return lines.slice(startIdx, endIdx).join('\n');
 }
+
+/**
+ * Import 전처리 결과
+ */
+export interface PreprocessResult {
+  code: string;
+  importedModules: string[];
+  errors: string[];
+}
+
+/**
+ * 코드에서 import 구문을 모듈 코드로 치환
+ * ES6 import 문법 지원: import 'x', import { a } from 'x', import * as x from 'x'
+ */
+export function preprocessCode(
+  code: string,
+  importedModules: Set<string> = new Set()
+): PreprocessResult {
+  const errors: string[] = [];
+  const newlyImported: string[] = [];
+
+  const importPattern = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]\s*;?/g;
+
+  const processedCode = code.replace(importPattern, (_match, moduleName) => {
+    if (importedModules.has(moduleName)) {
+      return `// [import] '${moduleName}' already loaded`;
+    }
+
+    const modulePath = getModulePath(moduleName);
+
+    if (!existsSync(modulePath)) {
+      errors.push(`could not load module '${moduleName}'`);
+      return `// [import] ERROR: '${moduleName}' not found`;
+    }
+
+    const moduleCode = readFileSync(modulePath, 'utf-8');
+    importedModules.add(moduleName);
+    newlyImported.push(moduleName);
+
+    // 재귀적으로 중첩 import 처리
+    const nested = preprocessCode(moduleCode, importedModules);
+    errors.push(...nested.errors);
+    newlyImported.push(...nested.importedModules);
+
+    return `// ===== [import] ${moduleName} =====\n${nested.code}\n// ===== [/import] ${moduleName} =====\n`;
+  });
+
+  return {
+    code: processedCode,
+    importedModules: newlyImported,
+    errors,
+  };
+}

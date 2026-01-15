@@ -19,7 +19,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { CADExecutor } from './executor.js'
 import {
-  CAD_TOOLS,
+  DOMAIN_TOOLS,
   DOMAINS,
   DOMAIN_METADATA,
   FUNCTION_SIGNATURES,
@@ -44,8 +44,9 @@ const packageJson = JSON.parse(
   readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')
 )
 
-// run-cad-code 모듈에서 공유 상수 가져오기 (CLI와 경로 통일)
+// run-cad-code 모듈에서 공유 상수/유틸리티 가져오기 (CLI와 경로 통일)
 import { SCENE_CODE_FILE, MODULES_DIR } from './run-cad-code/constants.js'
+import { preprocessCode } from './run-cad-code/utils.js'
 
 const SELECTION_FILE = resolve(__dirname, '../../viewer/selection.json')
 
@@ -208,27 +209,27 @@ const TOOL_HINTS: Record<string, string[]> = {
 
   // 탐색 도구
   describe: [
-    'run_cad_code로 함수 실행',
+    'cad_code로 함수 실행',
     '다른 도메인도 탐색해보세요',
   ],
   list_domains: [
-    'describe(domain)으로 함수 시그니처 확인',
-    'run_cad_code로 실제 실행',
+    `discovery(action='describe')로 함수 시그니처 확인`,
+    'cad_code로 실제 실행',
   ],
   list_tools: [
-    'describe(domain)으로 상세 시그니처 확인',
+    `discovery(action='describe')로 상세 시그니처 확인`,
   ],
   get_tool_schema: [
-    'run_cad_code로 함수 실행',
+    'cad_code로 함수 실행',
   ],
 
   // 조회 도구
   get_scene_info: [
-    'overview로 상세 구조 확인',
-    'run_cad_code + getEntity()로 특정 엔티티 조회',
+    `scene(action='overview')로 상세 구조 확인`,
+    'cad_code + getEntity()로 특정 엔티티 조회',
   ],
   export_json: [
-    'export_svg로 벡터 이미지도 내보내기',
+    `export(action='svg')로 벡터 이미지도 내보내기`,
   ],
   export_svg: [
     '파일로 저장하여 활용',
@@ -236,41 +237,41 @@ const TOOL_HINTS: Record<string, string[]> = {
 
   // 세션 도구
   reset: [
-    'run_cad_code로 새로운 씬 생성 시작',
+    'cad_code로 새로운 씬 생성 시작',
   ],
   capture: [
     '이미지로 형태/레이아웃 파악',
     'getEntity()로 정확한 좌표 확인',
   ],
   get_selection: [
-    'run_cad_code + getEntity()로 선택된 엔티티 상세 조회',
+    'cad_code + getEntity()로 선택된 엔티티 상세 조회',
     '선택 기반 변환: translate, rotate, scale',
   ],
 
   // 모듈 도구
   save_module: [
-    "run_cad_code에서 import 'module_name'으로 사용",
-    'list_modules로 저장 확인',
+    "cad_code에서 import 'module_name'으로 사용",
+    `module(action='list')로 저장 확인`,
   ],
   list_modules: [
-    'get_module로 코드 내용 확인',
-    "run_cad_code에서 import 'name'으로 사용",
+    `module(action='get')로 코드 내용 확인`,
+    "cad_code에서 import 'name'으로 사용",
   ],
   get_module: [
-    'save_module로 수정 후 재저장',
-    "run_cad_code에서 import 'name'으로 사용",
+    `module(action='save')로 수정 후 재저장`,
+    "cad_code에서 import 'name'으로 사용",
   ],
   delete_module: [
-    'list_modules로 남은 모듈 확인',
+    `module(action='list')로 남은 모듈 확인`,
   ],
 
   // 씬 조회 도구
   list_groups: [
-    'overview로 전체 계층 구조 확인',
-    'run_cad_code + getEntity()로 그룹 상세 조회',
+    `scene(action='overview')로 전체 계층 구조 확인`,
+    'cad_code + getEntity()로 그룹 상세 조회',
   ],
   overview: [
-    'run_cad_code + getEntity()로 특정 엔티티 조회',
+    'cad_code + getEntity()로 특정 엔티티 조회',
     '그룹 수정: translate, rotate, scale',
   ],
 }
@@ -334,10 +335,10 @@ function toMCPToolSchema(tool: ToolSchema) {
 }
 
 /**
- * Get all tools as MCP format
+ * Get all tools as MCP format (도메인 도구 5개만 노출)
  */
 function getAllMCPTools() {
-  return Object.values(CAD_TOOLS).map(toMCPToolSchema)
+  return Object.values(DOMAIN_TOOLS).map(toMCPToolSchema)
 }
 
 /**
@@ -349,8 +350,17 @@ async function executeRunCadCode(
   const exec = getExecutor()
 
   try {
+    // Import 전처리: import 'module' → 모듈 코드로 치환
+    const preprocessed = preprocessCode(code)
+    if (preprocessed.errors.length > 0) {
+      return {
+        success: false,
+        error: preprocessed.errors[0],
+      }
+    }
+
     // Run JavaScript code in QuickJS sandbox
-    const result = await runCadCode(exec, code, 'warn')
+    const result = await runCadCode(exec, preprocessed.code, 'warn')
 
     // Export scene and broadcast to WebSocket clients (AC #1: "WebSocket으로 Viewer에 브로드캐스트")
     const sceneJson = exec.exportScene()
@@ -450,7 +460,249 @@ export async function createMCPServer(): Promise<Server> {
 
     try {
       switch (name) {
-        // === 핵심 도구: run_cad_code - 코드 에디터 (Story 9.4) ===
+        // ============================================================
+        // 도메인 도구 (SpineLift 패턴) - 5개
+        // ============================================================
+
+        // === discovery: 함수 탐색 도메인 ===
+        case 'discovery': {
+          const action = (args as Record<string, unknown>)?.action as string
+          const domain = (args as Record<string, unknown>)?.domain as string | undefined
+          const toolName = (args as Record<string, unknown>)?.name as string | undefined
+
+          switch (action) {
+            case 'list_domains': {
+              const domainList = Object.entries(DOMAIN_METADATA).map(([name, meta]) => ({
+                name,
+                description: meta.description,
+                functionCount: DOMAINS[name as DomainName].length,
+              }))
+              const enriched = enrichResponse('list_domains', domainList, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+            }
+            case 'describe': {
+              if (!domain || !(domain in DOMAINS)) {
+                return {
+                  content: [{ type: 'text', text: `Unknown domain: ${domain}. Available: ${Object.keys(DOMAINS).join(', ')}` }],
+                  isError: true,
+                }
+              }
+              const domainFunctions = DOMAINS[domain as DomainName]
+              const signatures = domainFunctions.map((fn) => ({ name: fn, ...FUNCTION_SIGNATURES[fn] }))
+              const enriched = enrichResponse('describe', { domain, description: DOMAIN_METADATA[domain as DomainName].description, functions: signatures }, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+            }
+            case 'list_tools': {
+              if (domain) {
+                if (!(domain in DOMAINS)) {
+                  return { content: [{ type: 'text', text: `Unknown domain: ${domain}` }], isError: true }
+                }
+                const enriched = enrichResponse('list_tools', DOMAINS[domain as DomainName], true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              }
+              const enriched = enrichResponse('list_tools', DOMAINS, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+            }
+            case 'get_schema': {
+              if (!toolName || !(toolName in FUNCTION_SIGNATURES)) {
+                return { content: [{ type: 'text', text: `Unknown function: ${toolName}` }], isError: true }
+              }
+              const enriched = enrichResponse('get_tool_schema', { name: toolName, ...FUNCTION_SIGNATURES[toolName] }, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+            }
+            case 'request': {
+              const description = (args as Record<string, unknown>)?.description as string
+              const rationale = (args as Record<string, unknown>)?.rationale as string
+              logger.info(`Tool request: ${JSON.stringify({ name: toolName, description, rationale })}`)
+              return { content: [{ type: 'text', text: JSON.stringify({ message: 'Tool request logged', request: { name: toolName, description, rationale } }, null, 2) }] }
+            }
+            default:
+              return { content: [{ type: 'text', text: `Unknown discovery action: ${action}` }], isError: true }
+          }
+        }
+
+        // === scene: 씬 조회 도메인 ===
+        case 'scene': {
+          const action = (args as Record<string, unknown>)?.action as string
+          const exec = getExecutor()
+
+          switch (action) {
+            case 'info': {
+              const result = executeQueryTool('get_scene_info', {})
+              if (result.success) {
+                const enriched = enrichResponse('get_scene_info', result.result, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
+            }
+            case 'overview': {
+              const result = exec.exec('list_entities', {})
+              if (result.success && result.data) {
+                try {
+                  const entities = JSON.parse(result.data)
+                  const rootEntities = entities.filter((e: { parent?: string }) => !e.parent)
+                  const buildTree = (items: { name: string; type: string; children?: string[] }[]): object[] => {
+                    return items.map(item => ({
+                      name: item.name,
+                      type: item.type,
+                      children: item.children ? buildTree(entities.filter((e: { name: string }) => item.children?.includes(e.name))) : undefined,
+                    }))
+                  }
+                  const tree = buildTree(rootEntities)
+                  const enriched = enrichResponse('overview', { tree, totalCount: entities.length }, true)
+                  return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+                } catch {
+                  return { content: [{ type: 'text', text: result.data }] }
+                }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
+            }
+            case 'groups': {
+              const result = exec.exec('list_entities', {})
+              if (result.success && result.data) {
+                try {
+                  const entities = JSON.parse(result.data)
+                  const groups = entities.filter((e: { type: string }) => e.type === 'Group')
+                  const enriched = enrichResponse('list_groups', groups, true)
+                  return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+                } catch {
+                  return { content: [{ type: 'text', text: result.data }] }
+                }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
+            }
+            case 'selection': {
+              try {
+                if (!existsSync(SELECTION_FILE)) {
+                  const enriched = enrichResponse('get_selection', { selected: [], locked: [], hidden: [] }, true)
+                  return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+                }
+                const data = JSON.parse(readFileSync(SELECTION_FILE, 'utf-8'))
+                const enriched = enrichResponse('get_selection', { selected: data.selected_entities || [], locked: data.locked_entities || [], hidden: data.hidden_entities || [] }, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              } catch (e) {
+                return { content: [{ type: 'text', text: `Failed: ${e instanceof Error ? e.message : e}` }], isError: true }
+              }
+            }
+            case 'reset': {
+              const result = exec.exec('reset', {})
+              if (result.success) {
+                const sceneJson = exec.exportScene()
+                const scene = JSON.parse(sceneJson) as Scene
+                const wsServer = getWSServer()
+                wsServer.broadcastScene(scene)
+                saveScene(exec)
+                const enriched = enrichResponse('reset', { success: true, message: 'Scene reset' }, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
+            }
+            default:
+              return { content: [{ type: 'text', text: `Unknown scene action: ${action}` }], isError: true }
+          }
+        }
+
+        // === export: 내보내기 도메인 ===
+        case 'export': {
+          const action = (args as Record<string, unknown>)?.action as string
+          const exec = getExecutor()
+
+          switch (action) {
+            case 'json': {
+              const result = executeQueryTool('export_json', {})
+              if (result.success) {
+                const enriched = enrichResponse('export_json', result.result, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
+            }
+            case 'svg': {
+              const result = exec.exec('export_svg', {})
+              if (result.success && result.data) {
+                const hints = getToolHints('export_svg')
+                return { content: [{ type: 'text', text: `${result.data}\n\n💡 Hints: ${hints.join(', ')}` }] }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
+            }
+            case 'capture': {
+              const clearSketch = (args as Record<string, unknown>)?.clearSketch as boolean
+              try {
+                const result = await captureViewport()
+                if (result.success && result.path) {
+                  const enriched = enrichResponse('capture', { success: true, path: result.path, clearSketch: clearSketch || false }, true)
+                  return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+                }
+                return { content: [{ type: 'text', text: result.error || 'Capture failed' }], isError: true }
+              } catch (e) {
+                return { content: [{ type: 'text', text: `Capture failed: ${e instanceof Error ? e.message : e}` }], isError: true }
+              }
+            }
+            default:
+              return { content: [{ type: 'text', text: `Unknown export action: ${action}` }], isError: true }
+          }
+        }
+
+        // === module: 모듈 관리 도메인 ===
+        case 'module': {
+          const action = (args as Record<string, unknown>)?.action as string
+          const moduleName = (args as Record<string, unknown>)?.name as string | undefined
+          const code = (args as Record<string, unknown>)?.code as string | undefined
+
+          switch (action) {
+            case 'save': {
+              if (!moduleName || !code) {
+                return { content: [{ type: 'text', text: 'Error: name and code required' }], isError: true }
+              }
+              try {
+                ensureModulesDir()
+                const modulePath = getModulePath(moduleName)
+                writeFileSync(modulePath, code, 'utf-8')
+                const enriched = enrichResponse('save_module', { success: true, name: moduleName, path: modulePath }, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              } catch (e) {
+                return { content: [{ type: 'text', text: `Failed: ${e instanceof Error ? e.message : e}` }], isError: true }
+              }
+            }
+            case 'list': {
+              const modules = getModuleList()
+              const enriched = enrichResponse('list_modules', { modules, count: modules.length }, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+            }
+            case 'get': {
+              if (!moduleName) {
+                return { content: [{ type: 'text', text: 'Error: name required' }], isError: true }
+              }
+              const modulePath = getModulePath(moduleName)
+              if (!existsSync(modulePath)) {
+                return { content: [{ type: 'text', text: `Module not found: ${moduleName}` }], isError: true }
+              }
+              const moduleCode = readFileSync(modulePath, 'utf-8')
+              const enriched = enrichResponse('get_module', { name: moduleName, code: moduleCode }, true)
+              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+            }
+            case 'delete': {
+              if (!moduleName) {
+                return { content: [{ type: 'text', text: 'Error: name required' }], isError: true }
+              }
+              const modulePath = getModulePath(moduleName)
+              if (!existsSync(modulePath)) {
+                return { content: [{ type: 'text', text: `Module not found: ${moduleName}` }], isError: true }
+              }
+              try {
+                unlinkSync(modulePath)
+                const enriched = enrichResponse('delete_module', { success: true, deleted: moduleName }, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              } catch (e) {
+                return { content: [{ type: 'text', text: `Failed: ${e instanceof Error ? e.message : e}` }], isError: true }
+              }
+            }
+            default:
+              return { content: [{ type: 'text', text: `Unknown module action: ${action}` }], isError: true }
+          }
+        }
+
+        // === cad_code / run_cad_code: 코드 에디터 (핵심 도구) ===
+        case 'cad_code':
         case 'run_cad_code': {
           const file = (args as Record<string, unknown>)?.file as string | undefined
           const code = (args as Record<string, unknown>)?.code as string | undefined
@@ -663,313 +915,12 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
-        // === 탐색용 도구들 ===
-        case 'describe': {
-          const domain = (args as Record<string, unknown>)?.domain as string
-          if (!domain || !(domain in DOMAINS)) {
-            return {
-              content: [{
-                type: 'text',
-                text: `Unknown domain: ${domain}. Available: ${Object.keys(DOMAINS).join(', ')}`,
-              }],
-              isError: true,
-            }
-          }
-          const domainFunctions = DOMAINS[domain as DomainName]
-          const signatures = domainFunctions.map((fn) => ({
-            name: fn,
-            ...FUNCTION_SIGNATURES[fn],
-          }))
-          const enriched = enrichResponse('describe', {
-            domain,
-            description: DOMAIN_METADATA[domain as DomainName].description,
-            functions: signatures,
-          }, true)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-          }
-        }
-
-        case 'list_domains': {
-          const domainList = Object.entries(DOMAIN_METADATA).map(([name, meta]) => ({
-            name,
-            description: meta.description,
-            functionCount: DOMAINS[name as DomainName].length,
-          }))
-          const enriched = enrichResponse('list_domains', domainList, true)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-          }
-        }
-
-        case 'list_tools': {
-          const domain = (args as Record<string, unknown>)?.domain as string | undefined
-          if (domain) {
-            if (!(domain in DOMAINS)) {
-              return {
-                content: [{
-                  type: 'text',
-                  text: `Unknown domain: ${domain}. Available: ${Object.keys(DOMAINS).join(', ')}`,
-                }],
-                isError: true,
-              }
-            }
-            const enriched = enrichResponse('list_tools', DOMAINS[domain as DomainName], true)
-            return {
-              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-            }
-          }
-          // Return all functions grouped by domain
-          const enriched = enrichResponse('list_tools', DOMAINS, true)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-          }
-        }
-
-        case 'get_tool_schema': {
-          const toolName = (args as Record<string, unknown>)?.name as string
-          if (!toolName || !(toolName in FUNCTION_SIGNATURES)) {
-            const allFunctions = Object.keys(FUNCTION_SIGNATURES)
-            return {
-              content: [{
-                type: 'text',
-                text: `Unknown function: ${toolName}. Available functions: ${allFunctions.join(', ')}`,
-              }],
-              isError: true,
-            }
-          }
-          const enriched = enrichResponse('get_tool_schema', { name: toolName, ...FUNCTION_SIGNATURES[toolName] }, true)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-          }
-        }
-
-        case 'request_tool': {
-          const toolRequest = args as Record<string, unknown>
-          logger.info(`Tool request: ${JSON.stringify(toolRequest)}`)
-          return {
-            content: [{
-              type: 'text',
-              text: JSON.stringify({
-                message: 'Tool request logged. Developer will review.',
-                request: toolRequest,
-              }, null, 2),
-            }],
-          }
-        }
-
-        // === 조회/내보내기 도구들 ===
-        case 'get_scene_info': {
-          const result = executeQueryTool('get_scene_info', {})
-          if (result.success) {
-            const enriched = enrichResponse('get_scene_info', result.result, true)
-            return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
-          } else {
-            return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
-          }
-        }
-
-        case 'export_json': {
-          const result = executeQueryTool('export_json', {})
-          if (result.success) {
-            const enriched = enrichResponse('export_json', result.result, true)
-            return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
-          } else {
-            return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
-          }
-        }
-
-        case 'export_svg': {
-          // SVG는 JSON이 아니므로 직접 executor 호출
-          const exec = getExecutor()
-          const result = exec.exec('export_svg', {})
-          if (result.success && result.data) {
-            // SVG는 그대로 반환하되, hints는 별도 라인으로 추가
-            const hints = getToolHints('export_svg')
-            return { content: [{ type: 'text', text: `${result.data}\n\n💡 Hints: ${hints.join(', ')}` }] }
-          } else {
-            return { content: [{ type: 'text', text: result.error || 'Failed to export SVG' }], isError: true }
-          }
-        }
-
-        // === 세션 관리 도구 ===
-        case 'reset': {
-          const exec = getExecutor()
-          const result = exec.exec('reset', {})
-          if (result.success) {
-            // Broadcast empty scene to viewers
-            const sceneJson = exec.exportScene()
-            const scene = JSON.parse(sceneJson) as Scene
-            const wsServer = getWSServer()
-            wsServer.broadcastScene(scene)
-            // Clear saved scene file (reset = start fresh)
-            saveScene(exec)
-            const enriched = enrichResponse('reset', { success: true, message: 'Scene reset' }, true)
-            return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
-          } else {
-            return { content: [{ type: 'text', text: result.error || 'Failed to reset' }], isError: true }
-          }
-        }
-
-        case 'capture': {
-          const clearSketch = (args as Record<string, unknown>)?.clearSketch as boolean
-          try {
-            const result = await captureViewport()
-            if (result.success && result.path) {
-              const enriched = enrichResponse('capture', {
-                success: true,
-                path: result.path,
-                message: 'Viewport captured. Use Read tool to view the image.',
-                clearSketch: clearSketch || false,
-              }, true)
-              return {
-                content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-              }
-            } else {
-              return { content: [{ type: 'text', text: result.error || 'Capture failed' }], isError: true }
-            }
-          } catch (e) {
-            const error = e instanceof Error ? e.message : String(e)
-            return { content: [{ type: 'text', text: `Capture failed: ${error}` }], isError: true }
-          }
-        }
-
-        case 'get_selection': {
-          try {
-            if (!existsSync(SELECTION_FILE)) {
-              const enriched = enrichResponse('get_selection', { selected: [], locked: [], hidden: [] }, true)
-              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
-            }
-            const data = JSON.parse(readFileSync(SELECTION_FILE, 'utf-8'))
-            const enriched = enrichResponse('get_selection', {
-              selected: data.selected_entities || [],
-              locked: data.locked_entities || [],
-              hidden: data.hidden_entities || [],
-            }, true)
-            return {
-              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-            }
-          } catch (e) {
-            const error = e instanceof Error ? e.message : String(e)
-            return { content: [{ type: 'text', text: `Failed to get selection: ${error}` }], isError: true }
-          }
-        }
-
-        // === 모듈 관리 도구 ===
-        case 'save_module': {
-          const moduleName = (args as Record<string, unknown>)?.name as string
-          const code = (args as Record<string, unknown>)?.code as string
-          if (!moduleName || !code) {
-            return { content: [{ type: 'text', text: 'Error: name and code are required' }], isError: true }
-          }
-          try {
-            ensureModulesDir()
-            const modulePath = getModulePath(moduleName)
-            writeFileSync(modulePath, code, 'utf-8')
-            const enriched = enrichResponse('save_module', { success: true, name: moduleName, path: modulePath }, true)
-            return {
-              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-            }
-          } catch (e) {
-            const error = e instanceof Error ? e.message : String(e)
-            return { content: [{ type: 'text', text: `Failed to save module: ${error}` }], isError: true }
-          }
-        }
-
-        case 'list_modules': {
-          const modules = getModuleList()
-          const enriched = enrichResponse('list_modules', { modules, count: modules.length }, true)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-          }
-        }
-
-        case 'get_module': {
-          const moduleName = (args as Record<string, unknown>)?.name as string
-          if (!moduleName) {
-            return { content: [{ type: 'text', text: 'Error: name is required' }], isError: true }
-          }
-          const modulePath = getModulePath(moduleName)
-          if (!existsSync(modulePath)) {
-            return { content: [{ type: 'text', text: `Module not found: ${moduleName}` }], isError: true }
-          }
-          const code = readFileSync(modulePath, 'utf-8')
-          const enriched = enrichResponse('get_module', { name: moduleName, code }, true)
-          return {
-            content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-          }
-        }
-
-        case 'delete_module': {
-          const moduleName = (args as Record<string, unknown>)?.name as string
-          if (!moduleName) {
-            return { content: [{ type: 'text', text: 'Error: name is required' }], isError: true }
-          }
-          const modulePath = getModulePath(moduleName)
-          if (!existsSync(modulePath)) {
-            return { content: [{ type: 'text', text: `Module not found: ${moduleName}` }], isError: true }
-          }
-          try {
-            unlinkSync(modulePath)
-            const enriched = enrichResponse('delete_module', { success: true, deleted: moduleName }, true)
-            return {
-              content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }],
-            }
-          } catch (e) {
-            const error = e instanceof Error ? e.message : String(e)
-            return { content: [{ type: 'text', text: `Failed to delete module: ${error}` }], isError: true }
-          }
-        }
-
-        // === 씬 조회 도구 ===
-        case 'list_groups': {
-          const exec = getExecutor()
-          const result = exec.exec('list_entities', {})
-          if (result.success && result.data) {
-            try {
-              const entities = JSON.parse(result.data)
-              const groups = entities.filter((e: { type: string }) => e.type === 'Group')
-              const enriched = enrichResponse('list_groups', groups, true)
-              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
-            } catch {
-              return { content: [{ type: 'text', text: result.data }] }
-            }
-          }
-          return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
-        }
-
-        case 'overview': {
-          const exec = getExecutor()
-          const result = exec.exec('list_entities', {})
-          if (result.success && result.data) {
-            try {
-              const entities = JSON.parse(result.data)
-              // 트리 구조로 변환
-              const rootEntities = entities.filter((e: { parent?: string }) => !e.parent)
-              const buildTree = (items: { name: string; type: string; children?: string[] }[]): object[] => {
-                return items.map(item => ({
-                  name: item.name,
-                  type: item.type,
-                  children: item.children
-                    ? buildTree(entities.filter((e: { name: string }) => item.children?.includes(e.name)))
-                    : undefined,
-                }))
-              }
-              const tree = buildTree(rootEntities)
-              const enriched = enrichResponse('overview', { tree, totalCount: entities.length }, true)
-              return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
-            } catch {
-              return { content: [{ type: 'text', text: result.data }] }
-            }
-          }
-          return { content: [{ type: 'text', text: result.error || 'Failed' }], isError: true }
-        }
 
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Use run_cad_code to execute CAD operations, or describe/list_domains/list_tools to explore available functions.`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module`,
             }],
             isError: true,
           }

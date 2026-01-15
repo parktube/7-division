@@ -1019,10 +1019,8 @@ export class CADExecutor {
       }
       case 'Rect': {
         const data = geometry.Rect as { center: number[]; width: number; height: number };
-        // Rect는 center 기준이므로 좌하단으로 변환
-        const x = data.center[0] - data.width / 2;
-        const y = data.center[1] - data.height / 2;
-        this.exec('draw_rect', { name, x, y, width: data.width, height: data.height });
+        // draw_rect는 center 기준이므로 그대로 전달
+        this.exec('draw_rect', { name, x: data.center[0], y: data.center[1], width: data.width, height: data.height });
         break;
       }
       case 'Polygon': {
@@ -1044,8 +1042,8 @@ export class CADExecutor {
           cx: data.center[0],
           cy: data.center[1],
           radius: data.radius,
-          startAngle: data.start_angle,
-          endAngle: data.end_angle,
+          start_angle: data.start_angle,
+          end_angle: data.end_angle,
         });
         break;
       }
@@ -1084,20 +1082,56 @@ export class CADExecutor {
         }
       }
     }
+
+    // Transform 복원 (geometry는 로컬 좌표, transform은 추가 변환)
+    const transform = entity.transform as Record<string, unknown> | undefined;
+    if (transform) {
+      const translate = transform.translate as number[] | undefined;
+      const rotate = transform.rotate as number | undefined;
+      const scale = transform.scale as number[] | undefined;
+
+      if (translate && (translate[0] !== 0 || translate[1] !== 0)) {
+        this.exec('translate', { name, dx: translate[0], dy: translate[1] });
+      }
+      if (rotate && rotate !== 0) {
+        this.exec('rotate', { name, angle: rotate, angle_unit: 'radian' });
+      }
+      if (scale && (scale[0] !== 1 || scale[1] !== 1)) {
+        this.exec('scale', { name, sx: scale[0], sy: scale[1] });
+      }
+    }
   }
 
   /**
    * 그룹 복원 (내부용)
-   * 씬 JSON 그룹 구조: { entity_type: 'Group', metadata: { name }, computed: { children } }
+   * 씬 JSON 그룹 구조: { entity_type: 'Group', metadata: { name }, children: [...] }
    */
   private restoreGroup(group: Record<string, unknown>): void {
     const metadata = group.metadata as Record<string, unknown> | undefined;
     const name = (metadata?.name as string) || (group.id as string);
-    const computed = group.computed as Record<string, unknown> | undefined;
-    const children = computed?.children as string[] | undefined;
+    // children은 최상위 필드에 있음 (computed.children 아님)
+    const children = group.children as string[] | undefined;
 
     if (children && children.length > 0) {
       this.exec('create_group', { name, children });
+
+      // 그룹 transform 복원
+      const transform = group.transform as Record<string, unknown> | undefined;
+      if (transform) {
+        const translate = transform.translate as number[] | undefined;
+        const rotate = transform.rotate as number | undefined;
+        const scale = transform.scale as number[] | undefined;
+
+        if (translate && (translate[0] !== 0 || translate[1] !== 0)) {
+          this.exec('translate', { name, dx: translate[0], dy: translate[1] });
+        }
+        if (rotate && rotate !== 0) {
+          this.exec('rotate', { name, angle: rotate, angle_unit: 'radian' });
+        }
+        if (scale && (scale[0] !== 1 || scale[1] !== 1)) {
+          this.exec('scale', { name, sx: scale[0], sy: scale[1] });
+        }
+      }
     }
   }
 

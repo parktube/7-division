@@ -3,11 +3,15 @@ import { WebSocket, WebSocketServer } from 'ws'
 import { CADWebSocketServer } from '../src/ws-server.js'
 import type { Scene } from '../src/shared/index.js'
 
+// Use different port range for tests to avoid conflicts with running MCP server
+const TEST_PORT = 4001
+const TEST_MAX_PORT = 4003
+
 describe('CADWebSocketServer', () => {
   let server: CADWebSocketServer
 
   beforeEach(() => {
-    server = new CADWebSocketServer()
+    server = new CADWebSocketServer({ startPort: TEST_PORT, maxPort: TEST_MAX_PORT })
   })
 
   afterEach(async () => {
@@ -15,9 +19,9 @@ describe('CADWebSocketServer', () => {
   })
 
   describe('start/stop', () => {
-    it('should start on default port 3001', async () => {
+    it('should start on configured port', async () => {
       const port = await server.start()
-      expect(port).toBe(3001)
+      expect(port).toBe(TEST_PORT)
     })
 
     it('should stop gracefully', async () => {
@@ -177,17 +181,17 @@ describe('CADWebSocketServer', () => {
 
   describe('port auto-discovery', () => {
     it('should try next port when default port is in use', async () => {
-      // Occupy port 3001 with a blocking server
-      const blockingServer = new WebSocketServer({ host: '127.0.0.1', port: 3001 })
+      // Occupy TEST_PORT with a blocking server
+      const blockingServer = new WebSocketServer({ host: '127.0.0.1', port: TEST_PORT })
 
       await new Promise<void>((resolve) => {
         blockingServer.on('listening', resolve)
       })
 
       try {
-        // CADWebSocketServer should fallback to 3002
+        // CADWebSocketServer should fallback to TEST_PORT + 1
         const port = await server.start()
-        expect(port).toBe(3002)
+        expect(port).toBe(TEST_PORT + 1)
       } finally {
         // Wait for close to complete
         await new Promise<void>((resolve) => {
@@ -197,17 +201,17 @@ describe('CADWebSocketServer', () => {
     })
 
     it('should throw when all ports are in use', async () => {
-      // Occupy all ports 3001-3003
+      // Occupy all test ports
       const blockingServers: WebSocketServer[] = []
 
-      for (let p = 3001; p <= 3003; p++) {
+      for (let p = TEST_PORT; p <= TEST_MAX_PORT; p++) {
         const ws = new WebSocketServer({ host: '127.0.0.1', port: p })
         await new Promise<void>((resolve) => ws.on('listening', resolve))
         blockingServers.push(ws)
       }
 
       try {
-        await expect(server.start()).rejects.toThrow('All ports 3001-3003 are in use')
+        await expect(server.start()).rejects.toThrow(`All ports ${TEST_PORT}-${TEST_MAX_PORT} are in use`)
       } finally {
         // Wait for all servers to close
         await Promise.all(
@@ -255,9 +259,9 @@ describe('CADWebSocketServer', () => {
         timestamp: Date.now(),
       }))
 
-      // Server should not crash
+      // Server should not crash (use >= 1 to handle external clients like viewer)
       await new Promise((r) => setTimeout(r, 50))
-      expect(server.getClientCount()).toBe(1)
+      expect(server.getClientCount()).toBeGreaterThanOrEqual(1)
 
       client.close()
     })
