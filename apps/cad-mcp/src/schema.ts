@@ -143,15 +143,21 @@ ACTIONS
 - overview: 트리 구조 (groups, hierarchy)
 - groups: 그룹 목록만
 - selection: 현재 선택된 엔티티
+- draw_order: 그리기 순서 조회 (group 파라미터로 그룹 내부 조회). 뒤→앞 순서
 - reset: 씬 초기화 (되돌릴 수 없음)
 
+💡 drawOrder() 전에 draw_order로 현재 상태 확인 권장
 cad_code 후 결과 확인 → export 전 미리보기`,
     parameters: {
       type: 'object',
       properties: {
         action: {
           type: 'string',
-          description: "동작: 'info' | 'overview' | 'groups' | 'selection' | 'reset'",
+          description: "동작: 'info' | 'overview' | 'groups' | 'selection' | 'draw_order' | 'reset'",
+        },
+        group: {
+          type: 'string',
+          description: "draw_order용: 그룹명 (생략 시 root level)",
         },
       },
       required: ['action'],
@@ -725,8 +731,8 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
   },
   drawOrder: {
     signature: "drawOrder(name: string, mode: 'front' | 'back' | number | 'above:target' | 'below:target'): boolean",
-    description: "도형의 그리기 순서를 변경합니다",
-    example: "drawOrder('head', 'front')",
+    description: "도형의 그리기 순서(z-order)를 변경. ⚠️ 'back'은 전체 씬의 맨 뒤로 이동(배경보다 뒤로 갈 수 있음!). 💡 레이어링 패턴: 배경을 먼저 생성 → 오브젝트 나중에 생성 = 자동으로 위에 배치. 'above:target'/'below:target'으로 특정 엔티티 기준 배치. 그룹 이동 시 자식도 함께 이동",
+    example: "drawOrder('player', 'above:grass_0_0')  // grass_0_0 바로 위로",
   },
   // transforms
   translate: {
@@ -783,8 +789,8 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
   },
   getDrawOrder: {
     signature: "getDrawOrder(groupName?: string): string[] | null",
-    description: "그리기 순서를 조회합니다. 그룹 지정 시 해당 그룹의 자식 순서",
-    example: "const order = getDrawOrder();",
+    description: "그리기 순서 조회(뒤→앞, 배열 왼쪽이 뒤). 인자 없으면 root level, 그룹명 지정 시 해당 그룹의 자식 순서. 💡 drawOrder 전에 현재 상태 확인 권장. ⚠️ scene({action:'overview'})로도 구조 확인 가능",
+    example: "getDrawOrder()  // root: ['bg', 'player', 'ui']\ngetDrawOrder('robot')  // 그룹 내: ['body', 'head', 'arm']",
   },
   getTextMetrics: {
     signature: "getTextMetrics(text: string, fontSize: number, fontPath?: string): { width, height } | null",

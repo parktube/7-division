@@ -582,6 +582,21 @@ export async function createMCPServer(): Promise<Server> {
                 return { content: [{ type: 'text', text: `Failed: ${e instanceof Error ? e.message : e}` }], isError: true }
               }
             }
+            case 'draw_order': {
+              const groupName = (args as Record<string, unknown>)?.group as string || ''
+              const result = exec.exec('get_draw_order', { group_name: groupName })
+              if (result.success && result.data) {
+                const order = JSON.parse(result.data)
+                const enriched = enrichResponse('get_draw_order', {
+                  level: groupName || 'root',
+                  order,
+                  count: order.length,
+                  hint: '배열 왼쪽이 뒤(먼저 그림), 오른쪽이 앞(나중 그림)',
+                }, true)
+                return { content: [{ type: 'text', text: JSON.stringify(enriched, null, 2) }] }
+              }
+              return { content: [{ type: 'text', text: result.error || 'Failed to get draw order' }], isError: true }
+            }
             case 'reset': {
               const result = exec.exec('reset', {})
               if (result.success) {
