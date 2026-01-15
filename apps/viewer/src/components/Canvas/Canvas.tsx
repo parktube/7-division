@@ -284,10 +284,11 @@ export default function Canvas() {
     canvas.style.width = `${rect.width}px`
     canvas.style.height = `${rect.height}px`
 
-    ctx.scale(dpr, dpr)
+    // Clear before scaling (use actual pixel dimensions)
     ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.scale(dpr, dpr)
 
-    // Fill background using cached CSS variable
+    // Fill background using cached CSS variable (use logical dimensions after scale)
     ctx.fillStyle = cssVars.bgCanvas
     ctx.fillRect(0, 0, rect.width, rect.height)
 
