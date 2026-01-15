@@ -5,11 +5,42 @@
  * - main 파일 읽기
  * - 모듈 파일 읽기
  * - edit/write 전 반드시 확인 유도
+ *
+ * Story 10.3: Read-first 추적
+ * - 세션 내 read 호출 기록
+ * - edit 시 경고 메시지 생성용
  */
 
 import { existsSync, readFileSync } from 'fs';
 import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
 import { resolve } from 'path';
+
+/**
+ * Read-first 추적 시스템
+ * 세션 내에서 read된 파일 목록 관리
+ */
+const readHistory = new Set<string>();
+
+/**
+ * Track that a file has been read
+ */
+export function trackRead(file: string): void {
+  readHistory.add(file);
+}
+
+/**
+ * Check if a file has been read in this session
+ */
+export function hasBeenRead(file: string): boolean {
+  return readHistory.has(file);
+}
+
+/**
+ * Clear read history (for testing)
+ */
+export function clearReadHistory(): void {
+  readHistory.clear();
+}
 
 export interface ReadInput {
   file: string;
@@ -62,6 +93,9 @@ export function handleRead(input: ReadInput): ReadOutput {
 
     // Read file content (UTF-8)
     const content = readFileSync(filePath, 'utf-8');
+
+    // Track read for Read-first pattern
+    trackRead(file);
 
     return {
       success: true,

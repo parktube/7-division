@@ -29,6 +29,7 @@ import {
 } from './schema.js'
 import { handleGlob } from './tools/glob.js'
 import { handleRead } from './tools/read.js'
+import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
@@ -970,11 +971,80 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        case 'edit': {
+          const file = (args as Record<string, unknown>)?.file as string
+          const oldCode = (args as Record<string, unknown>)?.old_code as string
+          const newCode = (args as Record<string, unknown>)?.new_code as string
+
+          // Store original content for rollback
+          let originalContent: string | undefined
+          try {
+            if (file === 'main') {
+              originalContent = readMainCode()
+            } else {
+              const modPath = getModulePath(file)
+              if (existsSync(modPath)) {
+                originalContent = readFileSync(modPath, 'utf-8')
+              }
+            }
+          } catch {
+            // Will be caught by handleEdit
+          }
+
+          // Perform edit
+          const editResult = handleEdit({ file, old_code: oldCode, new_code: newCode })
+
+          if (!editResult.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(editResult, null, 2) }],
+              isError: true,
+            }
+          }
+
+          // Execute main code after edit
+          const mainCode = readMainCode()
+          const execResult = await executeRunCadCode(mainCode)
+
+          if (execResult.success) {
+            const response = {
+              success: true,
+              data: {
+                file,
+                replaced: true,
+                entities: getSceneEntities(exec),
+              },
+              warnings: editResult.warnings,
+            }
+            return {
+              content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+            }
+          } else {
+            // Rollback on execution failure
+            if (originalContent !== undefined) {
+              rollbackEdit(file, originalContent)
+            }
+            const response = {
+              success: false,
+              data: {
+                file,
+                replaced: false,
+              },
+              warnings: editResult.warnings,
+              error: execResult.error,
+              hint: '코드 실행 실패로 변경이 롤백되었습니다.',
+            }
+            return {
+              content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+              isError: true,
+            }
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit`,
             }],
             isError: true,
           }

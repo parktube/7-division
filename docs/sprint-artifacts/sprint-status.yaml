@@ -71,7 +71,7 @@ development_status:
   epic-10: in-progress
   10-1-glob-tool: done
   10-2-read-tool: done
-  10-3-edit-tool: ready-for-dev
+  10-3-edit-tool: done
   10-4-write-tool: ready-for-dev
   10-5-lsp-tool: ready-for-dev
   10-6-bash-tool: ready-for-dev

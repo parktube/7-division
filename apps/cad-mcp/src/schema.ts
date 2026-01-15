@@ -717,6 +717,30 @@ export const NEW_TOOLS: Record<string, ToolSchema> = {
       required: ['file'],
     },
   },
+
+  // === edit: 파일 부분 수정 ===
+  edit: {
+    name: 'edit',
+    description: '파일 부분 수정 → 자동 실행. ⚠️ read로 먼저 확인 필수.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: "파일명: 'main' 또는 모듈명",
+        },
+        old_code: {
+          type: 'string',
+          description: '교체할 기존 코드',
+        },
+        new_code: {
+          type: 'string',
+          description: '새 코드 (빈 문자열 = 삭제)',
+        },
+      },
+      required: ['file', 'old_code', 'new_code'],
+    },
+  },
 };
 
 /**
