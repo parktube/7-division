@@ -167,14 +167,15 @@ export class CADWebSocketServer {
 
   /**
    * Start heartbeat interval for client timeout detection
-   * Sends ping to all clients every 15 seconds
-   * Terminates connections that don't respond within 30 seconds
+   * Sends ping to all clients every 15 seconds (HEARTBEAT_INTERVAL_MS)
+   * Clients that don't respond with pong before the next ping cycle are terminated
+   * (effective timeout: 15-30 seconds depending on when last pong was received)
    */
   private startHeartbeat(): void {
     this.heartbeatInterval = setInterval(() => {
       for (const ws of this.clients) {
         if (ws.isAlive === false) {
-          logger.warn('Client timed out (30s no response), terminating')
+          logger.warn('Client timed out (no pong in 15s cycle), terminating')
           ws.terminate()
           this.clients.delete(ws)
           continue

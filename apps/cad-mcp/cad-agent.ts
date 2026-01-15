@@ -14,8 +14,10 @@ import { CADExecutor } from './src/executor.js';
 import { AnthropicProvider } from './src/providers/anthropic.js';
 import { runAgentLoop } from './src/runtime.js';
 import { SCENE_FILE } from './src/run-cad-code/constants.js';
-import type { DomainName } from './src/schema.js';
+import { DOMAINS, type DomainName } from './src/schema.js';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
+
+const VALID_DOMAINS = Object.keys(DOMAINS) as DomainName[];
 
 function parseArgs(args: string[]): { sceneName: string; prompt: string; domains: DomainName[] } {
   let sceneName = 'cad-scene';
@@ -27,7 +29,13 @@ function parseArgs(args: string[]): { sceneName: string; prompt: string; domains
       sceneName = args[i + 1];
       i++;
     } else if (args[i] === '--domains' && args[i + 1]) {
-      domains = args[i + 1].split(',') as DomainName[];
+      const inputDomains = args[i + 1].split(',');
+      // Validate domain names at runtime
+      domains = inputDomains.filter((d): d is DomainName => {
+        if (VALID_DOMAINS.includes(d as DomainName)) return true;
+        console.warn(`Warning: Unknown domain '${d}' ignored. Valid: ${VALID_DOMAINS.join(', ')}`);
+        return false;
+      });
       i++;
     } else if (!args[i].startsWith('--')) {
       promptParts.push(args[i]);
@@ -60,9 +68,9 @@ Options:
   --help            도움말
 
 Examples:
-  npx tsx cad-agent.ts "빨간 원을 그려줘"
-  npx tsx cad-agent.ts --scene house "8x4미터 집을 그려줘"
-  npx tsx cad-agent.ts "list_entities로 현재 엔티티 목록 보여줘"
+  npx tsx cad-agent.ts '빨간 원을 그려줘'
+  npx tsx cad-agent.ts --scene house '8x4미터 집을 그려줘'
+  npx tsx cad-agent.ts 'list_entities로 현재 엔티티 목록 보여줘'
 
 Environment:
   ANTHROPIC_API_KEY  Anthropic API 키 (필수)
@@ -86,17 +94,16 @@ Environment:
   const provider = new AnthropicProvider();
   const executor = CADExecutor.create(sceneName);
 
-  // 기존 scene 로드 (있으면)
+  // Check for existing scene file (info only - starts fresh each time)
   if (existsSync(SCENE_FILE)) {
     try {
       const existingScene = readFileSync(SCENE_FILE, 'utf-8');
       const parsed = JSON.parse(existingScene);
       if (parsed.entities && Array.isArray(parsed.entities)) {
-        console.log(`📂 기존 scene 로드: ${parsed.entities.length}개 엔티티`);
-        // TODO: 기존 엔티티 복원 (현재는 새로 시작)
+        console.log(`📂 기존 scene 발견: ${parsed.entities.length}개 엔티티 (새로 시작)`);
       }
     } catch {
-      // 무시 - 새로 시작
+      // Ignore parse errors - start fresh
     }
   }
 

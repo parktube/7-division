@@ -34,6 +34,7 @@ interface UIContextValue {
   // Visibility
   hiddenIds: Set<string>
   hiddenArray: string[]
+  setHidden: (id: string, hidden: boolean) => void
   toggleHidden: (id: string) => void
   showAll: () => void
   isHidden: (id: string) => boolean
@@ -41,6 +42,7 @@ interface UIContextValue {
   // Lock
   lockedIds: Set<string>
   lockedArray: string[]
+  setLocked: (id: string, locked: boolean) => void
   toggleLocked: (id: string) => void
   unlockAll: () => void
   isLocked: (id: string) => boolean
@@ -149,6 +151,18 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const selectedCount = useMemo(() => selectedIds.size, [selectedIds])
 
   // Visibility functions
+  const setHidden = useCallback((id: string, hidden: boolean) => {
+    setHiddenIds(prev => {
+      const next = new Set(prev)
+      if (hidden) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }, [])
+
   const toggleHidden = useCallback((id: string) => {
     setHiddenIds(prev => {
       const next = new Set(prev)
@@ -174,6 +188,18 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [hiddenIds])
 
   // Lock functions
+  const setLocked = useCallback((id: string, locked: boolean) => {
+    setLockedIds(prev => {
+      const next = new Set(prev)
+      if (locked) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }, [])
+
   const toggleLocked = useCallback((id: string) => {
     setLockedIds(prev => {
       const next = new Set(prev)
@@ -221,11 +247,13 @@ export function UIProvider({ children }: { children: ReactNode }) {
     isSelected,
     hiddenIds,
     hiddenArray,
+    setHidden,
     toggleHidden,
     showAll,
     isHidden,
     lockedIds,
     lockedArray,
+    setLocked,
     toggleLocked,
     unlockAll,
     isLocked,
@@ -251,11 +279,13 @@ export function UIProvider({ children }: { children: ReactNode }) {
     isSelected,
     hiddenIds,
     hiddenArray,
+    setHidden,
     toggleHidden,
     showAll,
     isHidden,
     lockedIds,
     lockedArray,
+    setLocked,
     toggleLocked,
     unlockAll,
     isLocked,

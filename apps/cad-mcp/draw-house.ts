@@ -35,13 +35,13 @@ executor.exec('draw_line', { name: 'wall_bathroom', points: [OX + 3 * S, OY, OX 
 console.log('🚪 3. 문 표시');
 // 현관문 (하단 중앙)
 executor.exec('draw_line', { name: 'door_entrance', points: [OX + 3.5 * S, OY, OX + 4.5 * S, OY] });
-executor.exec('draw_arc', { name: 'door_entrance_arc', cx: OX + 4.5 * S, cy: OY, radius: 25, start_angle: 90, end_angle: 180, angle_unit: 'degree' });
+executor.exec('draw_arc', { name: 'door_entrance_arc', cx: OX + 4.5 * S, cy: OY, radius: 25, start_angle: Math.PI / 2, end_angle: Math.PI });
 
 // 방 문
-executor.exec('draw_arc', { name: 'door_bedroom_arc', cx: OX + 5 * S, cy: OY + 1.5 * S, radius: 20, start_angle: 0, end_angle: 90, angle_unit: 'degree' });
+executor.exec('draw_arc', { name: 'door_bedroom_arc', cx: OX + 5 * S, cy: OY + 1.5 * S, radius: 20, start_angle: 0, end_angle: Math.PI / 2 });
 
 // 화장실 문
-executor.exec('draw_arc', { name: 'door_bathroom_arc', cx: OX + 3 * S, cy: OY + 0.5 * S, radius: 15, start_angle: 0, end_angle: 90, angle_unit: 'degree' });
+executor.exec('draw_arc', { name: 'door_bathroom_arc', cx: OX + 3 * S, cy: OY + 0.5 * S, radius: 15, start_angle: 0, end_angle: Math.PI / 2 });
 
 // ===== 4. 거실 가구 =====
 console.log('🛋️ 4. 거실 가구');

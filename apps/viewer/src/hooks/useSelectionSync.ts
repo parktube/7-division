@@ -9,7 +9,7 @@ import { debounce } from '@/utils/debounce'
  * Converts between entity IDs (internal) and names (file)
  */
 export function useSelectionSync() {
-  const { selectedIds, hiddenIds, lockedIds, selectMultiple, toggleHidden, toggleLocked } = useUIContext()
+  const { selectedIds, hiddenIds, lockedIds, selectMultiple, setHidden, setLocked } = useUIContext()
   const { scene } = useScene()
   const isLoadedRef = useRef(false)
 
@@ -66,22 +66,22 @@ export function useSelectionSync() {
           }
         }
 
-        // Load hidden entities
+        // Load hidden entities (use explicit setter to avoid toggle issues)
         if (data.hidden_entities && data.hidden_entities.length > 0) {
           data.hidden_entities.forEach(name => {
             const id = nameToId.get(name)
             if (id) {
-              toggleHidden(id)
+              setHidden(id, true)
             }
           })
         }
 
-        // Load locked entities
+        // Load locked entities (use explicit setter to avoid toggle issues)
         if (data.locked_entities && data.locked_entities.length > 0) {
           data.locked_entities.forEach(name => {
             const id = nameToId.get(name)
             if (id) {
-              toggleLocked(id)
+              setLocked(id, true)
             }
           })
         }
@@ -93,7 +93,7 @@ export function useSelectionSync() {
       .finally(() => {
         isLoadedRef.current = true
       })
-  }, [scene, nameToId, selectMultiple, toggleHidden, toggleLocked])
+  }, [scene, nameToId, selectMultiple, setHidden, setLocked])
 
   // Save selection, hidden, and locked entities when they change
   useEffect(() => {
