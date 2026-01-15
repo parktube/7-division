@@ -13,12 +13,8 @@ import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
 import { AnthropicProvider } from './src/providers/anthropic.js';
 import { runAgentLoop } from './src/runtime.js';
+import { SCENE_FILE } from './src/run-cad-code/constants.js';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCENE_FILE = resolve(__dirname, '../viewer/scene.json');
 
 function parseArgs(args: string[]): { sceneName: string; prompt: string; domains: string[] } {
   let sceneName = 'cad-scene';

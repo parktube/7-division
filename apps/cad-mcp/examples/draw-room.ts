@@ -4,12 +4,8 @@
  * style은 객체로 직접 전달 (JSON.stringify 불필요!)
  */
 import { CADExecutor } from '../src/executor.js';
+import { SCENE_FILE } from '../src/run-cad-code/constants.js';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const executor = CADExecutor.create('my-room');
 
@@ -100,10 +96,9 @@ console.log('Entities: outer_wall, partition_wall, door_opening, door_swing, win
 
 // JSON 저장
 const json = executor.exportScene();
-const outputPath = path.resolve(__dirname, '../../viewer/scene.json');
 try {
-  fs.writeFileSync(outputPath, json);
-  console.log(`Saved to ${outputPath}`);
+  fs.writeFileSync(SCENE_FILE, json);
+  console.log(`Saved to ${SCENE_FILE}`);
 } catch (err) {
   console.error('Failed to save scene:', err);
 }

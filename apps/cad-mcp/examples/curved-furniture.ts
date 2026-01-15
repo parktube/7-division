@@ -2,12 +2,8 @@
  * 곡선 가구 실험 - arc + line 조합
  */
 import { CADExecutor } from '../src/executor.js';
+import { SCENE_FILE } from '../src/run-cad-code/constants.js';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const executor = CADExecutor.create('curved-furniture');
 
@@ -92,10 +88,9 @@ executor.exec('draw_arc', {
 console.log(`Created ${executor.getEntityCount()} entities`);
 
 const json = executor.exportScene();
-const outputPath = path.resolve(__dirname, '../../viewer/scene.json');
 try {
-  fs.writeFileSync(outputPath, json);
-  console.log(`Saved to ${outputPath}`);
+  fs.writeFileSync(SCENE_FILE, json);
+  console.log(`Saved to ${SCENE_FILE}`);
 } catch (err) {
   console.error('Failed to save scene:', err);
 }

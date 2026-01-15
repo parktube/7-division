@@ -15,3 +15,6 @@ export const SCENE_CODE_FILE = resolve(STATE_DIR, 'scene.code.js');
 
 // 모듈 디렉토리
 export const MODULES_DIR = resolve(STATE_DIR, 'modules');
+
+// 씬 파일 경로
+export const SCENE_FILE = resolve(STATE_DIR, 'scene.json');

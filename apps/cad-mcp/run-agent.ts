@@ -8,6 +8,7 @@ import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
 import { AnthropicProvider } from './src/providers/anthropic.js';
 import { runAgentLoop } from './src/runtime.js';
+import { SCENE_FILE } from './src/run-cad-code/constants.js';
 import { writeFileSync } from 'fs';
 
 async function main() {
@@ -56,9 +57,8 @@ async function main() {
 
     const jsonResult = executor.exec('export_json', {});
     if (jsonResult.success && jsonResult.data) {
-      writeFileSync('../viewer/scene.json', jsonResult.data);
-      console.log('\n💾 scene.json 저장 완료!');
-      console.log('👉 http://localhost:8000/viewer/ 에서 확인하세요');
+      writeFileSync(SCENE_FILE, jsonResult.data);
+      console.log(`\n💾 ${SCENE_FILE} 저장 완료!`);
     }
   } catch (error) {
     console.error('❌ Error:', error);

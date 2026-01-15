@@ -1,6 +1,7 @@
 // WASM 초기화 (Node.js target은 모듈 로드 시 자동 초기화)
 import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
+import { SCENE_FILE } from './src/run-cad-code/constants.js';
 import { writeFileSync } from 'fs';
 
 // CADExecutor.create() 사용 (constructor는 private)
@@ -28,8 +29,8 @@ console.log(executor.exec('rotate', { name: 'left_arm', angle: 30, angle_unit: '
 
 // 4. scene.json 저장
 const json = executor.exportScene();
-writeFileSync('../viewer/scene.json', json);
-console.log('\n✅ scene.json 저장 완료!');
+writeFileSync(SCENE_FILE, json);
+console.log(`\n✅ ${SCENE_FILE} 저장 완료!`);
 console.log(json);
 
 executor.free();

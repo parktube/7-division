@@ -1,6 +1,8 @@
 import '../../../cad-engine/pkg/cad_engine.js';
 import { CADExecutor } from './src/executor.js';
+import { SCENE_FILE, STATE_DIR } from './src/run-cad-code/constants.js';
 import { writeFileSync } from 'fs';
+import { resolve } from 'path';
 
 const executor = CADExecutor.create('house-floorplan');
 
@@ -94,11 +96,11 @@ console.log(info.data);
 // ===== Export =====
 console.log('\n💾 저장 중...');
 const jsonResult = executor.exec('export_json', {});
-writeFileSync('../viewer/scene.json', jsonResult.data!);
-console.log('✅ scene.json 저장 완료!');
+writeFileSync(SCENE_FILE, jsonResult.data!);
+console.log(`✅ ${SCENE_FILE} 저장 완료!`);
 
 const svgResult = executor.exec('export_svg', {});
-writeFileSync('../viewer/scene.svg', svgResult.data!);
+writeFileSync(resolve(STATE_DIR, 'scene.svg'), svgResult.data!);
 console.log('✅ scene.svg 저장 완료!');
 
 executor.free();

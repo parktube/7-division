@@ -4,12 +4,8 @@
  * 새로운 style 객체 인터페이스 사용
  */
 import { CADExecutor } from '../src/executor.js';
+import { SCENE_FILE } from '../src/run-cad-code/constants.js';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const executor = CADExecutor.create('circular-studio');
 
@@ -197,10 +193,9 @@ console.log(`Circular studio created with ${executor.getEntityCount()} entities`
 
 // JSON 저장
 const json = executor.exportScene();
-const outputPath = path.resolve(__dirname, '../../viewer/scene.json');
 try {
-  fs.writeFileSync(outputPath, json);
-  console.log(`Saved to ${outputPath}`);
+  fs.writeFileSync(SCENE_FILE, json);
+  console.log(`Saved to ${SCENE_FILE}`);
 } catch (err) {
   console.error('Failed to save scene:', err);
 }
