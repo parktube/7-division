@@ -119,17 +119,19 @@ export class ToolRegistry {
       };
     }
 
-    // 전체 도구 반환 (MCP 도구 + executor 도구)
+    // 전체 도구 반환 (MCP 도구 + executor 도구, 중복 제거)
     const mcpTools = Object.values(CAD_TOOLS);
     const executorTools = getAllExecutorTools();
-    const allTools = [...mcpTools, ...executorTools];
+
+    // Map으로 중복 제거 (MCP 도구 우선)
+    const toolMap = new Map<string, ToolSummary>();
+    for (const tool of [...executorTools, ...mcpTools]) {
+      toolMap.set(tool.name, { name: tool.name, description: tool.description });
+    }
 
     return {
       domain: null,
-      tools: allTools.map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-      })),
+      tools: Array.from(toolMap.values()),
     };
   }
 
