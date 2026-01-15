@@ -23,9 +23,11 @@ import {
   DOMAINS,
   DOMAIN_METADATA,
   FUNCTION_SIGNATURES,
+  NEW_TOOLS,
   type ToolSchema,
   type DomainName,
 } from './schema.js'
+import { handleGlob } from './tools/glob.js'
 import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
@@ -334,10 +336,15 @@ function toMCPToolSchema(tool: ToolSchema) {
 }
 
 /**
- * Get all tools as MCP format (도메인 도구 5개만 노출)
+ * Get all tools as MCP format
+ * - 기존 도메인 도구 5개 (cad_code, discovery, scene, export, module)
+ * - Epic 10 신규 도구 (glob, read, edit, write, lsp, bash)
  */
 function getAllMCPTools() {
-  return Object.values(DOMAIN_TOOLS).map(toMCPToolSchema)
+  return [
+    ...Object.values(DOMAIN_TOOLS).map(toMCPToolSchema),
+    ...Object.values(NEW_TOOLS).map(toMCPToolSchema),
+  ]
 }
 
 /**
@@ -929,11 +936,30 @@ export async function createMCPServer(): Promise<Server> {
         }
 
 
+        // ============================================================
+        // Epic 10 신규 도구
+        // ============================================================
+
+        // === glob: 파일 목록 조회 ===
+        case 'glob': {
+          const pattern = (args as Record<string, unknown>)?.pattern as string | undefined
+          const result = handleGlob({ pattern })
+          if (result.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            }
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: true,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob`,
             }],
             isError: true,
           }

@@ -69,7 +69,7 @@ development_status:
 
   # Epic 10: AX Improvement - MCP Tool Redesign
   epic-10: in-progress
-  10-1-glob-tool: ready-for-dev
+  10-1-glob-tool: done
   10-2-read-tool: ready-for-dev
   10-3-edit-tool: ready-for-dev
   10-4-write-tool: ready-for-dev

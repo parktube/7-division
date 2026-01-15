@@ -678,6 +678,32 @@ scene (5 entities)
 };
 
 /**
+ * ============================================================
+ * Epic 10: 새 도구 스키마 (Claude Code 패턴 일치)
+ * ============================================================
+ *
+ * 6개 신규 도구: glob, read, edit, write, lsp, bash
+ * 기존 5개 도메인 도구(cad_code, discovery, scene, export, module)를 대체
+ */
+export const NEW_TOOLS: Record<string, ToolSchema> = {
+  // === glob: 파일 목록 조회 ===
+  glob: {
+    name: 'glob',
+    description: 'CAD 파일 목록 조회. main과 모듈 파일들.',
+    parameters: {
+      type: 'object',
+      properties: {
+        pattern: {
+          type: 'string',
+          description: "glob 패턴 (예: '*_lib', 'house*'). 생략 시 전체 목록",
+        },
+      },
+      required: [],
+    },
+  },
+};
+
+/**
  * sandbox 함수 시그니처 (describe 도구용)
  * run_cad_code에서 사용 가능한 JavaScript 함수들의 설명
  */
