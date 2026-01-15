@@ -30,6 +30,7 @@ import {
 import { handleGlob } from './tools/glob.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
+import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
 import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
@@ -1040,11 +1041,65 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        case 'write': {
+          const file = (args as Record<string, unknown>)?.file as string
+          const code = (args as Record<string, unknown>)?.code as string
+
+          // Store original content for rollback (null if file doesn't exist)
+          const originalContent = getOriginalContent(file)
+
+          // Perform write
+          const writeResult = handleWrite({ file, code })
+
+          if (!writeResult.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(writeResult, null, 2) }],
+              isError: true,
+            }
+          }
+
+          // Execute main code after write
+          const mainCode = readMainCode()
+          const execResult = await executeRunCadCode(mainCode)
+
+          if (execResult.success) {
+            const response = {
+              success: true,
+              data: {
+                file,
+                created: writeResult.data.created,
+                entities: getSceneEntities(exec),
+              },
+              warnings: writeResult.warnings,
+            }
+            return {
+              content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+            }
+          } else {
+            // Rollback on execution failure
+            rollbackWrite(file, originalContent)
+            const response = {
+              success: false,
+              data: {
+                file,
+                created: false,
+              },
+              warnings: writeResult.warnings,
+              error: execResult.error,
+              hint: '코드 실행 실패로 변경이 롤백되었습니다.',
+            }
+            return {
+              content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
+              isError: true,
+            }
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit, write`,
             }],
             isError: true,
           }

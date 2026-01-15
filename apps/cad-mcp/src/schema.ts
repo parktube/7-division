@@ -741,6 +741,26 @@ export const NEW_TOOLS: Record<string, ToolSchema> = {
       required: ['file', 'old_code', 'new_code'],
     },
   },
+
+  // === write: 파일 전체 작성 ===
+  write: {
+    name: 'write',
+    description: '파일 전체 작성 → 자동 실행. ⚠️ 기존 파일은 read로 먼저 확인.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: "파일명: 'main' 또는 모듈명",
+        },
+        code: {
+          type: 'string',
+          description: '전체 코드',
+        },
+      },
+      required: ['file', 'code'],
+    },
+  },
 };
 
 /**

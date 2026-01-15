@@ -72,7 +72,7 @@ development_status:
   10-1-glob-tool: done
   10-2-read-tool: done
   10-3-edit-tool: done
-  10-4-write-tool: ready-for-dev
+  10-4-write-tool: done
   10-5-lsp-tool: ready-for-dev
   10-6-bash-tool: ready-for-dev
   10-7-legacy-tool-removal: ready-for-dev
