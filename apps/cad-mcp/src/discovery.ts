@@ -131,12 +131,12 @@ const EXECUTOR_TOOLS: Record<string, ToolSchema> = {
   // style
   set_fill: {
     name: 'set_fill',
-    description: '채움 색상 설정',
+    description: '채움 색상 설정 (RGBA 각 요소 0~1 범위)',
     parameters: {
       type: 'object',
       properties: {
         name: { type: 'string', description: '엔티티 이름' },
-        fill: { type: 'object', description: '채움 스타일 { color: [r,g,b,a] }' },
+        fill: { type: 'object', description: '채움 스타일 { color: [r,g,b,a] } - 각 요소 0~1 범위 (예: [1,0,0,1] = 빨강)' },
       },
       required: ['name', 'fill'],
     },

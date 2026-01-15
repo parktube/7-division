@@ -43,44 +43,57 @@ export function useSelectionSync() {
     }, 100)
   ).current
 
+  // Cleanup: cancel pending debounced saves on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel()
+    }
+  }, [debouncedSave])
+
   // Load initial selection and hidden entities
   useEffect(() => {
     if (!scene || isLoadedRef.current) return
 
-    loadSelection().then((data) => {
-      // Load selected entities
-      if (data.selected_entities.length > 0) {
-        const ids = data.selected_entities
-          .map(name => nameToId.get(name))
-          .filter((id): id is string => id !== undefined)
+    loadSelection()
+      .then((data) => {
+        // Load selected entities
+        if (data.selected_entities.length > 0) {
+          const ids = data.selected_entities
+            .map(name => nameToId.get(name))
+            .filter((id): id is string => id !== undefined)
 
-        if (ids.length > 0) {
-          select(ids[0])
+          if (ids.length > 0) {
+            select(ids[0])
+          }
         }
-      }
 
-      // Load hidden entities
-      if (data.hidden_entities && data.hidden_entities.length > 0) {
-        data.hidden_entities.forEach(name => {
-          const id = nameToId.get(name)
-          if (id) {
-            toggleHidden(id)
-          }
-        })
-      }
+        // Load hidden entities
+        if (data.hidden_entities && data.hidden_entities.length > 0) {
+          data.hidden_entities.forEach(name => {
+            const id = nameToId.get(name)
+            if (id) {
+              toggleHidden(id)
+            }
+          })
+        }
 
-      // Load locked entities
-      if (data.locked_entities && data.locked_entities.length > 0) {
-        data.locked_entities.forEach(name => {
-          const id = nameToId.get(name)
-          if (id) {
-            toggleLocked(id)
-          }
-        })
-      }
-
-      isLoadedRef.current = true
-    })
+        // Load locked entities
+        if (data.locked_entities && data.locked_entities.length > 0) {
+          data.locked_entities.forEach(name => {
+            const id = nameToId.get(name)
+            if (id) {
+              toggleLocked(id)
+            }
+          })
+        }
+      })
+      .catch((err) => {
+        // Log but don't block - selection is not critical
+        console.warn('[useSelectionSync] Failed to load selection:', err)
+      })
+      .finally(() => {
+        isLoadedRef.current = true
+      })
   }, [scene, nameToId, select, toggleHidden, toggleLocked])
 
   // Save selection, hidden, and locked entities when they change

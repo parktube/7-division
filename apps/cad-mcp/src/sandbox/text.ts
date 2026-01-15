@@ -249,18 +249,21 @@ export function textToPath(
 
 /**
  * Get text metrics
+ * @returns Metrics object or null if inputs are invalid (for consistency with other text helpers)
  */
 export function getTextMetrics(
   text: string,
   fontSize: number,
   font: opentype.Font
-): { width: number; height: number; ascender: number; descender: number } {
-  // Validate fontSize
+): { width: number; height: number; ascender: number; descender: number } | null {
+  // Validate fontSize (return null for consistency with other text helpers)
   if (!Number.isFinite(fontSize) || fontSize <= 0) {
-    throw new RangeError(`[text] getTextMetrics: invalid fontSize (${fontSize}). Must be a positive number.`);
+    logger.warn(`[text] getTextMetrics: invalid fontSize (${fontSize}). Must be a positive number.`);
+    return null;
   }
-  if (!font.unitsPerEm || font.unitsPerEm <= 0) {
-    throw new RangeError(`[text] getTextMetrics: invalid font.unitsPerEm (${font.unitsPerEm})`);
+  if (!font?.unitsPerEm || !Number.isFinite(font.unitsPerEm) || font.unitsPerEm <= 0) {
+    logger.warn(`[text] getTextMetrics: invalid font.unitsPerEm (${font?.unitsPerEm})`);
+    return null;
   }
 
   const scale = fontSize / font.unitsPerEm;
@@ -686,6 +689,9 @@ export function convertText(
   }
 
   const metrics = getTextMetrics(text, fontSize, font);
+  if (!metrics) {
+    return null;
+  }
 
   // Calculate adjusted X based on alignment
   let adjustedX = x;
