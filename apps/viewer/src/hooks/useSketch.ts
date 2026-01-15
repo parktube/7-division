@@ -69,22 +69,28 @@ export function useSketch() {
   const currentStrokeRef = useRef<Stroke | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const isInitialized = useRef(false)
+  const isLoadingRef = useRef(false)  // Prevent save during initial load
 
   // Load strokes on mount
   useEffect(() => {
     if (isInitialized.current) return
     isInitialized.current = true
+    isLoadingRef.current = true  // Mark as loading
 
     loadStrokes().then(loaded => {
       if (loaded.length > 0) {
         setStrokes(loaded)
       }
+    }).finally(() => {
+      // Allow saves after initial load completes
+      isLoadingRef.current = false
     })
   }, [])
 
   // Save strokes when they change (debounced)
   useEffect(() => {
-    if (!isInitialized.current) return
+    // Skip save during initialization or initial load
+    if (!isInitialized.current || isLoadingRef.current) return
     saveStrokes(strokes)
   }, [strokes])
 

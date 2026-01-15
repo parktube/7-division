@@ -617,6 +617,11 @@ export function textToGlyphPaths(
     logger.warn(`[text] textToGlyphPaths: invalid input (x=${x}, y=${y}, fontSize=${fontSize})`);
     return { paths: [], isHole: [], points: [] };
   }
+  // Validate font.unitsPerEm to prevent division by zero
+  if (!font?.unitsPerEm || !Number.isFinite(font.unitsPerEm) || font.unitsPerEm <= 0) {
+    logger.warn(`[text] textToGlyphPaths: invalid font.unitsPerEm (${font?.unitsPerEm})`);
+    return { paths: [], isHole: [], points: [] };
+  }
   const scale = fontSize / font.unitsPerEm;
   const paths: string[] = [];
   const isHole: boolean[] = [];

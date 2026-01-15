@@ -62,16 +62,16 @@ export default function TopBar() {
           className="flex items-center gap-0.5 p-1 rounded-md"
           style={{ backgroundColor: 'var(--bg-input)' }}
         >
-          <button type="button" className={toolbarBtnClass(gridEnabled)} onClick={() => setGridEnabled(!gridEnabled)}>
+          <button type="button" className={toolbarBtnClass(gridEnabled)} onClick={() => setGridEnabled(!gridEnabled)} aria-label="Toggle grid">
             <Grid3x3 size={14} />
             Grid
           </button>
-          <button type="button" className={toolbarBtnClass(rulersEnabled)} onClick={() => setRulersEnabled(!rulersEnabled)}>
+          <button type="button" className={toolbarBtnClass(rulersEnabled)} onClick={() => setRulersEnabled(!rulersEnabled)} aria-label="Toggle rulers">
             <Ruler size={14} />
             Rulers
           </button>
         </div>
-        <button type="button" className={sketchBtnClass} onClick={() => setSketchMode(!sketchMode)}>
+        <button type="button" className={sketchBtnClass} onClick={() => setSketchMode(!sketchMode)} aria-label="Toggle sketch mode">
           <Pencil size={14} />
           Sketch
         </button>

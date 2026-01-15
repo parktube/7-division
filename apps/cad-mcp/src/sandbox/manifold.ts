@@ -295,30 +295,29 @@ export function booleanOperationSync(
   // CrossSection 생성
   const csA = polygonToCrossSection(manifold, polygonA);
   const csB = polygonToCrossSection(manifold, polygonB);
+  let result: CrossSection | null = null;
 
-  let result: CrossSection;
+  try {
+    switch (operation) {
+      case 'union':
+        result = csA.add(csB);
+        break;
+      case 'difference':
+        result = csA.subtract(csB);
+        break;
+      case 'intersection':
+        result = csA.intersect(csB);
+        break;
+    }
 
-  switch (operation) {
-    case 'union':
-      result = csA.add(csB);
-      break;
-    case 'difference':
-      result = csA.subtract(csB);
-      break;
-    case 'intersection':
-      result = csA.intersect(csB);
-      break;
+    // 결과 폴리곤 추출
+    return crossSectionToPolygon(result);
+  } finally {
+    // 메모리 정리 (중요!) - 예외 발생 시에도 정리
+    csA.delete();
+    csB.delete();
+    result?.delete();
   }
-
-  // 결과 폴리곤 추출
-  const polygon = crossSectionToPolygon(result);
-
-  // 메모리 정리 (중요!)
-  csA.delete();
-  csB.delete();
-  result.delete();
-
-  return polygon;
 }
 
 /**
@@ -364,15 +363,16 @@ export function booleanUnionBatchSync(
   if (polygons.length === 1) return polygons[0];
 
   const crossSections = polygons.map(p => polygonToCrossSection(manifold, p));
+  let result: CrossSection | null = null;
 
-  const result = manifold.CrossSection.union(crossSections);
-  const polygon = crossSectionToPolygon(result);
-
-  // 메모리 정리
-  crossSections.forEach(cs => cs.delete());
-  result.delete();
-
-  return polygon;
+  try {
+    result = manifold.CrossSection.union(crossSections);
+    return crossSectionToPolygon(result);
+  } finally {
+    // 메모리 정리 - 예외 발생 시에도 정리
+    crossSections.forEach(cs => cs.delete());
+    result?.delete();
+  }
 }
 
 /**

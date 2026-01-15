@@ -128,7 +128,7 @@ export class AnthropicProvider implements LLMProvider {
     } catch (error) {
       // Rate limit 에러 처리
       if (error instanceof Anthropic.RateLimitError) {
-        const retryAfter = error.headers?.get?.('retry-after');
+        const retryAfter = error.headers?.get('retry-after');
         logger.error('[AnthropicProvider.sendMessage] Rate limit exceeded', {
           model: this.model,
           retryAfter,

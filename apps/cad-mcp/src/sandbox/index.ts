@@ -1405,35 +1405,38 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
     consoleObj.dispose();
 
     // 코드 실행
-    const result = vm.evalCode(code);
+    try {
+      const result = vm.evalCode(code);
 
-    if (result.error) {
-      const errorObj = vm.dump(result.error);
-      result.error.dispose();
-      vm.dispose();
+      if (result.error) {
+        const errorObj = vm.dump(result.error);
+        result.error.dispose();
 
-      // QuickJS 에러 객체에서 메시지 추출
-      const errAny = errorObj as { message?: string; name?: string } | null;
-      const errorMessage = errAny?.message || errAny?.name || String(errorObj);
+        // QuickJS 에러 객체에서 메시지 추출
+        const errAny = errorObj as { message?: string; name?: string } | null;
+        const errorMessage = errAny?.message || errAny?.name || String(errorObj);
+
+        return {
+          success: false,
+          entitiesCreated: Array.from(entitiesCreatedSet),
+          error: errorMessage,
+          logs,
+          warnings,
+        };
+      }
+
+      result.value.dispose();
 
       return {
-        success: false,
+        success: true,
         entitiesCreated: Array.from(entitiesCreatedSet),
-        error: errorMessage,
         logs,
         warnings,
       };
+    } finally {
+      // Ensure VM is always disposed, even on exceptions
+      vm.dispose();
     }
-
-    result.value.dispose();
-    vm.dispose();
-
-    return {
-      success: true,
-      entitiesCreated: Array.from(entitiesCreatedSet),
-      logs,
-      warnings,
-    };
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     logger.error(`[runCadCode] ${errorMessage}`);

@@ -356,9 +356,9 @@ export async function startWSServer(): Promise<number> {
   return server.start()
 }
 
-export function stopWSServer(): Promise<void> {
+export async function stopWSServer(): Promise<void> {
   if (serverInstance) {
-    return serverInstance.stop()
+    await serverInstance.stop()
+    serverInstance = null  // Reset for potential restart
   }
-  return Promise.resolve()
 }

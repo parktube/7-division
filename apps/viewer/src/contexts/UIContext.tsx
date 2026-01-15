@@ -102,16 +102,17 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      const wasSelected = next.has(id)
-      if (wasSelected) {
+      if (prev.has(id)) {
         next.delete(id)
       } else {
         next.add(id)
-        // Only update lastSelectedId when selecting, not deselecting
-        setLastSelectedId(id)
       }
       return next
     })
+    // Update lastSelectedId on toggle (both select/deselect)
+    // This simplifies the code and avoids setState-in-setState anti-pattern
+    // UX impact is minimal since lastSelectedId is mainly used for range select anchor
+    setLastSelectedId(id)
   }, [])
 
   const rangeSelect = useCallback((id: string, orderedIds: string[]) => {
