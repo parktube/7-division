@@ -353,7 +353,7 @@ So that **Claude Code에서 CAD 도구를 호출하고 Viewer에 실시간 반�
 **Acceptance Criteria:**
 
 **Given** Claude Code가 MCP 서버에 연결되었을 때
-**When** run_cad_code 도구를 호출하면
+**When** cad_code 도구를 호출하면
 **Then** WASM 엔진에서 코드가 실행된다
 **And** 결과가 WebSocket으로 Viewer에 브로드캐스트된다 (Story 9.3 의존)
 

@@ -673,4 +673,197 @@ describe('CADExecutor', () => {
       expect(() => executor.free()).not.toThrow();
     });
   });
+
+  describe('importScene - restore from JSON', () => {
+    it('should restore rect entity', () => {
+      // Create and export
+      executor.exec('draw_rect', { name: 'r1', x: 10, y: 20, width: 100, height: 50 });
+      executor.exec('set_fill', { name: 'r1', fill: { color: [1, 0, 0, 1] } });
+      const sceneJson = executor.exportScene();
+
+      // Create new executor and restore
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(1);
+      expect(result.errors).toHaveLength(0);
+      expect(restored.getEntityCount()).toBe(1);
+
+      // Verify geometry is correct
+      const entityResult = restored.exec('get_entity', { name: 'r1' });
+      expect(entityResult.success).toBe(true);
+      const entity = JSON.parse(entityResult.data!);
+      expect(entity.local.geometry.Rect.center).toEqual([10, 20]);
+      expect(entity.local.geometry.Rect.width).toBe(100);
+      expect(entity.local.geometry.Rect.height).toBe(50);
+
+      restored.free();
+    });
+
+    it('should restore circle entity', () => {
+      executor.exec('draw_circle', { name: 'c1', x: 50, y: 60, radius: 30 });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(1);
+      const entityResult = restored.exec('get_entity', { name: 'c1' });
+      const entity = JSON.parse(entityResult.data!);
+      expect(entity.local.geometry.Circle.center).toEqual([50, 60]);
+      expect(entity.local.geometry.Circle.radius).toBe(30);
+
+      restored.free();
+    });
+
+    it('should restore line entity', () => {
+      executor.exec('draw_line', { name: 'l1', points: [0, 0, 100, 100, 200, 50] });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(1);
+      const entityResult = restored.exec('get_entity', { name: 'l1' });
+      const entity = JSON.parse(entityResult.data!);
+      expect(entity.local.geometry.Line.points).toEqual([[0, 0], [100, 100], [200, 50]]);
+
+      restored.free();
+    });
+
+    it('should restore polygon entity', () => {
+      executor.exec('draw_polygon', { name: 'p1', points: [0, 0, 100, 0, 50, 100] });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(1);
+      const entityResult = restored.exec('get_entity', { name: 'p1' });
+      const entity = JSON.parse(entityResult.data!);
+      expect(entity.local.geometry.Polygon.points).toEqual([[0, 0], [100, 0], [50, 100]]);
+
+      restored.free();
+    });
+
+    it('should restore arc entity', () => {
+      executor.exec('draw_arc', { name: 'a1', cx: 0, cy: 0, radius: 50, start_angle: 0, end_angle: 1.57 });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(1);
+      const entityResult = restored.exec('get_entity', { name: 'a1' });
+      const entity = JSON.parse(entityResult.data!);
+      expect(entity.local.geometry.Arc.center).toEqual([0, 0]);
+      expect(entity.local.geometry.Arc.radius).toBe(50);
+
+      restored.free();
+    });
+
+    it('should restore transform (translate, rotate, scale)', () => {
+      executor.exec('draw_rect', { name: 'r1', x: 0, y: 0, width: 100, height: 50 });
+      executor.exec('translate', { name: 'r1', dx: 50, dy: 30 });
+      executor.exec('rotate', { name: 'r1', angle: 0.5 });
+      executor.exec('scale', { name: 'r1', sx: 2, sy: 1.5 });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(1);
+      const entityResult = restored.exec('get_entity', { name: 'r1' });
+      const entity = JSON.parse(entityResult.data!);
+
+      // Transform should be restored
+      expect(entity.local.transform.translate).toEqual([50, 30]);
+      expect(entity.local.transform.rotate).toBeCloseTo(0.5, 5);
+      expect(entity.local.transform.scale).toEqual([2, 1.5]);
+
+      restored.free();
+    });
+
+    it('should restore group with children', () => {
+      executor.exec('draw_rect', { name: 'body', x: 0, y: 0, width: 50, height: 100 });
+      executor.exec('draw_circle', { name: 'head', x: 0, y: 60, radius: 20 });
+      executor.exec('create_group', { name: 'robot', children: ['body', 'head'] });
+      executor.exec('translate', { name: 'robot', dx: 100, dy: 50 });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      // 2 entities + 1 group = 3
+      expect(result.restored).toBe(3);
+      expect(result.errors).toHaveLength(0);
+
+      // Verify group exists and has correct children
+      const groupResult = restored.exec('get_entity', { name: 'robot' });
+      expect(groupResult.success).toBe(true);
+      const group = JSON.parse(groupResult.data!);
+      expect(group.type).toBe('Group');
+
+      // Verify group transform was restored
+      expect(group.local.transform.translate).toEqual([100, 50]);
+
+      restored.free();
+    });
+
+    it('should restore style (fill and stroke)', () => {
+      executor.exec('draw_rect', { name: 'r1', x: 0, y: 0, width: 100, height: 50 });
+      executor.exec('set_fill', { name: 'r1', fill: { color: [1, 0, 0, 1] } });
+      executor.exec('set_stroke', { name: 'r1', stroke: { color: [0, 0, 1, 1], width: 3 } });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      restored.importScene(sceneJson);
+
+      const entityResult = restored.exec('get_entity', { name: 'r1' });
+      const entity = JSON.parse(entityResult.data!);
+      expect(entity.style.fill.color).toEqual([1, 0, 0, 1]);
+      expect(entity.style.stroke.color).toEqual([0, 0, 1, 1]);
+      expect(entity.style.stroke.width).toBe(3);
+
+      restored.free();
+    });
+
+    it('should handle empty scene', () => {
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(0);
+      expect(result.errors).toHaveLength(0);
+      expect(restored.getEntityCount()).toBe(0);
+
+      restored.free();
+    });
+
+    it('should return errors for invalid JSON', () => {
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene('not valid json');
+
+      expect(result.restored).toBe(0);
+      expect(result.errors.length).toBeGreaterThan(0);
+
+      restored.free();
+    });
+
+    it('should restore multiple entities', () => {
+      executor.exec('draw_rect', { name: 'r1', x: 0, y: 0, width: 50, height: 50 });
+      executor.exec('draw_rect', { name: 'r2', x: 100, y: 0, width: 50, height: 50 });
+      executor.exec('draw_circle', { name: 'c1', x: 50, y: 100, radius: 25 });
+      const sceneJson = executor.exportScene();
+
+      const restored = CADExecutor.create('restored-scene');
+      const result = restored.importScene(sceneJson);
+
+      expect(result.restored).toBe(3);
+      expect(restored.getEntityCount()).toBe(3);
+
+      restored.free();
+    });
+  });
 });

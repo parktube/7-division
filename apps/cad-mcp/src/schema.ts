@@ -64,6 +64,155 @@ export type ToolName = (typeof DOMAINS)[DomainName][number];
  * - export_json/export_svg: 씬 내보내기
  * - get_scene_info: 씬 상태 조회
  */
+/**
+ * 도메인 MCP 도구 스키마 (SpineLift 패턴)
+ *
+ * Story 9.x: 18개 flat 도구 → 5개 도메인 도구로 통합
+ * 패턴: action 파라미터로 동작 선택 (MAMA save({ type: ... }) 스타일)
+ *
+ * 도메인:
+ * - cad_code: JavaScript 코드 실행/편집 (핵심)
+ * - discovery: 함수 탐색 (list_domains, describe, list_tools)
+ * - scene: 씬 조회 (info, overview, groups, selection, reset)
+ * - export: 내보내기 (json, svg, capture)
+ * - module: 모듈 관리 (save, list, get, delete)
+ */
+export const DOMAIN_TOOLS: Record<string, ToolSchema> = {
+  // === 핵심 도구: cad_code ===
+  cad_code: {
+    name: 'cad_code',
+    description: `CAD JavaScript 실행 환경. 함수/클래스/재귀 모두 가능.
+
+내장 함수: drawCircle, drawRect, drawLine, drawPolygon, drawArc, drawBezier, drawText, setFill, setStroke, translate, rotate, scale, createGroup, booleanUnion, booleanDifference, booleanIntersect, duplicate, mirror 등
+
+좌표: Y+ 위, 원점 중심. 색상: RGBA 0~1. 각도: 라디안. 문자열: '작은따옴표'
+
+discovery(action='describe', domain='primitives') → 시그니처 확인
+scene(action='info') → 현재 씬 상태`,
+    parameters: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: "대상 파일: 'main' 또는 모듈명" },
+        code: { type: 'string', description: "코드. '+' prefix면 추가 모드" },
+        old_code: { type: 'string', description: '교체할 기존 코드 (부분 수정)' },
+        new_code: { type: 'string', description: '새 코드 (부분 수정)' },
+      },
+      required: [],
+    },
+  },
+
+  // === 탐색 도구: discovery ===
+  discovery: {
+    name: 'discovery',
+    description: `CAD 함수 탐색 도구. cad_code 실행 전 확인.
+
+ACTIONS
+- list_domains: 도메인 목록 (primitives, style, transforms, ...)
+- describe: 도메인별 함수 시그니처 (domain 필수)
+- list_tools: 함수 목록 (domain 선택)
+- get_schema: 단일 함수 상세 (name 필수)
+- request: 새 함수 요청 (name, description, rationale 필수)
+
+→ scene(action='info') 현재 씬
+→ export(action='capture') 결과 확인
+→ 재사용? module로 저장`,
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: "동작: 'list_domains' | 'describe' | 'list_tools' | 'get_schema' | 'request'",
+        },
+        domain: { type: 'string', description: 'describe/list_tools용 도메인명' },
+        name: { type: 'string', description: 'get_schema/request용 함수명' },
+        description: { type: 'string', description: 'request용 함수 설명' },
+        rationale: { type: 'string', description: 'request용 필요 이유' },
+      },
+      required: ['action'],
+    },
+  },
+
+  // === 씬 조회 도구: scene ===
+  scene: {
+    name: 'scene',
+    description: `씬 상태 조회 및 관리.
+
+ACTIONS
+- info: 씬 요약 (entityCount, bounds)
+- overview: 트리 구조 (groups, hierarchy)
+- groups: 그룹 목록만
+- selection: 현재 선택된 엔티티
+- reset: 씬 초기화 (되돌릴 수 없음)
+
+cad_code 후 결과 확인 → export 전 미리보기`,
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: "동작: 'info' | 'overview' | 'groups' | 'selection' | 'reset'",
+        },
+      },
+      required: ['action'],
+    },
+  },
+
+  // === 내보내기 도구: export ===
+  export: {
+    name: 'export',
+    description: `씬 내보내기.
+
+ACTIONS
+- json: 전체 씬 JSON
+- svg: SVG 벡터 이미지
+- capture: 뷰어 스크린샷 (PNG)
+  - clearSketch: 캡처 후 스케치 클리어 (boolean)
+
+scene으로 확인 후 최종 출력`,
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: "동작: 'json' | 'svg' | 'capture'",
+        },
+        clearSketch: { type: 'boolean', description: 'capture: 캡처 후 스케치 클리어' },
+      },
+      required: ['action'],
+    },
+  },
+
+  // === 모듈 관리 도구: module ===
+  module: {
+    name: 'module',
+    description: `재사용 가능한 코드 모듈 관리.
+
+ACTIONS
+- save: 모듈 저장 (name, code 필수)
+- list: 저장된 모듈 목록
+- get: 모듈 코드 조회 (name 필수)
+- delete: 모듈 삭제 (name 필수)
+
+사용: cad_code에서 import 'module_name'`,
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: "동작: 'save' | 'list' | 'get' | 'delete'",
+        },
+        name: { type: 'string', description: '모듈 이름' },
+        code: { type: 'string', description: 'save: 저장할 코드' },
+      },
+      required: ['action'],
+    },
+  },
+};
+
+/**
+ * Legacy MCP 도구 스키마 (하위 호환용)
+ * 점진적으로 DOMAIN_TOOLS로 마이그레이션
+ */
 export const CAD_TOOLS: Record<string, ToolSchema> = {
   // === 핵심 도구 ===
   run_cad_code: {

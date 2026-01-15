@@ -57,85 +57,75 @@ cat docs/sprint-artifacts/sprint-status.yaml
 
 ---
 
-## CAD CLI 사용법 (run_cad_code)
+## MCP 도메인 도구
 
-AI 에이전트와 개발자 모두 `run_cad_code`를 통해 CAD 도형을 조작합니다.
+MCP 서버는 5개의 도메인 도구를 제공합니다:
 
-```bash
-cd apps/cad-mcp
+| 도구 | 설명 | 주요 액션 |
+|------|------|----------|
+| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
+| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
+| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
+| `export` | 내보내기 | json, svg, capture |
+| `module` | 모듈 관리 | save, list, get, delete |
 
-# 기본 사용법
-npx tsx cad-cli.ts run_cad_code <module> "<code>"
+### 기본 사용법
 
-# 예시
-run_cad_code main "drawCircle('c1', 0, 0, 50)"
-run_cad_code main "+setFill('c1', [1, 0, 0, 1])"  # + prefix = 추가
+```javascript
+// 코드 실행
+cad_code({ code: "drawCircle('c1', 0, 0, 50)" })
+
+// 파일에 추가 (+ prefix)
+cad_code({ file: 'main', code: "+setFill('c1', [1, 0, 0, 1])" })
+
+// 함수 탐색
+discovery({ action: 'describe', domain: 'primitives' })
+
+// 씬 상태 확인
+scene({ action: 'overview' })
 ```
 
 ### 주요 Sandbox 함수
 
 | 카테고리 | 함수 | 설명 |
 |---------|------|------|
-| **Primitives** | `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`, `drawArc`, `drawBezier` | 도형 생성 (중심 좌표 기준) |
-| **Text** | `drawText`, `getTextMetrics` | 텍스트 렌더링 (opentype.js) |
+| **Primitives** | `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`, `drawArc`, `drawBezier` | 도형 생성 |
+| **Text** | `drawText`, `getTextMetrics` | 텍스트 렌더링 |
 | **Style** | `setFill`, `setStroke` | 색상/선 스타일 (RGBA 0~1) |
-| **Transform** | `translate`, `rotate`, `scale`, `setPivot`, `duplicate`, `mirror` | 변환 (rotate는 라디안) |
-| **Boolean** | `booleanUnion`, `booleanDifference`, `booleanIntersect` | Boolean 연산 (Manifold) |
-| **Geometry** | `offsetPolygon`, `getArea`, `convexHull`, `decompose` | 기하 분석 (Manifold) |
-| **Z-Order** | `drawOrder`, `getDrawOrder` | 레이어 순서 관리 |
+| **Transform** | `translate`, `rotate`, `scale`, `duplicate`, `mirror` | 변환 |
+| **Boolean** | `booleanUnion`, `booleanDifference`, `booleanIntersect` | Boolean 연산 |
 | **Groups** | `createGroup`, `addToGroup` | 그룹화 |
-| **Query** | `exists`, `getEntity`, `getWorldBounds`, `fitToViewport` | 조회 |
-| **Delete** | `deleteEntity` | 삭제 |
+| **Query** | `exists`, `getEntity`, `getWorldBounds` | 조회 |
 
-### 예시: 간단한 집 그리기
+### 예시: 모듈로 집 그리기
 
-```bash
-# 모듈 생성
-run_cad_code house_lib "
+```javascript
+// 모듈 저장
+module({ action: 'save', name: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
     this.x = x;
     this.y = y;
-    this.parts = [];
-  }
-  drawWall() {
-    drawRect(this.name+'_wall', 0, 0, 40, 30);  // 로컬 좌표
-    this.parts.push(this.name+'_wall');
-  }
-  drawRoof() {
-    drawPolygon(this.name+'_roof', [-25, 30, 0, 50, 25, 30]);
-    this.parts.push(this.name+'_roof');
   }
   build() {
-    this.drawWall();
-    this.drawRoof();
-    createGroup(this.name, this.parts);
+    drawRect(this.name+'_wall', 0, 0, 40, 30);
+    drawPolygon(this.name+'_roof', [-25, 30, 0, 50, 25, 30]);
+    createGroup(this.name, [this.name+'_wall', this.name+'_roof']);
     translate(this.name, this.x, this.y);
-    return this;
   }
 }
-"
+`})
 
-# main에서 사용
-run_cad_code main "
+// main에서 사용
+cad_code({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
-"
+`})
 ```
 
-### 탐색 명령어
-
-```bash
-run_cad_code                      # 프로젝트 구조
-run_cad_code --status             # 프로젝트 요약
-run_cad_code --info house_lib     # 모듈 상세
-run_cad_code --search drawCircle  # 패턴 검색
-run_cad_code --capture            # 뷰어 스크린샷
-```
-
-자세한 명령어는 `CLAUDE.md` 참조.
+자세한 API는 `CLAUDE.md` 참조.
 
 ---
 
@@ -404,4 +394,4 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-*최종 업데이트: 2026-01-14*
+*최종 업데이트: 2026-01-15*
