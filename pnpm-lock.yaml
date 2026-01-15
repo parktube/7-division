@@ -36,7 +36,7 @@ importers:
         specifier: ^24.34.0
         version: 24.35.0(typescript@5.9.3)
       quickjs-emscripten:
-        specifier: 0.31.0
+        specifier: ^0.31.0
         version: 0.31.0
       ws:
         specifier: ^8.19.0
