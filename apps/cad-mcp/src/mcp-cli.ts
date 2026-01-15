@@ -13,7 +13,11 @@ import { runMCPServer } from './mcp-server.js'
 const command = process.argv[2]
 
 if (command === 'start') {
-  runMCPServer()
+  runMCPServer().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('MCP server failed:', err)
+    process.exit(1)
+  })
 } else {
   // eslint-disable-next-line no-console
   console.log('Usage: npx @ai-native-cad/mcp start')

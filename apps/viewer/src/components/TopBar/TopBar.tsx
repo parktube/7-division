@@ -84,6 +84,7 @@ export default function TopBar() {
           onClick={toggle}
           className="w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
           style={{ color: 'var(--text-secondary)' }}
+          aria-label="Toggle theme"
         >
           {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
         </button>
@@ -91,6 +92,7 @@ export default function TopBar() {
           type="button"
           className="w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-[var(--hover)]"
           style={{ color: 'var(--text-secondary)' }}
+          aria-label="Open settings"
         >
           <Settings size={16} />
         </button>

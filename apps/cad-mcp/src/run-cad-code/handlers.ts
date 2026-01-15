@@ -20,6 +20,37 @@ export interface RunCadCodeResult {
 }
 
 /**
+ * Validate regex pattern to prevent ReDoS attacks.
+ * Rejects patterns with nested quantifiers or excessive complexity.
+ */
+function isSafeRegexPattern(pattern: string): boolean {
+  // Limit pattern length
+  if (pattern.length > 100) {
+    return false;
+  }
+  // Reject patterns with nested quantifiers (e.g., (a+)+, (a*)*b)
+  // eslint-disable-next-line no-useless-escape
+  const nestedQuantifiers = /(\+|\*|\?|\{[^}]+\}).*\1/;
+  if (nestedQuantifiers.test(pattern)) {
+    return false;
+  }
+  // Reject patterns with multiple adjacent quantifiers
+  // eslint-disable-next-line no-useless-escape
+  const adjacentQuantifiers = /(\+|\*|\?|\{[^}]+\}){2,}/;
+  if (adjacentQuantifiers.test(pattern)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Escape special regex characters for literal string search
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * --search <pattern>: 모듈/코드 검색
  * 패턴과 일치하는 코드 라인 반환
  */
@@ -35,7 +66,19 @@ export function handleRunCadCodeSearch(pattern: string): RunCadCodeResult {
     };
   }
 
-  const regex = new RegExp(pattern, 'gi');
+  // Validate pattern to prevent ReDoS
+  let regex: RegExp;
+  try {
+    if (!isSafeRegexPattern(pattern)) {
+      // Treat as literal string search for unsafe patterns
+      regex = new RegExp(escapeRegex(pattern), 'gi');
+    } else {
+      regex = new RegExp(pattern, 'gi');
+    }
+  } catch {
+    // Invalid regex, fall back to literal search
+    regex = new RegExp(escapeRegex(pattern), 'gi');
+  }
   const results: Array<{
     file: string;
     line: number;
@@ -61,19 +104,24 @@ export function handleRunCadCodeSearch(pattern: string): RunCadCodeResult {
   // 모듈 검색
   const modules = getModuleList();
   for (const mod of modules) {
-    const modPath = getModulePath(mod);
-    const modCode = readFileSync(modPath, 'utf-8');
-    const lines = modCode.split('\n');
-    lines.forEach((line, idx) => {
-      if (regex.test(line)) {
-        results.push({
-          file: mod,
-          line: idx + 1,
-          content: line.trim(),
-        });
-      }
-      regex.lastIndex = 0;
-    });
+    try {
+      const modPath = getModulePath(mod);
+      const modCode = readFileSync(modPath, 'utf-8');
+      const lines = modCode.split('\n');
+      lines.forEach((line, idx) => {
+        if (regex.test(line)) {
+          results.push({
+            file: mod,
+            line: idx + 1,
+            content: line.trim(),
+          });
+        }
+        regex.lastIndex = 0;
+      });
+    } catch {
+      // Skip modules that can't be read (may have been deleted)
+      continue;
+    }
   }
 
   return {
@@ -257,14 +305,19 @@ export function handleRunCadCodeStatus(): RunCadCodeResult {
 
   // 모듈 통계
   for (const mod of modules) {
-    const modPath = getModulePath(mod);
-    const modCode = readFileSync(modPath, 'utf-8');
-    fileStats.push({
-      name: mod,
-      lines: countLines(modCode),
-      classes: extractClasses(modCode),
-      functions: extractFunctions(modCode),
-    });
+    try {
+      const modPath = getModulePath(mod);
+      const modCode = readFileSync(modPath, 'utf-8');
+      fileStats.push({
+        name: mod,
+        lines: countLines(modCode),
+        classes: extractClasses(modCode),
+        functions: extractFunctions(modCode),
+      });
+    } catch {
+      // Skip modules that can't be read (may have been deleted)
+      continue;
+    }
   }
 
   const totalLines = fileStats.reduce((sum, f) => sum + f.lines, 0);

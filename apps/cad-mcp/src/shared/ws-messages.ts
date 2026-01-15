@@ -41,7 +41,7 @@ export const ComputedSchema = z.object({
 
 export const EntitySchema = z.object({
   id: z.string(),
-  entity_type: z.enum(['Circle', 'Rect', 'Line', 'Polygon', 'Arc', 'Bezier', 'Group']),
+  entity_type: z.enum(['Circle', 'Rect', 'Line', 'Polygon', 'Arc', 'Bezier', 'Text', 'Group']),
   geometry: z.unknown(), // Complex union, validated at runtime
   transform: TransformSchema,
   style: StyleSchema,

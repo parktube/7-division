@@ -90,14 +90,16 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      if (next.has(id)) {
+      const wasSelected = next.has(id)
+      if (wasSelected) {
         next.delete(id)
       } else {
         next.add(id)
+        // Only update lastSelectedId when selecting, not deselecting
+        setLastSelectedId(id)
       }
       return next
     })
-    setLastSelectedId(id)
   }, [])
 
   const rangeSelect = useCallback((id: string, orderedIds: string[]) => {
@@ -186,39 +188,69 @@ export function UIProvider({ children }: { children: ReactNode }) {
     return Array.from(lockedIds)
   }, [lockedIds])
 
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    mousePosition,
+    setMousePosition,
+    gridEnabled,
+    setGridEnabled,
+    rulersEnabled,
+    setRulersEnabled,
+    sketchMode,
+    setSketchMode,
+    selectedIds,
+    selectedArray,
+    selectedCount,
+    lastSelectedId,
+    select,
+    deselect,
+    toggleSelect,
+    rangeSelect,
+    clearSelection,
+    isSelected,
+    hiddenIds,
+    hiddenArray,
+    toggleHidden,
+    showAll,
+    isHidden,
+    lockedIds,
+    lockedArray,
+    toggleLocked,
+    unlockAll,
+    isLocked,
+  }), [
+    mousePosition,
+    setMousePosition,
+    gridEnabled,
+    setGridEnabled,
+    rulersEnabled,
+    setRulersEnabled,
+    sketchMode,
+    setSketchMode,
+    selectedIds,
+    selectedArray,
+    selectedCount,
+    lastSelectedId,
+    select,
+    deselect,
+    toggleSelect,
+    rangeSelect,
+    clearSelection,
+    isSelected,
+    hiddenIds,
+    hiddenArray,
+    toggleHidden,
+    showAll,
+    isHidden,
+    lockedIds,
+    lockedArray,
+    toggleLocked,
+    unlockAll,
+    isLocked,
+  ])
+
   return (
-    <UIContext.Provider
-      value={{
-        mousePosition,
-        setMousePosition,
-        gridEnabled,
-        setGridEnabled,
-        rulersEnabled,
-        setRulersEnabled,
-        sketchMode,
-        setSketchMode,
-        selectedIds,
-        selectedArray,
-        selectedCount,
-        lastSelectedId,
-        select,
-        deselect,
-        toggleSelect,
-        rangeSelect,
-        clearSelection,
-        isSelected,
-        hiddenIds,
-        hiddenArray,
-        toggleHidden,
-        showAll,
-        isHidden,
-        lockedIds,
-        lockedArray,
-        toggleLocked,
-        unlockAll,
-        isLocked,
-      }}
-    >
+    <UIContext.Provider value={contextValue}>
       {children}
     </UIContext.Provider>
   )

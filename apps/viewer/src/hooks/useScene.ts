@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useWebSocket } from './useWebSocket'
 import type { Scene } from '@/types/scene'
 
@@ -8,9 +9,12 @@ import type { Scene } from '@/types/scene'
 export function useScene(): { scene: Scene | null; isLoading: boolean; error: Error | null } {
   const { scene, connectionState, error } = useWebSocket()
 
+  // Memoize Error object to prevent recreating on every render
+  const memoError = useMemo(() => (error ? new Error(error) : null), [error])
+
   return {
     scene,
     isLoading: connectionState === 'connecting',
-    error: error ? new Error(error) : null,
+    error: memoError,
   }
 }

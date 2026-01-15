@@ -87,7 +87,7 @@ jobs:
 
       - name: Build viewer for GitHub Pages
         env:
-          VITE_BASE_PATH: /7-division/
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: pnpm --filter @ai-native-cad/viewer build
 
       - name: Setup Pages

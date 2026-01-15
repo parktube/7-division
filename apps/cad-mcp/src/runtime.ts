@@ -29,8 +29,8 @@ export async function runAgentLoop(
   userMessage: string,
   options: AgentOptions = {}
 ): Promise<string> {
-  const domains = options.domains || DEFAULT_DOMAINS;
-  const maxIterations = options.maxIterations || DEFAULT_MAX_ITERATIONS;
+  const domains = options.domains ?? DEFAULT_DOMAINS;
+  const maxIterations = options.maxIterations ?? DEFAULT_MAX_ITERATIONS;
 
   // 1. Progressive Exposure: 필요한 도메인의 canonical 스키마
   const canonicalTools: ToolSchema[] = getToolsForDomains(domains);

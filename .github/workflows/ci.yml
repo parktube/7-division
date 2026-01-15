@@ -102,14 +102,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build shared package first
+      - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
 
       - name: ESLint (all packages)
         run: pnpm -r lint
-
-      - name: Build shared package (required for typecheck)
-        run: pnpm --filter @ai-native-cad/shared build
 
       - name: TypeScript Type Check
         run: pnpm -r typecheck

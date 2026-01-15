@@ -127,6 +127,9 @@ export class CADExecutor {
         case 'draw_bezier':
           return this.drawBezier(input);
 
+        case 'draw_text':
+          return this.drawText(input);
+
         // === style ===
         case 'set_stroke':
           return this.setStroke(input);
@@ -405,6 +408,23 @@ export class CADExecutor {
 
     const result = this.scene.draw_bezier(name, path, styleJson);
     return { success: true, entity: result, type: 'bezier' };
+  }
+
+  /**
+   * 텍스트를 그립니다.
+   * Note: 실제 텍스트 렌더링은 sandbox의 drawText()에서 처리됩니다.
+   * 텍스트는 폴리곤으로 변환되어 WASM에 저장되므로,
+   * 이 핸들러는 씬 복원 시 스킵됩니다 (폴리곤은 별도로 복원됨).
+   */
+  private drawText(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { name: 'string', text: 'string', x: 'number', y: 'number' });
+    if (error) return { success: false, error: `draw_text: ${error}` };
+
+    const name = input.name as string;
+    // Text entities are rendered as polygons via sandbox's drawText() function.
+    // During scene restore, the converted polygons are restored separately.
+    // This handler exists for completeness but doesn't create WASM entities.
+    return { success: true, entity: name, type: 'text' };
   }
 
   // === Style implementations ===

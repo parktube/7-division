@@ -75,8 +75,8 @@ export class AnthropicProvider implements LLMProvider {
    * 응답에서 텍스트 추출
    */
   extractText(response: Anthropic.Message): string {
-    const textBlock = response.content.find((b) => b.type === 'text');
-    return textBlock?.type === 'text' ? textBlock.text : '';
+    const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
+    return textBlock?.text ?? '';
   }
 
   /**

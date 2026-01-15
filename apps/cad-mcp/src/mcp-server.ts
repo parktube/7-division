@@ -313,6 +313,7 @@ function getExecutor(): CADExecutor {
 
 /**
  * Convert internal tool schema to MCP format
+ * Preserves all JSON Schema fields (enum, items, default, etc.)
  */
 function toMCPToolSchema(tool: ToolSchema) {
   return {
@@ -323,10 +324,8 @@ function toMCPToolSchema(tool: ToolSchema) {
       properties: Object.fromEntries(
         Object.entries(tool.parameters.properties).map(([key, prop]) => [
           key,
-          {
-            type: prop.type,
-            description: prop.description,
-          },
+          // Spread entire property to preserve enum, items, default, etc.
+          { ...prop },
         ])
       ),
       required: tool.parameters.required,
@@ -362,14 +361,13 @@ async function executeRunCadCode(
     // Run JavaScript code in QuickJS sandbox
     const result = await runCadCode(exec, preprocessed.code, 'warn')
 
-    // Export scene and broadcast to WebSocket clients (AC #1: "WebSocket으로 Viewer에 브로드캐스트")
-    const sceneJson = exec.exportScene()
-    const scene = JSON.parse(sceneJson) as Scene
-    const wsServer = getWSServer()
-    wsServer.broadcastScene(scene)
-
-    // Save scene to file for persistence (씬 영속성)
+    // Export scene and broadcast to WebSocket clients only on success
+    // (AC #1: "WebSocket으로 Viewer에 브로드캐스트")
     if (result.success) {
+      const sceneJson = exec.exportScene()
+      const scene = JSON.parse(sceneJson) as Scene
+      const wsServer = getWSServer()
+      wsServer.broadcastScene(scene)
       saveScene(exec)
     }
 

@@ -85,6 +85,7 @@ export function Onboarding({
         </div>
         {!isError && (
           <button
+            type="button"
             onClick={() => setShowVersionBanner(false)}
             className="text-white/70 hover:text-white p-1 rounded transition-colors"
             style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
@@ -153,6 +154,7 @@ export function Onboarding({
               </h2>
             </div>
             <button
+              type="button"
               onClick={() => setDismissed(true)}
               className="w-6 h-6 flex items-center justify-center rounded transition-colors"
               style={{ color: 'var(--text-muted)' }}
@@ -216,6 +218,7 @@ export function Onboarding({
                       {COMMAND}
                     </code>
                     <button
+                      type="button"
                       onClick={handleCopy}
                       className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors"
                       style={{
@@ -258,6 +261,7 @@ export function Onboarding({
 
             {/* Dismiss button */}
             <button
+              type="button"
               onClick={() => setDismissed(true)}
               className="w-full mt-4 px-3 py-2 rounded text-xs font-medium transition-colors"
               style={{

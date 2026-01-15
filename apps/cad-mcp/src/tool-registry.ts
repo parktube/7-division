@@ -76,9 +76,11 @@ export class ToolRegistry {
 
   /**
    * 테스트용: 인스턴스 리셋
+   * Also clears the cached executor tools map
    */
   static resetInstance(): void {
     ToolRegistry.instance = null;
+    executorToolsMap = null;
   }
 
   /**

@@ -179,6 +179,10 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
     // Launch headless browser (Puppeteer v22+ uses new headless mode by default)
     logger.debug('Launching headless browser');
+    // Security Note: --no-sandbox and --disable-setuid-sandbox are required for
+    // running Puppeteer in CI/containerized environments (Docker, GitHub Actions).
+    // This is acceptable here because we're capturing our own local viewer,
+    // not navigating to untrusted URLs.
     browser = await puppeteer.launch({
       headless: true,
       args: [

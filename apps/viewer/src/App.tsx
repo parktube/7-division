@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { PanelLayout } from '@/components/Layout'
 import { TopBar } from '@/components/TopBar'
 import { StatusBar } from '@/components/StatusBar'
@@ -7,9 +8,6 @@ import { UIProvider } from '@/contexts/UIContext'
 import { useSelectionSync } from '@/hooks/useSelectionSync'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { initDataServer } from '@/utils/dataUrl'
-
-// Initialize data server URL from query params (for Electron)
-initDataServer()
 
 // Component to sync selection with selection.json
 function SelectionSync() {
@@ -32,6 +30,11 @@ function WebSocketManager() {
 }
 
 export default function App() {
+  // Initialize data server URL from query params (for Electron)
+  useEffect(() => {
+    initDataServer()
+  }, [])
+
   return (
     <UIProvider>
       <ViewportProvider>

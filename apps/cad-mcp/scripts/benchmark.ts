@@ -160,7 +160,7 @@ async function main() {
   try {
     const result = await runBenchmark()
     printResult(result, jsonOutput)
-    process.exit(result.pass ? 0 : 0) // Always exit 0 (WARN, not FAIL)
+    process.exit(0) // Always exit 0 (WARN, not FAIL)
   } catch (err) {
     if (!jsonOutput) {
       // eslint-disable-next-line no-console

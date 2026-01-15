@@ -1,7 +1,7 @@
 /**
  * WebSocket Server for Viewer communication
  *
- * - Binds to 127.0.0.1:3001 (localhost only for security)
+ * - Binds to 0.0.0.0:3001 (all interfaces for WSL2 support)
  * - Auto port discovery: 3001 → 3002 → 3003
  * - Broadcasts scene/selection updates to all connected clients
  * - Handles ping/pong heartbeat

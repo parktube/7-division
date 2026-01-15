@@ -2,11 +2,19 @@ import { useState, useEffect } from 'react'
 
 type Theme = 'dark' | 'light'
 
+/**
+ * Type guard to validate stored theme value
+ */
+function isValidTheme(value: unknown): value is Theme {
+  return value === 'dark' || value === 'light'
+}
+
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'dark'
-    const stored = localStorage.getItem('theme') as Theme | null
-    if (stored) return stored
+    const stored = localStorage.getItem('theme')
+    // Validate stored value before using
+    if (isValidTheme(stored)) return stored
     return window.matchMedia('(prefers-color-scheme: dark)').matches
       ? 'dark'
       : 'light'

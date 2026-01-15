@@ -19,13 +19,18 @@ export function getModuleList(): string[] {
 /**
  * 코드에서 import 구문 추출
  * ES6 import 문법 지원: import 'x', import { a } from 'x', import * as x from 'x'
+ * Note: 주석 내부의 import는 무시됨
  */
 export function getCodeImports(code: string): string[] {
-  // cli.ts와 동일한 패턴 사용
+  // 먼저 블록/라인 주석 제거
+  const codeWithoutComments = code
+    .replace(/\/\*[\s\S]*?\*\//g, '')  // Block comments
+    .replace(/\/\/.*$/gm, '');          // Line comments
+
   const importRegex = /import\s+(?:\{[^}]*\}\s+from\s+|(?:\*\s+(?:as\s+\w+\s+)?from\s+)?)?['"]([^'"]+)['"]/g;
   const imports: string[] = [];
   let match;
-  while ((match = importRegex.exec(code)) !== null) {
+  while ((match = importRegex.exec(codeWithoutComments)) !== null) {
     imports.push(match[1]);
   }
   return imports;
@@ -88,10 +93,11 @@ export function extractClasses(code: string): string[] {
 
 /**
  * 코드에서 함수 정의 추출
- * Matches: function foo, export function foo, const bar = () => {}, const baz = function
+ * Matches: function foo, async function foo, export function foo,
+ *          const bar = () => {}, const baz = async () => {}, const qux = function
  */
 export function extractFunctions(code: string): string[] {
-  const funcRegex = /(?:export\s+)?(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:function|\([^)]*\)\s*=>))/g;
+  const funcRegex = /(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:async\s+)?(?:function|\([^)]*\)\s*=>))/g;
   const functions: string[] = [];
   let match;
   while ((match = funcRegex.exec(code)) !== null) {
