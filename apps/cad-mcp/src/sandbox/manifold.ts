@@ -387,13 +387,14 @@ export function offsetPolygonSync(
   circularSegments: number = 0
 ): Polygon2D {
   const cs = polygonToCrossSection(manifold, polygon);
+  let result: CrossSection | null = null;
 
-  const result = cs.offset(delta, JOIN_TYPE_MAP[joinType], miterLimit, circularSegments);
-
-  const resultPolygon = crossSectionToPolygon(result);
-
-  cs.delete();
-  result.delete();
-
-  return resultPolygon;
+  try {
+    result = cs.offset(delta, JOIN_TYPE_MAP[joinType], miterLimit, circularSegments);
+    return crossSectionToPolygon(result);
+  } finally {
+    // 메모리 정리 - 예외 발생 시에도 정리
+    cs.delete();
+    result?.delete();
+  }
 }

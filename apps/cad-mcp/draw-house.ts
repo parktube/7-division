@@ -91,17 +91,29 @@ executor.exec('draw_circle', { name: 'label_bathroom', x: OX + 4 * S, y: OY + 0.
 // ===== Scene Info =====
 console.log('\n📊 Scene Info:');
 const info = executor.exec('get_scene_info', {});
-console.log(info.data);
+if (info.success && info.data) {
+  console.log(info.data);
+} else {
+  console.log('Scene info not available');
+}
 
 // ===== Export =====
 console.log('\n💾 저장 중...');
 const jsonResult = executor.exec('export_json', {});
-writeFileSync(SCENE_FILE, jsonResult.data!);
-console.log(`✅ ${SCENE_FILE} 저장 완료!`);
+if (jsonResult.success && jsonResult.data) {
+  writeFileSync(SCENE_FILE, jsonResult.data);
+  console.log(`✅ ${SCENE_FILE} 저장 완료!`);
+} else {
+  console.error('❌ JSON export failed');
+}
 
 const svgResult = executor.exec('export_svg', {});
-writeFileSync(resolve(STATE_DIR, 'scene.svg'), svgResult.data!);
-console.log('✅ scene.svg 저장 완료!');
+if (svgResult.success && svgResult.data) {
+  writeFileSync(resolve(STATE_DIR, 'scene.svg'), svgResult.data);
+  console.log('✅ scene.svg 저장 완료!');
+} else {
+  console.error('❌ SVG export failed');
+}
 
 executor.free();
 console.log('\n🎉 집 평면도 완성!');

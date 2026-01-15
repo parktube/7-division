@@ -42,7 +42,7 @@ function parseArgs(args: string[]): { sceneName: string; prompt: string; domains
     }
   }
 
-  const defaultDomains: DomainName[] = ['primitives', 'style', 'transforms', 'query', 'export'];
+  const defaultDomains: DomainName[] = ['primitives', 'style', 'transforms', 'query', 'utility'];
   return {
     sceneName,
     prompt: promptParts.join(' '),
@@ -64,7 +64,7 @@ Usage:
 
 Options:
   --scene <name>    Scene 이름 (기본: cad-scene)
-  --domains <list>  사용할 도메인 (기본: primitives,style,transforms,query,export)
+  --domains <list>  사용할 도메인 (기본: primitives,style,transforms,query,utility)
   --help            도움말
 
 Examples:
