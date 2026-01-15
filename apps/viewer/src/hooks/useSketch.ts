@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import type { Stroke, Point, SketchTool } from '@/types/sketch'
 import { getDataUrl } from '@/utils/dataUrl'
+import { debounce } from '@/utils/debounce'
 
 const DEFAULT_COLOR = '#ef4444' // red-500
 const DEFAULT_WIDTH = 2
@@ -71,6 +72,9 @@ export function useSketch() {
   const isInitialized = useRef(false)
   const isLoadingRef = useRef(false)  // Prevent save during initial load
 
+  // Debounced save function (300ms delay to batch rapid changes)
+  const debouncedSave = useMemo(() => debounce(saveStrokes, 300), [])
+
   // Load strokes on mount
   useEffect(() => {
     if (isInitialized.current) return
@@ -87,12 +91,17 @@ export function useSketch() {
     })
   }, [])
 
+  // Cleanup debounced save on unmount
+  useEffect(() => {
+    return () => debouncedSave.cancel()
+  }, [debouncedSave])
+
   // Save strokes when they change (debounced)
   useEffect(() => {
     // Skip save during initialization or initial load
     if (!isInitialized.current || isLoadingRef.current) return
-    saveStrokes(strokes)
-  }, [strokes])
+    debouncedSave(strokes)
+  }, [strokes, debouncedSave])
 
   const startStroke = useCallback((point: Point) => {
     currentStrokeRef.current = {
