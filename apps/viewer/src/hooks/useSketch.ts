@@ -90,7 +90,8 @@ export function useSketch() {
 
   const startStroke = useCallback((point: Point) => {
     currentStrokeRef.current = {
-      id: `stroke_${Date.now()}`,
+      // Use crypto.randomUUID() for guaranteed unique IDs (avoids Date.now() collisions)
+      id: `stroke_${crypto.randomUUID()}`,
       points: [point],
       color: DEFAULT_COLOR,
       width: DEFAULT_WIDTH,

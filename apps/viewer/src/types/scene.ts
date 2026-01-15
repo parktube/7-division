@@ -1,5 +1,6 @@
 export interface Transform {
   translate: [number, number]
+  /** Rotation angle in radians (counterclockwise positive) */
   rotate: number
   scale: [number, number]
   pivot?: [number, number]
@@ -62,7 +63,9 @@ export interface ArcGeometry {
   Arc: {
     center: [number, number]
     radius: number
+    /** Start angle in radians (0 = positive X axis, counterclockwise positive) */
     start_angle: number
+    /** End angle in radians (0 = positive X axis, counterclockwise positive) */
     end_angle: number
   }
 }

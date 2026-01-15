@@ -115,6 +115,14 @@ function renderBezier(ctx: CanvasRenderingContext2D, geo: BezierGeometry): boole
       // Cubic bezier: [cp1, cp2, end]
       const [cp1, cp2, end] = segment
       ctx.bezierCurveTo(cp1[0], cp1[1], cp2[0], cp2[1], end[0], end[1])
+    } else if (segment.length === 2) {
+      // Quadratic bezier: [cp, end]
+      const [cp, end] = segment
+      ctx.quadraticCurveTo(cp[0], cp[1], end[0], end[1])
+    } else if (segment.length === 1) {
+      // Line segment: [end]
+      const [end] = segment
+      ctx.lineTo(end[0], end[1])
     }
   }
 
