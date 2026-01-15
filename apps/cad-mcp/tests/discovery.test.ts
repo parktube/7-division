@@ -43,10 +43,10 @@ describe('discovery', () => {
   });
 
   describe('getTool', () => {
-    it('should return MCP tool schema by name', () => {
-      const tool = getTool('run_cad_code');
+    it('should return MCP tool schema by name (new Claude Code pattern tools)', () => {
+      const tool = getTool('write');
       expect(tool).toBeDefined();
-      expect(tool?.name).toBe('run_cad_code');
+      expect(tool?.name).toBe('write');
     });
 
     it('should return executor tool schema by name (snake_case)', () => {
@@ -90,14 +90,17 @@ describe('discovery', () => {
   });
 
   describe('getAllTools', () => {
-    it('should return all MCP tools', () => {
+    it('should return all MCP tools (Claude Code pattern - 6 tools)', () => {
       const tools = getAllTools();
-      // MCP tools: run_cad_code, describe, list_domains, list_tools, get_tool_schema, request_tool,
-      // get_scene_info, export_json, export_svg, reset, capture, get_selection,
-      // save_module, list_modules, get_module, delete_module, list_groups, overview = 18
-      expect(tools.length).toBeGreaterThanOrEqual(15);
-      expect(tools.map((t) => t.name)).toContain('run_cad_code');
-      expect(tools.map((t) => t.name)).toContain('describe');
+      // Epic 10: Claude Code 패턴 6개 도구
+      // glob, read, edit, write, lsp, bash
+      expect(tools.length).toBe(6);
+      expect(tools.map((t) => t.name)).toContain('glob');
+      expect(tools.map((t) => t.name)).toContain('read');
+      expect(tools.map((t) => t.name)).toContain('edit');
+      expect(tools.map((t) => t.name)).toContain('write');
+      expect(tools.map((t) => t.name)).toContain('lsp');
+      expect(tools.map((t) => t.name)).toContain('bash');
     });
   });
 

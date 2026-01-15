@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **7-division (도화지)**: AI-Native CAD 프로젝트
 
 - **비전**: "AI가 만들고, AI가 사용한다" - LLM이 도구를 조작하고, 인간은 의도/검증
-- **현재 단계**: Epic 1~9 완료 (MVP + 웹 아키텍처)
+- **현재 단계**: Epic 1~10 완료 (MVP + 웹 아키텍처 + AX 개선)
 - **아키텍처**: Web + Local MCP (GitHub Pages 뷰어 + 로컬 MCP 서버)
 - **구조**: pnpm workspace 모노레포
   - `apps/viewer` - React 뷰어 (GitHub Pages)
@@ -22,53 +22,65 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `docs/architecture.md` | 기술 아키텍처 |
 | `docs/adr/006-geometry-engine.md` | Manifold 기하 엔진 결정 |
 
-## MCP 도메인 도구 (5개)
+## MCP 도구 (Claude Code 패턴 - 6개)
 
-MCP 서버는 5개의 도메인 도구를 제공합니다:
+> **⚠️ Breaking Change (Epic 10)**: 기존 5개 도메인 도구(`cad_code`, `discovery`, `scene`, `export`, `module`)가 **Claude Code 패턴에 맞춘 6개 도구로 변경**되었습니다.
 
-| 도구 | 설명 | 주요 액션 |
-|------|------|----------|
-| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
-| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
-| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
-| `export` | 내보내기 | json, svg, capture |
-| `module` | 모듈 관리 | save, list, get, delete |
+| 도구 | 설명 | 주요 파라미터 |
+|------|------|--------------|
+| `glob` | 파일 목록 조회 | `pattern?` (기본: main + 모듈 전체) |
+| `read` | 파일 읽기 | `file` (main 또는 모듈명) |
+| `edit` | 파일 부분 수정 | `file`, `old_code`, `new_code` |
+| `write` | 파일 전체 작성 | `file`, `code` |
+| `lsp` | 코드 탐색 (도메인/함수 스키마) | `operation`, `domain?`, `name?`, `file?` |
+| `bash` | 명령 실행 (씬 조회/내보내기/초기화) | `command`, `group?`, `clearSketch?` |
 
-### cad_code (핵심 도구)
+### glob / read / edit / write (파일 조작)
 
 ```javascript
-// 기본 실행
-cad_code({ code: "drawCircle('c', 0, 0, 50)" })
+glob()                                    // 파일 목록
+glob({ pattern: 'house_*' })              // 패턴 매칭
 
-// 파일 읽기/쓰기
-cad_code({ file: 'main' })                    // 읽기
-cad_code({ file: 'main', code: "..." })       // 쓰기
-cad_code({ file: 'main', code: "+..." })      // 추가 (+ prefix)
+read({ file: 'main' })                    // main 코드 읽기
+read({ file: 'house_lib' })               // 모듈 읽기
 
-// 부분 수정
-cad_code({ file: 'main', old_code: '...', new_code: '...' })
+write({ file: 'main', code: "drawCircle('c', 0, 0, 50)" })  // 전체 작성
+
+edit({ file: 'main', old_code: 'radius: 50', new_code: 'radius: 100' })  // 부분 수정
 ```
 
-### discovery (탐색)
+### lsp (코드 탐색)
 
 ```javascript
-discovery({ action: 'list_domains' })                    // 도메인 목록
-discovery({ action: 'describe', domain: 'primitives' })  // 함수 시그니처
-discovery({ action: 'get_schema', name: 'drawCircle' })  // 상세 스키마
+lsp({ operation: 'domains' })                              // 도메인 목록
+lsp({ operation: 'describe', domain: 'primitives' })       // 함수 시그니처
+lsp({ operation: 'schema', name: 'drawCircle' })           // 상세 스키마
+lsp({ operation: 'symbols', file: 'main' })                // 파일 심볼 (class, function)
 ```
 
-### scene / export / module
+### bash (명령 실행)
 
 ```javascript
-scene({ action: 'info' })        // 씬 요약
-scene({ action: 'overview' })    // 트리 구조
-export({ action: 'capture' })    // PNG 스크린샷
-module({ action: 'save', name: 'lib', code: '...' })  // 모듈 저장
+// 씬 조회
+bash({ command: 'info' })                // 씬 요약 (entity_count, bounds)
+bash({ command: 'tree' })                // 트리 구조
+bash({ command: 'groups' })              // 그룹 목록
+bash({ command: 'draw_order' })          // z-order (root level)
+bash({ command: 'draw_order', group: 'robot' })  // 그룹 내부 z-order
+bash({ command: 'selection' })           // 뷰어 선택 상태
+
+// 내보내기
+bash({ command: 'svg' })                 // SVG 벡터 내보내기
+bash({ command: 'json' })                // JSON 내보내기
+bash({ command: 'capture' })             // PNG 스크린샷
+
+// 초기화
+bash({ command: 'reset' })               // 씬 초기화 (주의!)
 ```
 
 ## 도메인 목록 (Sandbox 함수)
 
-`discovery({ action: 'describe', domain: '...' })`으로 상세 확인
+`lsp({ operation: 'describe', domain: '...' })`으로 상세 확인
 
 ```
 📦 도형 생성
@@ -95,7 +107,7 @@ module({ action: 'save', name: 'lib', code: '...' })  // 모듈 저장
 
 ```javascript
 // 기존 코드에 const x = 10;이 있을 때
-cad_code({ file: 'main', code: '+const x = 20;' })  // 실패 - 변수 재정의
+edit({ file: 'main', old_code: '', new_code: 'const x = 20;' })  // 실패 - 변수 재정의
 // → 파일 변경 없음, 안전하게 실험 가능
 ```
 
@@ -105,13 +117,12 @@ cad_code({ file: 'main', code: '+const x = 20;' })  // 실패 - 변수 재정의
 
 ```javascript
 // ❌ 잘못된 패턴: 리셋 후 재생성
-scene({ action: 'reset' })
-cad_code({ file: 'main', code: '... 전체 다시 그리기 ...' })
+bash({ command: 'reset' })
+write({ file: 'main', code: '... 전체 다시 그리기 ...' })
 
-// ✅ 올바른 패턴: 기존 엔티티 직접 수정
-cad_code({ file: 'main', code: "+drawOrder('arm_r', 'back')" })
-cad_code({ file: 'main', code: "+setFill('head', [1,0,0,1])" })
-cad_code({ file: 'main', code: "+translate('robot', 10, 0)" })
+// ✅ 올바른 패턴: 기존 코드에 수정 코드 추가
+read({ file: 'main' })  // 현재 코드 확인
+edit({ file: 'main', old_code: '// end', new_code: "drawOrder('arm_r', 'back');\n// end" })
 ```
 
 **규칙**: 문자열은 작은따옴표(`'`) 사용
@@ -239,7 +250,7 @@ translate(name, this.x, this.y);
 
 ```javascript
 // house_lib 모듈 저장
-module({ action: 'save', name: 'house_lib', code: `
+write({ file: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
@@ -256,7 +267,7 @@ class House {
 `})
 
 // main에서 사용
-cad_code({ file: 'main', code: `
+write({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
@@ -282,10 +293,10 @@ getDrawOrder('robot'); // 그룹 내부 순서
 **⚠️ 이미지에서 좌표 추출 금지** - 구조화된 데이터 사용!
 
 ```
-1. export({ action: 'capture' }) → 이미지로 "의도 파악"
+1. bash({ command: 'capture' }) → 이미지로 "의도 파악"
 2. 의도 확인 질문 (모호하면 반드시 물어보기)
-3. scene({ action: 'overview' }) → 씬 구조 파악
-4. cad_code 내 getEntity() → 정확한 좌표 획득
+3. bash({ command: 'tree' }) → 씬 구조 파악
+4. read + getEntity() 코드 실행 → 정확한 좌표 획득
 5. 계산 후 한 번에 실행
 ```
 
@@ -350,10 +361,10 @@ pnpm --filter @ai-native-cad/viewer dev
 
 ## AX Design Principles
 
-1. **LLM의 추론을 막지 않는다** - 도메인 10개 + describe로 Progressive Disclosure
+1. **LLM의 추론을 막지 않는다** - 8개 도메인 + lsp(describe)로 Progressive Disclosure
 2. **협업은 자동화가 아니다** - 인간 검증/피드백 필수
 3. **반복/정밀 작업은 LLM + 도구가 강하다**
-4. **도구는 LLM의 언어다** - 이름만 봐도 의도가 보이게
+4. **도구는 LLM의 언어다** - Claude Code 패턴(glob/read/edit/write/lsp/bash)
 5. **블랙박스를 만들지 않는다** - 진행상황 투명성
 6. **진입점 무결성** - `CLAUDE.md`가 실제 도구 경로와 항상 일치
 

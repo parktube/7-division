@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CAD_TOOLS, DOMAINS, DOMAIN_METADATA, FUNCTION_SIGNATURES, type ToolSchema, type DomainName } from '../src/schema.js';
+import { CAD_TOOLS, DOMAINS, DOMAIN_METADATA, FUNCTION_SIGNATURES, type DomainName } from '../src/schema.js';
 
 describe('schema', () => {
   describe('DOMAINS', () => {
@@ -68,58 +68,54 @@ describe('schema', () => {
     });
   });
 
-  describe('CAD_TOOLS (MCP tools)', () => {
-    it('should have run_cad_code as primary tool', () => {
-      const runCadCode = CAD_TOOLS['run_cad_code'];
-      expect(runCadCode).toBeDefined();
-      expect(runCadCode.name).toBe('run_cad_code');
-      // code, file, old_code, new_code 모두 optional (코드 에디터 모드 지원)
-      expect(runCadCode.parameters.required).toEqual([]);
-      expect(runCadCode.parameters.properties).toHaveProperty('code');
-      expect(runCadCode.parameters.properties).toHaveProperty('file');
-      expect(runCadCode.parameters.properties).toHaveProperty('old_code');
-      expect(runCadCode.parameters.properties).toHaveProperty('new_code');
+  describe('CAD_TOOLS (Claude Code pattern - 6 tools)', () => {
+    it('should have exactly 6 tools', () => {
+      expect(Object.keys(CAD_TOOLS)).toHaveLength(6);
     });
 
-    it('should have describe tool for exploration', () => {
-      const describeTool = CAD_TOOLS['describe'];
-      expect(describeTool).toBeDefined();
-      expect(describeTool.parameters.required).toContain('domain');
+    it('should have glob tool for file listing', () => {
+      const glob = CAD_TOOLS['glob'];
+      expect(glob).toBeDefined();
+      expect(glob.name).toBe('glob');
+      expect(glob.parameters.properties).toHaveProperty('pattern');
     });
 
-    it('should have list_domains tool', () => {
-      const listDomains = CAD_TOOLS['list_domains'];
-      expect(listDomains).toBeDefined();
-      expect(listDomains.parameters.required).toEqual([]);
+    it('should have read tool for file reading', () => {
+      const read = CAD_TOOLS['read'];
+      expect(read).toBeDefined();
+      expect(read.name).toBe('read');
+      expect(read.parameters.required).toContain('file');
     });
 
-    it('should have list_tools tool', () => {
-      const listTools = CAD_TOOLS['list_tools'];
-      expect(listTools).toBeDefined();
+    it('should have edit tool for partial editing', () => {
+      const edit = CAD_TOOLS['edit'];
+      expect(edit).toBeDefined();
+      expect(edit.name).toBe('edit');
+      expect(edit.parameters.required).toContain('file');
+      expect(edit.parameters.required).toContain('old_code');
+      expect(edit.parameters.required).toContain('new_code');
     });
 
-    it('should have get_tool_schema tool', () => {
-      const getToolSchema = CAD_TOOLS['get_tool_schema'];
-      expect(getToolSchema).toBeDefined();
-      expect(getToolSchema.parameters.required).toContain('name');
+    it('should have write tool for file writing', () => {
+      const write = CAD_TOOLS['write'];
+      expect(write).toBeDefined();
+      expect(write.name).toBe('write');
+      expect(write.parameters.required).toContain('file');
+      expect(write.parameters.required).toContain('code');
     });
 
-    it('should have export tools', () => {
-      expect(CAD_TOOLS['export_json']).toBeDefined();
-      expect(CAD_TOOLS['export_svg']).toBeDefined();
+    it('should have lsp tool for code navigation', () => {
+      const lsp = CAD_TOOLS['lsp'];
+      expect(lsp).toBeDefined();
+      expect(lsp.name).toBe('lsp');
+      expect(lsp.parameters.required).toContain('operation');
     });
 
-    it('should have scene management tools', () => {
-      expect(CAD_TOOLS['get_scene_info']).toBeDefined();
-      expect(CAD_TOOLS['reset']).toBeDefined();
-      expect(CAD_TOOLS['capture']).toBeDefined();
-    });
-
-    it('should have module management tools', () => {
-      expect(CAD_TOOLS['save_module']).toBeDefined();
-      expect(CAD_TOOLS['list_modules']).toBeDefined();
-      expect(CAD_TOOLS['get_module']).toBeDefined();
-      expect(CAD_TOOLS['delete_module']).toBeDefined();
+    it('should have bash tool for command execution', () => {
+      const bash = CAD_TOOLS['bash'];
+      expect(bash).toBeDefined();
+      expect(bash.name).toBe('bash');
+      expect(bash.parameters.required).toContain('command');
     });
 
     it('all tools should have valid schema structure', () => {
