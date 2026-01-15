@@ -213,7 +213,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     let elapsed = 0;
 
     while (elapsed < maxWaitTime && !sceneLoaded) {
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
+      await new Promise(done => setTimeout(done, checkInterval));
       elapsed += checkInterval;
 
       // Check if scene has entities
@@ -272,7 +272,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       return false;
     });
     logger.debug('Zoom setting', { zoomApplied, targetZoom: 1 });
-    await new Promise(resolve => setTimeout(resolve, 500)); // Wait for zoom to apply
+    await new Promise(done => setTimeout(done, 500)); // Wait for zoom to apply
 
     // Find the canvas container element
     const canvasElement = await page.$('#cad-canvas');
@@ -286,8 +286,6 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       await page.screenshot({ path: outputPath, type: 'png' });
     }
 
-    await browser.close();
-
     logger.debug('Viewport capture completed successfully', { outputPath });
 
     return {
@@ -299,13 +297,14 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error('Viewport capture failed', { error: errorMessage });
 
-    if (browser) {
-      await browser.close();
-    }
     return {
       success: false,
       error: errorMessage,
       method: 'puppeteer',
     };
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
   }
 }

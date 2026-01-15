@@ -27,5 +27,6 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'warn',
     '@typescript-eslint/no-non-null-assertion': 'warn',
   },
-  ignorePatterns: ['dist/', 'node_modules/', '*.js', '*.cjs'],
+  // Ignore patterns: examples/ and root-level scripts are interactive CLI tools
+  ignorePatterns: ['dist/', 'node_modules/', '*.js', '*.cjs', 'examples/', 'draw-house.ts', 'generate-scene.ts', 'run-agent.ts', 'cad-agent.ts'],
 };

@@ -11,10 +11,13 @@
 
 import WebSocket from 'ws'
 
-const WS_URL = 'ws://127.0.0.1:3001'
+// Port discovery: try ports 3001-3003 (matches CADWebSocketServer behavior)
+const WS_PORTS = [3001, 3002, 3003]
+const WS_HOST = process.env.WS_HOST ?? '127.0.0.1'
 const ITERATIONS = 100
 const CONNECT_TIMEOUT = 5000
 const MESSAGE_TIMEOUT = 5000
+const CONNECTION_MSG_TIMEOUT = 3000
 
 // NFR21 Targets
 const P50_TARGET = 15
@@ -35,35 +38,63 @@ function percentile(arr: number[], p: number): number {
   return arr[Math.max(0, index)]
 }
 
+// Try to connect to any available port
+async function connectToServer(): Promise<WebSocket> {
+  for (const port of WS_PORTS) {
+    try {
+      const ws = await new Promise<WebSocket>((resolve, reject) => {
+        const socket = new WebSocket(`ws://${WS_HOST}:${port}`)
+        const timeout = setTimeout(() => {
+          socket.close()
+          reject(new Error('timeout'))
+        }, CONNECT_TIMEOUT)
+
+        socket.on('error', () => {
+          clearTimeout(timeout)
+          reject(new Error('connection failed'))
+        })
+        socket.on('open', () => {
+          clearTimeout(timeout)
+          resolve(socket)
+        })
+      })
+      return ws
+    } catch {
+      continue // Try next port
+    }
+  }
+  throw new Error(`Could not connect to WebSocket server on ports ${WS_PORTS.join(', ')}`)
+}
+
 async function runBenchmark(): Promise<BenchmarkResult> {
+  const ws = await connectToServer()
+  const rtts: number[] = []
+  let iteration = 0
+  let startTime = 0
+
   return new Promise((resolve, reject) => {
-    const ws = new WebSocket(WS_URL)
-    const rtts: number[] = []
-    let iteration = 0
-    let startTime = 0
-
-    const connectTimeout = setTimeout(() => {
-      ws.close()
-      reject(new Error(`Connection timeout (${CONNECT_TIMEOUT}ms)`))
-    }, CONNECT_TIMEOUT)
-
     ws.on('error', (err) => {
-      clearTimeout(connectTimeout)
       reject(new Error(`WebSocket error: ${err.message}`))
     })
 
-    ws.on('open', async () => {
-      clearTimeout(connectTimeout)
+    // Wait for initial connection message from server with timeout
+    const connectionMsgTimeout = setTimeout(() => {
+      ws.close()
+      reject(new Error(`Connection message timeout (${CONNECTION_MSG_TIMEOUT}ms)`))
+    }, CONNECTION_MSG_TIMEOUT)
 
-      // Wait for initial connection message from server
-      await new Promise<void>((res) => {
-        ws.once('message', (data) => {
-          const msg = JSON.parse(data.toString())
-          if (msg.type === 'connection') {
-            res()
-          }
-        })
-      })
+    ws.once('message', (data) => {
+      clearTimeout(connectionMsgTimeout)
+      try {
+        const msg = JSON.parse(data.toString())
+        if (msg.type !== 'connection') {
+          reject(new Error(`Expected connection message, got: ${msg.type}`))
+          return
+        }
+      } catch {
+        reject(new Error('Failed to parse connection message'))
+        return
+      }
 
       const runIteration = () => {
         if (iteration >= ITERATIONS) {

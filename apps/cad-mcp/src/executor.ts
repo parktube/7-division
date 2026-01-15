@@ -424,7 +424,12 @@ export class CADExecutor {
     // Text entities are rendered as polygons via sandbox's drawText() function.
     // During scene restore, the converted polygons are restored separately.
     // This handler exists for completeness but doesn't create WASM entities.
-    return { success: true, entity: name, type: 'text' };
+    return {
+      success: true,
+      entity: name,
+      type: 'text',
+      data: 'skipped: text converted to polygons in sandbox, no WASM entity created',
+    };
   }
 
   // === Style implementations ===

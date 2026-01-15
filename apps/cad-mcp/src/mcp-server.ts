@@ -26,7 +26,7 @@ import {
   type ToolSchema,
   type DomainName,
 } from './schema.js'
-import { getWSServer, startWSServer } from './ws-server.js'
+import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
 import type { Scene } from './shared/index.js'
@@ -758,8 +758,8 @@ export async function createMCPServer(): Promise<Server> {
               }
             }
 
-            // 교체 수행
-            const updatedCode = fileCode.replace(oldCode, newCode)
+            // 교체 수행 (모든 일치 항목 교체)
+            const updatedCode = fileCode.replaceAll(oldCode, newCode)
 
             // 저장
             if (file === 'main') {
@@ -953,10 +953,28 @@ export async function startMCPServer(): Promise<void> {
  * CLI entry point for MCP server
  */
 export async function runMCPServer(): Promise<void> {
+  // Graceful shutdown handler
+  const shutdown = async (signal: string) => {
+    logger.info(`Received ${signal}, shutting down gracefully...`)
+    try {
+      await stopWSServer()
+      logger.info('Cleanup complete, exiting')
+      process.exit(0)
+    } catch (e) {
+      logger.error(`Error during shutdown: ${e}`)
+      process.exit(1)
+    }
+  }
+
+  // Register signal handlers
+  process.on('SIGINT', () => shutdown('SIGINT'))
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+
   try {
     await startMCPServer()
   } catch (e) {
     logger.error(`MCP server error: ${e}`)
+    await stopWSServer().catch(() => {}) // Best effort cleanup
     process.exit(1)
   }
 }
