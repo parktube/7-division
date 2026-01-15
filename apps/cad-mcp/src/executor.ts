@@ -90,6 +90,9 @@ export class CADExecutor {
         }
       } else if (typeof value !== expectedType) {
         return `Expected ${expectedType} for '${key}', got ${typeof value}`;
+      } else if (expectedType === 'number' && !Number.isFinite(value as number)) {
+        // Additional check for NaN/Infinity on single numbers
+        return `Expected finite number for '${key}', got ${value}`;
       }
     }
     return null;
@@ -193,6 +196,9 @@ export class CADExecutor {
         case 'draw_order':
           return this.drawOrder(input);
 
+        case 'set_draw_order':  // alias for draw_order (schema consistency)
+          return this.drawOrder(input);
+
         // Legacy z-order commands (use draw_order instead)
         case 'bring_to_front':
           return this.bringToFront(input);
@@ -251,6 +257,10 @@ export class CADExecutor {
 
         case 'export_svg':
           return this.exportSvg();
+
+        // === utility ===
+        case 'duplicate':
+          return this.duplicateEntity(input);
 
         default:
           return { success: false, error: `Unknown tool: ${toolName}` };
@@ -882,6 +892,149 @@ export class CADExecutor {
       };
     }
     return { success: true, group: groupName, entity: entityName };
+  }
+
+  // === Utility implementations ===
+
+  /**
+   * 엔티티 복제
+   * 비-그룹 엔티티의 geometry, transform, style을 복사하여 새 엔티티 생성
+   * 그룹 복제는 재귀 처리가 필요하므로 cad_code의 duplicate() 사용 권장
+   */
+  private duplicateEntity(input: Record<string, unknown>): ToolResult {
+    const error = this.validateInput(input, { source: 'string', newName: 'string' });
+    if (error) return { success: false, error: `duplicate: ${error}` };
+
+    const source = input.source as string;
+    const newName = input.newName as string;
+
+    // Get source entity details
+    const entityData = this.scene.get_entity_detailed(source);
+    if (!entityData) {
+      return { success: false, error: `duplicate: source entity '${source}' not found` };
+    }
+
+    let entity: {
+      type?: string;
+      local?: { geometry?: Record<string, unknown>; transform?: Record<string, unknown> };
+      style?: Record<string, unknown>;
+      children?: string[];
+    };
+    try {
+      entity = JSON.parse(entityData);
+    } catch {
+      return { success: false, error: `duplicate: failed to parse entity data` };
+    }
+
+    const entityType = entity.type;
+    const localGeom = entity.local?.geometry;
+
+    // Group duplication requires recursive handling - recommend using cad_code
+    if (entityType === 'Group') {
+      return {
+        success: false,
+        error: `duplicate: Group duplication requires recursive handling. Use cad_code with duplicate('${source}', '${newName}') instead.`,
+      };
+    }
+
+    if (!localGeom) {
+      return { success: false, error: `duplicate: cannot read geometry from '${source}'` };
+    }
+
+    // Create new entity based on geometry type
+    let createResult: string | boolean;
+
+    if (entityType === 'Circle' && localGeom.Circle) {
+      const { center, radius } = localGeom.Circle as { center: [number, number]; radius: number };
+      createResult = this.scene.draw_circle(newName, center[0], center[1], radius, '{}');
+    } else if (entityType === 'Rect' && localGeom.Rect) {
+      const { center, width, height } = localGeom.Rect as {
+        center: [number, number];
+        width: number;
+        height: number;
+      };
+      createResult = this.scene.draw_rect(newName, center[0], center[1], width, height, '{}');
+    } else if (entityType === 'Polygon' && localGeom.Polygon) {
+      const { points, holes } = localGeom.Polygon as {
+        points: [number, number][];
+        holes?: [number, number][][];
+      };
+      const flatPoints = new Float64Array(points.flat());
+      if (holes && holes.length > 0) {
+        createResult = this.scene.draw_polygon_with_holes(
+          newName,
+          flatPoints,
+          JSON.stringify(holes),
+          '{}'
+        );
+      } else {
+        createResult = this.scene.draw_polygon(newName, flatPoints, '{}');
+      }
+    } else if (entityType === 'Line' && localGeom.Line) {
+      const { points } = localGeom.Line as { points: [number, number][] };
+      const flatPoints = new Float64Array(points.flat());
+      createResult = this.scene.draw_line(newName, flatPoints, '{}');
+    } else if (entityType === 'Arc' && localGeom.Arc) {
+      const { center, radius, start_angle, end_angle } = localGeom.Arc as {
+        center: [number, number];
+        radius: number;
+        start_angle: number;
+        end_angle: number;
+      };
+      createResult = this.scene.draw_arc(
+        newName,
+        center[0],
+        center[1],
+        radius,
+        start_angle,
+        end_angle,
+        '{}'
+      );
+    } else if (entityType === 'Bezier' && localGeom.Bezier) {
+      // Bezier requires reconstructing the path - complex, recommend cad_code
+      return {
+        success: false,
+        error: `duplicate: Bezier duplication is complex. Use cad_code with duplicate('${source}', '${newName}') instead.`,
+      };
+    } else {
+      return { success: false, error: `duplicate: unsupported entity type '${entityType}'` };
+    }
+
+    if (!createResult) {
+      return { success: false, error: `duplicate: failed to create '${newName}'` };
+    }
+
+    // Copy transform if exists
+    const transform = entity.local?.transform;
+    if (transform) {
+      const { translate: trans, rotate: rot, scale: sc } = transform as {
+        translate?: [number, number];
+        rotate?: number;
+        scale?: [number, number];
+      };
+      if (trans && (trans[0] !== 0 || trans[1] !== 0)) {
+        this.scene.translate(newName, trans[0], trans[1]);
+      }
+      if (rot && rot !== 0) {
+        this.scene.rotate(newName, rot);
+      }
+      if (sc && (sc[0] !== 1 || sc[1] !== 1)) {
+        this.scene.scale(newName, sc[0], sc[1]);
+      }
+    }
+
+    // Copy style if exists
+    const style = entity.style;
+    if (style) {
+      if (style.fill) {
+        this.scene.set_fill(newName, JSON.stringify({ color: style.fill }));
+      }
+      if (style.stroke) {
+        this.scene.set_stroke(newName, JSON.stringify(style.stroke));
+      }
+    }
+
+    return { success: true, entity: newName, type: entityType?.toLowerCase() || 'unknown' };
   }
 
   // === Registry implementations ===

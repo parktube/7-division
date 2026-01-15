@@ -143,12 +143,12 @@ const EXECUTOR_TOOLS: Record<string, ToolSchema> = {
   },
   set_stroke: {
     name: 'set_stroke',
-    description: '선 스타일 설정',
+    description: '선 스타일 설정 (RGBA 각 요소 0~1 범위)',
     parameters: {
       type: 'object',
       properties: {
         name: { type: 'string', description: '엔티티 이름' },
-        stroke: { type: 'object', description: '선 스타일 { color, width }' },
+        stroke: { type: 'object', description: '선 스타일 { color: [r,g,b,a], width } - color 각 요소 0~1 범위 (예: [0,0,1,1] = 파랑)' },
       },
       required: ['name', 'stroke'],
     },
@@ -289,10 +289,10 @@ const EXECUTOR_TOOLS: Record<string, ToolSchema> = {
     parameters: {
       type: 'object',
       properties: {
-        groupName: { type: 'string', description: '그룹 이름' },
-        entityName: { type: 'string', description: '추가할 엔티티' },
+        group_name: { type: 'string', description: '그룹 이름' },
+        entity_name: { type: 'string', description: '추가할 엔티티' },
       },
-      required: ['groupName', 'entityName'],
+      required: ['group_name', 'entity_name'],
     },
   },
   // utility

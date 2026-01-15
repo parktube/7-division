@@ -24,6 +24,7 @@ interface UIContextValue {
   selectedCount: number
   lastSelectedId: string | null
   select: (id: string) => void
+  selectMultiple: (ids: string[]) => void
   deselect: (id: string) => void
   toggleSelect: (id: string) => void
   rangeSelect: (id: string, orderedIds: string[]) => void
@@ -77,6 +78,15 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const select = useCallback((id: string) => {
     setSelectedIds(new Set([id]))
     setLastSelectedId(id)
+  }, [])
+
+  const selectMultiple = useCallback((ids: string[]) => {
+    if (ids.length === 0) {
+      setSelectedIds(new Set())
+      return
+    }
+    setSelectedIds(new Set(ids))
+    setLastSelectedId(ids[ids.length - 1])
   }, [])
 
   const deselect = useCallback((id: string) => {
@@ -203,6 +213,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
     selectedCount,
     lastSelectedId,
     select,
+    selectMultiple,
     deselect,
     toggleSelect,
     rangeSelect,
@@ -232,6 +243,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
     selectedCount,
     lastSelectedId,
     select,
+    selectMultiple,
     deselect,
     toggleSelect,
     rangeSelect,

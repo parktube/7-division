@@ -41,9 +41,10 @@ jobs:
         run: pnpm --filter @ai-native-cad/shared build
 
       - name: Build viewer for GitHub Pages
-        env:
-          VITE_BASE_PATH: /${{ github.event.repository.name }}/
-        run: pnpm --filter @ai-native-cad/viewer build
+        run: |
+          # Extract repo name from github.repository (works for both push and workflow_dispatch)
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          VITE_BASE_PATH="/${REPO_NAME}/" pnpm --filter @ai-native-cad/viewer build
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

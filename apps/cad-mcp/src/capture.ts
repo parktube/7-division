@@ -76,13 +76,17 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
     let port: number | undefined;
     try {
       const portData = await fs.readFile(portFilePath, 'utf-8');
-      port = parseInt(portData.trim(), 10);
+      const parsed = parseInt(portData.trim(), 10);
+      // Validate parsed port (parseInt can return NaN for invalid input)
+      if (Number.isFinite(parsed) && parsed > 0 && parsed < 65536) {
+        port = parsed;
+      }
     } catch (err) {
       // Port file doesn't exist - Electron app may not be running
       logger.debug('Electron port file not found', { path: portFilePath, error: String(err) });
     }
 
-    // If we have a port, try the capture endpoint
+    // If we have a valid port, try the capture endpoint
     if (port) {
       const url = `http://127.0.0.1:${port}/capture?path=${encodeURIComponent(outputPath)}`;
       logger.debug('Electron capture request', { url, outputPath });
@@ -260,7 +264,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     logger.debug('WebSocket status', wsStatus);
     logger.debug('Console logs from browser', { logs: consoleLogs.slice(-20) });
 
-    // Set zoom level (3x for better precision)
+    // Set zoom level to 1x (default, no scaling)
     const zoomApplied = await page.evaluate(() => {
       // Use window.__setZoom if exposed by the viewer
       type WindowWithZoom = Window & { __setZoom?: (z: number) => void };
