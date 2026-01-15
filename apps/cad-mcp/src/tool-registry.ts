@@ -66,10 +66,17 @@ export class ToolRegistry {
 
   /**
    * 싱글톤 인스턴스 획득
+   * Note: requestsFilePath is only used on first call; subsequent calls ignore it
    */
   static getInstance(requestsFilePath?: string): ToolRegistry {
     if (!ToolRegistry.instance) {
       ToolRegistry.instance = new ToolRegistry(requestsFilePath);
+    } else if (requestsFilePath && requestsFilePath !== ToolRegistry.instance.requestsFilePath) {
+      // Warn if different path is passed after instance creation
+      logger.warn(
+        `[ToolRegistry] getInstance called with different path. ` +
+        `Using existing: ${ToolRegistry.instance.requestsFilePath}, ignoring: ${requestsFilePath}`
+      );
     }
     return ToolRegistry.instance;
   }

@@ -94,7 +94,13 @@ async function tryElectronCapture(outputPath: string): Promise<CaptureResult | n
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       });
-      const result = await response.json();
+      let result: unknown;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        logger.debug('Electron capture returned invalid JSON', { error: String(jsonError) });
+        return null;
+      }
       if (!isCaptureResult(result)) {
         logger.debug('Electron capture returned invalid response', { result });
         return null;

@@ -37,6 +37,10 @@ export const DOMAINS = {
   utility: ['duplicate', 'mirror'],
 } as const;
 
+// Type declarations before usage for better readability
+export type DomainName = keyof typeof DOMAINS;
+export type ToolName = (typeof DOMAINS)[DomainName][number];
+
 /**
  * 도메인 메타데이터 (LLM용 설명 포함)
  */
@@ -50,9 +54,6 @@ export const DOMAIN_METADATA: Record<DomainName, { description: string }> = {
   geometry: { description: '기하 분석 (오프셋, 면적, 볼록껍질, 분해)' },
   utility: { description: '유틸리티 (복제, 미러)' },
 };
-
-export type DomainName = keyof typeof DOMAINS;
-export type ToolName = (typeof DOMAINS)[DomainName][number];
 
 /**
  * MCP 도구 스키마 정의
