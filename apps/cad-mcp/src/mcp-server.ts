@@ -31,6 +31,7 @@ import { handleGlob } from './tools/glob.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
+import { handleLsp } from './tools/lsp.js'
 import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
@@ -1095,11 +1096,36 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === lsp: 코드 탐색 ===
+        case 'lsp': {
+          const operation = (args as Record<string, unknown>)?.operation as string
+          const domain = (args as Record<string, unknown>)?.domain as string | undefined
+          const funcName = (args as Record<string, unknown>)?.name as string | undefined
+          const file = (args as Record<string, unknown>)?.file as string | undefined
+
+          const result = handleLsp({
+            operation: operation as 'domains' | 'describe' | 'schema' | 'symbols',
+            domain,
+            name: funcName,
+            file,
+          })
+
+          if (result.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            }
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: true,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit, write`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit, write, lsp`,
             }],
             isError: true,
           }

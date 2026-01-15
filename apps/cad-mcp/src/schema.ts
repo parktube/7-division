@@ -761,6 +761,34 @@ export const NEW_TOOLS: Record<string, ToolSchema> = {
       required: ['file', 'code'],
     },
   },
+
+  // === lsp: 코드 탐색 ===
+  lsp: {
+    name: 'lsp',
+    description: '코드 탐색. built-in 함수(domains/describe/schema) + 모듈 심볼(symbols).',
+    parameters: {
+      type: 'object',
+      properties: {
+        operation: {
+          type: 'string',
+          description: "동작: 'domains' | 'describe' | 'schema' | 'symbols'",
+        },
+        domain: {
+          type: 'string',
+          description: "describe용: 도메인명 (예: primitives, style)",
+        },
+        name: {
+          type: 'string',
+          description: "schema용: 함수명 (예: drawCircle)",
+        },
+        file: {
+          type: 'string',
+          description: "symbols용: 파일명 ('main' 또는 모듈명)",
+        },
+      },
+      required: ['operation'],
+    },
+  },
 };
 
 /**
