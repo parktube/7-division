@@ -198,7 +198,7 @@ export class CADWebSocketServer {
       const message = safeValidateMessage(raw)
 
       if (!message) {
-        logger.warn('Invalid message received:', raw)
+        logger.warn('Invalid message received', { raw: JSON.stringify(raw) })
         return
       }
 

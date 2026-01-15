@@ -14,11 +14,12 @@ import { CADExecutor } from './src/executor.js';
 import { AnthropicProvider } from './src/providers/anthropic.js';
 import { runAgentLoop } from './src/runtime.js';
 import { SCENE_FILE } from './src/run-cad-code/constants.js';
+import type { DomainName } from './src/schema.js';
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 
-function parseArgs(args: string[]): { sceneName: string; prompt: string; domains: string[] } {
+function parseArgs(args: string[]): { sceneName: string; prompt: string; domains: DomainName[] } {
   let sceneName = 'cad-scene';
-  let domains: string[] = [];
+  let domains: DomainName[] = [];
   const promptParts: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -26,17 +27,18 @@ function parseArgs(args: string[]): { sceneName: string; prompt: string; domains
       sceneName = args[i + 1];
       i++;
     } else if (args[i] === '--domains' && args[i + 1]) {
-      domains = args[i + 1].split(',');
+      domains = args[i + 1].split(',') as DomainName[];
       i++;
     } else if (!args[i].startsWith('--')) {
       promptParts.push(args[i]);
     }
   }
 
+  const defaultDomains: DomainName[] = ['primitives', 'style', 'transforms', 'query', 'export'];
   return {
     sceneName,
     prompt: promptParts.join(' '),
-    domains: domains.length > 0 ? domains : ['primitives', 'style', 'transforms', 'query', 'export'],
+    domains: domains.length > 0 ? domains : defaultDomains,
   };
 }
 
@@ -105,7 +107,7 @@ Environment:
   try {
     // Agent Loop 실행
     const result = await runAgentLoop(provider, executor, prompt, {
-      domains: domains as any,
+      domains,
       maxIterations: 20,
     });
 

@@ -1,3 +1,5 @@
+import type { MouseEvent, KeyboardEvent } from 'react'
+
 // Cache isMac result to avoid recomputing on every call
 let cachedIsMac: boolean | null = null
 
@@ -22,7 +24,7 @@ export function isMac(): boolean {
   return cachedIsMac
 }
 
-export function isModifierKey(e: React.MouseEvent | React.KeyboardEvent): boolean {
+export function isModifierKey(e: MouseEvent | KeyboardEvent): boolean {
   return isMac() ? e.metaKey : e.ctrlKey
 }
 
