@@ -20,8 +20,8 @@ date: '2025-12-14'
 
 **Author:** Hoons
 **Date:** 2025-01-06
-**Last Updated:** 2026-01-14
-**Status:** Epic 1~8 완료, Epic 9 (웹 아키텍처) 계획 중
+**Last Updated:** 2026-01-15
+**Status:** Epic 1~9 완료, Epic 10 (AX 개선) 계획 중
 
 ---
 
@@ -48,7 +48,7 @@ AI는 자동 생성기가 아닌 협업적 창작 파트너로서, 질문하고 
 **Technical Type:** Web App (브라우저 + Local MCP)
 **Domain:** Design Tools / Creative
 **Complexity:** High (새로운 패러다임)
-**Project Context:** Epic 1~8 완료, 웹 전환 진행 중
+**Project Context:** Epic 1~9 완료, AX 개선 진행 중
 
 ---
 
@@ -157,6 +157,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 - WASM 엔진, 도형 6종, Boolean 연산, 텍스트 렌더링
 - React 뷰어 (3패널, 스케치 모드)
 - MCP 도메인 도구 (cad_code, discovery, scene, export, module)
+- Epic 10에서 Claude Code 패턴 일치 도구로 재설계 예정
 
 상세: architecture.md 참조
 
@@ -208,7 +209,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 상세: [epics.md](./epics.md) 참조
 
-### 진행 중: 웹 아키텍처 (FR51~FR58)
+### 완료: 웹 아키텍처 (FR51~FR58) ✅
 
 | ID | 요구사항 | 설명 |
 |----|---------|------|
@@ -221,13 +222,44 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | FR57 | 온보딩 UI | MCP 미연결 시 가이드 |
 | FR58 | 버전 호환성 체크 | MCP ↔ Viewer 버전 검증 |
 
+### 진행 중: AX 개선 - MCP 도구 재설계 (FR59~FR65)
+
+**문제**: LLM이 MCP CAD 도구를 올바르게 사용하지 못함
+- `cad_code`를 "실행기"로 인식 → Read-first 패턴 무시
+- 기존 모듈 확인 없이 새 모듈 생성
+- 통합 도구의 "기본 모드"만 사용
+
+**해결**: Claude Code 패턴과 완전히 일치하도록 도구 재설계
+
+| ID | 요구사항 | 설명 |
+|----|---------|------|
+| FR59 | glob 도구 | 파일 목록 조회 (main + 모듈), Glob 패턴 일치 |
+| FR60 | read 도구 | 파일 읽기, Read-first 패턴 강제 |
+| FR61 | edit 도구 | 파일 부분 수정 → 자동 실행, old_code/new_code |
+| FR62 | write 도구 | 파일 전체 작성 → 자동 실행 |
+| FR63 | lsp 도구 | 코드 인텔리전스 (도메인/함수 탐색) |
+| FR64 | bash 도구 | 명령 실행 (씬 조회, 내보내기, reset) |
+| FR65 | 레거시 도구 제거 | cad_code, discovery, scene, export, module 제거 |
+
+**도구 매핑**:
+```
+Claude Code       →   MCP CAD (신규)
+─────────────────────────────────────
+Glob              →   glob
+Read              →   read
+Edit              →   edit
+Write             →   write
+LSP               →   lsp
+Bash              →   bash
+```
+
 ## Non-Functional Requirements
 
 ### 완료 (NFR1~NFR20) ✅
 
 성능, 오프라인 동작, 패널 리사이즈 60fps - 모두 충족.
 
-### 진행 중: 웹 아키텍처
+### 완료: 웹 아키텍처 ✅
 
 | ID | 요구사항 | 목표 |
 |----|---------|------|
@@ -235,11 +267,19 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | NFR22 | 첫 온보딩 | < 1분 (npx 한 줄) |
 | NFR23 | 브라우저 호환 | Chrome, Firefox, Safari |
 
+### 진행 중: AX 개선
+
+| ID | 요구사항 | 목표 |
+|----|---------|------|
+| NFR24 | Read-first 패턴 준수율 | > 95% |
+| NFR25 | 기존 모듈 재사용율 | > 90% |
+| NFR26 | 도구 학습 비용 | 0 (Claude Code 패턴 그대로) |
+
 ---
 
 ## Product Scope
 
-### 완료 (Epic 1~8) ✅
+### 완료 (Epic 1~9) ✅
 
 | Epic | 산출물 |
 |------|--------|
@@ -247,17 +287,20 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | 4~5 | 그룹/피봇, Selection UI |
 | 7 | React 뷰어, 3패널, 스케치 모드 |
 | 8 | Manifold Boolean, 텍스트 렌더링 |
+| 9 | 웹 아키텍처 (모노레포, WebSocket, GitHub Pages) |
 
-### 현재 진행: Epic 9 - 웹 아키텍처 전환
+### 현재 진행: Epic 10 - AX 개선 (MCP 도구 재설계)
 
-**목표**: 웹 브라우저에서 즉시 사용, 1분 이내 온보딩
+**목표**: LLM이 MCP 도구를 Claude Code처럼 자연스럽게 사용
+
+**배경**: LLM은 이미 Claude Code 도구 패턴을 학습함. 같은 패턴을 사용하면 학습 비용 제로.
 
 | Phase | 범위 | 산출물 |
 |-------|------|--------|
-| 1 | 모노레포 + WebSocket | pnpm workspace, useWebSocket |
-| 2 | MCP 서버 | @ai-native-cad/mcp (npm) |
-| 3 | 배포 | GitHub Pages, 온보딩 UI |
-| 4 | 안정화 | 버전 호환성, 에러 복구 |
+| 1 | 도구 설계 | ADR-008, 새 도구 스키마 정의 |
+| 2 | 구현 | glob, read, edit, write, lsp, bash |
+| 3 | 마이그레이션 | 레거시 도구 deprecated → 제거 |
+| 4 | 문서화 | CLAUDE.md, docs 업데이트 |
 
 ### Post-MVP
 
@@ -316,19 +359,24 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 ## Definition of Done
 
-### 완료 (Epic 1~8) ✅
+### 완료 (Epic 1~9) ✅
 
 - ✅ WASM 엔진, 도형 6종, 그룹/피봇
 - ✅ React 뷰어, 3패널, 스케치 모드
 - ✅ Boolean 연산, 텍스트 렌더링
+- ✅ 웹 아키텍처 (모노레포, WebSocket, GitHub Pages)
 
-### 현재 목표: Epic 9 - 웹 아키텍처
+### 현재 목표: Epic 10 - AX 개선
 
-- [ ] 모노레포 전환 (pnpm workspace)
-- [ ] WebSocket 실시간 동기화
-- [ ] MCP 서버 (stdio + WebSocket)
-- [ ] GitHub Pages 배포
-- [ ] 온보딩 UI (MCP 연결 가이드)
-- [ ] npm 패키지 배포
+- [x] ADR-008 작성 (도구 패턴 정렬)
+- [ ] glob 도구 구현
+- [ ] read 도구 구현
+- [ ] edit 도구 구현
+- [ ] write 도구 구현
+- [ ] lsp 도구 구현
+- [ ] bash 도구 구현
+- [ ] 레거시 도구 deprecated 경고
+- [ ] 레거시 도구 제거
+- [ ] CLAUDE.md 업데이트
 
 ---
