@@ -67,14 +67,14 @@ development_status:
   9-10-electron-cleanup: done
   epic-9-retrospective: optional
 
-  # Epic 10: AX Improvement - MCP Tool Redesign
-  epic-10: in-progress
+  # Epic 10: AX Improvement - MCP Tool Redesign (Completed)
+  epic-10: done
   10-1-glob-tool: done
   10-2-read-tool: done
   10-3-edit-tool: done
   10-4-write-tool: done
-  10-5-lsp-tool: ready-for-dev
-  10-6-bash-tool: ready-for-dev
-  10-7-legacy-tool-removal: ready-for-dev
-  10-8-ax-validation: ready-for-dev
+  10-5-lsp-tool: done
+  10-6-bash-tool: done
+  10-7-legacy-tool-removal: done
+  10-8-ax-validation: done
   epic-10-retrospective: optional
