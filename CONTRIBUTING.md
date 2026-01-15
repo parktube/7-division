@@ -99,6 +99,8 @@ scene({ action: 'overview' })
 
 ### 예시: 모듈로 집 그리기
 
+구조적인 클래스 패턴을 사용하여 재사용 가능한 모듈을 만듭니다:
+
 ```javascript
 // 모듈 저장
 module({ action: 'save', name: 'house_lib', code: `
@@ -107,12 +109,45 @@ class House {
     this.name = name;
     this.x = x;
     this.y = y;
+    this.parts = [];
   }
+
+  drawWall() {
+    const wallName = this.name + '_wall';
+    drawRect(wallName, 0, 15, 40, 30);  // 로컬 좌표 (0,0) 기준
+    setFill(wallName, [0.9, 0.85, 0.7, 1]);
+    this.parts.push(wallName);
+  }
+
+  drawRoof() {
+    const roofName = this.name + '_roof';
+    drawPolygon(roofName, [-25, 30, 0, 50, 25, 30]);
+    setFill(roofName, [0.6, 0.3, 0.1, 1]);
+    this.parts.push(roofName);
+  }
+
+  drawWindow() {
+    const winName = this.name + '_window';
+    drawRect(winName, 0, 20, 10, 10);
+    setFill(winName, [0.5, 0.8, 1, 1]);
+    this.parts.push(winName);
+  }
+
+  drawDoor() {
+    const doorName = this.name + '_door';
+    drawRect(doorName, -10, 8, 8, 16);
+    setFill(doorName, [0.4, 0.25, 0.1, 1]);
+    this.parts.push(doorName);
+  }
+
   build() {
-    drawRect(this.name+'_wall', 0, 0, 40, 30);
-    drawPolygon(this.name+'_roof', [-25, 30, 0, 50, 25, 30]);
-    createGroup(this.name, [this.name+'_wall', this.name+'_roof']);
-    translate(this.name, this.x, this.y);
+    this.drawWall();
+    this.drawRoof();
+    this.drawWindow();
+    this.drawDoor();
+    createGroup(this.name, this.parts);
+    translate(this.name, this.x, this.y);  // 그룹 전체 이동
+    return this;
   }
 }
 `})
@@ -122,8 +157,14 @@ cad_code({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
+new House('h3', 200, 0).build();
 `})
 ```
+
+**패턴 원칙:**
+- 부품은 로컬 좌표 (0,0) 기준으로 생성
+- 각 부품을 별도 메서드로 분리하여 확장성 확보
+- `build()`에서 그룹화 후 최종 위치로 이동
 
 자세한 API는 `CLAUDE.md` 참조.
 

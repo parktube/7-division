@@ -123,7 +123,6 @@ module({ action: 'delete', name: 'house_lib' })
 
 🔍 조회
   query       - 씬 조회 (getEntity, exists, fitToViewport)
-  utility     - 유틸리티 (duplicate, mirror)
 ```
 
 ## 함수 목록 (도메인별)
@@ -143,6 +142,21 @@ drawBezier(name, path)                    // SVG path: 'M x,y C cp1 cp2 end Z'
 drawText(name, text, x, y, fontSize, options?)
 // options: { fontPath?, align?: 'left'|'center'|'right', color?: [r,g,b,a] }
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
+```
+
+**폰트 검색 순서** (fontPath 생략 시):
+1. 프로젝트 `apps/cad-mcp/fonts/` 디렉터리
+2. 시스템 폰트 디렉터리
+
+**권장 폰트**: NanumGothic.ttf, NanumMyeongjo.ttf, D2Coding.ttf, NotoSansKR-Regular.otf
+
+### Bezier 경로 형식
+```javascript
+// SVG path 문법 사용
+drawBezier('wave', 'M 0,0 C 30,50 70,50 100,0')
+drawBezier('s_curve', 'M 0,0 C 20,50 40,-50 60,0 S 100,-50 120,0')
+
+// 명령어: M(시작), C(큐빅 베지어), S(부드러운 연결), Q(쿼드라틱), L(직선), Z(닫기)
 ```
 
 ### transforms - 변환
@@ -176,7 +190,7 @@ decompose(name, prefix)                   // 분리된 컴포넌트 추출
 ```javascript
 setFill(name, [r, g, b, a])               // 색상 0~1
 setStroke(name, [r, g, b, a], width?)
-drawOrder(name, mode)                     // 'front', 'back', +N, 'above:target'
+drawOrder(name, mode)                     // 'front', 'back', +N, -N, 'above:target', 'below:target'
 getDrawOrder(groupName?)                  // 드로우 오더 조회
 ```
 
@@ -206,19 +220,36 @@ fitToViewport(width, height, options?)    // 자동 스케일 계산
 ## 모듈 시스템
 
 ```javascript
-// 모듈 저장
+// 모듈 저장 - 구조적인 클래스 패턴
 module({ action: 'save', name: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
     this.x = x;
     this.y = y;
+    this.parts = [];
   }
+
+  drawWall() {
+    const n = this.name + '_wall';
+    drawRect(n, 0, 15, 40, 30);  // 로컬 좌표 (0,0) 기준
+    setFill(n, [0.9, 0.85, 0.7, 1]);
+    this.parts.push(n);
+  }
+
+  drawRoof() {
+    const n = this.name + '_roof';
+    drawPolygon(n, [-25, 30, 0, 50, 25, 30]);
+    setFill(n, [0.6, 0.3, 0.1, 1]);
+    this.parts.push(n);
+  }
+
   build() {
-    drawRect(this.name+'_wall', 0, 15, 40, 30);  // 로컬 좌표
-    drawPolygon(this.name+'_roof', [-25,30, 0,50, 25,30]);
-    createGroup(this.name, [this.name+'_wall', this.name+'_roof']);
-    translate(this.name, this.x, this.y);
+    this.drawWall();
+    this.drawRoof();
+    createGroup(this.name, this.parts);
+    translate(this.name, this.x, this.y);  // 그룹 전체 이동
+    return this;
   }
 }
 `})
@@ -245,6 +276,36 @@ drawRect(this.name+'_body', 0, 20, 20, 40);  // (0,0) 기준
 createGroup(this.name, [...]);
 translate(this.name, this.x, this.y);         // 그룹 전체 이동
 ```
+
+## 클래스 간 배치 패턴
+
+서로 다른 클래스의 엔티티를 상대적으로 배치할 때:
+
+```javascript
+// Robot 클래스가 이미 존재할 때, Hat을 로봇 머리 위에 배치
+class Hat {
+  constructor(name, targetRobotName) {
+    this.name = name;
+    this.targetRobotName = targetRobotName;
+  }
+  build() {
+    // 1. 타겟 엔티티의 월드 좌표 조회
+    const robot = getEntity(this.targetRobotName);
+    const headBounds = getWorldBounds(this.targetRobotName + '_head');
+
+    // 2. 로컬 좌표 (0,0) 기준으로 부품 생성
+    drawPolygon(this.name, [-15, 0, 15, 0, 10, 20, -10, 20]);
+    setFill(this.name, [0.2, 0.2, 0.8, 1]);
+
+    // 3. 타겟의 월드 좌표로 이동
+    const hatX = (headBounds.min[0] + headBounds.max[0]) / 2;
+    const hatY = headBounds.max[1];  // 머리 위
+    translate(this.name, hatX, hatY);
+  }
+}
+```
+
+**핵심**: `getWorldBounds()` → 로컬 생성 → `translate()`로 월드 위치 이동
 
 ## getEntity 응답 형식
 
