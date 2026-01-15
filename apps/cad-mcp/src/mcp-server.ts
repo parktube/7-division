@@ -32,6 +32,7 @@ import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
 import { handleLsp } from './tools/lsp.js'
+import { handleBash, type BashCommand } from './tools/bash.js'
 import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
@@ -1121,11 +1122,42 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === bash: 명령 실행 ===
+        case 'bash': {
+          const command = (args as Record<string, unknown>)?.command as BashCommand
+          const group = (args as Record<string, unknown>)?.group as string | undefined
+          const clearSketch = (args as Record<string, unknown>)?.clearSketch as boolean | undefined
+
+          const exec = getExecutor()
+          const result = await handleBash(
+            { command, group, clearSketch },
+            exec,
+            () => {
+              // On scene change (reset), broadcast and save
+              const sceneJson = exec.exportScene()
+              const scene = JSON.parse(sceneJson) as Scene
+              const wsServer = getWSServer()
+              wsServer.broadcastScene(scene)
+              saveScene(exec)
+            }
+          )
+
+          if (result.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            }
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: true,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit, write, lsp`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read, edit, write, lsp, bash`,
             }],
             isError: true,
           }

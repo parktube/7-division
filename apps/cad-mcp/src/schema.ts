@@ -789,6 +789,30 @@ export const NEW_TOOLS: Record<string, ToolSchema> = {
       required: ['operation'],
     },
   },
+
+  // === bash: 명령 실행 ===
+  bash: {
+    name: 'bash',
+    description: '명령 실행. 씬 조회(info/tree/groups/draw_order/selection), 내보내기(capture/svg/json), 초기화(reset).',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: {
+          type: 'string',
+          description: "명령: 'info' | 'tree' | 'groups' | 'draw_order' | 'selection' | 'capture' | 'svg' | 'json' | 'reset'",
+        },
+        group: {
+          type: 'string',
+          description: "draw_order용: 그룹명 (생략 시 root level)",
+        },
+        clearSketch: {
+          type: 'boolean',
+          description: 'capture용: 캡처 후 스케치 클리어',
+        },
+      },
+      required: ['command'],
+    },
+  },
 };
 
 /**
