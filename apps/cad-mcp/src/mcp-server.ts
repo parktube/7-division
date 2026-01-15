@@ -28,6 +28,7 @@ import {
   type DomainName,
 } from './schema.js'
 import { handleGlob } from './tools/glob.js'
+import { handleRead } from './tools/read.js'
 import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
@@ -955,11 +956,25 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        case 'read': {
+          const file = (args as Record<string, unknown>)?.file as string
+          const result = handleRead({ file })
+          if (result.success) {
+            return {
+              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            }
+          }
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: true,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob`,
+              text: `Unknown tool: ${name}. Available: cad_code, discovery, scene, export, module, glob, read`,
             }],
             isError: true,
           }

@@ -701,6 +701,22 @@ export const NEW_TOOLS: Record<string, ToolSchema> = {
       required: [],
     },
   },
+
+  // === read: 파일 읽기 ===
+  read: {
+    name: 'read',
+    description: '파일 읽기. edit/write 전에 반드시 먼저 확인.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          description: "파일명: 'main' 또는 모듈명",
+        },
+      },
+      required: ['file'],
+    },
+  },
 };
 
 /**
