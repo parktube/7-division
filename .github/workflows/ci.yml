@@ -111,8 +111,8 @@ jobs:
       - name: TypeScript Type Check
         run: pnpm -r typecheck
 
-      - name: Build all packages
-        run: pnpm -r build
+      - name: Build all packages (shared already built above)
+        run: pnpm -r --filter '!@ai-native-cad/shared' build
 
       - name: Run Tests
         run: pnpm -r test

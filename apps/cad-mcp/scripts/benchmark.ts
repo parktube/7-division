@@ -135,8 +135,12 @@ async function runBenchmark(): Promise<BenchmarkResult> {
               iteration++
               runIteration()
             }
-          } catch {
-            // Ignore parse errors, wait for next message
+          } catch (e) {
+            // Log parse errors for debugging protocol issues
+            if (process.env.DEBUG) {
+              // eslint-disable-next-line no-console
+              console.error('[benchmark] Parse error:', e)
+            }
           }
         })
 
