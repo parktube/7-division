@@ -117,26 +117,36 @@ export function handleWrite(input: WriteInput): WriteOutput {
  * - If file was newly created: delete the file
  */
 export function rollbackWrite(file: string, originalContent: string | null): void {
-  const filePath = getFilePath(file);
+  try {
+    const filePath = getFilePath(file);
 
-  if (originalContent === null) {
-    // File was newly created, delete it
-    if (existsSync(filePath)) {
-      unlinkSync(filePath);
+    if (originalContent === null) {
+      // File was newly created, delete it
+      if (existsSync(filePath)) {
+        unlinkSync(filePath);
+      }
+    } else {
+      // File existed, restore original content
+      writeFileSync(filePath, originalContent, 'utf-8');
     }
-  } else {
-    // File existed, restore original content
-    writeFileSync(filePath, originalContent, 'utf-8');
+  } catch {
+    // Rollback failure is non-fatal - log and continue
+    // Invalid file name during rollback means the original write also failed validation
   }
 }
 
 /**
- * Get original content for rollback (returns null if file doesn't exist)
+ * Get original content for rollback (returns null if file doesn't exist or invalid)
  */
 export function getOriginalContent(file: string): string | null {
-  const filePath = getFilePath(file);
-  if (!existsSync(filePath)) {
+  try {
+    const filePath = getFilePath(file);
+    if (!existsSync(filePath)) {
+      return null;
+    }
+    return readFileSync(filePath, 'utf-8');
+  } catch {
+    // Invalid file name or read error - treat as non-existent
     return null;
   }
-  return readFileSync(filePath, 'utf-8');
 }

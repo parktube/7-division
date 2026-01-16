@@ -171,9 +171,9 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR62 | 10.4 | write 도구 |
 | FR63 | 10.5 | lsp 도구 |
 | FR64 | 10.6 | bash 도구 |
-| FR65 | 10.7 | 레거시 도구 제거 |
+| FR65-1 | 10.7 | 레거시 도구 제거 |
 | NFR24 | 10.8 | AX 검증 (Read-first 패턴) |
-| FR65 (cont.) | 10.9 | discovery.ts 레거시 정리 |
+| FR65-2 | 10.9 | discovery.ts 레거시 정리 |
 | FR66 | 10.10 | HMR 스타일 실행 |
 
 ---

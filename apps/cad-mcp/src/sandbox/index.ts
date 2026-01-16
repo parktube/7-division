@@ -902,7 +902,13 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         // 1. scale 전 world center 저장
         const beforeResult = executor.exec('get_entity', { name });
         if (!beforeResult.success || !beforeResult.data) return false;
-        const beforeEntity = JSON.parse(beforeResult.data);
+        let beforeEntity;
+        try {
+          beforeEntity = JSON.parse(beforeResult.data);
+        } catch {
+          logger.error(`[scale around:center] ${name} failed to parse beforeEntity JSON`);
+          return false;
+        }
         const beforeBounds = beforeEntity.world?.bounds;
         if (!beforeBounds) return false;
         const beforeCenter = [
@@ -918,7 +924,13 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         // 3. scale 후 world center 계산
         const afterResult = executor.exec('get_entity', { name });
         if (!afterResult.success || !afterResult.data) return false;
-        const afterEntity = JSON.parse(afterResult.data);
+        let afterEntity;
+        try {
+          afterEntity = JSON.parse(afterResult.data);
+        } catch {
+          logger.error(`[scale around:center] ${name} failed to parse afterEntity JSON`);
+          return false;
+        }
         const afterBounds = afterEntity.world?.bounds;
         if (!afterBounds) return false;
         const afterCenter = [

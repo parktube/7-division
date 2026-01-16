@@ -33,18 +33,20 @@ edit({
 
 ## translate
 
-이동
+도형을 이동합니다. **값이 누적됩니다** (절대 위치가 아닌 상대 이동).
 
 ```javascript
-translate(name, dx, dy, options?)
+translate(name, dx, dy, options?): boolean
 ```
 
-| 파라미터 | 타입 | 설명 |
-|----------|------|------|
-| name | string | 엔티티/그룹 이름 |
-| dx | number | X 이동량 |
-| dy | number | Y 이동량 |
-| options | object | `{ space: 'world' | 'local' }` |
+| 파라미터 | 타입 | 기본값 | 설명 |
+|----------|------|--------|------|
+| name | string | - | 엔티티/그룹 이름 |
+| dx | number | - | X 이동량 |
+| dy | number | - | Y 이동량 |
+| options.space | 'world' \| 'local' | 'world' | 좌표계 |
+
+**반환값:** `boolean` - 성공 시 `true`, 실패 시 `false`
 
 ```javascript
 translate('box', 100, 50);              // 월드 좌표로 이동
@@ -53,17 +55,19 @@ translate('box', 10, 0, { space: 'local' });  // 로컬 좌표로 이동
 
 ## rotate
 
-회전
+도형을 회전합니다. **각도가 누적됩니다** (절대 회전이 아닌 상대 회전).
 
 ```javascript
-rotate(name, angle, options?)
+rotate(name, angle, options?): boolean
 ```
 
-| 파라미터 | 타입 | 설명 |
-|----------|------|------|
-| name | string | 엔티티/그룹 이름 |
-| angle | number | 회전 각도 (**라디안**) |
-| options | object | `{ space: 'world' | 'local' }` |
+| 파라미터 | 타입 | 기본값 | 설명 |
+|----------|------|--------|------|
+| name | string | - | 엔티티/그룹 이름 |
+| angle | number | - | 회전 각도 (**라디안**) |
+| options.space | 'world' \| 'local' | 'world' | 좌표계 |
+
+**반환값:** `boolean` - 성공 시 `true`, 실패 시 `false`
 
 ```javascript
 rotate('box', Math.PI / 4);     // 45도 회전
@@ -130,23 +134,48 @@ rotate('door', Math.PI / 4);
 
 ## deleteEntity
 
-엔티티 삭제
+엔티티를 삭제합니다.
 
 ```javascript
-deleteEntity(name)
+deleteEntity(name): boolean
 ```
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| name | string | 삭제할 엔티티 이름 |
+
+**반환값:** `boolean` - 성공 시 `true`, 엔티티가 없거나 실패 시 `false`
 
 ```javascript
 deleteEntity('old_box');
 ```
 
-## duplicate
+**참고:** 존재하지 않는 엔티티를 삭제하면 `false`를 반환합니다 (에러 발생 안 함).
 
-복제
+---
+
+## Utility 함수 (utility 도메인)
+
+다음 함수들은 `transforms` 도메인이 아닌 `utility` 도메인에 속합니다.
 
 ```javascript
-duplicate(source, newName)
+lsp({ operation: 'describe', domain: 'utility' })
 ```
+
+## duplicate
+
+엔티티를 복제합니다.
+
+```javascript
+duplicate(sourceName, newName): boolean
+```
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| sourceName | string | 원본 엔티티 이름 |
+| newName | string | 새 엔티티 이름 |
+
+**반환값:** `boolean` - 성공 시 `true`, 실패 시 `false`
 
 ```javascript
 duplicate('tree', 'tree_copy');
@@ -155,17 +184,19 @@ translate('tree_copy', 50, 0);
 
 ## mirror
 
-미러 복제
+엔티티를 미러 복제합니다.
 
 ```javascript
-mirror(source, newName, axis)
+mirror(sourceName, newName, axis): boolean
 ```
 
 | 파라미터 | 타입 | 설명 |
 |----------|------|------|
-| source | string | 원본 엔티티 |
+| sourceName | string | 원본 엔티티 이름 |
 | newName | string | 새 엔티티 이름 |
-| axis | string | `'x'` 또는 `'y'` |
+| axis | 'x' \| 'y' | 미러 축 |
+
+**반환값:** `boolean` - 성공 시 `true`, 실패 시 `false`
 
 ```javascript
 // Y축 기준 미러 (좌우 반전)
