@@ -6,7 +6,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 ## Project Status
 
-**현재 단계**: MVP + 기하 엔진 통합 (Epic 1~8)
+**현재 단계**: MVP + 기하 엔진 + AX 개선 (Epic 1~10)
 
 | Epic | 상태 | 설명 |
 |------|------|------|
@@ -19,11 +19,12 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 | Epic 7 | ✅ 완료 | Viewer UI 리디자인 (React + 스케치 모드 + Z-Order) |
 | Epic 8 | ✅ 완료 | LLM DX 개선 (트랜잭션, 스케치 클리어, 자동 스케일) |
 | Epic 9 | ✅ 완료 | 웹 아키텍처 전환 (GitHub Pages + npm MCP) |
+| Epic 10 | ✅ 완료 | AX 문서화 + Claude Code 도구 패턴 정렬 |
 
 ### 주요 성과
 
 - **WASM CAD 엔진**: Rust로 작성된 고성능 CAD 커널
-- **MCP 도메인 도구**: cad_code, discovery, scene, export, module
+- **MCP 도구**: glob, read, edit, write, lsp, bash (Claude Code 패턴 정렬)
 - **Manifold 기하 엔진**: Boolean 연산, 기하 분석 (offset, area, convexHull)
 - **텍스트 렌더링**: opentype.js 기반 베지어 경로 변환 (한글/영문)
 - **React 기반 Viewer**: 3-패널 레이아웃, 다크/라이트 테마, 리사이즈 가능
@@ -277,15 +278,16 @@ GitHub Pages (Viewer)          Local MCP Server
 - 추가 모드에서 기존 변수 참조 가능
 - 부분 수정 모드 (old_code/new_code): Claude Code Edit 도구와 유사한 코드 편집
 
-**MCP 도메인 도구**
+**MCP 도구** (Claude Code 패턴 정렬)
 
 | 도구 | 설명 |
 |------|------|
-| `cad_code` | JavaScript 코드 실행/편집 |
-| `discovery` | 함수 탐색 (list_domains, describe) |
-| `scene` | 씬 상태 조회 (info, overview) |
-| `export` | 내보내기 (json, svg, capture) |
-| `module` | 모듈 관리 (save, list, get, delete) |
+| `glob` | 파일 목록 조회 |
+| `read` | 파일 읽기 |
+| `edit` | 파일 부분 수정 → 자동 실행 |
+| `write` | 파일 전체 작성 → 자동 실행 |
+| `lsp` | 함수 탐색 (domains, describe, schema) |
+| `bash` | 씬 조회/내보내기 (tree, capture, svg 등) |
 
 **Sandbox 함수 도메인** (`discovery describe <domain>`)
 ```
@@ -329,8 +331,9 @@ GitHub Pages (Viewer)          Local MCP Server
 | Epic 7 | 17 stories | ✅ done |
 | Epic 8 | 4 stories | ✅ done |
 | Epic 9 | 10 stories | ✅ done |
+| Epic 10 | 11 stories | ✅ done |
 
-**총 68개 스토리 완료**
+**총 79개 스토리 완료**
 
 ## Contributing
 
@@ -346,4 +349,4 @@ MIT
 
 ---
 
-*작성: 2025-12-17 | 최종 업데이트: 2026-01-15*
+*작성: 2025-12-17 | 최종 업데이트: 2026-01-17*
