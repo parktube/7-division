@@ -393,6 +393,12 @@ export async function createMCPServer(): Promise<Server> {
           const mainCode = readMainCode()
           const execResult = await executeRunCadCode(mainCode)
 
+          // Merge warnings from both edit and execution
+          const allWarnings = [
+            ...(editResult.warnings || []),
+            ...(execResult.warnings || []),
+          ]
+
           if (execResult.success) {
             const response = {
               success: true,
@@ -402,7 +408,7 @@ export async function createMCPServer(): Promise<Server> {
                 entities: getSceneEntities(exec),
               },
               logs: execResult.logs,
-              warnings: editResult.warnings,
+              warnings: allWarnings.length > 0 ? allWarnings : undefined,
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
@@ -423,7 +429,7 @@ export async function createMCPServer(): Promise<Server> {
                 replaced: false,
                 sceneRestored,
               },
-              warnings: editResult.warnings,
+              warnings: allWarnings.length > 0 ? allWarnings : undefined,
               error: execResult.error,
               hint: sceneRestored
                 ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'

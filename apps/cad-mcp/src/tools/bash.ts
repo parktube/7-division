@@ -393,14 +393,14 @@ export async function handleBash(
         exec.exec('reset', {});
         const importResult = exec.importScene(prevSnapshot.sceneJson);
 
-        // Check if import failed
-        if (importResult.error) {
+        // Check if import had errors
+        if (importResult.errors && importResult.errors.length > 0) {
           // Rollback snapshotIndex
           snapshotIndex = previousIndex;
           return {
             success: false,
             data: {},
-            error: `Failed to restore snapshot: ${importResult.error}`,
+            error: `Failed to restore snapshot: ${importResult.errors.join(', ')}`,
           };
         }
 
@@ -439,14 +439,14 @@ export async function handleBash(
         exec.exec('reset', {});
         const importResult = exec.importScene(nextSnapshot.sceneJson);
 
-        // Check if import failed
-        if (importResult.error) {
+        // Check if import had errors
+        if (importResult.errors && importResult.errors.length > 0) {
           // Rollback snapshotIndex
           snapshotIndex = previousIndex;
           return {
             success: false,
             data: {},
-            error: `Failed to restore snapshot: ${importResult.error}`,
+            error: `Failed to restore snapshot: ${importResult.errors.join(', ')}`,
           };
         }
 

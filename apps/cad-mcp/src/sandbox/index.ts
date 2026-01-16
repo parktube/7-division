@@ -598,20 +598,26 @@ export async function runCadCode(
       if (isDrawCommand && entityName) {
         const existsResult = executor.exec('exists', { name: entityName });
         if (existsResult.success && existsResult.data) {
-          const parsed = JSON.parse(existsResult.data);
-          if (parsed.exists) {
-            // Lock 확인: 잠긴 엔티티는 삭제 불가
-            if (lockedEntities.has(entityName)) {
-              logger.warn(`[sandbox] Upsert: '${entityName}' is locked, skipping delete`);
-              warnings.push(`Warning: cannot upsert locked entity '${entityName}'`);
-              return false;
+          try {
+            const parsed = JSON.parse(existsResult.data);
+            if (parsed.exists) {
+              // Lock 확인: 잠긴 엔티티는 삭제 불가
+              if (lockedEntities.has(entityName)) {
+                logger.warn(`[sandbox] Upsert: '${entityName}' is locked, skipping delete`);
+                warnings.push(`Warning: cannot upsert locked entity '${entityName}'`);
+                return false;
+              }
+              const deleteResult = executor.exec('delete', { name: entityName });
+              if (!deleteResult.success) {
+                logger.error(`[sandbox] Upsert: failed to delete '${entityName}': ${deleteResult.error}`);
+                return false;
+              }
+              logger.debug(`[sandbox] Upsert: deleted existing '${entityName}'`);
             }
-            const deleteResult = executor.exec('delete', { name: entityName });
-            if (!deleteResult.success) {
-              logger.error(`[sandbox] Upsert: failed to delete '${entityName}': ${deleteResult.error}`);
-              return false;
-            }
-            logger.debug(`[sandbox] Upsert: deleted existing '${entityName}'`);
+          } catch {
+            logger.error(`[sandbox] Upsert: failed to parse exists result for '${entityName}': ${existsResult.data}`);
+            warnings.push(`Warning: failed to check existence of '${entityName}'`);
+            // Continue with command execution (treat as "not exists")
           }
         }
       }
@@ -620,20 +626,26 @@ export async function runCadCode(
       if (command === 'create_group' && entityName) {
         const existsResult = executor.exec('exists', { name: entityName });
         if (existsResult.success && existsResult.data) {
-          const parsed = JSON.parse(existsResult.data);
-          if (parsed.exists) {
-            // Lock 확인: 잠긴 그룹은 삭제 불가
-            if (lockedEntities.has(entityName)) {
-              logger.warn(`[sandbox] Upsert: group '${entityName}' is locked, skipping delete`);
-              warnings.push(`Warning: cannot upsert locked group '${entityName}'`);
-              return false;
+          try {
+            const parsed = JSON.parse(existsResult.data);
+            if (parsed.exists) {
+              // Lock 확인: 잠긴 그룹은 삭제 불가
+              if (lockedEntities.has(entityName)) {
+                logger.warn(`[sandbox] Upsert: group '${entityName}' is locked, skipping delete`);
+                warnings.push(`Warning: cannot upsert locked group '${entityName}'`);
+                return false;
+              }
+              const deleteResult = executor.exec('delete', { name: entityName });
+              if (!deleteResult.success) {
+                logger.error(`[sandbox] Upsert: failed to delete group '${entityName}': ${deleteResult.error}`);
+                return false;
+              }
+              logger.debug(`[sandbox] Upsert: deleted existing group '${entityName}'`);
             }
-            const deleteResult = executor.exec('delete', { name: entityName });
-            if (!deleteResult.success) {
-              logger.error(`[sandbox] Upsert: failed to delete group '${entityName}': ${deleteResult.error}`);
-              return false;
-            }
-            logger.debug(`[sandbox] Upsert: deleted existing group '${entityName}'`);
+          } catch {
+            logger.error(`[sandbox] Upsert: failed to parse exists result for group '${entityName}': ${existsResult.data}`);
+            warnings.push(`Warning: failed to check existence of group '${entityName}'`);
+            // Continue with command execution (treat as "not exists")
           }
         }
       }
