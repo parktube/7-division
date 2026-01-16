@@ -96,6 +96,7 @@ jobs:
 
       - name: Copy WASM to cad-mcp
         run: |
+          rm -rf apps/cad-mcp/wasm
           mkdir -p apps/cad-mcp/wasm
           cp -r cad-engine/pkg/* apps/cad-mcp/wasm/
 
