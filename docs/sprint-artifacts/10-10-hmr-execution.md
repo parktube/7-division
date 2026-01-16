@@ -1,6 +1,6 @@
 # Story 10.10: HMR 스타일 코드 실행
 
-Status: drafted
+Status: done
 
 ## Story
 

@@ -195,6 +195,9 @@ async function executeRunCadCode(
       }
     }
 
+    // HMR 스타일: 매번 clean 상태에서 시작 (Story 10.10)
+    exec.exec('reset', {})
+
     // Run JavaScript code in QuickJS sandbox
     const result = await runCadCode(exec, preprocessed.code, 'warn')
 
@@ -229,9 +232,39 @@ async function executeRunCadCode(
  * Create and start the MCP server
  */
 export async function createMCPServer(): Promise<Server> {
-  // Initialize executor and restore scene FIRST (before WS server starts)
+  // Initialize executor
   const exec = getExecutor()
-  const restored = loadScene(exec)
+  let restored = false
+
+  // Story 10.10: main.js 우선 실행, scene.json 폴백
+  // 1차: main.js 실행으로 복원 시도
+  if (existsSync(SCENE_CODE_FILE)) {
+    try {
+      const mainCode = readFileSync(SCENE_CODE_FILE, 'utf-8')
+      const preprocessed = preprocessCode(mainCode)
+      if (preprocessed.errors.length === 0) {
+        const result = await runCadCode(exec, preprocessed.code, 'warn')
+        if (result.success) {
+          restored = true
+          logger.info('Scene restored from main.js')
+        } else {
+          logger.warn(`main.js execution failed: ${result.error}`)
+        }
+      } else {
+        logger.warn(`main.js preprocess failed: ${preprocessed.errors[0]}`)
+      }
+    } catch (e) {
+      logger.warn(`main.js load failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
+  // 2차: main.js 실패/없음 시 scene.json 폴백
+  if (!restored) {
+    restored = loadScene(exec)
+    if (restored) {
+      logger.info('Scene restored from scene.json (fallback)')
+    }
+  }
 
   // Set initial scene state on WS server BEFORE starting (prevents flickering)
   const sceneJson = exec.exportScene()
@@ -242,10 +275,6 @@ export async function createMCPServer(): Promise<Server> {
   // NOW start WebSocket server (clients get restored scene immediately on connect)
   const wsPort = await startWSServer()
   logger.info(`WebSocket server ready on port ${wsPort}`)
-
-  if (restored) {
-    logger.info('Scene restored from saved file')
-  }
 
   const server = new Server(
     {
@@ -360,15 +389,38 @@ export async function createMCPServer(): Promise<Server> {
             if (originalContent !== undefined) {
               rollbackEdit(file, originalContent)
             }
+
+            // Story 10.10: 원본 코드 재실행으로 씬 복원
+            let sceneRestored = false
+            const origCode = readMainCode()
+            if (origCode) {
+              exec.exec('reset', {})
+              const origPreprocessed = preprocessCode(origCode)
+              if (origPreprocessed.errors.length === 0) {
+                const restoreResult = await runCadCode(exec, origPreprocessed.code, 'warn')
+                if (restoreResult.success) {
+                  const sceneJson = exec.exportScene()
+                  const scene = JSON.parse(sceneJson) as Scene
+                  const wsServer = getWSServer()
+                  wsServer.broadcastScene(scene)
+                  saveScene(exec)
+                  sceneRestored = true
+                }
+              }
+            }
+
             const response = {
               success: false,
               data: {
                 file,
                 replaced: false,
+                sceneRestored,
               },
               warnings: editResult.warnings,
               error: execResult.error,
-              hint: '코드 실행 실패로 변경이 롤백되었습니다.',
+              hint: sceneRestored
+                ? '코드 실행 실패로 변경이 롤백되었습니다. 씬은 이전 상태로 복원됨.'
+                : '코드 실행 실패로 변경이 롤백되었습니다.',
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
@@ -416,15 +468,38 @@ export async function createMCPServer(): Promise<Server> {
           } else {
             // Rollback on execution failure
             rollbackWrite(file, originalContent)
+
+            // Story 10.10: 원본 코드 재실행으로 씬 복원
+            let sceneRestored = false
+            const origCode = readMainCode()
+            if (origCode) {
+              exec.exec('reset', {})
+              const origPreprocessed = preprocessCode(origCode)
+              if (origPreprocessed.errors.length === 0) {
+                const restoreResult = await runCadCode(exec, origPreprocessed.code, 'warn')
+                if (restoreResult.success) {
+                  const sceneJson = exec.exportScene()
+                  const scene = JSON.parse(sceneJson) as Scene
+                  const wsServer = getWSServer()
+                  wsServer.broadcastScene(scene)
+                  saveScene(exec)
+                  sceneRestored = true
+                }
+              }
+            }
+
             const response = {
               success: false,
               data: {
                 file,
                 created: false,
+                sceneRestored,
               },
               warnings: writeResult.warnings,
               error: execResult.error,
-              hint: '코드 실행 실패로 변경이 롤백되었습니다.',
+              hint: sceneRestored
+                ? '코드 실행 실패로 변경이 롤백되었습니다. 씬은 이전 상태로 복원됨.'
+                : '코드 실행 실패로 변경이 롤백되었습니다.',
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
