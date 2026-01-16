@@ -1,0 +1,35 @@
+// Re-export from ws-messages (standalone version for npm package)
+export {
+  WSMessageSchema,
+  SceneSchema,
+  SceneUpdateDataSchema,
+  SelectionDataSchema,
+  ConnectionDataSchema,
+  ErrorDataSchema,
+  validateMessage,
+  safeValidateMessage,
+  TransformSchema,
+  StyleSchema,
+  MetadataSchema,
+  BoundsSchema,
+  ComputedSchema,
+  EntitySchema,
+  SceneTreeNodeSchema,
+} from './ws-messages.js';
+
+export type {
+  WSMessage,
+  WSMessageType,
+  Scene,
+  SceneUpdateData,
+  SelectionData,
+  ConnectionData,
+  ErrorData,
+  Transform,
+  Style,
+  Metadata,
+  Bounds,
+  Computed,
+  Entity,
+  SceneTreeNode,
+} from './ws-messages.js';

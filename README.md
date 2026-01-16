@@ -15,22 +15,23 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 | Epic 3 | ✅ 완료 | 도형 편집 (Transform, Delete, Tool Use Foundation) |
 | Epic 4 | ✅ 완료 | 그룹화 및 피봇 (Group, Pivot, 계층적 변환) |
 | Epic 5 | ✅ 완료 | Selection UI (클릭 선택, 하이라이트, AI 전달) |
-| Epic 6 | ✅ 완료 | Electron 통합 (앱 패키징, Windows/Mac 배포) |
+| Epic 6 | ✅ 완료 | Electron 통합 (현재 Web 아키텍처로 전환) |
 | Epic 7 | ✅ 완료 | Viewer UI 리디자인 (React + 스케치 모드 + Z-Order) |
 | Epic 8 | ✅ 완료 | LLM DX 개선 (트랜잭션, 스케치 클리어, 자동 스케일) |
+| Epic 9 | ✅ 완료 | 웹 아키텍처 전환 (GitHub Pages + npm MCP) |
 
 ### 주요 성과
 
 - **WASM CAD 엔진**: Rust로 작성된 고성능 CAD 커널
-- **Direct-First Architecture**: MCP 없이 Claude Code가 직접 WASM 호출 (< 1ms)
+- **MCP 도메인 도구**: cad_code, discovery, scene, export, module
 - **Manifold 기하 엔진**: Boolean 연산, 기하 분석 (offset, area, convexHull)
 - **텍스트 렌더링**: opentype.js 기반 베지어 경로 변환 (한글/영문)
 - **React 기반 Viewer**: 3-패널 레이아웃, 다크/라이트 테마, 리사이즈 가능
 - **스케치 모드**: 펜/지우개 도구로 의도 표현, LLM과 협업
 - **Z-Order 관리**: drawOrder API로 레이어 순서 제어
 - **Dual Coordinate API**: local/world 좌표계 동시 지원
-- **Electron 앱**: Windows/Mac 네이티브 앱 배포
-- **LLM DX 개선**: 트랜잭션 롤백, 스케치 자동 클리어
+- **웹 아키텍처**: GitHub Pages + 로컬 MCP 서버
+- **씬 영속성**: scene.json 자동 저장/복원
 
 ## Viewer 사용법
 
@@ -76,75 +77,60 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 스케치는 `sketch.json`에 저장되어 LLM이 읽을 수 있습니다.
 
-## Downloads
-
-최신 릴리즈에서 플랫폼별 설치 파일을 다운로드하세요:
-
-| 플랫폼 | 파일 |
-|--------|------|
-| **Windows** | `CADViewer-Setup-x.x.x.exe` |
-| **macOS (Intel)** | `CADViewer-x.x.x.dmg` |
-| **macOS (Apple Silicon)** | `CADViewer-x.x.x-arm64.dmg` |
-
-[**Releases 페이지**](https://github.com/parktube/7-division/releases)
-
 ## Quick Start
 
-### Prerequisites
+### 사용자 (npx로 바로 시작)
+
+```bash
+# 1. MCP 서버 시작
+npx @ai-native-cad/mcp start
+
+# 2. 웹 Viewer 열기
+# → https://parktube.github.io/7-division/
+```
+
+> MCP 서버가 로컬에서 실행되면 웹 Viewer와 자동 연결됩니다.
+
+### 개발자 (로컬 개발 환경)
+
+**Prerequisites:**
 
 | 도구 | 필요 버전 | 설치 확인 |
 |------|----------|----------|
 | **Rust** | 1.85.0+ (stable) | `rustc --version` |
 | **Node.js** | 22.x LTS | `node --version` |
+| **pnpm** | 9.x+ | `pnpm --version` |
 | **wasm-pack** | 0.13.1 | `wasm-pack --version` |
 
-### Installation
+**Installation:**
 
 ```bash
-# 1. Rust 설치 (없는 경우)
+# 1. Rust & WASM 타겟 설치
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# 2. WASM 타겟 추가
 rustup target add wasm32-unknown-unknown
 
-# 3. wasm-pack 설치 (drager fork v0.13.1)
+# 2. wasm-pack 설치 (drager fork)
 cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
-# 4. 프로젝트 클론
+# 3. 프로젝트 클론 & 설치
 git clone git@github.com:parktube/7-division.git
 cd 7-division
+pnpm install
 ```
 
-### Build & Run
+**Build & Run:**
 
 ```bash
-# 1. CAD Engine 빌드 (WASM)
-cd cad-engine
-wasm-pack build --target nodejs --release
+# WASM 빌드
+pnpm run build:wasm:release
 
-# 2. TypeScript 도구 설치
-cd ../cad-tools
-npm install
+# 전체 빌드
+pnpm -r build
 
-# 3. Viewer 개발 서버 실행 (React + Vite)
-cd ../viewer
-npm install
-npm run dev
-# http://localhost:5173 접속
-
-# 4. CAD CLI 사용
-cd ../cad-tools
-npx tsx cad-cli.ts run_cad_code main "drawCircle('test', 0, 0, 50)"
-```
-
-### Electron 앱 빌드 (선택)
-
-```bash
-cd cad-electron
-npm install
-npm run build
-npm run build:win   # Windows
-npm run build:mac   # macOS
+# MCP 서버 + Viewer 개발 모드 (각각 별도 터미널)
+pnpm --filter @ai-native-cad/mcp start
+pnpm --filter @ai-native-cad/viewer dev
+# → http://localhost:5173
 ```
 
 ## Development Environment
@@ -161,36 +147,37 @@ npm run build:mac   # macOS
 | 빌드 도구 | Vite | 7.x |
 | 스타일링 | TailwindCSS | 4.x |
 | 상태관리 | React Context | - |
-| 데스크탑 | Electron | 34.x |
+| MCP Server | Node.js + WebSocket | - |
 | 테스트 | Vitest | 3.x |
 
 ### Project Structure
 
 ```
 7-division/
-├── docs/                    # 프로젝트 문서
-│   ├── prd.md              # Product Requirements
-│   ├── architecture.md     # 아키텍처 설계
-│   ├── epics.md            # 에픽 & 스토리 요약
-│   └── sprint-artifacts/   # 상세 스토리 파일
-├── cad-engine/              # Rust CAD 엔진 (WASM)
+├── apps/
+│   ├── viewer/             # React 웹 뷰어 (GitHub Pages)
+│   │   └── src/
+│   │       ├── components/ # Canvas, LayerPanel, InfoPanel 등
+│   │       ├── contexts/   # UIContext, ViewportContext
+│   │       ├── hooks/      # useWebSocket, useScene 등
+│   │       └── types/      # TypeScript 타입 정의
+│   └── cad-mcp/            # MCP 서버 (npm 패키지)
+│       └── src/
+│           ├── mcp-server.ts # MCP stdio 서버
+│           ├── ws-server.ts  # WebSocket 서버
+│           └── executor.ts   # CAD 명령 실행
+├── packages/
+│   └── shared/             # 공유 타입 (WebSocket 메시지 등)
+├── cad-engine/             # Rust CAD 엔진 (WASM)
 │   ├── Cargo.toml
 │   └── src/
 │       ├── lib.rs
 │       └── scene/          # Entity, Transform, Z-Order 등
-├── cad-tools/               # TypeScript CLI 도구
-│   └── src/
-│       ├── cli.ts          # CAD CLI 진입점
-│       ├── sandbox/        # JavaScript 샌드박스
-│       └── capture.ts      # 뷰포트 캡처
-├── viewer/                  # React 기반 뷰어
-│   └── src/
-│       ├── components/     # Canvas, LayerPanel, InfoPanel 등
-│       ├── contexts/       # UIContext, ViewportContext
-│       ├── hooks/          # useScene, useSketch 등
-│       └── types/          # TypeScript 타입 정의
-└── cad-electron/            # Electron 데스크탑 앱
-    └── src/main/           # Electron 메인 프로세스
+├── docs/                   # 프로젝트 문서
+│   ├── prd.md             # Product Requirements
+│   ├── architecture.md    # 아키텍처 설계
+│   └── epics.md           # 에픽 & 스토리 요약
+└── pnpm-workspace.yaml    # 모노레포 설정
 ```
 
 ### Environment Check
@@ -212,21 +199,39 @@ rustup target list --installed | grep wasm || echo "WASM target not installed"
 
 ## Architecture
 
-### Direct-First Architecture
+### Web + Local MCP Architecture
 
 ```
-Claude Code CLI (Node.js)
-    ↓ WASM 직접 로드 & 실행
-Rust CAD 엔진
-    ↓ scene.json 출력
-React Viewer (Canvas 2D)
-    ↓ 사용자 피드백
-selection.json / sketch.json
+GitHub Pages (Viewer)          Local MCP Server
+       │                              │
+       │ WebSocket (ws://127.0.0.1:3001)
+       └──────────────────────────────┘
+                     │
+              scene/selection 동기화
+                     │
+                Claude Code
+                     │ MCP 도구 호출
+               Rust CAD 엔진 (WASM)
 ```
 
-- **MCP 없이** WASM 직접 호출 (< 1ms 지연)
-- 브라우저는 **뷰어 + 인터랙션** 역할
-- **오프라인 우선** - 서버 의존 없음
+### Data Storage
+
+모든 CAD 데이터는 `~/.ai-native-cad/` 디렉토리에 저장됩니다:
+
+```
+~/.ai-native-cad/
+├── scene.json       # 씬 상태 (자동 저장/복원)
+├── scene.code.js    # main 코드 파일
+└── modules/         # 저장된 모듈
+```
+
+- **씬 영속성**: MCP 서버 재시작 시 scene.json에서 자동 복원
+- **홈 디렉토리 기반**: 어느 위치에서든 일관된 접근
+
+- **브라우저 Viewer**: GitHub Pages에서 호스팅, WebSocket으로 MCP 서버와 통신
+- **로컬 MCP 서버**: WASM 엔진 실행, scene/selection 데이터 제공
+- **Claude Code**: MCP 서버를 통해 CAD 도구 사용
+- **오프라인 우선**: 모든 연산은 로컬에서 실행 (< 1ms 지연)
 
 ### MVP Features
 
@@ -270,26 +275,24 @@ selection.json / sketch.json
 - 트랜잭션 패턴: 실행 실패 시 자동 롤백
 - `--clear-sketch` 플래그: 스케치 자동 클리어
 - 추가 모드에서 기존 변수 참조 가능
+- 부분 수정 모드 (old_code/new_code): Claude Code Edit 도구와 유사한 코드 편집
 
-**도메인 구조** (describe <domain>으로 상세 확인)
+**MCP 도메인 도구**
+
+| 도구 | 설명 |
+|------|------|
+| `cad_code` | JavaScript 코드 실행/편집 |
+| `discovery` | 함수 탐색 (list_domains, describe) |
+| `scene` | 씬 상태 조회 (info, overview) |
+| `export` | 내보내기 (json, svg, capture) |
+| `module` | 모듈 관리 (save, list, get, delete) |
+
+**Sandbox 함수 도메인** (`discovery describe <domain>`)
 ```
-📦 도형 생성
-  primitives  - 기본 도형 (circle, rect, line, arc, polygon, bezier)
-  text        - ⭐ 텍스트 렌더링 (drawText, getTextMetrics)
-
-🔄 도형 조작
-  transforms  - 변환 (translate, rotate, scale, pivot, duplicate, mirror)
-  boolean     - ⭐ 합치기/빼기 (union, difference, intersect)
-  geometry    - ⭐ 기하 분석 (offset, area, convexHull, decompose)
-
-🎨 스타일 & 구조
-  style       - 색상/z-order (fill, stroke, drawOrder)
-  group       - 그룹화 (createGroup, addToGroup)
-
-🔍 조회 & 내보내기
-  query       - 씬 조회 (getEntity, exists, fitToViewport)
-  export      - 내보내기 (capture, json, svg)
-  session     - 세션 관리 (reset, --clear-sketch)
+📦 primitives, text
+🔄 transforms, boolean, geometry
+🎨 style, groups
+🔍 query, utility
 ```
 
 **뷰어**
@@ -325,8 +328,9 @@ selection.json / sketch.json
 | Epic 6 | 6 stories | ✅ done |
 | Epic 7 | 17 stories | ✅ done |
 | Epic 8 | 4 stories | ✅ done |
+| Epic 9 | 10 stories | ✅ done |
 
-**총 58개 스토리 완료**
+**총 68개 스토리 완료**
 
 ## Contributing
 
@@ -342,4 +346,4 @@ MIT
 
 ---
 
-*작성: 2025-12-17 | 최종 업데이트: 2026-01-13*
+*작성: 2025-12-17 | 최종 업데이트: 2026-01-15*

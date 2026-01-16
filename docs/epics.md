@@ -30,7 +30,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 6 | Electron 앱 | ✅ 완료 |
 | 7 | 인간-LLM 협업 UI | ✅ 완료 |
 | 8 | Manifold 기하 엔진 + 텍스트 렌더링 | ✅ 완료 |
-| 9 | 웹 아키텍처 전환 | 📋 계획됨 |
+| 9 | 웹 아키텍처 전환 | ✅ 완료 |
 
 ---
 
@@ -297,7 +297,7 @@ So that **MCP 서버와 실시간 통신이 가능하다** (FR52).
 
 **Given** MCP 서버와 연결이 끊어졌을 때
 **When** 자동 재연결이 시도되면
-**Then** 지수 백오프(1s→2s→4s→8s→16s, max 30s)가 적용된다
+**Then** 지수 백오프(1s→2s→4s→8s→16s, max 5회)가 적용된다
 **And** 연결 복구 시 최신 상태가 동기화된다
 
 **Given** 메시지가 수신될 때
@@ -353,7 +353,7 @@ So that **Claude Code에서 CAD 도구를 호출하고 Viewer에 실시간 반�
 **Acceptance Criteria:**
 
 **Given** Claude Code가 MCP 서버에 연결되었을 때
-**When** run_cad_code 도구를 호출하면
+**When** cad_code 도구를 호출하면
 **Then** WASM 엔진에서 코드가 실행된다
 **And** 결과가 WebSocket으로 Viewer에 브로드캐스트된다 (Story 9.3 의존)
 

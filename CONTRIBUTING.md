@@ -3,9 +3,21 @@
 > **협업 리더**: @parktube
 > **Repository**: https://github.com/parktube/7-division
 
-**현재 상태**: Epic 1~8 완료 (MVP + Manifold 기하 엔진)
+**현재 상태**: Epic 1~9 완료 (MVP + 웹 아키텍처)
 
 ## Quick Start
+
+### 사용자 (npx로 바로 시작)
+
+```bash
+# MCP 서버 시작
+npx @ai-native-cad/mcp start
+
+# 웹 Viewer 열기
+# → https://parktube.github.io/7-division/
+```
+
+### 개발자 (로컬 개발 환경)
 
 ```bash
 # 1. 저장소 클론
@@ -16,16 +28,16 @@ cd 7-division
 rustup target add wasm32-unknown-unknown
 cargo install --git https://github.com/drager/wasm-pack.git --rev 24bdca457abad34e444912e6165eb71422a51046 --force
 
-# 3. Root 패키지 설치 (husky pre-commit hook 활성화)
-npm install
+# 3. 의존성 설치 (pnpm workspace)
+pnpm install
 
-# 4. WASM 빌드 & 도구 설치
-cd cad-engine && wasm-pack build --target nodejs --release && cd ..
-cd cad-tools && npm install && cd ..
+# 4. WASM 빌드
+pnpm run build:wasm:release
 
-# 5. Viewer 실행 (React + Vite)
-cd viewer && npm install && npm run dev
-# http://localhost:5173 접속
+# 5. MCP 서버 + Viewer 개발 모드 (각각 별도 터미널)
+pnpm --filter @ai-native-cad/mcp start
+pnpm --filter @ai-native-cad/viewer dev
+# → http://localhost:5173
 
 # 6. 현재 스프린트 상태 확인
 cat docs/sprint-artifacts/sprint-status.yaml
@@ -35,51 +47,63 @@ cat docs/sprint-artifacts/sprint-status.yaml
 
 | 스크립트 | 설명 |
 |---------|------|
-| `npm run setup` | Rust + wasm-pack 환경 설정 |
-| `npm run build:release` | WASM 릴리즈 빌드 |
-| `npm run test` | Rust 단위 테스트 |
-| `npm run test:tools` | TypeScript (cad-tools) 테스트 |
-| `npm run test:all` | Rust + TypeScript 전체 테스트 |
-| `npm run lint:rs` | Rust fmt + clippy 검사 |
-| `npm run lint:ts` | TypeScript ESLint 검사 |
+| `pnpm run setup` | Rust + wasm-pack 환경 설정 |
+| `pnpm run build:wasm:release` | WASM 릴리즈 빌드 |
+| `pnpm -r build` | 전체 패키지 빌드 |
+| `pnpm run test` | Rust 단위 테스트 |
+| `pnpm run test:mcp` | MCP 서버 테스트 |
+| `pnpm run lint:rs` | Rust fmt + clippy 검사 |
+| `pnpm run lint:ts` | TypeScript ESLint 검사 |
 
 ---
 
-## CAD CLI 사용법 (run_cad_code)
+## MCP 도메인 도구
 
-AI 에이전트와 개발자 모두 `run_cad_code`를 통해 CAD 도형을 조작합니다.
+MCP 서버는 5개의 도메인 도구를 제공합니다:
 
-```bash
-cd cad-tools
+| 도구 | 설명 | 주요 액션 |
+|------|------|----------|
+| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
+| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
+| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
+| `export` | 내보내기 | json, svg, capture |
+| `module` | 모듈 관리 | save, list, get, delete |
 
-# 기본 사용법
-npx tsx cad-cli.ts run_cad_code <module> "<code>"
+### 기본 사용법
 
-# 예시
-npx tsx cad-cli.ts run_cad_code main "drawCircle('c1', 0, 0, 50)"
-npx tsx cad-cli.ts run_cad_code main "+setFill('c1', [1, 0, 0, 1])"  # + prefix = 추가
+```javascript
+// 코드 실행
+cad_code({ code: "drawCircle('c1', 0, 0, 50)" })
+
+// 파일에 추가 (+ prefix)
+cad_code({ file: 'main', code: "+setFill('c1', [1, 0, 0, 1])" })
+
+// 함수 탐색
+discovery({ action: 'describe', domain: 'primitives' })
+
+// 씬 상태 확인
+scene({ action: 'overview' })
 ```
 
 ### 주요 Sandbox 함수
 
 | 카테고리 | 함수 | 설명 |
 |---------|------|------|
-| **Primitives** | `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`, `drawArc`, `drawBezier` | 도형 생성 (중심 좌표 기준) |
-| **Text** | `drawText`, `getTextMetrics` | 텍스트 렌더링 (opentype.js) |
+| **Primitives** | `drawCircle`, `drawRect`, `drawLine`, `drawPolygon`, `drawArc`, `drawBezier` | 도형 생성 |
+| **Text** | `drawText`, `getTextMetrics` | 텍스트 렌더링 |
 | **Style** | `setFill`, `setStroke` | 색상/선 스타일 (RGBA 0~1) |
-| **Transform** | `translate`, `rotate`, `scale`, `setPivot`, `duplicate`, `mirror` | 변환 (rotate는 라디안) |
-| **Boolean** | `booleanUnion`, `booleanDifference`, `booleanIntersect` | Boolean 연산 (Manifold) |
-| **Geometry** | `offsetPolygon`, `getArea`, `convexHull`, `decompose` | 기하 분석 (Manifold) |
-| **Z-Order** | `drawOrder`, `getDrawOrder` | 레이어 순서 관리 |
+| **Transform** | `translate`, `rotate`, `scale`, `duplicate`, `mirror` | 변환 |
+| **Boolean** | `booleanUnion`, `booleanDifference`, `booleanIntersect` | Boolean 연산 |
 | **Groups** | `createGroup`, `addToGroup` | 그룹화 |
-| **Query** | `exists`, `getEntity`, `getWorldBounds`, `fitToViewport` | 조회 |
-| **Delete** | `deleteEntity` | 삭제 |
+| **Query** | `exists`, `getEntity`, `getWorldBounds` | 조회 |
 
-### 예시: 간단한 집 그리기
+### 예시: 모듈로 집 그리기
 
-```bash
-# 모듈 생성
-npx tsx cad-cli.ts run_cad_code house_lib "
+구조적인 클래스 패턴을 사용하여 재사용 가능한 모듈을 만듭니다:
+
+```javascript
+// 모듈 저장
+module({ action: 'save', name: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
@@ -87,42 +111,62 @@ class House {
     this.y = y;
     this.parts = [];
   }
+
   drawWall() {
-    drawRect(this.name+'_wall', 0, 0, 40, 30);  // 로컬 좌표
-    this.parts.push(this.name+'_wall');
+    const wallName = this.name + '_wall';
+    drawRect(wallName, 0, 15, 40, 30);  // 로컬 좌표 (0,0) 기준
+    setFill(wallName, [0.9, 0.85, 0.7, 1]);
+    this.parts.push(wallName);
   }
+
   drawRoof() {
-    drawPolygon(this.name+'_roof', [-25, 30, 0, 50, 25, 30]);
-    this.parts.push(this.name+'_roof');
+    const roofName = this.name + '_roof';
+    drawPolygon(roofName, [-25, 30, 0, 50, 25, 30]);
+    setFill(roofName, [0.6, 0.3, 0.1, 1]);
+    this.parts.push(roofName);
   }
+
+  drawWindow() {
+    const winName = this.name + '_window';
+    drawRect(winName, 0, 20, 10, 10);
+    setFill(winName, [0.5, 0.8, 1, 1]);
+    this.parts.push(winName);
+  }
+
+  drawDoor() {
+    const doorName = this.name + '_door';
+    drawRect(doorName, -10, 8, 8, 16);
+    setFill(doorName, [0.4, 0.25, 0.1, 1]);
+    this.parts.push(doorName);
+  }
+
   build() {
     this.drawWall();
     this.drawRoof();
+    this.drawWindow();
+    this.drawDoor();
     createGroup(this.name, this.parts);
-    translate(this.name, this.x, this.y);
+    translate(this.name, this.x, this.y);  // 그룹 전체 이동
     return this;
   }
 }
-"
+`})
 
-# main에서 사용
-npx tsx cad-cli.ts run_cad_code main "
+// main에서 사용
+cad_code({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
-"
+new House('h3', 200, 0).build();
+`})
 ```
 
-### 탐색 명령어
+**패턴 원칙:**
+- 부품은 로컬 좌표 (0,0) 기준으로 생성
+- 각 부품을 별도 메서드로 분리하여 확장성 확보
+- `build()`에서 그룹화 후 최종 위치로 이동
 
-```bash
-npx tsx cad-cli.ts run_cad_code              # 프로젝트 구조
-npx tsx cad-cli.ts run_cad_code --status     # 프로젝트 요약
-npx tsx cad-cli.ts run_cad_code --info house_lib  # 모듈 상세
-npx tsx cad-cli.ts run_cad_code --search drawCircle  # 패턴 검색
-```
-
-자세한 명령어는 `CLAUDE.md` 참조.
+자세한 API는 `CLAUDE.md` 참조.
 
 ---
 
@@ -131,7 +175,7 @@ npx tsx cad-cli.ts run_cad_code --search drawCircle  # 패턴 검색
 ### React + Vite 구조
 
 ```
-viewer/
+apps/viewer/
 ├── src/
 │   ├── components/
 │   │   ├── Canvas/          # 메인 캔버스 + 스케치 오버레이
@@ -140,7 +184,7 @@ viewer/
 │   │   ├── TopBar/          # 툴바 (테마, 그리드, 눈금자, 스케치)
 │   │   └── StatusBar/       # 상태 표시
 │   ├── contexts/            # UIContext, ViewportContext
-│   ├── hooks/               # useScene, useSketch, useTheme 등
+│   ├── hooks/               # useScene, useWebSocket, useTheme 등
 │   └── types/               # TypeScript 타입 정의
 ├── package.json
 ├── vite.config.ts
@@ -150,10 +194,9 @@ viewer/
 ### 개발 서버 실행
 
 ```bash
-cd viewer
-npm install
-npm run dev     # http://localhost:5173
-npm run build   # 프로덕션 빌드 (dist/)
+# pnpm workspace 사용
+pnpm --filter @ai-native-cad/viewer dev     # http://localhost:5173
+pnpm --filter @ai-native-cad/viewer build   # 프로덕션 빌드 (dist/)
 ```
 
 ### 주요 컨텍스트
@@ -163,33 +206,11 @@ npm run build   # 프로덕션 빌드 (dist/)
 | `UIContext` | 선택, 숨김, 잠금, 스케치 모드, 그리드/눈금자 상태 |
 | `ViewportContext` | 줌, 팬, 오프셋 관리 |
 
-### scene.json 연동
+### 데이터 연동
 
-- 개발 모드: Vite 프록시로 `viewer/scene.json` 읽기
-- Electron 모드: 데이터 서버 (`?dataServer=http://...`) 경유
-
----
-
-## Electron 빌드 가이드
-
-### 로컬 빌드
-
-```bash
-cd cad-electron
-npm install
-npm run build           # 컴파일
-npm run build:win       # Windows exe
-npm run build:mac       # macOS dmg
-```
-
-### 릴리즈 (GitHub Actions)
-
-```bash
-# 태그 푸시로 자동 릴리즈
-git tag electron-v0.1.0-test13
-git push origin electron-v0.1.0-test13
-# → GitHub Actions가 Windows/Mac 빌드 후 Releases에 업로드
-```
+- **WebSocket**: MCP 서버(ws://127.0.0.1:3001)와 실시간 동기화
+- **데이터 저장**: `~/.ai-native-cad/scene.json`
+- **GitHub Pages**: https://parktube.github.io/7-division/
 
 ---
 
@@ -347,20 +368,24 @@ cargo fmt --check             # 포맷 검사
 ### TypeScript 테스트
 
 ```bash
-cd cad-tools
-npm run test        # Vitest 실행
-npm run lint        # ESLint 검사
-npm run typecheck   # TypeScript 타입 검사
+# MCP 서버 테스트
+pnpm --filter @ai-native-cad/mcp test
+
+# 또는 직접 실행
+cd apps/cad-mcp
+pnpm test           # Vitest 실행
+pnpm lint           # ESLint 검사
+pnpm typecheck      # TypeScript 타입 검사
 ```
 
 ### Pre-commit Hook (자동)
 
-Root에서 `npm install` 실행 시 husky가 자동 설정됩니다.
+Root에서 `pnpm install` 실행 시 husky가 자동 설정됩니다.
 
 | 파일 타입 | 실행 명령어 |
 |----------|------------|
 | `cad-engine/**/*.rs` | `cargo fmt` |
-| `cad-tools/src/**/*.ts` | `eslint --fix` |
+| `apps/cad-mcp/src/**/*.ts` | `eslint --fix` |
 
 ---
 
@@ -410,4 +435,4 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-*최종 업데이트: 2026-01-13*
+*최종 업데이트: 2026-01-15*

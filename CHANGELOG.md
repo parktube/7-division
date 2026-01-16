@@ -4,6 +4,84 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.3.1] - 2026-01-15
+
+### Fixed
+
+#### Scene Restore 버그 수정
+- **Rect 렌더링 수정**: Canvas API `ctx.rect()` 이 Y-flip 변환에서 정상 동작하지 않는 문제
+  - 명시적 `moveTo/lineTo` 경로로 변경
+- **Group 복원 수정**: `computed.children` 대신 `children` 직접 접근
+  - 계층 구조 복원 정확도 개선
+- **Transform 복원 추가**: `translate`, `rotate`, `scale` 변환 복원 로직 구현
+- **Arc 파라미터명 수정**: `startAngle/endAngle` → `start_angle/end_angle`
+  - API 스키마와 일치
+
+#### MCP Import 전처리
+- **import 문 처리**: MCP 서버에 `preprocessCode()` 추가
+  - CLI와 동일한 모듈 import 동작 보장
+
+### Changed
+
+- **ws-server 포트 설정**: 테스트용 포트 범위 설정 옵션 추가
+  - `CADWebSocketServerOptions.startPort/maxPort`
+  - 테스트가 실행 중인 MCP 서버와 충돌하지 않음
+
+### Tests
+
+- **importScene 테스트 추가**: 11개 새 테스트 케이스
+  - Rect, Circle, Line, Polygon, Arc, Transform, Group, Style 복원
+  - Empty scene, invalid JSON, multiple entities 처리
+
+---
+
+## [0.3.0] - 2026-01-14
+
+### Added
+
+#### 웹 아키텍처 전환 (Epic 9)
+- **GitHub Pages 배포**: Electron 의존성 제거, 브라우저에서 직접 접근
+  - https://parktube.github.io/7-division/
+- **npm 패키지 배포**: `npx @ai-native-cad/mcp start`로 MCP 서버 즉시 실행
+- **공유 타입 패키지**: `@ai-native-cad/shared` (Zod 스키마 기반)
+  - Viewer ↔ MCP 간 타입 안전성 보장
+
+#### 버전 호환성 체크
+- **Semantic Versioning 기반 호환성 검사**
+  - Major 불일치: 에러, 연결 차단
+  - Minor 불일치: 경고, 연결 허용
+  - Patch 차이: 무시
+- **연결 시 버전 정보 교환**: Viewer/MCP 버전 표시
+
+#### 부분 편집 모드 (old_code/new_code)
+- **run_cad_code MCP**: `old_code` → `new_code` 교체 지원
+  - 전체 파일 덮어쓰기 없이 특정 부분만 수정
+  - old_code 미발견 시 에러 반환
+
+#### 경로 통합
+- **CLI/MCP 동일 경로**: `~/.ai-native-cad/`
+  - scene.json, scene.code.js, modules/ 공유
+  - 별도 동기화 불필요
+
+### Changed
+
+- Viewer: Electron 제거, 순수 React 웹앱으로 전환
+- MCP: stdio 기반 서버로 통합 (HTTP 제거)
+- WebSocket: 연결 상태 UI 개선 (연결됨/연결 중/오프라인)
+- 버전 관리: package.json에서 동적 로드 (하드코딩 제거)
+
+### Removed
+
+- Electron 관련 코드 및 의존성
+- HTTP 서버 엔드포인트 (WebSocket으로 대체)
+
+### Documentation
+
+- [Story 9-10](docs/sprint-artifacts/9-10-electron-cleanup.md): Electron 정리 완료
+- CLAUDE.md: 웹 아키텍처 Quick Start 업데이트
+
+---
+
 ## [0.2.0] - 2026-01-13
 
 ### Added
@@ -89,4 +167,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-*작성: 2026-01-09 | 최종 업데이트: 2026-01-13*
+*작성: 2026-01-09 | 최종 업데이트: 2026-01-15*

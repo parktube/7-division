@@ -772,17 +772,23 @@ return { success: true, data: { entities: [...] } }
 
 #### Shared Types Strategy
 
-**결정: packages/shared 공유 패키지**
+**결정: 하이브리드 전략 (워크스페이스 + npm standalone)**
 
-| 옵션 | 장점 | 단점 | 결정 |
-|------|------|------|------|
-| `packages/shared` | 타입 일치 100% 보장, DRY | 초기 설정 (tsconfig references) | ✅ |
-| `apps/cad-mcp` 내부 복사 | 단순 | 수동 동기화, 불일치 위험 | ❌ |
+| 컴포넌트 | 스키마 소스 | 이유 |
+|---------|------------|------|
+| `apps/viewer` | `@ai-native-cad/shared` (workspace) | 개발 시 타입 일치 보장 |
+| `apps/cad-mcp` | `src/shared/` (로컬 복사본) | npm standalone 배포용 |
 
 **구현 방식:**
-1. `packages/shared/src/schemas.ts` - Zod 스키마 정의
-2. `packages/shared/src/types.ts` - TypeScript 타입 export
-3. apps/viewer, apps/cad-mcp에서 `@ai-native-cad/shared` import
+1. `packages/shared/src/ws-messages.ts` - Zod 스키마 정의 (Single Source of Truth)
+2. `apps/viewer` - `@ai-native-cad/shared` workspace 의존성으로 import
+3. `apps/cad-mcp/src/shared/` - npm 배포용 로컬 복사본
+   - Story 9-6 AC#2: "의존성 설치 없이 바로 실행 가능"
+   - `npx @ai-native-cad/mcp start`가 추가 패키지 없이 동작
+
+**스키마 동기화 규칙:**
+- 스키마 변경 시 `packages/shared/` → `apps/cad-mcp/src/shared/` 동기화 필수
+- 두 파일은 항상 동일해야 함 (diff로 검증)
 
 **패키지 설정:**
 

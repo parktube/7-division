@@ -1,6 +1,6 @@
 # Story 9.7: 온보딩 UI
 
-Status: drafted
+Status: in-progress
 
 ## Story
 
@@ -33,41 +33,60 @@ so that **어떻게 시작해야 하는지 즉시 알 수 있다** (FR57).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: 온보딩 오버레이 컴포넌트 (AC: #1)
-  - [ ] 1.1 apps/viewer/src/components/OnboardingOverlay.tsx 생성
-  - [ ] 1.2 오버레이 레이아웃 (전체 화면, 반투명 배경)
-  - [ ] 1.3 "MCP 서버 미연결" 타이틀
-  - [ ] 1.4 명령어 표시 영역 (`npx @ai-native-cad/mcp start`)
-  - [ ] 1.5 복사 버튼 UI
+- [x] Task 1: 온보딩 오버레이 컴포넌트 (AC: #1)
+  - [x] 1.1 apps/viewer/src/components/Onboarding.tsx 생성
+  - [x] 1.2 오버레이 레이아웃 (전체 화면, 반투명 배경)
+  - [x] 1.3 "MCP 서버 미연결" 타이틀
+  - [x] 1.4 명령어 표시 영역 (`npx @ai-native-cad/mcp start`)
+  - [x] 1.5 복사 버튼 UI
 
-- [ ] Task 2: 클립보드 복사 기능 (AC: #3)
-  - [ ] 2.1 복사 버튼 클릭 핸들러
-  - [ ] 2.2 navigator.clipboard.writeText 사용
-  - [ ] 2.3 "복사됨!" 피드백 상태
-  - [ ] 2.4 2초 후 피드백 자동 해제
+- [x] Task 2: 클립보드 복사 기능 (AC: #3)
+  - [x] 2.1 복사 버튼 클릭 핸들러
+  - [x] 2.2 navigator.clipboard.writeText 사용
+  - [x] 2.3 "복사됨!" 피드백 상태
+  - [x] 2.4 2초 후 피드백 자동 해제
 
-- [ ] Task 3: 연결 재시도 버튼 (AC: #4)
-  - [ ] 3.1 재시도 버튼 UI
-  - [ ] 3.2 useWebSocket.reconnect() 호출
-  - [ ] 3.3 재시도 중 로딩 상태 표시
+- [x] Task 3: 연결 재시도 버튼 (AC: #4)
+  - [x] 3.1 재시도 버튼 UI
+  - [x] 3.2 useWebSocket.reconnect() 호출
+  - [x] 3.3 재시도 중 로딩 상태 표시
 
-- [ ] Task 4: 연결 상태 기반 렌더링 (AC: #1, #2)
-  - [ ] 4.1 useWebSocket에서 connectionStatus 구독
-  - [ ] 4.2 5초 타이머 후 온보딩 표시 로직
-  - [ ] 4.3 연결 성공 시 오버레이 자동 숨김
-  - [ ] 4.4 연결 상태 변경 시 UI 업데이트
+- [x] Task 4: 연결 상태 기반 렌더링 (AC: #1, #2)
+  - [x] 4.1 useWebSocket에서 connectionStatus 구독
+  - [x] 4.2 maxRetriesReached 기반 온보딩 표시 로직
+  - [x] 4.3 연결 성공 시 오버레이 자동 숨김
+  - [x] 4.4 연결 상태 변경 시 UI 업데이트
 
-- [ ] Task 5: 스타일링 (AC: #1)
-  - [ ] 5.1 오버레이 배경 스타일 (rgba, blur)
-  - [ ] 5.2 카드 스타일 (중앙 정렬)
-  - [ ] 5.3 버튼 스타일 (복사, 재시도)
-  - [ ] 5.4 반응형 레이아웃 (모바일 대응)
+- [x] Task 5: 스타일링 (AC: #1)
+  - [x] 5.1 오버레이 배경 스타일 (rgba, blur)
+  - [x] 5.2 카드 스타일 (중앙 정렬)
+  - [x] 5.3 버튼 스타일 (복사, 재시도)
+  - [x] 5.4 반응형 레이아웃 (모바일 대응)
 
-- [ ] Task 6: 테스트 (AC: #1~#4)
+- [ ] Task 6: 테스트 (AC: #1~#4) **← 미완료**
   - [ ] 6.1 오버레이 렌더링 테스트
   - [ ] 6.2 클립보드 복사 테스트 (mock)
   - [ ] 6.3 연결 성공 시 자동 숨김 테스트
   - [ ] 6.4 재시도 버튼 동작 테스트
+
+### Review Follow-ups (AI)
+
+> 코드 리뷰 날짜: 2026-01-14 | 리뷰어: Claude Opus 4.5
+
+**✅ AC 검증 결과**
+- AC #1 ✓ maxRetriesReached 후 온보딩 표시 구현 [Onboarding.tsx]
+- AC #2 ✓ 연결 성공 시 자동 숨김 구현 [Onboarding.tsx]
+- AC #3 ✓ 클립보드 복사 + "복사됨!" 피드백 2초 표시 [Onboarding.tsx:34-50]
+- AC #4 ✓ 재시도 버튼 + onReconnect 호출 구현 [Onboarding.tsx]
+
+**🟡 MEDIUM (권장 수정)**
+- [ ] [AI-Review][MEDIUM] Onboarding 컴포넌트 테스트 없음 - apps/viewer에 테스트 파일 0개 [apps/viewer/src/]
+- [ ] [AI-Review][MEDIUM] 버전 배너와 온보딩 UI가 같은 컴포넌트에 결합됨 - 관심사 분리 권장 [Onboarding.tsx:53-87]
+
+**🟢 구현 완료 (코드)**
+- ✓ 클립보드 API 미지원 브라우저용 fallback 구현 [Onboarding.tsx:41-48]
+- ✓ 연결 중 로딩 상태 표시 [Onboarding.tsx:106-107,151]
+- ✓ 버전 불일치 배너 통합 (Story 9.8 연동) [Onboarding.tsx:52-87]
 
 ## Dev Notes
 
@@ -244,4 +263,13 @@ Claude Opus 4.5
 ### Completion Notes List
 
 ### File List
+
+**구현된 파일:**
+```
+apps/viewer/src/components/Onboarding.tsx   # 온보딩 UI 컴포넌트 (버전 배너 포함)
+apps/viewer/src/App.tsx                     # Onboarding 컴포넌트 연동
+```
+
+**남은 작업:**
+- Task 6 테스트 추가
 

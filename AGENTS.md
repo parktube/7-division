@@ -2,14 +2,110 @@
 
 AI 에이전트(Claude, Gemini, Cursor, Copilot 등)를 위한 개발 규칙.
 
-## CAD CLI 사용법
+## 아키텍처 개요
 
-```bash
-cd cad-tools
-npx tsx cad-cli.ts <command> [args]
+```
+GitHub Pages (Viewer)          Local MCP Server
+       │                              │
+       │ WebSocket (ws://127.0.0.1:3001)
+       └──────────────────────────────┘
+                     │
+               Claude Code CLI
+                     │ WASM 직접 호출
+               Rust CAD 엔진
 ```
 
-### 도메인 목록 (`describe <domain>`으로 상세 확인)
+**데이터 저장**: `~/.ai-native-cad/`
+```
+~/.ai-native-cad/
+├── scene.json       # 씬 상태 (자동 저장/복원)
+├── scene.code.js    # main 코드 파일
+└── modules/         # 저장된 모듈
+```
+
+## MCP 도메인 도구 (5개)
+
+MCP 서버는 5개의 도메인 도구를 제공합니다:
+
+| 도구 | 설명 | 주요 액션 |
+|------|------|----------|
+| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
+| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
+| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
+| `export` | 내보내기 | json, svg, capture |
+| `module` | 모듈 관리 | save, list, get, delete |
+
+### cad_code (핵심 도구)
+
+CAD JavaScript 실행 환경. 함수/클래스/재귀 모두 가능.
+
+```javascript
+// 기본 실행
+cad_code({ code: "drawCircle('c', 0, 0, 50)" })
+
+// 파일 읽기
+cad_code({ file: 'main' })
+
+// 파일에 쓰기
+cad_code({ file: 'main', code: "drawCircle('c', 0, 0, 50)" })
+
+// 추가 모드 (+ prefix)
+cad_code({ file: 'main', code: "+setFill('c', [1, 0, 0, 1])" })
+
+// 부분 수정
+cad_code({ file: 'main', old_code: 'radius: 50', new_code: 'radius: 100' })
+```
+
+### discovery (탐색 도구)
+
+```javascript
+// 도메인 목록
+discovery({ action: 'list_domains' })
+
+// 도메인별 함수 시그니처
+discovery({ action: 'describe', domain: 'primitives' })
+
+// 특정 함수 상세
+discovery({ action: 'get_schema', name: 'drawCircle' })
+```
+
+### scene (씬 조회)
+
+```javascript
+scene({ action: 'info' })       // 씬 요약 (entityCount, bounds)
+scene({ action: 'overview' })   // 트리 구조 (groups, hierarchy)
+scene({ action: 'selection' })  // 선택된 엔티티
+scene({ action: 'reset' })      // 씬 초기화 (⚠️ 되돌릴 수 없음)
+```
+
+### export (내보내기)
+
+```javascript
+export({ action: 'json' })      // 전체 씬 JSON
+export({ action: 'svg' })       // SVG 벡터
+export({ action: 'capture' })   // PNG 스크린샷
+export({ action: 'capture', clearSketch: true })  // 캡처 후 스케치 클리어
+```
+
+### module (모듈 관리)
+
+```javascript
+// 모듈 저장
+module({ action: 'save', name: 'house_lib', code: 'class House {...}' })
+
+// 모듈 목록
+module({ action: 'list' })
+
+// 모듈 조회
+module({ action: 'get', name: 'house_lib' })
+
+// 모듈 삭제
+module({ action: 'delete', name: 'house_lib' })
+```
+
+## 도메인 목록 (Sandbox 함수)
+
+`discovery(action='describe', domain='...')`으로 상세 확인
 
 ```
 📦 도형 생성
@@ -23,108 +119,58 @@ npx tsx cad-cli.ts <command> [args]
 
 🎨 스타일 & 구조
   style       - 색상/z-order (fill, stroke, drawOrder)
-  group       - 그룹화 (createGroup, addToGroup)
+  groups      - 그룹화 (createGroup, addToGroup)
 
-🔍 조회 & 내보내기
+🔍 조회
   query       - 씬 조회 (getEntity, exists, fitToViewport)
-  export      - 내보내기 (capture, json, svg)
-  session     - 세션 관리 (reset, --clear-sketch)
 ```
 
-### run_cad_code (메인 인터페이스)
+## 함수 목록 (도메인별)
 
-JavaScript 코드로 CAD 도형을 생성하는 **코드 에디터**입니다.
-
-**기본 (읽기/쓰기)**
-```bash
-run_cad_code                              # 프로젝트 구조 보기
-run_cad_code main                         # main 읽기
-run_cad_code my_module                    # 모듈 읽기
-run_cad_code main "drawCircle('c', 0, 0, 50)"  # 덮어쓰기
-run_cad_code main "+drawRect('r', 0, 0, 30, 30)" # 추가 (+ prefix)
-echo "code" | run_cad_code main -         # stdin 멀티라인
-```
-
-**탐색 (Progressive Disclosure)**
-```bash
-run_cad_code --status                     # 프로젝트 요약 (파일/클래스/함수 수)
-run_cad_code --info house_lib             # 모듈 상세 (클래스, 함수, imports)
-run_cad_code --search drawCircle          # 패턴 검색 (모든 모듈)
-run_cad_code --lines house_lib 50-70      # 부분 읽기 (라인 범위)
-run_cad_code --capture                    # 뷰어 스크린샷
-run_cad_code --capture --clear-sketch     # 캡처 후 스케치 클리어
-run_cad_code --selection                  # 선택된 도형
-```
-
-**관리**
-```bash
-run_cad_code --deps                       # 의존성 그래프
-run_cad_code --delete my_module           # 모듈 삭제
-run_cad_code --clear-sketch               # 스케치만 클리어
-```
-
-> `run_cad_code` = `npx tsx cad-cli.ts run_cad_code`
-
-**규칙**: JavaScript 문자열은 작은따옴표(`'`) 사용
-
-### 트랜잭션 동작
-
-코드 실행 실패 시 **파일이 변경되지 않습니다** (자동 롤백):
-
-```bash
-# 기존 코드에 const x = 10;이 있을 때
-run_cad_code main "+const x = 20;"  # 실패 - 변수 재정의
-# → 파일 변경 없음
-
-# 추가 모드에서는 기존 변수 직접 참조 가능
-run_cad_code main "+drawCircle('c', x, 0, 30);"  # 성공
-```
-
-### 함수 목록 (도메인별)
-
-#### primitives - 도형 생성
+### primitives - 도형 생성
 ```javascript
 drawCircle(name, x, y, radius)            // (x, y) = 원의 중심
 drawRect(name, x, y, width, height)       // (x, y) = 사각형의 중심
 drawLine(name, points)                    // [x1, y1, x2, y2, ...]
-drawPolygon(name, points)                 // 닫힌 다각형, 좌표 배열
-drawArc(name, cx, cy, radius, startAngle, endAngle)  // (cx, cy) = 호의 중심
+drawPolygon(name, points)                 // 닫힌 다각형
+drawArc(name, cx, cy, radius, startAngle, endAngle)
 drawBezier(name, path)                    // SVG path: 'M x,y C cp1 cp2 end Z'
 ```
 
-#### text - 텍스트 렌더링 (opentype.js 기반)
+### text - 텍스트 렌더링
 ```javascript
 drawText(name, text, x, y, fontSize, options?)
 // options: { fontPath?, align?: 'left'|'center'|'right', color?: [r,g,b,a] }
 getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
-**사용 가능한 폰트** (`cad-tools/fonts/`, fontPath 생략 시 나눔고딕 자동 사용):
+**폰트 검색 순서** (fontPath 생략 시):
+1. 프로젝트 `apps/cad-mcp/fonts/` 디렉터리
+2. 시스템 폰트 디렉터리
 
-| 폰트 | fontPath | 용도 |
-|-----|----------|------|
-| 나눔고딕 | `fonts/NanumGothic.ttf` | 기본 고딕 (default) |
-| 나눔명조 | `fonts/NanumMyeongjo.ttf` | 명조체 |
-| 나눔바른고딕 | `fonts/NanumBarunGothic.ttf` | 가독성 고딕 |
-| 나눔스퀘어Neo | `fonts/NanumSquareNeo.ttf` | 모던 고딕 |
-| 마루부리 | `fonts/MaruBuri-Regular.ttf` | 세리프체 |
-| 나눔펜 | `fonts/NanumPen.ttf` | 손글씨 |
-| 나눔붓 | `fonts/NanumBrush.ttf` | 붓글씨 |
-| D2Coding | `fonts/D2Coding-Ver1.3.2-20180524.ttf` | 코딩용 고정폭 |
-| Noto Sans KR | `fonts/NotoSansKR-Regular.otf` | 구글 한글 (7종) |
+**권장 폰트**: NanumGothic.ttf, NanumMyeongjo.ttf, D2Coding.ttf, NotoSansKR-Regular.otf
 
-#### transforms - 변환
+### Bezier 경로 형식
+```javascript
+// SVG path 문법 사용
+drawBezier('wave', 'M 0,0 C 30,50 70,50 100,0')
+drawBezier('s_curve', 'M 0,0 C 20,50 40,-50 60,0 S 100,-50 120,0')
+
+// 명령어: M(시작), C(큐빅 베지어), S(부드러운 연결), Q(쿼드라틱), L(직선), Z(닫기)
+```
+
+### transforms - 변환
 ```javascript
 translate(name, dx, dy, options?)         // options: { space: 'world'|'local' }
 rotate(name, angle, options?)             // 라디안
 scale(name, sx, sy, options?)
 setPivot(name, px, py)
 deleteEntity(name)
-duplicate(source, newName)                // 엔티티 복제 (지오메트리, 스타일, 변환 모두)
+duplicate(source, newName)                // 엔티티 복제
 mirror(source, newName, axis)             // 미러 복제 ('x'|'y')
 ```
 
-#### boolean - Boolean 연산 (Manifold 기반)
+### boolean - Boolean 연산 (Manifold)
 ```javascript
 booleanUnion(a, b, result)                // 합집합
 booleanDifference(a, b, result)           // 차집합 (A - B)
@@ -132,15 +178,15 @@ booleanIntersect(a, b, result)            // 교집합
 // 지원 도형: Circle, Rect, Polygon, Arc
 ```
 
-#### geometry - 기하 분석 (Manifold 기반)
+### geometry - 기하 분석 (Manifold)
 ```javascript
-offsetPolygon(name, delta, result, joinType?)  // 확장(+)/축소(-), joinType: 'round'|'square'|'miter'
-getArea(name)                             // 면적 계산 (닫힌 도형만)
-convexHull(name, result)                  // 볼록 껍질 생성
-decompose(name, prefix)                   // 분리된 컴포넌트 추출 → [prefix_0, prefix_1, ...]
+offsetPolygon(name, delta, result, joinType?)  // joinType: 'round'|'square'|'miter'
+getArea(name)                             // 면적 계산
+convexHull(name, result)                  // 볼록 껍질
+decompose(name, prefix)                   // 분리된 컴포넌트 추출
 ```
 
-#### style - 스타일
+### style - 스타일
 ```javascript
 setFill(name, [r, g, b, a])               // 색상 0~1
 setStroke(name, [r, g, b, a], width?)
@@ -148,13 +194,13 @@ drawOrder(name, mode)                     // 'front', 'back', +N, -N, 'above:tar
 getDrawOrder(groupName?)                  // 드로우 오더 조회
 ```
 
-#### group - 그룹화
+### groups - 그룹화
 ```javascript
 createGroup(name, [children])
 addToGroup(group, entity)                 // 월드 위치 자동 유지
 ```
 
-#### query - 조회
+### query - 조회
 ```javascript
 exists(name)                              // boolean
 getWorldBounds(name)                      // { min: [x1, y1], max: [x2, y2] }
@@ -162,7 +208,106 @@ getEntity(name)                           // local/world 좌표 모두 반환
 fitToViewport(width, height, options?)    // 자동 스케일 계산
 ```
 
-### getEntity 응답 형식
+## 좌표계 & 색상 & 각도
+
+| 항목 | 규칙 |
+|------|------|
+| 좌표계 | Y+ 위쪽, 원점 (0,0) 중심 |
+| 색상 | RGBA `[0~1, 0~1, 0~1, 0~1]` (예: 빨강 `[1,0,0,1]`) |
+| 각도 | 라디안 |
+| 문자열 | 작은따옴표(`'`) 사용 |
+
+## 모듈 시스템
+
+```javascript
+// 모듈 저장 - 구조적인 클래스 패턴
+module({ action: 'save', name: 'house_lib', code: `
+class House {
+  constructor(name, x, y) {
+    this.name = name;
+    this.x = x;
+    this.y = y;
+    this.parts = [];
+  }
+
+  drawWall() {
+    const n = this.name + '_wall';
+    drawRect(n, 0, 15, 40, 30);  // 로컬 좌표 (0,0) 기준
+    setFill(n, [0.9, 0.85, 0.7, 1]);
+    this.parts.push(n);
+  }
+
+  drawRoof() {
+    const n = this.name + '_roof';
+    drawPolygon(n, [-25, 30, 0, 50, 25, 30]);
+    setFill(n, [0.6, 0.3, 0.1, 1]);
+    this.parts.push(n);
+  }
+
+  build() {
+    this.drawWall();
+    this.drawRoof();
+    createGroup(this.name, this.parts);
+    translate(this.name, this.x, this.y);  // 그룹 전체 이동
+    return this;
+  }
+}
+`})
+
+// main에서 사용
+cad_code({ file: 'main', code: `
+import 'house_lib';
+new House('h1', 0, 0).build();
+new House('h2', 100, 0).build();
+`})
+```
+
+## 그룹 로컬 좌표 패턴 (필수!)
+
+**핵심**: 부품은 (0,0) 기준 로컬 좌표로 생성 → 그룹 후 translate로 이동
+
+```javascript
+// ❌ 잘못: 절대 좌표 사용 → 2배 이동!
+drawRect(this.name+'_body', this.x, this.y, 20, 40);
+translate(this.name, this.x, this.y);
+
+// ✅ 올바른: 로컬 좌표 사용
+drawRect(this.name+'_body', 0, 20, 20, 40);  // (0,0) 기준
+createGroup(this.name, [...]);
+translate(this.name, this.x, this.y);         // 그룹 전체 이동
+```
+
+## 클래스 간 배치 패턴
+
+서로 다른 클래스의 엔티티를 상대적으로 배치할 때:
+
+```javascript
+// Robot 클래스가 이미 존재할 때, Hat을 로봇 머리 위에 배치
+class Hat {
+  constructor(name, targetRobotName) {
+    this.name = name;
+    this.targetRobotName = targetRobotName;
+  }
+  build() {
+    // 1. 타겟 엔티티의 월드 좌표 조회
+    const robot = getEntity(this.targetRobotName);
+    const headBounds = getWorldBounds(this.targetRobotName + '_head');
+
+    // 2. 로컬 좌표 (0,0) 기준으로 부품 생성
+    drawPolygon(this.name, [-15, 0, 15, 0, 10, 20, -10, 20]);
+    setFill(this.name, [0.2, 0.2, 0.8, 1]);
+
+    // 3. 타겟의 월드 좌표로 이동
+    const hatX = (headBounds.min[0] + headBounds.max[0]) / 2;
+    const hatY = headBounds.max[1];  // 머리 위
+    translate(this.name, hatX, hatY);
+  }
+}
+```
+
+**핵심**: `getWorldBounds()` → 로컬 생성 → `translate()`로 월드 위치 이동
+
+## getEntity 응답 형식
 
 ```json
 {
@@ -181,229 +326,88 @@ fitToViewport(width, height, options?)    // 자동 스케일 계산
 }
 ```
 
-### 색상 & 좌표계
+## Z-Order 가이드
 
-**색상**: RGBA 배열 `[r, g, b, a]` (각 0.0~1.0)
-- 빨강: `[1, 0, 0, 1]`
-- 반투명 파랑: `[0, 0, 1, 0.5]`
-
-**좌표계**: Y+ 위쪽, 원점 (0,0) 중심
-
-**각도**: 라디안
-
-### Bezier 포맷 (SVG path)
-
-```javascript
-// drawBezier(name, path) - SVG path 문자열 사용
-//
-// 명령어:
-//   M x,y     - 시작점 (Move to)
-//   C cp1x,cp1y cp2x,cp2y x,y - 큐빅 베지어 (Cubic)
-//   S cp2x,cp2y x,y - 부드러운 연결 (Smooth)
-//   Q cpx,cpy x,y - 쿼드라틱 베지어
-//   L x,y     - 직선 (Line)
-//   Z         - 경로 닫기 (Close)
-
-drawBezier('wave', 'M 0,0 C 30,50 70,50 100,0');
-drawBezier('s_curve', 'M 0,0 C 20,50 40,-50 60,0 S 100,-50 120,0');
-```
-
-### 모듈 시스템
-
-```bash
-# house_lib 모듈 생성
-npx tsx cad-cli.ts run_cad_code house_lib "
-class House {
-  constructor(name, x, y) {
-    this.name = name;
-    this.x = x;
-    this.y = y;
-  }
-  build() {
-    drawRect(this.name+'_wall', 0, 15, 40, 30);  // 로컬 좌표
-    drawPolygon(this.name+'_roof', [-25,30, 0,50, 25,30]);
-    createGroup(this.name, [this.name+'_wall', this.name+'_roof']);
-    translate(this.name, this.x, this.y);
-  }
-}
-"
-
-# main에서 사용
-npx tsx cad-cli.ts run_cad_code main "
-import 'house_lib';
-new House('h1', 0, 0).build();
-new House('h2', 100, 0).build();
-"
-```
-
-**주의**: `import 'module'`은 단순 코드 치환 방식입니다. 모듈과 메인 스크립트 간에 `const`, `let` 식별자가 중복되면 오류가 발생하므로 전역 변수명에 주의하세요. (Class 사용 권장)
-
-### 그룹 로컬 좌표 패턴 (필수!)
-
-**핵심 원칙**: 클래스/모듈 내에서 부품은 **(0,0) 로컬 원점** 기준으로 생성하고, 그룹을 만든 후 `translate`로 최종 위치 이동.
-
-```javascript
-// ❌ 잘못된 패턴 - 좌표 중첩 발생
-class Robot {
-  build() {
-    drawRect(this.name+'_body', this.x-10, this.y, 20, 40);  // 절대 좌표
-    createGroup(this.name, [...]);
-    translate(this.name, this.x, this.y);  // 이동 또 적용 → 2배 이동!
-  }
-}
-
-// ✅ 올바른 패턴 - 로컬 좌표 + 그룹 이동
-class Robot {
-  build() {
-    drawRect(this.name+'_body', 0, 20, 20, 40);  // 로컬 좌표 (0,0 기준)
-    createGroup(this.name, [...]);
-    translate(this.name, this.x, this.y);  // 그룹 전체를 최종 위치로
-  }
-}
-```
-
-### Dual Coordinate API
-
-**변환 API space 옵션**:
-```javascript
-// 월드 좌표 기준 이동 (기본값)
-translate('window', 10, 0);
-translate('window', 10, 0, { space: 'world' });
-
-// 로컬 좌표 기준 이동 (부모 좌표계)
-translate('window', 5, 0, { space: 'local' });
-
-// 스케일도 동일
-scale('icon', 2, 2);                    // world 기준
-scale('icon', 2, 2, { space: 'local' }); // 부모 기준
-```
-
-### 씬 관리
-
-```bash
-npx tsx cad-cli.ts status     # 현재 상태
-npx tsx cad-cli.ts reset      # 새 씬 시작
-npx tsx cad-cli.ts overview   # 전체 구조
-```
-
-### Query & Export
-
-```bash
-npx tsx cad-cli.ts list_entities
-npx tsx cad-cli.ts get_entity '{"name":"head"}'
-npx tsx cad-cli.ts get_scene_info
-npx tsx cad-cli.ts get_selection     # 뷰어에서 선택된 도형 조회
-npx tsx cad-cli.ts export_json
-npx tsx cad-cli.ts export_svg
-npx tsx cad-cli.ts capture_viewport  # 뷰어 스크린샷 캡처 (PNG)
-```
-
-### 결과 확인
-
-- Scene은 `viewer/scene.json`에 자동 저장됩니다
-- 뷰어: `node viewer/server.cjs` 실행 후 http://localhost:8000
-
-### Z-Order 가이드
-
-**스코프 기반 할당:**
-- **Root level**: 엔티티 생성 시 `max(root_z) + 1`로 자동 할당
-- **그룹 내부**: `createGroup`/`addToGroup` 시 0, 1, 2...로 정규화
-- **정규화**: `drawOrder` 후 해당 스코프의 z-index가 자동으로 연속 정렬
-- **스코프 독립**: 그룹 내부 z-order는 root level에 영향 없음
-
-**drawOrder 사용:**
 ```javascript
 drawOrder('entity', 'front');       // 맨 앞으로
 drawOrder('entity', 'back');        // 맨 뒤로
 drawOrder('entity', 1);             // 한 단계 앞으로
-drawOrder('entity', -2);            // 두 단계 뒤로
 drawOrder('entity', 'above:other'); // other 바로 위로
-drawOrder('entity', 'below:other'); // other 바로 아래로
 
 getDrawOrder();           // root level 순서
 getDrawOrder('group_a');  // 그룹 내부 순서
 ```
 
-### 크로스 클래스 배치 패턴
+## 트랜잭션 동작
 
-**문제**: 클래스 A가 생성한 엔티티 위에 클래스 B의 요소를 배치할 때
-
-**해결**: `getWorldBounds()`로 실제 위치 확인 후 배치
+코드 실행 실패 시 **파일이 변경되지 않습니다** (자동 롤백):
 
 ```javascript
-// ✅ 올바른 방식 - 실제 위치 확인
-robot.build();
-const headBounds = getWorldBounds('robot_head');
-const bubbleY = headBounds.max[1] + 10;  // 머리 꼭대기 + 여백
-drawRect('bubble', headBounds.max[0], bubbleY, 60, 30);
+// 기존 코드에 const x = 10;이 있을 때
+cad_code({ file: 'main', code: '+const x = 20;' })  // 실패 - 변수 재정의
+// → 파일 변경 없음, 안전하게 실험 가능
 ```
 
-### 에이전트 주의사항 (AX Lessons Learned)
+## 에이전트 주의사항
 
-1. **run_cad_code가 메인**: 레거시 JSON 명령어보다 run_cad_code 사용 권장
-2. **reset 금지**: 기존 엔티티는 직접 수정 (`+setFill`, `+translate`)
-3. **Z-Order 조정**: 겹치는 도형이 있으면 `getDrawOrder()`로 순서 확인 후 `drawOrder` 조정
-4. **Bezier 데이터 검증**: `drawBezier` 사용 시 좌표값에 `NaN`이나 `Infinity` 포함 금지
-5. **Boundary 확인**: 복잡한 다각형이나 베지어는 `getWorldBounds(name)`로 실제 영역 확인
-6. **트랜잭션 활용**: 실행 실패 시 파일이 롤백되므로 안전하게 실험 가능
+1. **cad_code가 메인**: 모든 도형 조작은 `cad_code`로 JavaScript 실행
+2. **reset 금지**: 기존 엔티티는 직접 수정 (추가 모드 `+` 사용)
+3. **씬은 영속적**: MCP 재시작 후에도 scene.json에서 자동 복원
+4. **discovery 먼저**: 함수 사용법이 불확실하면 `discovery`로 확인
+5. **로컬 좌표 패턴**: 그룹 내 부품은 (0,0) 기준 생성 후 그룹 이동
 
-### 레거시 명령어 (JSON 파라미터)
-
-개별 도형 조작 시 사용 (run_cad_code 권장):
+## 빠른 시작
 
 ```bash
-# 도형
-npx tsx cad-cli.ts draw_circle '{"name":"head","x":0,"y":100,"radius":30}'
-npx tsx cad-cli.ts draw_rect '{"name":"body","x":0,"y":40,"width":50,"height":80}'
+# MCP 서버 시작
+npx @ai-native-cad/mcp start
 
-# 스타일
-npx tsx cad-cli.ts set_fill '{"name":"head","fill":{"color":[1,0.8,0.6,1]}}'
-npx tsx cad-cli.ts set_stroke '{"name":"body","stroke":{"color":[0,0,1,1],"width":2}}'
-
-# 변환
-npx tsx cad-cli.ts translate '{"name":"head","dx":10,"dy":20}'
-npx tsx cad-cli.ts rotate '{"name":"arm","angle":0.785}'
-npx tsx cad-cli.ts scale '{"name":"body","sx":1.5,"sy":1.5}'
+# 뷰어 열기
+# → https://parktube.github.io/7-division/
 ```
 
-## TypeScript (`cad-tools/`)
+## 로컬 개발
+
+```bash
+# 의존성 설치
+pnpm install
+
+# MCP 서버 + Viewer 개발 모드 (각각 별도 터미널)
+pnpm --filter @ai-native-cad/mcp start
+pnpm --filter @ai-native-cad/viewer dev
+# → http://localhost:5173/
+```
+
+## 프로젝트 구조
+
+```
+7-division/
+├── apps/
+│   ├── viewer/        # React 웹 뷰어 (GitHub Pages)
+│   └── cad-mcp/       # MCP 서버
+├── packages/
+│   └── shared/        # 공유 타입 (Zod 스키마)
+└── cad-engine/        # Rust CAD 엔진 (WASM)
+```
+
+## TypeScript 규칙
 
 **Console 금지** - `logger` 사용:
 
 ```typescript
 import { logger } from "./logger.js";
-logger.debug("dev only"); // production에서 미출력
-logger.error("always"); // 항상 출력
+logger.debug("dev only");
+logger.error("always");
 ```
-
-**ESLint**: `no-console: error`, `no-unused-vars` (`_` prefix 허용)
-
-## Rust (`cad-engine/`)
-
-**Clippy** (`-D warnings`):
-
-- `derivable_impls`: Default derive 사용
-- `too_many_arguments`: 8개 이상 시 `#[allow]` 필요
-
-**포맷**: `cargo fmt`
-
-## 에러 메시지 형식
-
-```
-[function_name] error_type: detail
-```
-
-예: `[add_circle] invalid_input: NaN not allowed`
 
 ## CI/Pre-commit
 
-```bash
-npm install  # husky + lint-staged 설치
-```
+| Rust | TypeScript |
+|------|------------|
+| `cargo fmt --check` | `eslint` |
+| `cargo clippy -D warnings` | `tsc --noEmit` |
+| `cargo test` | `vitest run` |
 
-| Rust                        | TypeScript     |
-| --------------------------- | -------------- |
-| `cargo fmt --check`         | `eslint`       |
-| `cargo clippy -D warnings`  | `tsc --noEmit` |
-| `cargo test`                | `vitest run`   |
-| `wasm-pack build --release` | `tsc`          |
+---
+
+*최종 업데이트: 2026-01-15*

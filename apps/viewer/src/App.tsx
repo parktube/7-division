@@ -1,0 +1,53 @@
+import { useEffect } from 'react'
+import { PanelLayout } from '@/components/Layout'
+import { TopBar } from '@/components/TopBar'
+import { StatusBar } from '@/components/StatusBar'
+import { Onboarding } from '@/components/Onboarding'
+import { ViewportProvider } from '@/contexts/ViewportContext'
+import { UIProvider } from '@/contexts/UIContext'
+import { useSelectionSync } from '@/hooks/useSelectionSync'
+import { useWebSocket } from '@/hooks/useWebSocket'
+import { initDataServer } from '@/utils/dataUrl'
+
+// Component to sync selection with selection.json
+function SelectionSync() {
+  useSelectionSync()
+  return null
+}
+
+// Component to manage WebSocket connection and onboarding
+function WebSocketManager() {
+  const { connectionState, versionStatus, retryCount, maxRetriesReached } = useWebSocket()
+
+  return (
+    <Onboarding
+      connectionState={connectionState}
+      versionStatus={versionStatus}
+      retryCount={retryCount}
+      maxRetriesReached={maxRetriesReached}
+    />
+  )
+}
+
+export default function App() {
+  // Initialize data server URL from query params (for Electron)
+  useEffect(() => {
+    initDataServer()
+  }, [])
+
+  return (
+    <UIProvider>
+      <ViewportProvider>
+        <SelectionSync />
+        <WebSocketManager />
+        <div className="h-full w-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-app)', color: 'var(--text-primary)' }}>
+          <TopBar />
+          <main className="flex-1 min-h-0 overflow-hidden">
+            <PanelLayout />
+          </main>
+          <StatusBar />
+        </div>
+      </ViewportProvider>
+    </UIProvider>
+  )
+}

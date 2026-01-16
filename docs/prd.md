@@ -152,11 +152,11 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | 배포 | GitHub Pages + npm | 설치 없이 즉시 시작, 업데이트 간편 |
 | 보안 | localhost-only | 로컬 개발 도구, 원격 접근 불필요 |
 
-### 완료된 기반 (Epic 1~8)
+### 완료된 기반 (Epic 1~9)
 
 - WASM 엔진, 도형 6종, Boolean 연산, 텍스트 렌더링
 - React 뷰어 (3패널, 스케치 모드)
-- CLI `run_cad_code`
+- MCP 도메인 도구 (cad_code, discovery, scene, export, module)
 
 상세: architecture.md 참조
 

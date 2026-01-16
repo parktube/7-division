@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/* Full height layout */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Light Theme - Figma-inspired (default) */
+:root {
+  --bg-app: #f5f5f5;
+  --bg-panel: #ffffff;
+  --bg-panel-header: #fafafa;
+  --bg-canvas: #e8e8e8;
+  --bg-input: #f0f0f0;
+  --border: #e5e5e5;
+  --border-subtle: #ebebeb;
+  --text-primary: #1a1a1a;
+  --text-secondary: #525252;
+  --text-muted: #9ca3af;
+  --selection: #0d99ff;
+  --selection-bg: rgba(13, 153, 255, 0.1);
+  --selection-border: rgba(13, 153, 255, 0.4);
+  --lock: #d97706;
+  --hidden: #9ca3af;
+  --hover: rgba(0, 0, 0, 0.03);
+  --active: rgba(0, 0, 0, 0.06);
+  --success: #16a34a;
+  --error: #dc2626;
+
+  /* Spacing */
+  --top-bar-h: 40px;
+  --status-bar-h: 24px;
+  --panel-header-h: 36px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Dark Theme */
+.dark {
+  --bg-app: #0f0f0f;
+  --bg-panel: #1a1a1a;
+  --bg-panel-header: #1f1f1f;
+  --bg-canvas: #0a0a0a;
+  --bg-input: #262626;
+  --border: #2e2e2e;
+  --border-subtle: #252525;
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+  --selection: #0d99ff;
+  --selection-bg: rgba(13, 153, 255, 0.15);
+  --selection-border: rgba(13, 153, 255, 0.5);
+  --hover: rgba(255, 255, 255, 0.04);
+  --active: rgba(255, 255, 255, 0.08);
+
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Tailwind theme extension */
+@theme {
+  --color-bg-app: var(--bg-app);
+  --color-bg-panel: var(--bg-panel);
+  --color-bg-panel-header: var(--bg-panel-header);
+  --color-bg-canvas: var(--bg-canvas);
+  --color-bg-input: var(--bg-input);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-selection: var(--selection);
+  --color-selection-bg: var(--selection-bg);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+  --color-lock: var(--lock);
+  --color-success: var(--success);
+  --color-error: var(--error);
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar - WebKit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Scrollbar - Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}

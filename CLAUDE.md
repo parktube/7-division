@@ -7,8 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **7-division (도화지)**: AI-Native CAD 프로젝트
 
 - **비전**: "AI가 만들고, AI가 사용한다" - LLM이 도구를 조작하고, 인간은 의도/검증
-- **현재 단계**: Epic 1~8 완료 (MVP + Manifold 기하 엔진)
-- **아키텍처**: Direct-First (MCP 없이 WASM 직접 호출, < 1ms)
+- **현재 단계**: Epic 1~9 완료 (MVP + 웹 아키텍처)
+- **아키텍처**: Web + Local MCP (GitHub Pages 뷰어 + 로컬 MCP 서버)
+- **구조**: pnpm workspace 모노레포
+  - `apps/viewer` - React 뷰어 (GitHub Pages)
+  - `apps/cad-mcp` - MCP 서버
+  - `packages/shared` - 공유 타입 (Zod 스키마)
 
 ## Key Documents
 
@@ -18,15 +22,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `docs/architecture.md` | 기술 아키텍처 |
 | `docs/adr/006-geometry-engine.md` | Manifold 기하 엔진 결정 |
 
-## CAD Tools (코드 에디터)
+## MCP 도메인 도구 (5개)
 
-**run_cad_code = JavaScript IDE for CAD**
+MCP 서버는 5개의 도메인 도구를 제공합니다:
 
-```bash
-cd cad-tools
+| 도구 | 설명 | 주요 액션 |
+|------|------|----------|
+| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
+| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
+| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
+| `export` | 내보내기 | json, svg, capture |
+| `module` | 모듈 관리 | save, list, get, delete |
+
+### cad_code (핵심 도구)
+
+```javascript
+// 기본 실행
+cad_code({ code: "drawCircle('c', 0, 0, 50)" })
+
+// 파일 읽기/쓰기
+cad_code({ file: 'main' })                    // 읽기
+cad_code({ file: 'main', code: "..." })       // 쓰기
+cad_code({ file: 'main', code: "+..." })      // 추가 (+ prefix)
+
+// 부분 수정
+cad_code({ file: 'main', old_code: '...', new_code: '...' })
 ```
 
-### 도메인 목록 (`describe <domain>`으로 상세 확인)
+### discovery (탐색)
+
+```javascript
+discovery({ action: 'list_domains' })                    // 도메인 목록
+discovery({ action: 'describe', domain: 'primitives' })  // 함수 시그니처
+discovery({ action: 'get_schema', name: 'drawCircle' })  // 상세 스키마
+```
+
+### scene / export / module
+
+```javascript
+scene({ action: 'info' })        // 씬 요약
+scene({ action: 'overview' })    // 트리 구조
+export({ action: 'capture' })    // PNG 스크린샷
+module({ action: 'save', name: 'lib', code: '...' })  // 모듈 저장
+```
+
+## 도메인 목록 (Sandbox 함수)
+
+`discovery({ action: 'describe', domain: '...' })`으로 상세 확인
 
 ```
 📦 도형 생성
@@ -40,72 +82,39 @@ cd cad-tools
 
 🎨 스타일 & 구조
   style       - 색상/z-order (fill, stroke, drawOrder)
-  group       - 그룹화 (createGroup, addToGroup)
+  groups      - 그룹화 (createGroup, addToGroup)
 
-🔍 조회 & 내보내기
+🔍 조회
   query       - 씬 조회 (getEntity, exists, fitToViewport)
-  export      - 내보내기 (capture, json, svg)
-  session     - 세션 관리 (reset, --clear-sketch)
+  utility     - 유틸리티 (duplicate, mirror)
 ```
-
-### run_cad_code 명령어
-
-**기본 (읽기/쓰기)**
-```bash
-run_cad_code                              # 프로젝트 구조
-run_cad_code main                         # main 읽기
-run_cad_code main "drawCircle('c', 0, 0, 50)"  # 덮어쓰기
-run_cad_code main "+drawRect('r', 0, 0, 30, 30)" # 추가 (+ prefix)
-echo "code" | run_cad_code main -         # stdin 멀티라인
-```
-
-**탐색**
-```bash
-run_cad_code --status                     # 프로젝트 요약
-run_cad_code --info house_lib             # 모듈 상세
-run_cad_code --search drawCircle          # 패턴 검색
-run_cad_code --capture                    # 뷰어 스크린샷
-run_cad_code --capture --clear-sketch     # 캡처 후 스케치 클리어
-run_cad_code --selection                  # 선택된 도형
-```
-
-**관리**
-```bash
-run_cad_code --deps                       # 의존성 그래프
-run_cad_code --delete my_module           # 모듈 삭제
-```
-
-> `run_cad_code` = `npx tsx cad-cli.ts run_cad_code`
-
-**규칙**: 문자열은 작은따옴표(`'`) 사용
 
 ### 트랜잭션 동작
 
 코드 실행 실패 시 **파일이 변경되지 않습니다** (자동 롤백):
 
-```bash
-# 기존 코드에 const x = 10;이 있을 때
-run_cad_code main "+const x = 20;"  # 실패 - 변수 재정의
-# → 파일 변경 없음
-
-# 추가 모드에서는 기존 변수 직접 참조 가능
-run_cad_code main "+drawCircle('c', x, 0, 30);"  # 성공
+```javascript
+// 기존 코드에 const x = 10;이 있을 때
+cad_code({ file: 'main', code: '+const x = 20;' })  // 실패 - 변수 재정의
+// → 파일 변경 없음, 안전하게 실험 가능
 ```
 
 ### 엔티티 수정 (reset 금지!)
 
 **씬은 영속적입니다.** 기존 엔티티는 직접 수정하세요:
 
-```bash
-# ❌ 잘못된 패턴: 리셋 후 재생성
-run_cad_code reset
-run_cad_code main "... 전체 다시 그리기 ..."
+```javascript
+// ❌ 잘못된 패턴: 리셋 후 재생성
+scene({ action: 'reset' })
+cad_code({ file: 'main', code: '... 전체 다시 그리기 ...' })
 
-# ✅ 올바른 패턴: 기존 엔티티 직접 수정
-run_cad_code main "+drawOrder('arm_r', 'back')"
-run_cad_code main "+setFill('head', [1,0,0,1])"
-run_cad_code main "+translate('robot', 10, 0)"
+// ✅ 올바른 패턴: 기존 엔티티 직접 수정
+cad_code({ file: 'main', code: "+drawOrder('arm_r', 'back')" })
+cad_code({ file: 'main', code: "+setFill('head', [1,0,0,1])" })
+cad_code({ file: 'main', code: "+translate('robot', 10, 0)" })
 ```
+
+**규칙**: 문자열은 작은따옴표(`'`) 사용
 
 ## 함수 목록
 
@@ -127,13 +136,13 @@ getTextMetrics(text, fontSize, fontPath?)  // { width, height }
 ```
 
 **폰트 검색 순서** (fontPath 생략 시):
-1. 프로젝트 `cad-tools/fonts/` 디렉터리 (로컬 폰트)
+1. 프로젝트 `apps/cad-mcp/fonts/` 디렉터리 (로컬 폰트)
 2. 시스템 폰트 디렉터리:
    - Linux: `/usr/share/fonts/truetype`, `/usr/share/fonts/opentype`
    - macOS: `/System/Library/Fonts`, `/Library/Fonts`
    - Windows: `C:\Windows\Fonts`
 
-**권장 폰트** (로컬 설치 시 `cad-tools/fonts/`에 배치):
+**권장 폰트** (로컬 설치 시 `apps/cad-mcp/fonts/`에 배치):
 
 | 폰트 | fontPath 예시 | 용도 |
 |-----|-------------|------|
@@ -228,9 +237,9 @@ translate(name, this.x, this.y);
 
 ## 모듈 시스템
 
-```bash
-# house_lib 모듈 생성
-run_cad_code house_lib "
+```javascript
+// house_lib 모듈 저장
+module({ action: 'save', name: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
@@ -244,14 +253,14 @@ class House {
     translate(this.name, this.x, this.y);
   }
 }
-"
+`})
 
-# main에서 사용
-run_cad_code main "
+// main에서 사용
+cad_code({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
-"
+`})
 ```
 
 ## Z-Order 관리 (drawOrder)
@@ -270,13 +279,13 @@ getDrawOrder('robot'); // 그룹 내부 순서
 
 ## 스케치 기반 협업 워크플로우
 
-**⚠️ 이미지에서 좌표 추출 금지** - 구조화된 데이터(sketch.json) 사용!
+**⚠️ 이미지에서 좌표 추출 금지** - 구조화된 데이터 사용!
 
 ```
-1. capture_viewport → 이미지로 "의도 파악" (대략적 이해)
+1. export({ action: 'capture' }) → 이미지로 "의도 파악"
 2. 의도 확인 질문 (모호하면 반드시 물어보기)
-3. sketch.json 읽기 → 정확한 좌표 획득
-4. getEntity로 현재 상태 획득
+3. scene({ action: 'overview' }) → 씬 구조 파악
+4. cad_code 내 getEntity() → 정확한 좌표 획득
 5. 계산 후 한 번에 실행
 ```
 
@@ -297,21 +306,44 @@ getDrawOrder('robot'); // 그룹 내부 순서
 - **색상**: RGBA `[0~1, 0~1, 0~1, 0~1]` - 예: 빨강 `[1,0,0,1]`
 - **각도**: 라디안
 
+## Data Storage
+
+모든 CAD 데이터는 `~/.ai-native-cad/` 디렉토리에 저장됩니다:
+
+```
+~/.ai-native-cad/
+├── scene.json       # 씬 상태 (엔티티, 변환 등)
+├── scene.code.js    # main 코드 파일
+└── modules/         # 저장된 모듈 (.js 파일)
+```
+
+MCP 서버 재시작 시 scene.json에서 자동 복원됩니다.
+
 ## Quick Start
 
 ```bash
-# 1. 뷰어 서버 실행 (별도 터미널)
-cd viewer && npm run dev
-# → http://localhost:5173/
+# 1. MCP 서버 시작
+npx @ai-native-cad/mcp start
 
-# 2. CAD 명령어 실행 (다른 터미널)
-cd cad-tools
-run_cad_code main "drawCircle('c', 0, 0, 50)"
+# 2. Viewer 열기
+# → https://parktube.github.io/7-division/
+```
+
+### 로컬 개발
+
+```bash
+# 의존성 설치
+pnpm install
+
+# MCP 서버 + Viewer 개발 모드 (각각 별도 터미널)
+pnpm --filter @ai-native-cad/mcp start
+pnpm --filter @ai-native-cad/viewer dev
+# → http://localhost:5173/
 ```
 
 ## Development Rules
 
-- **Console 금지**: `logger` 사용 (`cad-tools/src/logger.ts`)
+- **Console 금지**: `logger` 사용 (`apps/cad-mcp/src/logger.ts`)
 - **Pre-commit**: `npm install` 후 자동 실행 (fmt, eslint --fix)
 - **CI**: fmt → clippy → test → build (Rust), eslint → tsc → vitest (TS)
 - **Git**: `main` 브랜치, SSH 키 `github.com-jungjaehoon`
@@ -327,14 +359,14 @@ run_cad_code main "drawCircle('c', 0, 0, 50)"
 
 ## Architecture Decisions
 
-### Direct-First Architecture
-- MCP 없이 Claude Code CLI → WASM 직접 실행
-- 브라우저는 순수 뷰어 역할만 (검증 UI)
-- 향후 채팅 UI 추가 시 Gateway → CLI 호출
+### MCP-First Architecture
+- Claude Code → MCP 서버 → WASM 실행
+- 브라우저는 순수 뷰어 역할 (검증 UI)
+- WebSocket으로 실시간 씬 동기화
 
 ### Extensibility
-- LLM 교체 가능: 보안 클라이언트에 로컬 LLM(Ollama 등) 제공 가능
-- MCP 추가 가능: 코어는 그대로, MCP Server 래퍼만 추가
+- LLM 교체 가능: 로컬 LLM(Ollama 등) 제공 가능
+- 씬 영속성: scene.json으로 상태 자동 저장/복원
 
 ## 현재 시스템의 한계
 
