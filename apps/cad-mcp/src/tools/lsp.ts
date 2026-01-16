@@ -9,9 +9,8 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
-import { resolve } from 'path';
-import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
 import { DOMAINS, FUNCTION_SIGNATURES, type DomainName } from '../schema.js';
+import { getFilePath, isValidFileName } from '../utils/paths.js';
 
 export interface LspInput {
   operation: 'domains' | 'describe' | 'schema' | 'symbols';
@@ -46,61 +45,58 @@ export interface LspOutput {
 }
 
 /**
- * Get file path for given file name
+ * ReDoS 방지: 코드 길이 제한 (100KB)
+ * CAD 모듈은 소규모이므로 충분한 크기
  */
-function getFilePath(file: string): string {
-  if (file === 'main') {
-    return SCENE_CODE_FILE;
-  }
-  return resolve(MODULES_DIR, `${file}.js`);
-}
+const MAX_CODE_LENGTH = 100 * 1024;
 
 /**
  * Identifier pattern supporting Unicode (including Korean)
+ * Note: 단순 패턴으로 ReDoS 위험 최소화
  */
 const ID_PATTERN = '[a-zA-Z_$\\u3131-\\uD79D][a-zA-Z0-9_$\\u3131-\\uD79D]*';
 
 /**
- * Extract symbols from JavaScript code using regex
+ * Find matching brace end index (brace counting)
  */
-function extractSymbols(code: string): SymbolInfo[] {
-  const symbols: SymbolInfo[] = [];
+function findMatchingBrace(code: string, startIndex: number): number {
+  let braceCount = 0;
+  let foundStart = false;
 
-  // Extract classes (with Unicode support)
+  for (let i = startIndex; i < code.length; i++) {
+    if (code[i] === '{') {
+      braceCount++;
+      foundStart = true;
+    } else if (code[i] === '}') {
+      braceCount--;
+      if (foundStart && braceCount === 0) {
+        return i;
+      }
+    }
+  }
+  return startIndex;
+}
+
+/**
+ * Extract class symbols from code
+ */
+function extractClasses(code: string): SymbolInfo[] {
+  const symbols: SymbolInfo[] = [];
   const classRegex = new RegExp(`class\\s+(${ID_PATTERN})(?:\\s+extends\\s+${ID_PATTERN})?\\s*\\{`, 'g');
   let match: RegExpExecArray | null;
 
   while ((match = classRegex.exec(code)) !== null) {
     const className = match[1];
-    const classStartIndex = match.index;
+    const classEndIndex = findMatchingBrace(code, match.index);
+    const classBody = code.substring(match.index, classEndIndex + 1);
 
-    // Find the class body
-    let braceCount = 0;
-    let classEndIndex = classStartIndex;
-    let foundStart = false;
-
-    for (let i = classStartIndex; i < code.length; i++) {
-      if (code[i] === '{') {
-        braceCount++;
-        foundStart = true;
-      } else if (code[i] === '}') {
-        braceCount--;
-        if (foundStart && braceCount === 0) {
-          classEndIndex = i;
-          break;
-        }
-      }
-    }
-
-    const classBody = code.substring(classStartIndex, classEndIndex + 1);
-
-    // Extract constructor signature
+    // Extract constructor signature (simple pattern)
     const constructorMatch = classBody.match(/constructor\s*\(([^)]*)\)/);
     const constructorSignature = constructorMatch
       ? `constructor(${constructorMatch[1]})`
       : undefined;
 
-    // Extract methods (skip constructor)
+    // Extract methods (simple identifier before parentheses)
     const methods: string[] = [];
     const methodRegex = new RegExp(`(${ID_PATTERN})\\s*\\([^)]*\\)\\s*\\{`, 'g');
     let methodMatch: RegExpExecArray | null;
@@ -120,58 +116,121 @@ function extractSymbols(code: string): SymbolInfo[] {
     });
   }
 
-  // Extract standalone functions (not inside classes)
+  return symbols;
+}
+
+/**
+ * Extract function declarations from code
+ */
+function extractFunctions(code: string): SymbolInfo[] {
+  const symbols: SymbolInfo[] = [];
   const functionRegex = new RegExp(`(?:^|[^.])function\\s+(${ID_PATTERN})\\s*\\(([^)]*)\\)`, 'gm');
+  let match: RegExpExecArray | null;
+
   while ((match = functionRegex.exec(code)) !== null) {
-    const fnName = match[1];
-    const params = match[2];
     symbols.push({
-      name: fnName,
+      name: match[1],
       kind: 'function',
-      signature: `function ${fnName}(${params})`,
+      signature: `function ${match[1]}(${match[2]})`,
     });
   }
 
-  // Extract const arrow functions (top-level)
+  return symbols;
+}
+
+/**
+ * Extract arrow functions from code
+ */
+function extractArrowFunctions(code: string): SymbolInfo[] {
+  const symbols: SymbolInfo[] = [];
   const arrowFnRegex = new RegExp(`const\\s+(${ID_PATTERN})\\s*=\\s*(?:\\(([^)]*)\\)|(${ID_PATTERN}))\\s*=>`, 'g');
+  let match: RegExpExecArray | null;
+
   while ((match = arrowFnRegex.exec(code)) !== null) {
-    const fnName = match[1];
-    const params = match[2] || match[3] || '';
     symbols.push({
-      name: fnName,
+      name: match[1],
       kind: 'function',
-      signature: `const ${fnName} = (${params}) =>`,
+      signature: `const ${match[1]} = (${match[2] || match[3] || ''}) =>`,
     });
   }
 
-  // Extract const/let/var variables (simple pattern - look for = followed by non-arrow content)
-  // Match lines like: const NAME = value; or const NAME = { ... }
-  const varRegex = new RegExp(`(const|let|var)\\s+(${ID_PATTERN})\\s*=\\s*([^;]+)`, 'g');
+  return symbols;
+}
+
+/**
+ * Extract variable declarations from code
+ */
+function extractVariables(code: string, existingNames: Set<string>): SymbolInfo[] {
+  const symbols: SymbolInfo[] = [];
+  // 단순화된 패턴: [^;]+ 대신 제한된 문자 클래스 사용 (ReDoS 방지)
+  const varRegex = new RegExp(`(const|let|var)\\s+(${ID_PATTERN})\\s*=`, 'g');
+  let match: RegExpExecArray | null;
+
   while ((match = varRegex.exec(code)) !== null) {
     const varKind = match[1] as 'const' | 'let' | 'var';
     const varName = match[2];
-    const valueStart = match[3].trim();
 
-    // Skip if this is an arrow function (already captured above)
-    if (valueStart.includes('=>')) {
+    // Skip if already captured (class, function, arrow function)
+    if (existingNames.has(varName)) {
       continue;
     }
 
-    // Skip if this is a function expression
-    if (valueStart.startsWith('function')) {
+    // Check what follows the = sign
+    const afterEquals = code.substring(match.index + match[0].length, match.index + match[0].length + 20);
+
+    // Skip arrow functions and function expressions
+    if (afterEquals.includes('=>') || afterEquals.trim().startsWith('function')) {
       continue;
     }
 
-    // Check if this is already captured
-    const isAlreadyCaptured = symbols.some((s) => s.name === varName);
-
-    if (!isAlreadyCaptured) {
-      symbols.push({
-        name: varName,
-        kind: varKind,
-      });
-    }
+    existingNames.add(varName);
+    symbols.push({
+      name: varName,
+      kind: varKind,
+    });
   }
+
+  return symbols;
+}
+
+/**
+ * Extract symbols from JavaScript code
+ *
+ * Note: ReDoS 방지를 위해 코드 길이 제한 및 단순화된 정규식 사용
+ */
+function extractSymbols(code: string): SymbolInfo[] {
+  // ReDoS 방지: 코드 길이 제한
+  if (code.length > MAX_CODE_LENGTH) {
+    code = code.substring(0, MAX_CODE_LENGTH);
+  }
+
+  const symbols: SymbolInfo[] = [];
+  const existingNames = new Set<string>();
+
+  // 1. Extract classes
+  const classes = extractClasses(code);
+  classes.forEach(s => {
+    symbols.push(s);
+    existingNames.add(s.name);
+  });
+
+  // 2. Extract standalone functions
+  const functions = extractFunctions(code);
+  functions.forEach(s => {
+    symbols.push(s);
+    existingNames.add(s.name);
+  });
+
+  // 3. Extract arrow functions
+  const arrowFns = extractArrowFunctions(code);
+  arrowFns.forEach(s => {
+    symbols.push(s);
+    existingNames.add(s.name);
+  });
+
+  // 4. Extract variables (excluding already captured)
+  const variables = extractVariables(code, existingNames);
+  symbols.push(...variables);
 
   return symbols;
 }
@@ -277,6 +336,15 @@ export function handleLsp(input: LspInput): LspOutput {
             success: false,
             data: {},
             error: 'file parameter is required for symbols operation',
+          };
+        }
+
+        // Path Traversal 방지: 파일명 검증
+        if (!isValidFileName(file)) {
+          return {
+            success: false,
+            data: {},
+            error: `Invalid file name: ${file}. Only alphanumeric, underscore, and hyphen allowed.`,
           };
         }
 

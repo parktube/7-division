@@ -4,15 +4,27 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import fs from 'fs'
+import os from 'os'
+
+// CAD 데이터 디렉토리 (~/.ai-native-cad/) - MCP와 동일한 위치 사용
+const CAD_DATA_DIR = path.join(os.homedir(), '.ai-native-cad')
+
+// 디렉토리 생성 (없으면)
+function ensureCadDataDir() {
+  if (!fs.existsSync(CAD_DATA_DIR)) {
+    fs.mkdirSync(CAD_DATA_DIR, { recursive: true })
+  }
+}
 
 // Custom plugin for selection.json and sketch.json POST handling
 function dataMiddleware() {
   return {
     name: 'data-middleware',
-    configureServer(server: { middlewares: { use: (path: string, handler: (req: { method?: string; on: (event: string, cb: (chunk?: string) => void) => void }, res: { statusCode: number; end: (msg: string) => void }, next: () => void) => void) => void } }) {
+    configureServer(server: { middlewares: { use: (path: string, handler: (req: { method?: string; on: (event: string, cb: (chunk?: string) => void) => void }, res: { statusCode: number; end: (msg: string) => void; setHeader: (key: string, value: string) => void }, next: () => void) => void) => void } }) {
       // selection.json middleware
       server.middlewares.use('/selection.json', (req, res, next) => {
-        const filePath = path.join(__dirname, 'selection.json')
+        ensureCadDataDir()
+        const filePath = path.join(CAD_DATA_DIR, 'selection.json')
 
         if (req.method === 'POST') {
           let body = ''
@@ -53,7 +65,8 @@ function dataMiddleware() {
 
       // sketch.json middleware
       server.middlewares.use('/sketch.json', (req, res, next) => {
-        const filePath = path.join(__dirname, 'sketch.json')
+        ensureCadDataDir()
+        const filePath = path.join(CAD_DATA_DIR, 'sketch.json')
 
         if (req.method === 'POST') {
           let body = ''

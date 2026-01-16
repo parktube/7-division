@@ -1,6 +1,6 @@
 # Story 10.3: edit 도구 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -50,35 +50,39 @@ so that **기존 코드의 일부만 변경할 수 있다** (FR61).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: edit 도구 스키마 정의** (AC: #6, #7)
-  - [ ] 1.1 `apps/cad-mcp/src/schema.ts`에 EDIT_TOOL 스키마 추가
-  - [ ] 1.2 inputSchema 정의 (file: required, old_code: required, new_code: required)
-  - [ ] 1.3 description 작성: "파일 부분 수정 → 자동 실행. ⚠️ read로 먼저 확인 필수."
+- [x] **Task 1: edit 도구 스키마 정의** (AC: #6, #7)
+  - [x] 1.1 `apps/cad-mcp/src/schema.ts`에 EDIT_TOOL 스키마 추가
+  - [x] 1.2 inputSchema 정의 (file: required, old_code: required, new_code: required)
+  - [x] 1.3 description 작성: "파일 부분 수정 → 자동 실행. ⚠️ read로 먼저 확인 필수."
 
-- [ ] **Task 2: Read-first 추적 시스템 구현** (AC: #3)
-  - [ ] 2.1 세션 내 read 호출 기록 저장 메커니즘 구현
-  - [ ] 2.2 파일별 read 여부 확인 함수 구현
-  - [ ] 2.3 경고 메시지 생성 로직 구현
+- [x] **Task 2: Read-first 추적 시스템 구현** (AC: #3)
+  - [x] 2.1 세션 내 read 호출 기록 저장 메커니즘 구현 (read.ts의 readHistory Set)
+  - [x] 2.2 파일별 read 여부 확인 함수 구현 (hasBeenRead)
+  - [x] 2.3 경고 메시지 생성 로직 구현
 
-- [ ] **Task 3: edit 핸들러 구현** (AC: #1, #2, #4, #5)
-  - [ ] 3.1 `apps/cad-mcp/src/tools/edit.ts` 파일 생성
-  - [ ] 3.2 파일 읽기 및 old_code 검색 로직 구현
-  - [ ] 3.3 old_code → new_code 교체 로직 구현
-  - [ ] 3.4 수정된 코드 자동 실행 (sandbox 연동)
-  - [ ] 3.5 실행 실패 시 롤백 로직 구현 (트랜잭션)
-  - [ ] 3.6 Read-first 경고 메시지 포함 로직
+- [x] **Task 3: edit 핸들러 구현** (AC: #1, #2, #4, #5)
+  - [x] 3.1 `apps/cad-mcp/src/tools/edit.ts` 파일 생성
+  - [x] 3.2 파일 읽기 및 old_code 검색 로직 구현
+  - [x] 3.3 old_code → new_code 교체 로직 구현
+  - [x] 3.4 수정된 코드 자동 실행 (MCP 서버에서 처리)
+  - [x] 3.5 실행 실패 시 롤백 로직 구현 (rollbackEdit 함수)
+  - [x] 3.6 Read-first 경고 메시지 포함 로직
 
-- [ ] **Task 4: MCP 서버 통합** (AC: #6)
-  - [ ] 4.1 `apps/cad-mcp/src/mcp-server.ts`에 edit 핸들러 등록
-  - [ ] 4.2 CAD_TOOLS에 edit 추가 (glob, read 패턴 따름)
+- [x] **Task 4: MCP 서버 통합** (AC: #6)
+  - [x] 4.1 `apps/cad-mcp/src/mcp-server.ts`에 edit 핸들러 등록
+  - [x] 4.2 CAD_TOOLS에 edit 추가 (glob, read 패턴 따름)
 
-- [ ] **Task 5: 테스트 작성** (AC: #1, #2, #3, #4, #5)
-  - [ ] 5.1 `apps/cad-mcp/src/__tests__/edit.test.ts` 생성
-  - [ ] 5.2 정상 수정 및 실행 테스트
-  - [ ] 5.3 old_code 미발견 에러 테스트
-  - [ ] 5.4 Read-first 경고 테스트
-  - [ ] 5.5 실행 실패 롤백 테스트
-  - [ ] 5.6 모듈 파일 수정 테스트
+- [x] **Task 5: 테스트 작성** (AC: #1, #2, #3, #4, #5)
+  - [x] 5.1 `apps/cad-mcp/tests/edit.test.ts` 생성
+  - [x] 5.2 정상 수정 및 실행 테스트
+  - [x] 5.3 old_code 미발견 에러 테스트
+  - [x] 5.4 Read-first 경고 테스트
+  - [x] 5.5 실행 실패 롤백 테스트 (rollbackEdit)
+  - [x] 5.6 모듈 파일 수정 테스트
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][LOW] File List에 read.ts 수정 추가 필요
 
 ## Dev Notes
 
@@ -250,6 +254,42 @@ claude-opus-4-5-20251101
 ### File List
 
 - `apps/cad-mcp/src/tools/edit.ts` (신규)
+- `apps/cad-mcp/src/tools/read.ts` (수정 - hasBeenRead export 추가)
 - `apps/cad-mcp/src/schema.ts` (수정)
 - `apps/cad-mcp/src/mcp-server.ts` (수정)
-- `apps/cad-mcp/src/__tests__/edit.test.ts` (신규)
+- `apps/cad-mcp/tests/edit.test.ts` (신규)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Approved (Minor Issues)
+
+**Summary:**
+- 모든 AC 구현 완료 확인 ✅
+- 모든 Tasks 구현 완료 확인 ✅
+- 테스트 품질 우수 - deterministic fixtures ✅
+- Read-first 연동 정상 작동 ✅
+- 1개 문서 이슈 발견 (1 Low)
+
+**Issues Found:**
+1. **[LOW]** File List에 read.ts 수정 누락 → 수정 완료
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** Source code deep analysis
+
+**Issues Fixed:**
+
+1. ~~**[HIGH] Path Traversal 취약점**~~ → ✅ **해결됨**
+   - `isValidFileName()` 검증 추가
+
+2. ~~**[MEDIUM] Race Condition**~~ → ✅ **문서화됨** (허용 가능한 리스크)
+   - CAD-MCP는 단일 사용자 로컬 도구로 동시 요청이 드물음
+   - 실행 실패 시 rollbackEdit으로 복구
+   - 코드에 설계 결정 주석 추가됨
+
+3. ~~**[MEDIUM] DRY 위반**~~ → ✅ **해결됨**
+   - `utils/paths.ts`로 추출됨

@@ -31,7 +31,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 7 | 인간-LLM 협업 UI | ✅ 완료 |
 | 8 | Manifold 기하 엔진 + 텍스트 렌더링 | ✅ 완료 |
 | 9 | 웹 아키텍처 전환 | ✅ 완료 |
-| 10 | AX 개선 - MCP 도구 재설계 | 📋 계획 중 |
+| 10 | AX 개선 - MCP 도구 재설계 | 🚧 진행 중 |
 
 ---
 
@@ -91,6 +91,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR63 | lsp 도구 | 코드 인텔리전스 (도메인/함수 탐색), discovery 대체 |
 | FR64 | bash 도구 | 명령 실행 (씬 조회, 내보내기), scene/export 대체 |
 | FR65 | 레거시 도구 제거 | cad_code, discovery, scene, export, module 제거 |
+| FR66 | HMR 스타일 실행 | scene.json 영속성 제거, 매번 reset + main.js 재실행 (10.10) |
 
 ### Non-Functional Requirements
 
@@ -172,6 +173,8 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR64 | 10.6 | bash 도구 |
 | FR65 | 10.7 | 레거시 도구 제거 |
 | NFR24 | 10.8 | AX 검증 (Read-first 패턴) |
+| FR65 | 10.9 | discovery.ts 레거시 정리 |
+| FR66 | 10.10 | HMR 스타일 실행 |
 
 ---
 
@@ -614,6 +617,8 @@ So that **더 이상 Electron 관련 코드를 유지보수하지 않아도 된�
 | FR64 | 10.6 | bash 도구 (명령 실행) |
 | FR65 | 10.7 | 레거시 도구 제거 |
 | NFR24 | 10.8 | AX 검증 |
+| FR65 | 10.9 | discovery.ts 레거시 정리 |
+| FR66 | 10.10 | HMR 스타일 실행 |
 
 ### Implementation Phases
 
@@ -850,6 +855,78 @@ So that **Read-first 패턴 준수율이 향상됨을 확인한다** (NFR24).
 - 수동 테스트 (자동화 어려움)
 - CLAUDE.md 도구 섹션 전면 개편
 - 성공 기준: Read-first 패턴 > 95% 준수 (관찰)
+
+---
+
+### Story 10.10: HMR 스타일 코드 실행
+
+As a **LLM 에이전트**,
+I want **코드 수정 시 매번 clean 상태에서 재실행되기를**,
+So that **translate() 등 누적 변환이 발생하지 않는다** (FR66).
+
+**배경:**
+
+현재 문제:
+```
+edit → main.js 저장 → 실행 → scene.json에 누적 저장
+                              ↑ translate()가 누적됨
+```
+
+HMR 스타일 해결:
+```
+edit → main.js 저장 → reset() + 실행 → 브로드캐스트 (저장 안 함)
+                      ↑ 매번 clean 상태
+```
+
+**Acceptance Criteria:**
+
+**Given** main.js에 `translate('entity', 10, 0)` 코드가 있을 때
+**When** edit 도구로 코드를 수정하면
+**Then** 씬이 먼저 reset되고 main.js가 재실행된다
+**And** translate는 한 번만 적용된다 (누적 아님)
+
+**Given** MCP 서버가 재시작될 때
+**When** main.js 파일이 존재하면
+**Then** main.js를 실행하여 씬을 복원한다
+**And** scene.json에서 복원하지 않는다
+
+**Given** bash reset 명령을 실행할 때
+**When** 씬이 초기화되면
+**Then** main.js는 재실행되지 않는다 (수동 reset 의도 존중)
+
+**Technical Notes:**
+- `mcp-server.ts`의 `executeRunCadCode()` 수정
+- scene.json 저장 로직 제거 (`saveScene()` 호출 제거)
+- MCP 시작 시 scene.json 대신 main.js 실행으로 복원
+- 코드 소스(main.js)가 유일한 진실의 원천 (Single Source of Truth)
+
+**구현 위치:**
+```typescript
+// apps/cad-mcp/src/mcp-server.ts
+async function executeRunCadCode(code: string) {
+  const exec = getExecutor();
+
+  // HMR 스타일: 매번 clean 상태에서 시작
+  exec.exec('reset', {});
+
+  const result = await runCadCode(exec, code, 'warn');
+
+  if (result.success) {
+    // WebSocket 브로드캐스트만, scene.json 저장 안 함
+    const sceneJson = exec.exportScene();
+    const scene = JSON.parse(sceneJson);
+    wsServer.broadcastScene(scene);
+    // saveScene(exec);  // 제거!
+  }
+
+  return result;
+}
+```
+
+**예상 효과:**
+- translate/rotate/scale 누적 문제 완전 해결
+- 코드가 유일한 진실의 원천 (HMR 패러다임)
+- scene.json 의존성 제거로 아키텍처 단순화
 
 ---
 

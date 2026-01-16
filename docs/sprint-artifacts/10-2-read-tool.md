@@ -1,6 +1,6 @@
 # Story 10.2: read 도구 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -42,28 +42,32 @@ so that **edit/write 전에 기존 코드를 확인할 수 있다** (FR60).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: read 도구 스키마 정의** (AC: #5, #6)
-  - [ ] 1.1 `apps/cad-mcp/src/schema.ts`에 READ_TOOL 스키마 추가
-  - [ ] 1.2 inputSchema 정의 (file: required string)
-  - [ ] 1.3 description 작성: "파일 읽기. edit/write 전에 반드시 먼저 확인."
+- [x] **Task 1: read 도구 스키마 정의** (AC: #5, #6)
+  - [x] 1.1 `apps/cad-mcp/src/schema.ts`에 READ_TOOL 스키마 추가
+  - [x] 1.2 inputSchema 정의 (file: required string)
+  - [x] 1.3 description 작성: "파일 읽기. edit/write 전에 반드시 먼저 확인."
 
-- [ ] **Task 2: read 핸들러 구현** (AC: #1, #2, #3, #4)
-  - [ ] 2.1 `apps/cad-mcp/src/tools/read.ts` 파일 생성
-  - [ ] 2.2 main 파일 읽기 로직 구현 (`~/.ai-native-cad/scene.code.js`)
-  - [ ] 2.3 모듈 파일 읽기 로직 구현 (`~/.ai-native-cad/modules/{name}.js`)
-  - [ ] 2.4 파일 존재 여부 확인 및 에러 처리
-  - [ ] 2.5 빈 파일 처리 (빈 문자열 반환)
+- [x] **Task 2: read 핸들러 구현** (AC: #1, #2, #3, #4)
+  - [x] 2.1 `apps/cad-mcp/src/tools/read.ts` 파일 생성
+  - [x] 2.2 main 파일 읽기 로직 구현 (`~/.ai-native-cad/scene.code.js`)
+  - [x] 2.3 모듈 파일 읽기 로직 구현 (`~/.ai-native-cad/modules/{name}.js`)
+  - [x] 2.4 파일 존재 여부 확인 및 에러 처리
+  - [x] 2.5 빈 파일 처리 (빈 문자열 반환)
 
-- [ ] **Task 3: MCP 서버 통합** (AC: #5)
-  - [ ] 3.1 `apps/cad-mcp/src/mcp-server.ts`에 read 핸들러 등록
-  - [ ] 3.2 CAD_TOOLS에 read 추가 (10-1 glob 패턴 따름)
+- [x] **Task 3: MCP 서버 통합** (AC: #5)
+  - [x] 3.1 `apps/cad-mcp/src/mcp-server.ts`에 read 핸들러 등록
+  - [x] 3.2 CAD_TOOLS에 read 추가 (10-1 glob 패턴 따름)
 
-- [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3, #4)
-  - [ ] 4.1 `apps/cad-mcp/src/__tests__/read.test.ts` 생성
-  - [ ] 4.2 main 파일 읽기 테스트
-  - [ ] 4.3 모듈 파일 읽기 테스트
-  - [ ] 4.4 존재하지 않는 파일 에러 테스트
-  - [ ] 4.5 빈 파일 테스트
+- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3, #4)
+  - [x] 4.1 `apps/cad-mcp/tests/read.test.ts` 생성
+  - [x] 4.2 main 파일 읽기 테스트
+  - [x] 4.3 모듈 파일 읽기 테스트
+  - [x] 4.4 존재하지 않는 파일 에러 테스트
+  - [x] 4.5 빈 파일 테스트
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][MEDIUM] 테스트 조건부 로직 개선: 모듈 없어도 assertion 실행되도록 수정 [read.test.ts:52-66]
 
 ## Dev Notes
 
@@ -204,4 +208,37 @@ claude-opus-4-5-20251101
 - `apps/cad-mcp/src/tools/read.ts` (신규)
 - `apps/cad-mcp/src/schema.ts` (수정)
 - `apps/cad-mcp/src/mcp-server.ts` (수정)
-- `apps/cad-mcp/src/__tests__/read.test.ts` (신규)
+- `apps/cad-mcp/tests/read.test.ts` (신규)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Changes Requested
+
+**Summary:**
+- 모든 AC 구현 완료 확인 ✅
+- 모든 Tasks 구현 완료 확인 ✅
+- Read-first 추적 시스템 bonus 기능 발견 ✅
+- 1개 품질 이슈 발견 (1 Medium)
+
+**Issues Found:**
+1. **[MEDIUM]** 테스트 조건부 로직 - 모듈 없으면 검증 누락 가능
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** Source code deep analysis
+
+**Issues Fixed:**
+
+1. ~~**[HIGH] Path Traversal 취약점**~~ → ✅ **해결됨**
+   - `isValidFileName()` 검증 추가 (`/^[a-zA-Z0-9_-]+$/`)
+
+2. ~~**[HIGH] Global State Pollution**~~ → ✅ **문서화됨** (의도적 설계)
+   - CAD-MCP는 로컬 단일 사용자용으로 세션 간 공유가 필요
+   - 코드에 설계 의도 주석 추가됨
+
+3. ~~**[MEDIUM] DRY 위반**~~ → ✅ **해결됨**
+   - `utils/paths.ts`로 추출됨

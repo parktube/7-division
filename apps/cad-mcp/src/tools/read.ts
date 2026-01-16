@@ -12,12 +12,18 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
-import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
-import { resolve } from 'path';
+import { getFilePath, isValidFileName } from '../utils/paths.js';
+
+// Re-export for backward compatibility (edit.ts, write.ts, lsp.ts에서 import)
+export { isValidFileName } from '../utils/paths.js';
 
 /**
  * Read-first 추적 시스템
  * 세션 내에서 read된 파일 목록 관리
+ *
+ * Note: 모듈 레벨 상태는 의도적 설계
+ * CAD-MCP는 로컬 단일 사용자용으로, 세션 간 공유가 필요함
+ * (같은 프로세스에서 여러 도구 호출이 Read-first 패턴 추적에 활용)
  */
 const readHistory = new Set<string>();
 
@@ -56,16 +62,6 @@ export interface ReadOutput {
 }
 
 /**
- * Get file path for given file name
- */
-function getFilePath(file: string): string {
-  if (file === 'main') {
-    return SCENE_CODE_FILE;
-  }
-  return resolve(MODULES_DIR, `${file}.js`);
-}
-
-/**
  * Execute read operation
  */
 export function handleRead(input: ReadInput): ReadOutput {
@@ -77,6 +73,15 @@ export function handleRead(input: ReadInput): ReadOutput {
         success: false,
         data: { file: '', content: '' },
         error: 'file parameter is required',
+      };
+    }
+
+    // Path Traversal 방지: 파일명 검증
+    if (!isValidFileName(file)) {
+      return {
+        success: false,
+        data: { file, content: '' },
+        error: `Invalid file name: ${file}. Only alphanumeric, underscore, and hyphen allowed.`,
       };
     }
 

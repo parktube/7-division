@@ -49,21 +49,19 @@ describe('read 도구', () => {
       }
     });
 
-    it('should read module file if it exists', () => {
-      // 모듈 디렉토리 확인
-      if (existsSync(MODULES_DIR)) {
-        const { readdirSync } = require('fs');
-        const modules = readdirSync(MODULES_DIR)
-          .filter((f: string) => f.endsWith('.js'))
-          .map((f: string) => f.replace('.js', ''));
+    it('should return structured response for module reads', () => {
+      // 항상 실행되는 deterministic 테스트
+      const testModule = 'test_nonexistent_module_xyz';
+      const result = handleRead({ file: testModule });
 
-        if (modules.length > 0) {
-          const result = handleRead({ file: modules[0] });
-          expect(result.success).toBe(true);
-          expect(result.data.file).toBe(modules[0]);
-          expect(typeof result.data.content).toBe('string');
-        }
-      }
+      // 응답 구조 검증 (항상 실행됨)
+      expect(result).toHaveProperty('success');
+      expect(result).toHaveProperty('data');
+      expect(result.data.file).toBe(testModule);
+
+      // 존재하지 않는 모듈은 에러 반환
+      expect(result.success).toBe(false);
+      expect(result.error).toBe(`File not found: ${testModule}`);
     });
 
     it('should return correct file name in response', () => {

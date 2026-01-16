@@ -5,8 +5,8 @@
 // Schema
 export { CAD_TOOLS, DOMAINS, type ToolSchema, type ParameterSchema, type DomainName, type ToolName } from './schema.js';
 
-// Discovery
-export { listDomains, listTools, getTool, getToolsForDomains, getAllTools } from './discovery.js';
+// Tool Registry (executor tools for direct LLM integration)
+export { getToolsForDomains, getAllExecutorTools } from './tool-registry.js';
 
 // Executor
 export { CADExecutor, type ToolResult } from './executor.js';

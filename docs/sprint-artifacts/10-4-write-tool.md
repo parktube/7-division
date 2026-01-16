@@ -1,6 +1,6 @@
 # Story 10.4: write 도구 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -51,34 +51,34 @@ so that **새 파일 생성 또는 전체 교체가 가능하다** (FR62).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: write 도구 스키마 정의** (AC: #6, #7)
-  - [ ] 1.1 `apps/cad-mcp/src/schema.ts`에 WRITE_TOOL 스키마 추가
-  - [ ] 1.2 inputSchema 정의 (file: required, code: required)
-  - [ ] 1.3 description 작성: "파일 전체 작성 → 자동 실행. ⚠️ 기존 파일은 read로 먼저 확인."
+- [x] **Task 1: write 도구 스키마 정의** (AC: #6, #7)
+  - [x] 1.1 `apps/cad-mcp/src/schema.ts`에 WRITE_TOOL 스키마 추가
+  - [x] 1.2 inputSchema 정의 (file: required, code: required)
+  - [x] 1.3 description 작성: "파일 전체 작성 → 자동 실행. ⚠️ 기존 파일은 read로 먼저 확인."
 
-- [ ] **Task 2: write 핸들러 구현** (AC: #1, #2, #3, #4, #5)
-  - [ ] 2.1 `apps/cad-mcp/src/tools/write.ts` 파일 생성
-  - [ ] 2.2 main 파일 경로 결정 로직 (`~/.ai-native-cad/scene.code.js`)
-  - [ ] 2.3 모듈 파일 경로 결정 로직 (`~/.ai-native-cad/modules/{name}.js`)
-  - [ ] 2.4 파일 존재 여부 확인 및 덮어쓰기 경고 로직
-  - [ ] 2.5 파일 작성 후 자동 실행 (sandbox 연동)
-  - [ ] 2.6 실행 실패 시 롤백 로직 구현
+- [x] **Task 2: write 핸들러 구현** (AC: #1, #2, #3, #4, #5)
+  - [x] 2.1 `apps/cad-mcp/src/tools/write.ts` 파일 생성
+  - [x] 2.2 main 파일 경로 결정 로직 (`~/.ai-native-cad/scene.code.js`)
+  - [x] 2.3 모듈 파일 경로 결정 로직 (`~/.ai-native-cad/modules/{name}.js`)
+  - [x] 2.4 파일 존재 여부 확인 및 덮어쓰기 경고 로직
+  - [x] 2.5 파일 작성 후 자동 실행 (MCP 서버에서 처리)
+  - [x] 2.6 실행 실패 시 롤백 로직 구현 (rollbackWrite)
 
-- [ ] **Task 3: Read-first 경고 통합** (AC: #3)
-  - [ ] 3.1 기존 파일 존재 시 read 여부 확인 (10-3에서 구현된 추적 시스템 활용)
-  - [ ] 3.2 경고 메시지 생성 로직
+- [x] **Task 3: Read-first 경고 통합** (AC: #3)
+  - [x] 3.1 기존 파일 존재 시 read 여부 확인 (hasBeenRead 활용)
+  - [x] 3.2 경고 메시지 생성 로직
 
-- [ ] **Task 4: MCP 서버 통합** (AC: #6)
-  - [ ] 4.1 `apps/cad-mcp/src/mcp-server.ts`에 write 핸들러 등록
-  - [ ] 4.2 CAD_TOOLS에 write 추가
+- [x] **Task 4: MCP 서버 통합** (AC: #6)
+  - [x] 4.1 `apps/cad-mcp/src/mcp-server.ts`에 write 핸들러 등록
+  - [x] 4.2 CAD_TOOLS에 write 추가
 
-- [ ] **Task 5: 테스트 작성** (AC: #1, #2, #3, #4, #5)
-  - [ ] 5.1 `apps/cad-mcp/src/__tests__/write.test.ts` 생성
-  - [ ] 5.2 main 파일 작성 및 실행 테스트
-  - [ ] 5.3 새 모듈 생성 테스트
-  - [ ] 5.4 덮어쓰기 경고 테스트
-  - [ ] 5.5 새 파일 경고 없음 테스트
-  - [ ] 5.6 실행 실패 롤백 테스트
+- [x] **Task 5: 테스트 작성** (AC: #1, #2, #3, #4, #5)
+  - [x] 5.1 `apps/cad-mcp/tests/write.test.ts` 생성
+  - [x] 5.2 main 파일 작성 및 실행 테스트
+  - [x] 5.3 새 모듈 생성 테스트
+  - [x] 5.4 덮어쓰기 경고 테스트
+  - [x] 5.5 새 파일 경고 없음 테스트
+  - [x] 5.6 실행 실패 롤백 테스트
 
 ## Dev Notes
 
@@ -223,4 +223,32 @@ claude-opus-4-5-20251101
 - `apps/cad-mcp/src/tools/write.ts` (신규)
 - `apps/cad-mcp/src/schema.ts` (수정)
 - `apps/cad-mcp/src/mcp-server.ts` (수정)
-- `apps/cad-mcp/src/__tests__/write.test.ts` (신규)
+- `apps/cad-mcp/tests/write.test.ts` (신규)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Approved
+
+**Summary:**
+- 모든 AC 구현 완료 확인 ✅
+- 모든 Tasks 구현 완료 확인 ✅
+- 테스트 품질 우수 - deterministic fixtures ✅
+- rollbackWrite with null handling (새 파일 삭제) ✅
+- ensureDir for module directory creation ✅
+- 이슈 없음
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** Source code deep analysis
+
+**Issues Fixed:**
+
+1. ~~**[HIGH] Path Traversal 취약점**~~ → ✅ **해결됨**
+   - `isValidFileName()` 검증 추가
+
+2. ~~**[MEDIUM] DRY 위반**~~ → ✅ **해결됨**
+   - `utils/paths.ts`로 추출됨

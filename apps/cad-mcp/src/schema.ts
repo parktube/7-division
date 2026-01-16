@@ -168,13 +168,17 @@ export const CAD_TOOLS: Record<string, ToolSchema> = {
   // === bash: 명령 실행 ===
   bash: {
     name: 'bash',
-    description: '명령 실행. 씬 조회(info/tree/groups/draw_order/selection), 내보내기(capture/svg/json), 초기화(reset).',
+    description: '명령 실행. 씬 조회(info/tree/groups/draw_order/selection), 엔티티 좌표 조회(entity), 내보내기(capture/svg/json), 초기화(reset), 스냅샷(snapshot/undo/redo/snapshots). 💡 entity 명령으로 로컬/월드 좌표 확인 후 translate()로 위치 수정 가능. 📸 capture 후 ~/.ai-native-cad/scene.json 참고 권장.',
     parameters: {
       type: 'object',
       properties: {
         command: {
           type: 'string',
-          description: "명령: 'info' | 'tree' | 'groups' | 'draw_order' | 'selection' | 'capture' | 'svg' | 'json' | 'reset'",
+          description: "명령: 'info' | 'tree' | 'groups' | 'draw_order' | 'selection' | 'entity' | 'capture' | 'svg' | 'json' | 'reset' | 'snapshot' | 'undo' | 'redo' | 'snapshots'",
+        },
+        name: {
+          type: 'string',
+          description: "entity용: 엔티티/그룹 이름 → local(geometry, transform, bounds) + world(bounds, center) 좌표 반환",
         },
         group: {
           type: 'string',

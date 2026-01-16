@@ -28,7 +28,7 @@
 # - SM typically drafts next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-01-14
+generated: 2026-01-16
 project: 7-division
 project_key: ai-native-cad
 tracking_system: file-system
@@ -67,14 +67,16 @@ development_status:
   9-10-electron-cleanup: done
   epic-9-retrospective: optional
 
-  # Epic 10: AX Improvement - MCP Tool Redesign (Completed)
-  epic-10: done
-  10-1-glob-tool: done
-  10-2-read-tool: done
-  10-3-edit-tool: done
-  10-4-write-tool: done
-  10-5-lsp-tool: done
-  10-6-bash-tool: done
-  10-7-legacy-tool-removal: done
-  10-8-ax-validation: done
+  # Epic 10: AX Improvement - MCP Tool Redesign (Reviewed 2026-01-15)
+  epic-10: in-progress
+  10-1-glob-tool: done  # Code review passed
+  10-2-read-tool: done  # Code review passed
+  10-3-edit-tool: done  # Code review passed
+  10-4-write-tool: done  # Code review passed
+  10-5-lsp-tool: done  # Code review passed
+  10-6-bash-tool: done  # Code review passed
+  10-7-legacy-tool-removal: done  # Code review passed
+  10-8-ax-validation: done  # Code review passed
+  10-9-discovery-cleanup: done  # discovery.ts 레거시 정리
+  10-10-hmr-execution: drafted  # HMR 스타일 코드 실행
   epic-10-retrospective: optional

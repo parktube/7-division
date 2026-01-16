@@ -21,16 +21,53 @@ export interface GlobOutput {
   error?: string;
 }
 
+// 패턴 최대 길이 (ReDoS 방지)
+const MAX_PATTERN_LENGTH = 100;
+
 /**
- * Simple glob pattern matching
+ * Simple glob pattern matching (ReDoS-safe)
  * Supports * (any characters) and ? (single character)
+ * Uses iterative matching instead of regex to prevent ReDoS
  */
 function matchPattern(pattern: string, filename: string): boolean {
-  const regex = pattern
-    .replace(/[.+^${}()|[\]\\]/g, '\\$&') // Escape special regex chars except * and ?
-    .replace(/\*/g, '.*')
-    .replace(/\?/g, '.');
-  return new RegExp(`^${regex}$`).test(filename);
+  // 패턴 길이 제한 (ReDoS 방지)
+  if (pattern.length > MAX_PATTERN_LENGTH) {
+    return false;
+  }
+
+  // Iterative matching (non-backtracking)
+  let pi = 0; // pattern index
+  let fi = 0; // filename index
+  let starIdx = -1; // last * position in pattern
+  let matchIdx = -1; // position in filename when * was matched
+
+  while (fi < filename.length) {
+    if (pi < pattern.length && (pattern[pi] === '?' || pattern[pi] === filename[fi])) {
+      // Single character match or ? wildcard
+      pi++;
+      fi++;
+    } else if (pi < pattern.length && pattern[pi] === '*') {
+      // * wildcard - save state
+      starIdx = pi;
+      matchIdx = fi;
+      pi++;
+    } else if (starIdx !== -1) {
+      // No match, but we have a previous * - backtrack
+      pi = starIdx + 1;
+      matchIdx++;
+      fi = matchIdx;
+    } else {
+      // No match
+      return false;
+    }
+  }
+
+  // Check remaining pattern (should be all *)
+  while (pi < pattern.length && pattern[pi] === '*') {
+    pi++;
+  }
+
+  return pi === pattern.length;
 }
 
 /**
@@ -45,6 +82,8 @@ function getModuleList(): string[] {
       .filter(f => f.endsWith('.js'))
       .map(f => f.replace('.js', ''));
   } catch {
+    // 디렉토리 읽기 실패 시 빈 배열 반환 (권한 문제, 경로 오류 등)
+    // 에러 전파 대신 graceful degradation 선택
     return [];
   }
 }

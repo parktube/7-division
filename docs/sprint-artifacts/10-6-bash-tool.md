@@ -1,6 +1,6 @@
 # Story 10.6: bash 도구 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -67,31 +67,31 @@ so that **씬 상태 확인과 출력이 가능하다** (FR64).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: bash 도구 스키마 정의** (AC: #10, #11)
-  - [ ] 1.1 `apps/cad-mcp/src/schema.ts`에 BASH_TOOL 스키마 추가
-  - [ ] 1.2 inputSchema 정의 (command: required, group: optional, clearSketch: optional)
-  - [ ] 1.3 description 작성: "명령 실행. 씬 조회(info/tree/groups), 내보내기(capture/svg/json)."
+- [x] **Task 1: bash 도구 스키마 정의** (AC: #10, #11)
+  - [x] 1.1 `apps/cad-mcp/src/schema.ts`에 BASH_TOOL 스키마 추가
+  - [x] 1.2 inputSchema 정의 (command: required, group: optional, clearSketch: optional)
+  - [x] 1.3 description 작성: "명령 실행. 씬 조회(info/tree/groups), 내보내기(capture/svg/json)."
 
-- [ ] **Task 2: bash 핸들러 구현** (AC: #1~#9)
-  - [ ] 2.1 `apps/cad-mcp/src/tools/bash.ts` 파일 생성
-  - [ ] 2.2 'info' command 구현 (기존 get_scene_info 로직)
-  - [ ] 2.3 'tree' command 구현 (기존 overview 로직)
-  - [ ] 2.4 'groups' command 구현 (기존 list_groups 로직)
-  - [ ] 2.5 'draw_order' command 구현 (기존 scene draw_order 로직)
-  - [ ] 2.6 'reset' command 구현 (기존 reset 로직)
-  - [ ] 2.7 'capture' command 구현 (기존 capture 로직)
-  - [ ] 2.8 'svg' command 구현 (기존 export_svg 로직)
-  - [ ] 2.9 'json' command 구현 (기존 export_json 로직)
-  - [ ] 2.10 'selection' command 구현 (기존 get_selection 로직)
+- [x] **Task 2: bash 핸들러 구현** (AC: #1~#9)
+  - [x] 2.1 `apps/cad-mcp/src/tools/bash.ts` 파일 생성
+  - [x] 2.2 'info' command 구현 (기존 get_scene_info 로직)
+  - [x] 2.3 'tree' command 구현 (기존 overview 로직)
+  - [x] 2.4 'groups' command 구현 (기존 list_groups 로직)
+  - [x] 2.5 'draw_order' command 구현 (기존 scene draw_order 로직)
+  - [x] 2.6 'reset' command 구현 (기존 reset 로직)
+  - [x] 2.7 'capture' command 구현 (기존 capture 로직)
+  - [x] 2.8 'svg' command 구현 (기존 export_svg 로직)
+  - [x] 2.9 'json' command 구현 (기존 export_json 로직)
+  - [x] 2.10 'selection' command 구현 (기존 get_selection 로직)
 
-- [ ] **Task 3: MCP 서버 통합** (AC: #10)
-  - [ ] 3.1 `apps/cad-mcp/src/mcp-server.ts`에 bash 핸들러 등록
-  - [ ] 3.2 CAD_TOOLS에 bash 추가
+- [x] **Task 3: MCP 서버 통합** (AC: #10)
+  - [x] 3.1 `apps/cad-mcp/src/mcp-server.ts`에 bash 핸들러 등록
+  - [x] 3.2 CAD_TOOLS에 bash 추가
 
-- [ ] **Task 4: 테스트 작성** (AC: #1~#9)
-  - [ ] 4.1 `apps/cad-mcp/src/__tests__/bash.test.ts` 생성
-  - [ ] 4.2 각 command별 테스트
-  - [ ] 4.3 존재하지 않는 command 에러 테스트
+- [x] **Task 4: 테스트 작성** (AC: #1~#9)
+  - [x] 4.1 `apps/cad-mcp/src/__tests__/bash.test.ts` 생성
+  - [x] 4.2 각 command별 테스트
+  - [x] 4.3 존재하지 않는 command 에러 테스트
 
 ## Dev Notes
 
@@ -267,4 +267,32 @@ claude-opus-4-5-20251101
 - `apps/cad-mcp/src/tools/bash.ts` (신규)
 - `apps/cad-mcp/src/schema.ts` (수정)
 - `apps/cad-mcp/src/mcp-server.ts` (수정)
-- `apps/cad-mcp/src/__tests__/bash.test.ts` (신규)
+- `apps/cad-mcp/tests/bash.test.ts` (신규)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Approved
+
+**Summary:**
+- 모든 AC (11개) 구현 완료 확인 ✅
+- 모든 Tasks 완료 표시됨 ✅
+- scene + export 통합된 bash 도구 ✅
+- 이슈 없음
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** Source code deep analysis
+
+**Issues Fixed:**
+
+1. ~~**[HIGH] 하드코딩된 상대 경로**~~ → ✅ **해결됨**
+   - `resolveSelectionFile()` 함수 사용 (sandbox/index.ts)
+   - 환경변수 `CAD_SELECTION_PATH` 지원
+   - 개발/프로덕션 환경 자동 감지
+
+2. ~~**[MEDIUM] Empty Catch Blocks**~~ → ✅ **해결됨**
+   - `logger.warn`으로 변경됨 (lines 124, 147)

@@ -1,6 +1,6 @@
 # Story 10.5: lsp 도구 구현
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -75,37 +75,37 @@ so that **사용 가능한 모든 함수와 클래스를 확인할 수 있다** 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: lsp 도구 스키마 정의** (AC: #10, #11)
-  - [ ] 1.1 `apps/cad-mcp/src/schema.ts`에 LSP_TOOL 스키마 추가
-  - [ ] 1.2 inputSchema 정의 (operation: required, domain: optional, name: optional, file: optional)
-  - [ ] 1.3 description 작성: "코드 탐색. built-in 함수(domains/describe/schema) + 모듈 심볼(symbols)."
+- [x] **Task 1: lsp 도구 스키마 정의** (AC: #10, #11)
+  - [x] 1.1 `apps/cad-mcp/src/schema.ts`에 LSP_TOOL 스키마 추가
+  - [x] 1.2 inputSchema 정의 (operation: required, domain: optional, name: optional, file: optional)
+  - [x] 1.3 description 작성: "코드 탐색. built-in 함수(domains/describe/schema) + 모듈 심볼(symbols)."
 
-- [ ] **Task 2: built-in 함수 탐색 구현** (AC: #1, #2, #3, #7, #8)
-  - [ ] 2.1 `apps/cad-mcp/src/tools/lsp.ts` 파일 생성
-  - [ ] 2.2 'domains' operation 구현 (기존 list_domains 로직 재활용)
-  - [ ] 2.3 'describe' operation 구현 (기존 describe 로직 재활용)
-  - [ ] 2.4 'schema' operation 구현 (기존 get_tool_schema 로직 재활용)
-  - [ ] 2.5 에러 처리 (존재하지 않는 도메인/함수)
+- [x] **Task 2: built-in 함수 탐색 구현** (AC: #1, #2, #3, #7, #8)
+  - [x] 2.1 `apps/cad-mcp/src/tools/lsp.ts` 파일 생성
+  - [x] 2.2 'domains' operation 구현 (기존 list_domains 로직 재활용)
+  - [x] 2.3 'describe' operation 구현 (기존 describe 로직 재활용)
+  - [x] 2.4 'schema' operation 구현 (기존 get_tool_schema 로직 재활용)
+  - [x] 2.5 에러 처리 (존재하지 않는 도메인/함수)
 
-- [ ] **Task 3: 모듈 심볼 추출 구현** (AC: #4, #5, #6, #9)
-  - [ ] 3.1 'symbols' operation 구현
-  - [ ] 3.2 JS 코드에서 class 추출 (정규식 또는 간단한 파서)
-  - [ ] 3.3 JS 코드에서 function 추출
-  - [ ] 3.4 JS 코드에서 const/let/var 추출
-  - [ ] 3.5 main 파일 심볼 추출 지원
-  - [ ] 3.6 존재하지 않는 파일 에러 처리
+- [x] **Task 3: 모듈 심볼 추출 구현** (AC: #4, #5, #6, #9)
+  - [x] 3.1 'symbols' operation 구현
+  - [x] 3.2 JS 코드에서 class 추출 (정규식 또는 간단한 파서)
+  - [x] 3.3 JS 코드에서 function 추출
+  - [x] 3.4 JS 코드에서 const/let/var 추출
+  - [x] 3.5 main 파일 심볼 추출 지원
+  - [x] 3.6 존재하지 않는 파일 에러 처리
 
-- [ ] **Task 4: MCP 서버 통합** (AC: #10)
-  - [ ] 4.1 `apps/cad-mcp/src/mcp-server.ts`에 lsp 핸들러 등록
-  - [ ] 4.2 CAD_TOOLS에 lsp 추가
+- [x] **Task 4: MCP 서버 통합** (AC: #10)
+  - [x] 4.1 `apps/cad-mcp/src/mcp-server.ts`에 lsp 핸들러 등록
+  - [x] 4.2 CAD_TOOLS에 lsp 추가
 
-- [ ] **Task 5: 테스트 작성** (AC: #1~#9)
-  - [ ] 5.1 `apps/cad-mcp/src/__tests__/lsp.test.ts` 생성
-  - [ ] 5.2 도메인 목록 조회 테스트
-  - [ ] 5.3 도메인 함수 설명 테스트
-  - [ ] 5.4 함수 스키마 조회 테스트
-  - [ ] 5.5 모듈 심볼 추출 테스트 (class, function, const)
-  - [ ] 5.6 에러 처리 테스트
+- [x] **Task 5: 테스트 작성** (AC: #1~#9)
+  - [x] 5.1 `apps/cad-mcp/src/__tests__/lsp.test.ts` 생성
+  - [x] 5.2 도메인 목록 조회 테스트
+  - [x] 5.3 도메인 함수 설명 테스트
+  - [x] 5.4 함수 스키마 조회 테스트
+  - [x] 5.5 모듈 심볼 추출 테스트 (class, function, const)
+  - [x] 5.6 에러 처리 테스트
 
 ## Dev Notes
 
@@ -349,4 +349,41 @@ claude-opus-4-5-20251101
 - `apps/cad-mcp/src/tools/lsp.ts` (신규)
 - `apps/cad-mcp/src/schema.ts` (수정)
 - `apps/cad-mcp/src/mcp-server.ts` (수정)
-- `apps/cad-mcp/src/__tests__/lsp.test.ts` (신규)
+- `apps/cad-mcp/tests/lsp.test.ts` (신규)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Approved
+
+**Summary:**
+- 모든 AC (11개) 구현 완료 확인 ✅
+- 모든 Tasks 완료 표시됨 ✅
+- built-in 함수 + 사용자 모듈 심볼 탐색 기능 ✅
+- 이슈 없음
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** Source code deep analysis
+
+**Issues Fixed:**
+
+1. ~~**[HIGH] Path Traversal 취약점**~~ → ✅ **해결됨**
+   - `isValidFileName()` 검증 추가
+
+2. ~~**[MEDIUM] DRY 위반**~~ → ✅ **해결됨**
+   - `utils/paths.ts`로 추출됨
+
+3. ~~**[MEDIUM] ReDoS 취약점**~~ → ✅ **해결됨**
+   - `MAX_CODE_LENGTH = 100KB` 제한 추가
+   - 정규식 단순화 (`[^;]+` → 제한된 패턴)
+
+4. ~~**[LOW] 복잡도 높은 함수**~~ → ✅ **해결됨**
+   - `extractSymbols` → 4개 함수로 분리:
+     - `extractClasses()`
+     - `extractFunctions()`
+     - `extractArrowFunctions()`
+     - `extractVariables()`

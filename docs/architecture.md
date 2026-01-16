@@ -13,7 +13,7 @@ date: '2026-01-14'
 
 # Architecture Document - AI-Native CAD
 
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-16
 **Status:** Epic 1~9 완료, Epic 10 (AX 개선) 진행 중
 
 _이 문서는 BMAD Architecture Workflow로 작성되었습니다._
@@ -1236,6 +1236,88 @@ apps/cad-mcp/src/
 ### 3.7 Related Documents
 
 - [ADR-008](./adr/008-tool-pattern-alignment.md) - MCP 도구 패턴 정렬 결정
+
+### 3.8 HMR 스타일 코드 실행 (Story 10.10)
+
+#### 문제: scene.json 영속성으로 인한 누적 변환
+
+**현재 아키텍처 문제:**
+
+```
+edit → main.js 저장 → 실행 → scene.json에 누적 저장
+                              ↑ translate()가 누적됨
+```
+
+- 코드에 `translate('entity', 10, 0)`가 있으면
+- 매 edit마다 translate가 추가 적용됨
+- 결과: 의도치 않은 위치 이동
+
+#### 해결: HMR (Hot Module Replacement) 스타일 실행
+
+**새로운 아키텍처:**
+
+```
+edit → main.js 저장 → reset() + 실행 → 브로드캐스트 (저장 안 함)
+                      ↑ 매번 clean 상태
+```
+
+**핵심 변경:**
+
+| 항목 | Before | After |
+|------|--------|-------|
+| 실행 전 상태 | scene.json 로드 (누적) | reset() (clean) |
+| 실행 후 저장 | scene.json 저장 | 저장 안 함 |
+| 진실의 원천 | scene.json | main.js |
+| MCP 재시작 시 | scene.json 로드 | main.js 실행 |
+
+**구현 변경 (mcp-server.ts):**
+
+```typescript
+async function executeRunCadCode(code: string) {
+  const exec = getExecutor();
+
+  // HMR 스타일: 매번 clean 상태에서 시작
+  exec.exec('reset', {});
+
+  const result = await runCadCode(exec, code, 'warn');
+
+  if (result.success) {
+    // WebSocket 브로드캐스트만, scene.json 저장 안 함
+    const sceneJson = exec.exportScene();
+    const scene = JSON.parse(sceneJson);
+    wsServer.broadcastScene(scene);
+    // saveScene(exec);  // 제거!
+  }
+
+  return result;
+}
+```
+
+**MCP 서버 시작 시:**
+
+```typescript
+// 기존: scene.json 로드
+// const restored = loadScene(exec);
+
+// 새로운: main.js 실행
+if (existsSync(SCENE_CODE_FILE)) {
+  const mainCode = readFileSync(SCENE_CODE_FILE, 'utf-8');
+  await executeRunCadCode(mainCode);
+}
+```
+
+#### 장점
+
+1. **누적 문제 완전 해결**: 매번 clean 상태에서 시작
+2. **단일 진실의 원천**: main.js가 유일한 소스
+3. **아키텍처 단순화**: scene.json 의존성 제거
+4. **HMR 패러다임**: 웹 개발자에게 익숙한 패턴
+
+#### bash reset 명령 동작
+
+- `bash({ command: 'reset' })`: 수동 reset, main.js 재실행 안 함
+- 사용자가 의도적으로 빈 씬을 원할 때 사용
+- edit/write 후 자동 reset과 구분됨
 
 ---
 

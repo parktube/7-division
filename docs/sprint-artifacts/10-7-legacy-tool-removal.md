@@ -1,6 +1,6 @@
 # Story 10.7: 레거시 도구 제거
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -43,33 +43,33 @@ so that **중복 없이 새 도구만 유지한다** (FR65).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: schema.ts 레거시 도구 제거** (AC: #2, #3)
-  - [ ] 1.1 DOMAIN_TOOLS에서 cad_code, discovery, scene, export, module 제거
-  - [ ] 1.2 CAD_TOOLS에서 run_cad_code, describe, list_domains, list_tools, get_tool_schema, request_tool 제거
-  - [ ] 1.3 CAD_TOOLS에서 get_scene_info, export_json, export_svg, reset, capture, get_selection 제거
-  - [ ] 1.4 CAD_TOOLS에서 save_module, list_modules, get_module, delete_module 제거
-  - [ ] 1.5 CAD_TOOLS에서 list_groups, overview 제거
+- [x] **Task 1: schema.ts 레거시 도구 제거** (AC: #2, #3)
+  - [x] 1.1 DOMAIN_TOOLS에서 cad_code, discovery, scene, export, module 제거
+  - [x] 1.2 CAD_TOOLS에서 run_cad_code, describe, list_domains, list_tools, get_tool_schema, request_tool 제거
+  - [x] 1.3 CAD_TOOLS에서 get_scene_info, export_json, export_svg, reset, capture, get_selection 제거
+  - [x] 1.4 CAD_TOOLS에서 save_module, list_modules, get_module, delete_module 제거
+  - [x] 1.5 CAD_TOOLS에서 list_groups, overview 제거
 
-- [ ] **Task 2: mcp-server.ts 핸들러 정리** (AC: #1, #4)
-  - [ ] 2.1 레거시 도구 핸들러 로직 제거
-  - [ ] 2.2 새 도구(glob, read, edit, write, lsp, bash) 핸들러만 유지
-  - [ ] 2.3 도구 목록 반환 로직 업데이트
+- [x] **Task 2: mcp-server.ts 핸들러 정리** (AC: #1, #4)
+  - [x] 2.1 레거시 도구 핸들러 로직 제거
+  - [x] 2.2 새 도구(glob, read, edit, write, lsp, bash) 핸들러만 유지
+  - [x] 2.3 도구 목록 반환 로직 업데이트
 
-- [ ] **Task 3: 관련 파일 정리** (AC: #4)
-  - [ ] 3.1 discovery.ts 파일 제거 (lsp로 대체됨)
-  - [ ] 3.2 run-cad-code/handlers.ts에서 레거시 로직 제거 또는 파일 삭제
-  - [ ] 3.3 불필요한 import 문 정리
+- [x] **Task 3: 관련 파일 정리** (AC: #4)
+  - [x] 3.1 discovery.ts 파일 제거 (lsp로 대체됨)
+  - [x] 3.2 run-cad-code/handlers.ts에서 레거시 로직 제거 또는 파일 삭제
+  - [x] 3.3 불필요한 import 문 정리
 
-- [ ] **Task 4: 테스트 정리** (AC: #5)
-  - [ ] 4.1 레거시 도구 관련 테스트 파일 제거
-  - [ ] 4.2 새 도구 테스트만 유지
-  - [ ] 4.3 전체 테스트 실행 및 통과 확인
+- [x] **Task 4: 테스트 정리** (AC: #5)
+  - [x] 4.1 레거시 도구 관련 테스트 파일 제거
+  - [x] 4.2 새 도구 테스트만 유지
+  - [x] 4.3 전체 테스트 실행 및 통과 확인
 
-- [ ] **Task 5: CLAUDE.md 업데이트** (AC: #6)
-  - [ ] 5.1 MCP 도메인 도구 섹션 전면 개편
-  - [ ] 5.2 glob, read, edit, write, lsp, bash 사용법 문서화
-  - [ ] 5.3 기존 cad_code, discovery, scene, export, module 가이드 제거
-  - [ ] 5.4 예제 코드 업데이트
+- [x] **Task 5: CLAUDE.md 업데이트** (AC: #6)
+  - [x] 5.1 MCP 도메인 도구 섹션 전면 개편
+  - [x] 5.2 glob, read, edit, write, lsp, bash 사용법 문서화
+  - [x] 5.3 기존 cad_code, discovery, scene, export, module 가이드 제거
+  - [x] 5.4 예제 코드 업데이트
 
 ## Dev Notes
 
@@ -219,4 +219,37 @@ claude-opus-4-5-20251101
 - `apps/cad-mcp/src/discovery.ts` (삭제)
 - `apps/cad-mcp/src/run-cad-code/handlers.ts` (수정/삭제)
 - `CLAUDE.md` (수정: 새 도구 가이드)
-- `apps/cad-mcp/src/__tests__/*.test.ts` (레거시 테스트 제거)
+- `apps/cad-mcp/tests/*.test.ts` (레거시 테스트 제거)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Approved
+
+**Summary:**
+- 모든 AC (6개) 구현 완료 확인 ✅
+- 모든 Tasks 완료 표시됨 ✅
+- 레거시 도구 완전 제거 ✅
+- CLAUDE.md 새 도구 패턴 문서화 ✅
+- 이슈 없음
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** 레거시 제거 검증
+
+**Review Notes:**
+- 삭제된 레거시 MCP 도구: cad_code, discovery, scene, export, module (5개 도메인) ✅
+- CAD_TOOLS에서 18개 레거시 도구 제거됨 ✅
+- mcp-server.ts에서 레거시 핸들러 제거됨 ✅
+
+**✅ 모든 항목 완료:**
+1. ~~**[HIGH] discovery.ts 파일 미삭제**~~ → ✅ **해결됨**
+   - discovery.ts 파일 삭제 완료
+   - import 참조 모두 제거됨
+
+**Cross-cutting Issue (10-1~10-6 공통):**
+- 새 도구들(glob, read, edit, write, lsp, bash)에 Path Traversal 취약점 존재
+- 10-7에서 제거된 레거시 도구도 동일 문제 있었음 (해결 필요)

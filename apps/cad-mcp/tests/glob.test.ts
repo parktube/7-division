@@ -8,16 +8,8 @@
  * - 빈 결과 처리
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs';
-import { resolve } from 'path';
-import { homedir } from 'os';
+import { describe, it, expect } from 'vitest';
 import { handleGlob } from '../src/tools/glob.js';
-
-// 테스트용 디렉토리 (실제 환경과 격리)
-const TEST_DIR = resolve(homedir(), '.ai-native-cad-test');
-const MODULES_DIR = resolve(TEST_DIR, 'modules');
-const SCENE_CODE_FILE = resolve(TEST_DIR, 'scene.code.js');
 
 // glob.ts가 사용하는 경로를 테스트용으로 오버라이드하기 어려우므로
 // 실제 환경의 파일을 테스트 (단위 테스트보다 통합 테스트 성격)
@@ -32,12 +24,12 @@ describe('glob 도구', () => {
       expect(Array.isArray(result.data.files)).toBe(true);
     });
 
-    it('should include main if scene.code.js exists', () => {
+    it('should place main at index 0 when present', () => {
       const result = handleGlob({});
-      // main이 있으면 첫 번째로 포함
-      if (result.data.files.includes('main')) {
-        expect(result.data.files[0]).toBe('main');
-      }
+      // Invariant: main은 존재하면 항상 첫 번째
+      const mainIndex = result.data.files.indexOf('main');
+      // main이 없으면 -1, 있으면 반드시 0
+      expect(mainIndex === -1 || mainIndex === 0).toBe(true);
     });
 
     it('should return empty array for non-matching pattern', () => {
@@ -67,10 +59,10 @@ describe('glob 도구', () => {
     it('should support ? wildcard pattern', () => {
       const result = handleGlob({ pattern: 'mai?' });
       expect(result.success).toBe(true);
-      // mai? 는 main 매칭
-      if (result.data.files.includes('main')) {
-        expect(result.data.files).toContain('main');
-      }
+      // mai? 는 4글자이고 'mai'로 시작하는 파일만 매칭
+      result.data.files.forEach(f => {
+        expect(f).toMatch(/^mai.$/);
+      });
     });
   });
 

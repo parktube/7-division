@@ -1,6 +1,6 @@
 # Story 10.1: glob 도구 구현
 
-Status: drafted
+Status: done
 
 ## Story
 
@@ -37,28 +37,35 @@ so that **작업 전 기존 파일(모듈)을 확인할 수 있다** (FR59).
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1: glob 도구 스키마 정의** (AC: #5)
-  - [ ] 1.1 `apps/cad-mcp/src/schema.ts`에 GLOB_TOOL 스키마 추가
-  - [ ] 1.2 inputSchema 정의 (pattern: optional string)
-  - [ ] 1.3 description 작성: "CAD 파일 목록 조회. main과 모듈 파일들."
+- [x] **Task 1: glob 도구 스키마 정의** (AC: #5)
+  - [x] 1.1 `apps/cad-mcp/src/schema.ts`에 GLOB_TOOL 스키마 추가
+  - [x] 1.2 inputSchema 정의 (pattern: optional string)
+  - [x] 1.3 description 작성: "CAD 파일 목록 조회. main과 모듈 파일들."
 
-- [ ] **Task 2: glob 핸들러 구현** (AC: #1, #2, #3, #4)
-  - [ ] 2.1 `apps/cad-mcp/src/tools/glob.ts` 파일 생성
-  - [ ] 2.2 모듈 디렉토리 스캔 로직 구현 (`~/.ai-native-cad/modules/`)
-  - [ ] 2.3 main 파일 포함 로직 구현 (항상 첫 번째)
-  - [ ] 2.4 glob 패턴 매칭 구현 (minimatch 또는 유사 라이브러리)
-  - [ ] 2.5 빈 결과 처리 (빈 배열 반환)
+- [x] **Task 2: glob 핸들러 구현** (AC: #1, #2, #3, #4)
+  - [x] 2.1 `apps/cad-mcp/src/tools/glob.ts` 파일 생성
+  - [x] 2.2 모듈 디렉토리 스캔 로직 구현 (`~/.ai-native-cad/modules/`)
+  - [x] 2.3 main 파일 포함 로직 구현 (항상 첫 번째)
+  - [x] 2.4 glob 패턴 매칭 구현 (minimatch 또는 유사 라이브러리)
+  - [x] 2.5 빈 결과 처리 (빈 배열 반환)
 
-- [ ] **Task 3: MCP 서버 통합** (AC: #5)
-  - [ ] 3.1 `apps/cad-mcp/src/mcp-server.ts`에 glob 핸들러 등록
-  - [ ] 3.2 CAD_TOOLS에 glob 추가
+- [x] **Task 3: MCP 서버 통합** (AC: #5)
+  - [x] 3.1 `apps/cad-mcp/src/mcp-server.ts`에 glob 핸들러 등록
+  - [x] 3.2 CAD_TOOLS에 glob 추가
 
-- [ ] **Task 4: 테스트 작성** (AC: #1, #2, #3, #4)
-  - [ ] 4.1 `apps/cad-mcp/src/__tests__/glob.test.ts` 생성
-  - [ ] 4.2 전체 목록 조회 테스트
-  - [ ] 4.3 패턴 매칭 테스트
-  - [ ] 4.4 빈 결과 테스트
-  - [ ] 4.5 main 포함 테스트
+- [x] **Task 4: 테스트 작성** (AC: #1, #2, #3, #4)
+  - [x] 4.1 `apps/cad-mcp/tests/glob.test.ts` 생성
+  - [x] 4.2 전체 목록 조회 테스트
+  - [x] 4.3 패턴 매칭 테스트
+  - [x] 4.4 빈 결과 테스트
+  - [x] 4.5 main 포함 테스트
+
+### Review Follow-ups (AI)
+
+- [x] [AI-Review][HIGH] 테스트 품질 개선: 조건부 assertion을 deterministic assertion으로 변경 [glob.test.ts:35-40, 70-73]
+- [x] [AI-Review][MEDIUM] 테스트 Dead Code 제거: 미사용 변수 TEST_DIR, MODULES_DIR, SCENE_CODE_FILE 삭제 [glob.test.ts:17-20]
+- [x] [AI-Review][MEDIUM] Empty catch block 개선: 에러 로깅 추가 또는 의도 주석 [glob.ts:47-48]
+- [x] [AI-Review][LOW] File List 문서 오류 수정: src/__tests__ → tests 경로 수정 완료
 
 ## Dev Notes
 
@@ -166,4 +173,37 @@ claude-opus-4-5-20251101
 - `apps/cad-mcp/src/tools/glob.ts` (신규)
 - `apps/cad-mcp/src/schema.ts` (수정)
 - `apps/cad-mcp/src/mcp-server.ts` (수정)
-- `apps/cad-mcp/src/__tests__/glob.test.ts` (신규)
+- `apps/cad-mcp/tests/glob.test.ts` (신규)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Outcome:** Changes Requested
+
+**Summary:**
+- 모든 AC 구현 완료 확인 ✅
+- 모든 Tasks 구현 완료 확인 ✅
+- 3개 품질 이슈 발견 (1 High, 2 Medium)
+
+**Issues Found:**
+1. **[HIGH]** 테스트 조건부 assertion - 실제 검증 없이 통과 가능
+2. **[MEDIUM]** 테스트 파일 Dead Code (미사용 변수)
+3. **[MEDIUM]** Empty catch block (에러 무시)
+
+### Code Quality Review (AI)
+
+**Reviewer:** Claude Opus 4.5
+**Date:** 2026-01-15
+**Scope:** Source code deep analysis
+
+**Issues Fixed:**
+
+1. ~~**[MEDIUM] ReDoS 취약점**~~ → ✅ **해결됨**
+   - iterative 알고리즘으로 변경 + MAX_PATTERN_LENGTH 제한
+
+2. ~~**[MEDIUM] DRY 위반**~~ → ✅ **해결됨**
+   - `utils/paths.ts`로 추출됨
+
+3. ~~**[MEDIUM] Empty catch block**~~ → ✅ **해결됨**
+   - 의도 설명 주석 추가됨

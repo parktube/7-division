@@ -20,7 +20,7 @@ date: '2025-12-14'
 
 **Author:** Hoons
 **Date:** 2025-01-06
-**Last Updated:** 2026-01-15
+**Last Updated:** 2026-01-16
 **Status:** Epic 1~9 완료, Epic 10 (AX 개선) 계획 중
 
 ---
@@ -240,6 +240,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | FR63 | lsp 도구 | 코드 인텔리전스 (도메인/함수 탐색) |
 | FR64 | bash 도구 | 명령 실행 (씬 조회, 내보내기, reset) |
 | FR65 | 레거시 도구 제거 | cad_code, discovery, scene, export, module 제거 |
+| FR66 | HMR 스타일 실행 | scene.json 영속성 제거, 매번 reset + main.js 재실행 |
 
 **도구 매핑**:
 ```
@@ -369,14 +370,14 @@ Bash              →   bash
 ### 현재 목표: Epic 10 - AX 개선
 
 - [x] ADR-008 작성 (도구 패턴 정렬)
-- [ ] glob 도구 구현
-- [ ] read 도구 구현
-- [ ] edit 도구 구현
-- [ ] write 도구 구현
-- [ ] lsp 도구 구현
-- [ ] bash 도구 구현
-- [ ] 레거시 도구 deprecated 경고
-- [ ] 레거시 도구 제거
-- [ ] CLAUDE.md 업데이트
+- [x] glob 도구 구현
+- [x] read 도구 구현
+- [x] edit 도구 구현
+- [x] write 도구 구현
+- [x] lsp 도구 구현
+- [x] bash 도구 구현
+- [x] 레거시 도구 제거
+- [x] AX 검증 및 문서화
+- [ ] HMR 스타일 실행 (scene.json 영속성 제거)
 
 ---

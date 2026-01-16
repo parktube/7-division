@@ -6,11 +6,15 @@
  * - 수정 후 자동 실행
  * - 실행 실패 시 롤백
  * - Read-first 경고
+ *
+ * Note: Race Condition 고려사항
+ * - read → write 사이 시간 차에서 동시 요청 시 데이터 손실 가능
+ * - CAD-MCP는 단일 사용자 로컬 도구로 동시 요청이 드물어 허용 가능한 리스크
+ * - MCP 서버 레벨에서 실행 실패 시 rollbackEdit으로 복구
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
+import { getFilePath, isValidFileName } from '../utils/paths.js';
 import { hasBeenRead } from './read.js';
 
 export interface EditInput {
@@ -28,16 +32,6 @@ export interface EditOutput {
   };
   warnings?: string[];
   error?: string;
-}
-
-/**
- * Get file path for given file name
- */
-function getFilePath(file: string): string {
-  if (file === 'main') {
-    return SCENE_CODE_FILE;
-  }
-  return resolve(MODULES_DIR, `${file}.js`);
 }
 
 /**
@@ -78,6 +72,15 @@ export function handleEdit(input: EditInput): EditOutput {
         success: false,
         data: { file: '', replaced: false },
         error: 'file parameter is required',
+      };
+    }
+
+    // Path Traversal 방지: 파일명 검증
+    if (!isValidFileName(file)) {
+      return {
+        success: false,
+        data: { file, replaced: false },
+        error: `Invalid file name: ${file}. Only alphanumeric, underscore, and hyphen allowed.`,
       };
     }
 

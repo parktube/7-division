@@ -9,8 +9,8 @@
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
+import { dirname } from 'path';
+import { getFilePath, isValidFileName } from '../utils/paths.js';
 import { hasBeenRead } from './read.js';
 
 export interface WriteInput {
@@ -27,16 +27,6 @@ export interface WriteOutput {
   };
   warnings?: string[];
   error?: string;
-}
-
-/**
- * Get file path for given file name
- */
-function getFilePath(file: string): string {
-  if (file === 'main') {
-    return SCENE_CODE_FILE;
-  }
-  return resolve(MODULES_DIR, `${file}.js`);
 }
 
 /**
@@ -68,6 +58,15 @@ export function handleWrite(input: WriteInput): WriteOutput {
         success: false,
         data: { file: '', created: false, written: false },
         error: 'file parameter is required',
+      };
+    }
+
+    // Path Traversal 방지: 파일명 검증
+    if (!isValidFileName(file)) {
+      return {
+        success: false,
+        data: { file, created: false, written: false },
+        error: `Invalid file name: ${file}. Only alphanumeric, underscore, and hyphen allowed.`,
       };
     }
 

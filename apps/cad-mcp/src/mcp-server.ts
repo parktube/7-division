@@ -182,7 +182,7 @@ function getAllMCPTools() {
  */
 async function executeRunCadCode(
   code: string
-): Promise<{ success: boolean; result?: unknown; error?: string }> {
+): Promise<{ success: boolean; result?: unknown; logs?: string[]; warnings?: string[]; error?: string }> {
   const exec = getExecutor()
 
   try {
@@ -210,10 +210,10 @@ async function executeRunCadCode(
     if (result.success) {
       return {
         success: true,
+        logs: result.logs,
+        warnings: result.warnings,
         result: {
           entitiesCreated: result.entitiesCreated,
-          logs: result.logs,
-          warnings: result.warnings,
         },
       }
     } else {
@@ -349,6 +349,7 @@ export async function createMCPServer(): Promise<Server> {
                 replaced: true,
                 entities: getSceneEntities(exec),
               },
+              logs: execResult.logs,
               warnings: editResult.warnings,
             }
             return {
@@ -406,7 +407,8 @@ export async function createMCPServer(): Promise<Server> {
                 created: writeResult.data.created,
                 entities: getSceneEntities(exec),
               },
-              warnings: writeResult.warnings,
+              logs: execResult.logs,
+              warnings: [...(writeResult.warnings || []), ...(execResult.warnings || [])],
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
@@ -459,12 +461,13 @@ export async function createMCPServer(): Promise<Server> {
         // === bash: 명령 실행 ===
         case 'bash': {
           const command = (args as Record<string, unknown>)?.command as BashCommand
+          const name = (args as Record<string, unknown>)?.name as string | undefined
           const group = (args as Record<string, unknown>)?.group as string | undefined
           const clearSketch = (args as Record<string, unknown>)?.clearSketch as boolean | undefined
 
           const exec = getExecutor()
           const result = await handleBash(
-            { command, group, clearSketch },
+            { command, name, group, clearSketch },
             exec,
             () => {
               // On scene change (reset), broadcast and save

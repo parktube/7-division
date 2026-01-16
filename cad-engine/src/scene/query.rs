@@ -195,12 +195,6 @@ impl Scene {
         // Get world bounds
         let world_bounds = self.get_world_bounds_internal(name);
 
-        // Calculate world center from pivot (not bounds center)
-        // pivot is the center point for transformations
-        let world_center = self
-            .get_world_transform_internal(name)
-            .map(|matrix| Transform::transform_point(&matrix, entity.transform.pivot));
-
         // Build response
         let response = serde_json::json!({
             "name": entity.metadata.name,
@@ -215,6 +209,7 @@ impl Scene {
                 },
                 "pivot": entity.transform.pivot
             },
+            // Use bounds center for world.center (visual center for LLM comparison with sketches)
             "world": match world_bounds {
                 Some((min, max)) => serde_json::json!({
                     "bounds": {
@@ -223,7 +218,7 @@ impl Scene {
                         "max_x": max[0],
                         "max_y": max[1]
                     },
-                    "center": world_center.unwrap_or([(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0])
+                    "center": [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0]
                 }),
                 None => serde_json::Value::Null
             },
