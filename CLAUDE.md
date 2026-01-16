@@ -23,6 +23,18 @@ This file provides guidance to Claude Code when working with code in this reposi
 | [ax-design-guide.md](docs/ax-design-guide.md) | AX (Agent eXperience) 설계 원칙 |
 | [architecture.md](docs/architecture.md) | 기술 아키텍처 |
 
+## Skills (도메인별 상세 가이드)
+
+| 스킬 | 용도 | 로드 방법 |
+|------|------|----------|
+| [cad-voxel](skills/cad-voxel/SKILL.md) | Crossy Road 스타일 복셀 아트 | `Read skills/cad-voxel/SKILL.md` |
+
+**복셀 아트 작업 시**: `skills/cad-voxel/` 디렉토리의 rules를 참조하세요.
+- `rules/tools-mcp.md` - MCP 도구 상세 사용법
+- `rules/functions-*.md` - CAD 함수 레퍼런스
+- `rules/zorder-*.md` - Z-order 패턴
+- `rules/coords-*.md` - 좌표 시스템 패턴
+
 ## CAD 작업 시 (필독!)
 
 ### 1. 워크플로우 체크리스트
@@ -40,22 +52,35 @@ This file provides guidance to Claude Code when working with code in this reposi
 5. 동작 확인 후 → "X 추가하려면?" 자문
 ```
 
-### 2. 핵심 도구
+### 2. CAD MCP 도구 (⚠️ 일반 Read/Write 사용 금지!)
 
-| 도구 | 용도 |
-|------|------|
-| `glob` | 파일 목록 |
-| `read` | 파일 읽기 |
-| `edit` | 부분 수정 → 자동 실행 |
-| `write` | 전체 작성 → 자동 실행 |
-| `lsp` | 도메인/함수 탐색 |
-| `bash` | 씬 조회/엔티티 좌표/내보내기 |
+**중요**: CAD 작업 시 Claude Code 기본 도구(Read, Write, Edit) 대신 **CAD MCP 도구** 사용 필수!
 
-**엔티티 좌표 조회**:
+| MCP 도구 | 용도 | 예시 |
+|----------|------|------|
+| `mcp__ai-native-cad__glob` | 파일 목록 | `glob({ pattern: 'chicken*' })` |
+| `mcp__ai-native-cad__read` | 파일 읽기 | `read({ file: 'main' })` |
+| `mcp__ai-native-cad__edit` | 부분 수정 → **자동 실행** | `edit({ file: 'main', old_code: '...', new_code: '...' })` |
+| `mcp__ai-native-cad__write` | 전체 작성 → **자동 실행** | `write({ file: 'main', code: '...' })` |
+| `mcp__ai-native-cad__lsp` | 도메인/함수 탐색 | `lsp({ operation: 'domains' })` |
+| `mcp__ai-native-cad__bash` | 씬 조회/내보내기 | `bash({ command: 'capture' })` |
+
+**자주 쓰는 명령**:
 ```javascript
-bash({ command: 'entity', name: 'pig_tail' })
-// → { local: {...}, world: { bounds, center } }
-// 💡 스케치 좌표와 비교하여 translate()로 위치 조정
+// 함수 찾기
+lsp({ operation: 'domains' })                    // 도메인 목록
+lsp({ operation: 'describe', domain: 'primitives' })  // 함수 시그니처
+lsp({ operation: 'schema', name: 'drawCircle' })      // 상세 스키마
+
+// 씬 조회
+bash({ command: 'capture' })     // PNG 스크린샷
+bash({ command: 'tree' })        // 트리 구조
+bash({ command: 'entity', name: 'pig_tail' })  // 엔티티 좌표
+
+// 파일 관리
+glob()                           // 전체 파일 목록
+read({ file: 'main' })           // main 코드 읽기
+read({ file: 'chicken' })        // 모듈 읽기
 ```
 
 **상세 가이드**: [docs/cad-mcp-guide.md](docs/cad-mcp-guide.md)

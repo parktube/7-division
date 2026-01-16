@@ -1,0 +1,139 @@
+# tools-mcp: MCP 도구 사용 패턴
+
+## 핵심 규칙
+
+**⚠️ 일반 Read/Write/Glob이 아닌 CAD 전용 MCP 도구를 사용해야 합니다!**
+
+| MCP 도구 | 설명 | 일반 도구 (사용 금지) |
+|----------|------|--------------------|
+| `mcp__ai-native-cad__glob` | CAD 파일 목록 | ❌ Glob |
+| `mcp__ai-native-cad__read` | CAD 코드 읽기 | ❌ Read |
+| `mcp__ai-native-cad__edit` | 부분 수정 → 자동 실행 | ❌ Edit |
+| `mcp__ai-native-cad__write` | 전체 작성 → 자동 실행 | ❌ Write |
+| `mcp__ai-native-cad__lsp` | 함수 스키마 탐색 | - |
+| `mcp__ai-native-cad__bash` | 씬 조회/내보내기 | ❌ Bash |
+
+## glob - 파일 목록 조회
+
+```javascript
+// 전체 파일 목록
+glob()
+// → main, chicken, crossy_bg, ...
+
+// 패턴 매칭
+glob({ pattern: 'house_*' })
+// → house_lib, house_advanced
+```
+
+## read - 파일 읽기
+
+```javascript
+// main 코드 읽기
+read({ file: 'main' })
+
+// 모듈 읽기
+read({ file: 'chicken' })
+```
+
+## edit - 부분 수정 (자동 실행)
+
+```javascript
+// old_code를 new_code로 교체
+edit({
+  file: 'main',
+  old_code: 'radius: 50',
+  new_code: 'radius: 100'
+})
+// → 파일 수정 + 코드 실행 + 결과 반환
+
+// 실패 시 자동 롤백 (파일 변경 없음)
+```
+
+**주의**: `old_code`는 정확히 일치해야 함
+
+## write - 전체 작성 (자동 실행)
+
+```javascript
+// 새 모듈 작성
+write({
+  file: 'house_lib',
+  code: `
+function buildHouse(name, x, y) {
+  drawRect(name + '_wall', 0, 15, 40, 30);
+  createGroup(name, [name + '_wall']);
+  translate(name, x, y);
+}
+`
+})
+
+// main 작성
+write({
+  file: 'main',
+  code: `
+import 'house_lib'
+buildHouse('h1', 0, 0);
+`
+})
+```
+
+## lsp - 코드 탐색
+
+```javascript
+// 1. 도메인 목록
+lsp({ operation: 'domains' })
+// → primitives, text, transforms, boolean, geometry, style, groups, query, utility
+
+// 2. 도메인 내 함수 시그니처
+lsp({ operation: 'describe', domain: 'primitives' })
+// → drawCircle(name, x, y, radius), drawRect(name, x, y, w, h), ...
+
+// 3. 특정 함수 상세 스키마
+lsp({ operation: 'schema', name: 'drawBezier' })
+// → 파라미터, 타입, 설명, 예시 코드
+
+// 4. 파일 내 심볼 (클래스, 함수)
+lsp({ operation: 'symbols', file: 'chicken' })
+// → 모듈에 정의된 함수/클래스 목록
+```
+
+## bash - 씬 조회/내보내기
+
+```javascript
+// 씬 정보
+bash({ command: 'info' })       // 엔티티 수, bounds
+bash({ command: 'tree' })       // 계층 구조
+bash({ command: 'groups' })     // 그룹 목록
+bash({ command: 'draw_order' }) // z-order (root)
+bash({ command: 'draw_order', group: 'robot' }) // 그룹 내부
+
+// 엔티티 좌표 조회 (로컬 + 월드)
+bash({ command: 'entity', name: 'chicken_body' })
+// → { local: { geometry, transform, bounds }, world: { bounds, center } }
+// 💡 스케치 좌표와 비교하여 translate()로 위치 조정
+
+// 내보내기
+bash({ command: 'capture' })    // PNG 스크린샷
+bash({ command: 'svg' })        // SVG 벡터
+bash({ command: 'json' })       // JSON
+
+// 초기화 (주의!)
+bash({ command: 'reset' })
+```
+
+## 워크플로우 예시
+
+```
+1. glob() → 기존 모듈 확인
+2. read({ file: 'main' }) → 현재 코드 확인
+3. lsp({ operation: 'schema', name: 'drawCircle' }) → 함수 스키마 확인
+4. write({ file: 'main', code: '...' }) → 코드 작성 + 실행
+5. bash({ command: 'capture' }) → 결과 확인
+6. bash({ command: 'entity', name: '...' }) → 좌표 확인
+7. edit({ file: 'main', ... }) → 수정 + 실행
+```
+
+## 트랜잭션 동작
+
+- `edit`/`write` 실행 시 코드가 실패하면 **파일 자동 롤백**
+- 안전하게 실험 가능
+- 실패 메시지에서 에러 원인 확인 후 수정

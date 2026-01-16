@@ -195,8 +195,6 @@ async function executeRunCadCode(
       }
     }
 
-    // HMR 스타일: 매번 clean 상태에서 시작 (Story 10.10)
-    exec.exec('reset', {})
 
     // Run JavaScript code in QuickJS sandbox
     const result = await runCadCode(exec, preprocessed.code, 'warn')
