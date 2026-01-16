@@ -27,8 +27,15 @@ export function isValidFileName(file: string): boolean {
  * Get file path for given file name
  * - 'main' → scene.code.js
  * - other → modules/{name}.js
+ *
+ * @throws Error if file name is invalid (Path Traversal prevention)
  */
 export function getFilePath(file: string): string {
+  // Defensive validation: always check file name validity
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid file name: '${file}'. Only alphanumeric, underscore, and hyphen characters allowed.`);
+  }
+
   if (file === 'main') {
     return SCENE_CODE_FILE;
   }

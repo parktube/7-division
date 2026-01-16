@@ -6,6 +6,31 @@
 lsp({ operation: 'describe', domain: 'transforms' })
 ```
 
+## 사용 방법
+
+변환 함수는 `write` 또는 `edit` 도구로 CAD 코드에 포함하여 실행합니다.
+
+```javascript
+// write로 전체 코드 작성 → 자동 실행
+write({
+  file: 'main',
+  code: `
+    drawRect('box', 100, 100, 50, 50);
+    translate('box', 200, 0);
+    rotate('box', Math.PI / 4);
+  `
+});
+
+// edit로 부분 수정 → 자동 실행
+edit({
+  file: 'main',
+  old_code: "translate('box', 200, 0);",
+  new_code: "translate('box', 300, 100);"
+});
+```
+
+**실행 중 오류 발생 시:** 자동 롤백되어 이전 상태 복원
+
 ## translate
 
 이동

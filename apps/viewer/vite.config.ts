@@ -10,9 +10,15 @@ import os from 'os'
 const CAD_DATA_DIR = path.join(os.homedir(), '.ai-native-cad')
 
 // 디렉토리 생성 (없으면)
-function ensureCadDataDir() {
-  if (!fs.existsSync(CAD_DATA_DIR)) {
-    fs.mkdirSync(CAD_DATA_DIR, { recursive: true })
+function ensureCadDataDir(): boolean {
+  try {
+    if (!fs.existsSync(CAD_DATA_DIR)) {
+      fs.mkdirSync(CAD_DATA_DIR, { recursive: true })
+    }
+    return true
+  } catch (err) {
+    console.error(`[vite] Failed to create CAD data directory: ${err instanceof Error ? err.message : String(err)}`)
+    return false
   }
 }
 
@@ -45,9 +51,9 @@ function dataMiddleware() {
         }
       })
 
-      // scene.json middleware (read-only)
+      // scene.json middleware (read-only, from CAD_DATA_DIR for consistency with MCP server)
       server.middlewares.use('/scene.json', (req, res, next) => {
-        const filePath = path.join(__dirname, 'scene.json')
+        const filePath = path.join(CAD_DATA_DIR, 'scene.json')
 
         if (req.method === 'GET') {
           if (fs.existsSync(filePath)) {

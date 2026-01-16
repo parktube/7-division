@@ -600,7 +600,17 @@ export async function runCadCode(
         if (existsResult.success && existsResult.data) {
           const parsed = JSON.parse(existsResult.data);
           if (parsed.exists) {
-            executor.exec('delete', { name: entityName });
+            // Lock 확인: 잠긴 엔티티는 삭제 불가
+            if (lockedEntities.has(entityName)) {
+              logger.warn(`[sandbox] Upsert: '${entityName}' is locked, skipping delete`);
+              warnings.push(`Warning: cannot upsert locked entity '${entityName}'`);
+              return false;
+            }
+            const deleteResult = executor.exec('delete', { name: entityName });
+            if (!deleteResult.success) {
+              logger.error(`[sandbox] Upsert: failed to delete '${entityName}': ${deleteResult.error}`);
+              return false;
+            }
             logger.debug(`[sandbox] Upsert: deleted existing '${entityName}'`);
           }
         }
@@ -612,7 +622,17 @@ export async function runCadCode(
         if (existsResult.success && existsResult.data) {
           const parsed = JSON.parse(existsResult.data);
           if (parsed.exists) {
-            executor.exec('delete', { name: entityName });
+            // Lock 확인: 잠긴 그룹은 삭제 불가
+            if (lockedEntities.has(entityName)) {
+              logger.warn(`[sandbox] Upsert: group '${entityName}' is locked, skipping delete`);
+              warnings.push(`Warning: cannot upsert locked group '${entityName}'`);
+              return false;
+            }
+            const deleteResult = executor.exec('delete', { name: entityName });
+            if (!deleteResult.success) {
+              logger.error(`[sandbox] Upsert: failed to delete group '${entityName}': ${deleteResult.error}`);
+              return false;
+            }
             logger.debug(`[sandbox] Upsert: deleted existing group '${entityName}'`);
           }
         }
@@ -902,6 +922,10 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
         if (dx !== 0 || dy !== 0) {
           const translateResult = callCad('translate', { name, dx, dy, space: 'world' });
           logger.debug(`[scale around:center] ${name} translate result: ${translateResult}`);
+          if (!translateResult) {
+            logger.error(`[scale around:center] ${name} translate failed`);
+            return false;
+          }
         }
 
         return true;

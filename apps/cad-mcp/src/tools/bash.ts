@@ -74,7 +74,8 @@ function execQuery(
   try {
     const result = exec.exec(name, args);
     if (result.success) {
-      return { success: true, data: result.data ? JSON.parse(result.data) : result };
+      // Always return consistent data shape: parsed JSON or null
+      return { success: true, data: result.data ? JSON.parse(result.data) : null };
     }
     return { success: false, error: result.error || 'Unknown error' };
   } catch (e) {
@@ -182,21 +183,29 @@ export async function handleBash(
         const groupName = group || '';
         const result = exec.exec('get_draw_order', { group_name: groupName });
         if (result.success && result.data) {
-          // WASM returns { level, order, details } object
-          const parsed = JSON.parse(result.data) as {
-            level: string;
-            order: string[];
-            details: Record<string, unknown>;
-          };
-          return {
-            success: true,
-            data: {
-              level: parsed.level || (groupName || 'root'),
-              order: parsed.order,
-              count: parsed.order.length,
-              hint: '배열 왼쪽이 뒤(먼저 그림), 오른쪽이 앞(나중 그림)',
-            },
-          };
+          try {
+            // WASM returns { level, order, details } object
+            const parsed = JSON.parse(result.data) as {
+              level: string;
+              order: string[];
+              details: Record<string, unknown>;
+            };
+            return {
+              success: true,
+              data: {
+                level: parsed.level || (groupName || 'root'),
+                order: parsed.order,
+                count: parsed.order.length,
+                hint: '배열 왼쪽이 뒤(먼저 그림), 오른쪽이 앞(나중 그림)',
+              },
+            };
+          } catch (e) {
+            return {
+              success: false,
+              data: {},
+              error: `Failed to parse draw_order response: ${e instanceof Error ? e.message : String(e)}`,
+            };
+          }
         }
         return {
           success: false,
@@ -373,6 +382,9 @@ export async function handleBash(
           };
         }
 
+        // Save current index for potential rollback
+        const previousIndex = snapshotIndex;
+
         // Move back in history
         snapshotIndex--;
         const prevSnapshot = snapshotHistory[snapshotIndex];
@@ -380,6 +392,17 @@ export async function handleBash(
         // Reset first, then restore scene
         exec.exec('reset', {});
         const importResult = exec.importScene(prevSnapshot.sceneJson);
+
+        // Check if import failed
+        if (importResult.error) {
+          // Rollback snapshotIndex
+          snapshotIndex = previousIndex;
+          return {
+            success: false,
+            data: {},
+            error: `Failed to restore snapshot: ${importResult.error}`,
+          };
+        }
 
         if (onSceneChange) {
           onSceneChange();
@@ -405,6 +428,9 @@ export async function handleBash(
           };
         }
 
+        // Save current index for potential rollback
+        const previousIndex = snapshotIndex;
+
         // Move forward in history
         snapshotIndex++;
         const nextSnapshot = snapshotHistory[snapshotIndex];
@@ -412,6 +438,17 @@ export async function handleBash(
         // Reset first, then restore scene
         exec.exec('reset', {});
         const importResult = exec.importScene(nextSnapshot.sceneJson);
+
+        // Check if import failed
+        if (importResult.error) {
+          // Rollback snapshotIndex
+          snapshotIndex = previousIndex;
+          return {
+            success: false,
+            data: {},
+            error: `Failed to restore snapshot: ${importResult.error}`,
+          };
+        }
 
         if (onSceneChange) {
           onSceneChange();

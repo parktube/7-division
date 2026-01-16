@@ -133,6 +133,7 @@ drawBezier('blob', 'M 0,0 C 20,30 40,30 60,0 C 40,-30 20,-30 0,0 Z');
 - `M x,y` - 이동 (Move)
 - `L x,y` - 직선 (Line)
 - `C cp1x,cp1y cp2x,cp2y x,y` - 3차 베지어 (Cubic)
+- `S cp2x,cp2y x,y` - 부드러운 3차 베지어 (Smooth cubic, 이전 제어점 대칭)
 - `Q cpx,cpy x,y` - 2차 베지어 (Quadratic)
 - `Z` - 경로 닫기
 

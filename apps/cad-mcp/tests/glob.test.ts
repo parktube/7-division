@@ -46,7 +46,6 @@ describe('glob 도구', () => {
     });
 
     it('should support partial * wildcard pattern', () => {
-      const resultAll = handleGlob({});
       const resultLib = handleGlob({ pattern: '*_lib' });
 
       expect(resultLib.success).toBe(true);
@@ -80,12 +79,14 @@ describe('glob 도구', () => {
       // . 이 정규식 any character가 아닌 리터럴로 처리됨
     });
 
-    it('should handle empty pattern same as no pattern', () => {
+    it('should handle empty pattern same as no pattern (falsy check)', () => {
       const resultNoPattern = handleGlob({});
       const resultEmptyPattern = handleGlob({ pattern: '' });
 
-      // 빈 패턴은 아무것도 매칭 안 함 (''는 빈 문자열만 매칭)
+      // 빈 패턴 ''는 JavaScript에서 falsy이므로 if(pattern) 체크를 통과하지 못함
+      // 따라서 패턴 필터가 적용되지 않고 모든 파일이 반환됨
       expect(resultEmptyPattern.success).toBe(true);
+      expect(resultEmptyPattern.data.files).toEqual(resultNoPattern.data.files);
     });
   });
 });

@@ -841,7 +841,8 @@ export class CADExecutor {
       const result = this.scene.create_group(name, childrenJson);
       return { success: true, entity: result, type: 'group' };
     } catch (e) {
-      return { success: false, error: `create_group: ${e}` };
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      return { success: false, error: `create_group: ${errorMessage}` };
     }
   }
 

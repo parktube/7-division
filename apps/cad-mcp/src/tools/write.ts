@@ -104,7 +104,7 @@ export function handleWrite(input: WriteInput): WriteOutput {
   } catch (e) {
     return {
       success: false,
-      data: { file: input.file || '', created: false, written: false },
+      data: { file: input?.file ?? '', created: false, written: false },
       warnings: warnings.length > 0 ? warnings : undefined,
       error: e instanceof Error ? e.message : String(e),
     };

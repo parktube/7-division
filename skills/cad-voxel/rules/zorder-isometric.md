@@ -41,13 +41,32 @@ function sortIsoGroups() {
 // main.js
 import 'crossy_bg'
 
-// 오브젝트 생성 (순서 상관없음)
-tree('0', -240, -150, 1.2);
-car('0', -160, -100, 'blue');
-makeChicken('0', 0, 0, 6);
+// 오브젝트 생성 + 등록 (순서 상관없음)
+var x1 = -240, y1 = -150;
+tree('tree_0', x1, y1, 1.2);
+registerIsoGroup('tree_0', x1, y1);  // 그룹 생성 직후 등록
+
+var x2 = -160, y2 = -100;
+car('car_0', x2, y2, 'blue');
+registerIsoGroup('car_0', x2, y2);
+
+var x3 = 0, y3 = 0;
+makeChicken('chicken_0', x3, y3, 6);
+registerIsoGroup('chicken_0', x3, y3);
 
 // 마지막에 정렬 호출
 sortIsoGroups();
+```
+
+또는 헬퍼 함수 내부에서 자동 등록:
+
+```javascript
+// crossy_bg.js
+function tree(name, x, y, scale) {
+  // ... 트리 그리기
+  createGroup(name, [...]);
+  registerIsoGroup(name, x, y);  // 내부에서 자동 등록
+}
 ```
 
 ## 주의사항

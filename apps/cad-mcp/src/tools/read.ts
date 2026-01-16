@@ -112,7 +112,7 @@ export function handleRead(input: ReadInput): ReadOutput {
   } catch (e) {
     return {
       success: false,
-      data: { file: input.file || '', content: '' },
+      data: { file: input?.file ?? '', content: '' },
       error: e instanceof Error ? e.message : String(e),
     };
   }

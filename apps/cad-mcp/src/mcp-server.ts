@@ -373,8 +373,10 @@ export async function createMCPServer(): Promise<Server> {
                 originalContent = readFileSync(modPath, 'utf-8')
               }
             }
-          } catch {
-            // Will be caught by handleEdit
+          } catch (err) {
+            // Intentionally ignored: handleEdit will validate and return proper error
+            // This try-catch is only for pre-loading original content for rollback
+            logger.debug(`[edit] Failed to read original content: ${err instanceof Error ? err.message : String(err)}`);
           }
 
           // Perform edit

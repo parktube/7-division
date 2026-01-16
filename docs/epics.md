@@ -173,7 +173,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR64 | 10.6 | bash 도구 |
 | FR65 | 10.7 | 레거시 도구 제거 |
 | NFR24 | 10.8 | AX 검증 (Read-first 패턴) |
-| FR65 | 10.9 | discovery.ts 레거시 정리 |
+| FR65 (cont.) | 10.9 | discovery.ts 레거시 정리 |
 | FR66 | 10.10 | HMR 스타일 실행 |
 
 ---
@@ -617,7 +617,7 @@ So that **더 이상 Electron 관련 코드를 유지보수하지 않아도 된�
 | FR64 | 10.6 | bash 도구 (명령 실행) |
 | FR65 | 10.7 | 레거시 도구 제거 |
 | NFR24 | 10.8 | AX 검증 |
-| FR65 | 10.9 | discovery.ts 레거시 정리 |
+| FR65 (cont.) | 10.9 | discovery.ts 레거시 정리 |
 | FR66 | 10.10 | HMR 스타일 실행 |
 
 ### Implementation Phases
@@ -855,6 +855,22 @@ So that **Read-first 패턴 준수율이 향상됨을 확인한다** (NFR24).
 - 수동 테스트 (자동화 어려움)
 - CLAUDE.md 도구 섹션 전면 개편
 - 성공 기준: Read-first 패턴 > 95% 준수 (관찰)
+
+---
+
+### Story 10.9: discovery.ts 레거시 정리
+
+As a **개발자**,
+I want **discovery.ts의 레거시 코드를 정리하기를**,
+So that **코드베이스가 깔끔하게 유지된다** (FR65 continued).
+
+**세부 내용:**
+- discovery.ts에서 더 이상 사용하지 않는 코드 제거
+- lsp 도구로 이관된 기능 확인 및 정리
+- 테스트 업데이트
+
+**참고:**
+- 상세 내용: `docs/sprint-artifacts/10-9-discovery-cleanup.md`
 
 ---
 
