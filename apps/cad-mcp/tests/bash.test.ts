@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { handleBash, type BashCommand } from '../src/tools/bash.js';
+import { handleBash, clearSnapshotHistory, type BashCommand } from '../src/tools/bash.js';
 import { CADExecutor } from '../src/executor.js';
 
 describe('bash 도구', () => {
@@ -16,6 +16,7 @@ describe('bash 도구', () => {
 
   beforeEach(() => {
     exec = CADExecutor.create('bash-test');
+    clearSnapshotHistory();
   });
 
   describe('info command', () => {
@@ -206,4 +207,101 @@ describe('bash 도구', () => {
 
   // Note: capture command is not tested here due to Puppeteer/viewer dependency
   // It should be tested in integration tests with actual viewer running
+
+  describe('entity command', () => {
+    it('should return entity info when entity exists', async () => {
+      exec.exec('draw_circle', { name: 'my_circle', x: 10, y: 20, radius: 30 });
+
+      const result = await handleBash({ command: 'entity', name: 'my_circle' }, exec);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toBeDefined();
+    });
+
+    it('should return error for missing name parameter', async () => {
+      const result = await handleBash({ command: 'entity' }, exec);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('name parameter is required for entity command');
+    });
+
+    it('should return error for non-existent entity', async () => {
+      const result = await handleBash({ command: 'entity', name: 'nonexistent' }, exec);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+  });
+
+  describe('snapshot/undo/redo commands', () => {
+    it('should save and list snapshots', async () => {
+      exec.exec('draw_circle', { name: 'c1', x: 0, y: 0, radius: 10 });
+
+      // Save snapshot
+      const saveResult = await handleBash({ command: 'snapshot' }, exec);
+      expect(saveResult.success).toBe(true);
+      expect(saveResult.data.id).toBeDefined();
+      expect(saveResult.data.total).toBe(1);
+
+      // List snapshots
+      const listResult = await handleBash({ command: 'snapshots' }, exec);
+      expect(listResult.success).toBe(true);
+      expect(listResult.data.total).toBe(1);
+    });
+
+    it('should undo to previous snapshot', async () => {
+      // Create initial state and snapshot
+      exec.exec('draw_circle', { name: 'c1', x: 0, y: 0, radius: 10 });
+      await handleBash({ command: 'snapshot' }, exec);
+
+      // Modify scene and snapshot
+      exec.exec('draw_rect', { name: 'r1', x: 10, y: 10, width: 20, height: 20 });
+      await handleBash({ command: 'snapshot' }, exec);
+
+      // Verify 2 entities
+      let info = await handleBash({ command: 'info' }, exec);
+      expect(info.data.entity_count).toBe(2);
+
+      // Undo
+      const undoResult = await handleBash({ command: 'undo' }, exec);
+      expect(undoResult.success).toBe(true);
+
+      // Verify 1 entity (restored)
+      info = await handleBash({ command: 'info' }, exec);
+      expect(info.data.entity_count).toBe(1);
+    });
+
+    it('should redo after undo', async () => {
+      // Create and snapshot
+      exec.exec('draw_circle', { name: 'c1', x: 0, y: 0, radius: 10 });
+      await handleBash({ command: 'snapshot' }, exec);
+
+      // Modify and snapshot
+      exec.exec('draw_rect', { name: 'r1', x: 10, y: 10, width: 20, height: 20 });
+      await handleBash({ command: 'snapshot' }, exec);
+
+      // Undo
+      await handleBash({ command: 'undo' }, exec);
+
+      // Redo
+      const redoResult = await handleBash({ command: 'redo' }, exec);
+      expect(redoResult.success).toBe(true);
+
+      // Verify 2 entities restored
+      const info = await handleBash({ command: 'info' }, exec);
+      expect(info.data.entity_count).toBe(2);
+    });
+
+    it('should return error when no previous snapshot for undo', async () => {
+      const result = await handleBash({ command: 'undo' }, exec);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No previous snapshot');
+    });
+
+    it('should return error when no next snapshot for redo', async () => {
+      const result = await handleBash({ command: 'redo' }, exec);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No next snapshot');
+    });
+  });
 });

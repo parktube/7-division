@@ -178,6 +178,29 @@ function getAllMCPTools() {
 }
 
 /**
+ * Restore scene from main.js after rollback
+ * Returns true if scene was successfully restored
+ */
+async function restoreSceneFromMainCode(exec: CADExecutor): Promise<boolean> {
+  const origCode = readMainCode()
+  if (!origCode) return false
+
+  exec.exec('reset', {})
+  const origPreprocessed = preprocessCode(origCode)
+  if (origPreprocessed.errors.length > 0) return false
+
+  const restoreResult = await runCadCode(exec, origPreprocessed.code, 'warn')
+  if (!restoreResult.success) return false
+
+  const sceneJson = exec.exportScene()
+  const scene = JSON.parse(sceneJson) as Scene
+  const wsServer = getWSServer()
+  wsServer.broadcastScene(scene)
+  saveScene(exec)
+  return true
+}
+
+/**
  * Execute run_cad_code and broadcast results
  */
 async function executeRunCadCode(
@@ -388,24 +411,8 @@ export async function createMCPServer(): Promise<Server> {
               rollbackEdit(file, originalContent)
             }
 
-            // Story 10.10: 원본 코드 재실행으로 씬 복원
-            let sceneRestored = false
-            const origCode = readMainCode()
-            if (origCode) {
-              exec.exec('reset', {})
-              const origPreprocessed = preprocessCode(origCode)
-              if (origPreprocessed.errors.length === 0) {
-                const restoreResult = await runCadCode(exec, origPreprocessed.code, 'warn')
-                if (restoreResult.success) {
-                  const sceneJson = exec.exportScene()
-                  const scene = JSON.parse(sceneJson) as Scene
-                  const wsServer = getWSServer()
-                  wsServer.broadcastScene(scene)
-                  saveScene(exec)
-                  sceneRestored = true
-                }
-              }
-            }
+            // Story 10.10: Restore scene from main.js
+            const sceneRestored = await restoreSceneFromMainCode(exec)
 
             const response = {
               success: false,
@@ -417,8 +424,8 @@ export async function createMCPServer(): Promise<Server> {
               warnings: editResult.warnings,
               error: execResult.error,
               hint: sceneRestored
-                ? '코드 실행 실패로 변경이 롤백되었습니다. 씬은 이전 상태로 복원됨.'
-                : '코드 실행 실패로 변경이 롤백되었습니다.',
+                ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'
+                : 'Code execution failed. Changes rolled back.',
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
@@ -467,24 +474,8 @@ export async function createMCPServer(): Promise<Server> {
             // Rollback on execution failure
             rollbackWrite(file, originalContent)
 
-            // Story 10.10: 원본 코드 재실행으로 씬 복원
-            let sceneRestored = false
-            const origCode = readMainCode()
-            if (origCode) {
-              exec.exec('reset', {})
-              const origPreprocessed = preprocessCode(origCode)
-              if (origPreprocessed.errors.length === 0) {
-                const restoreResult = await runCadCode(exec, origPreprocessed.code, 'warn')
-                if (restoreResult.success) {
-                  const sceneJson = exec.exportScene()
-                  const scene = JSON.parse(sceneJson) as Scene
-                  const wsServer = getWSServer()
-                  wsServer.broadcastScene(scene)
-                  saveScene(exec)
-                  sceneRestored = true
-                }
-              }
-            }
+            // Story 10.10: Restore scene from main.js
+            const sceneRestored = await restoreSceneFromMainCode(exec)
 
             const response = {
               success: false,
@@ -496,8 +487,8 @@ export async function createMCPServer(): Promise<Server> {
               warnings: writeResult.warnings,
               error: execResult.error,
               hint: sceneRestored
-                ? '코드 실행 실패로 변경이 롤백되었습니다. 씬은 이전 상태로 복원됨.'
-                : '코드 실행 실패로 변경이 롤백되었습니다.',
+                ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'
+                : 'Code execution failed. Changes rolled back.',
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],

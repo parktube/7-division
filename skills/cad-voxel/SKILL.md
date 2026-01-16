@@ -75,5 +75,5 @@ var PALETTE = {
 
 ## 참고 문서
 
-- [cad-mcp-guide.md](../../docs/cad-mcp-guide.md) - 전체 도구/함수 가이드
-- [cad-sandbox-workflow.md](../../docs/cad-sandbox-workflow.md) - 샌드박스 코딩 워크플로우
+- [cad-mcp-guide.md](/docs/cad-mcp-guide.md) - 전체 도구/함수 가이드
+- [cad-sandbox-workflow.md](/docs/cad-sandbox-workflow.md) - 샌드박스 코딩 워크플로우

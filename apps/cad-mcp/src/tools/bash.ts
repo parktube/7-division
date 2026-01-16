@@ -41,6 +41,15 @@ let snapshotIndex = -1;  // Current position in history
 let snapshotIdCounter = 0;
 const MAX_SNAPSHOTS = 20;
 
+/**
+ * Clear snapshot history (for testing)
+ */
+export function clearSnapshotHistory(): void {
+  snapshotHistory.length = 0;
+  snapshotIndex = -1;
+  snapshotIdCounter = 0;
+}
+
 export interface BashInput {
   command: BashCommand;
   name?: string;      // entity 명령용: 엔티티/그룹 이름
