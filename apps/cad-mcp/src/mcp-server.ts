@@ -222,6 +222,8 @@ async function executeRunCadCode(
       }
     }
 
+    // HMR 스타일: 유효한 코드일 때만 reset하여 transform 누적 방지
+    exec.exec('reset', {})
 
     // Run JavaScript code in QuickJS sandbox
     const result = await runCadCode(exec, preprocessed.code, 'warn')
@@ -496,7 +498,7 @@ export async function createMCPServer(): Promise<Server> {
                 created: false,
                 sceneRestored,
               },
-              warnings: writeResult.warnings,
+              warnings: [...(writeResult.warnings || []), ...(execResult.warnings || [])],
               error: execResult.error,
               hint: sceneRestored
                 ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'

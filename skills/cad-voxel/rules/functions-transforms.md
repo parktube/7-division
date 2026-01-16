@@ -83,18 +83,20 @@ rotate('box', Math.PI);         // 180도 회전
 
 ## scale
 
-크기 조절
+크기 조절. **값이 누적됩니다** (절대 스케일이 아닌 상대 스케일).
 
 ```javascript
-scale(name, sx, sy, options?)
+scale(name, sx, sy, options?): boolean
 ```
 
-| 파라미터 | 타입 | 설명 |
-|----------|------|------|
-| name | string | 엔티티/그룹 이름 |
-| sx | number | X 스케일 (1.0 = 원본) |
-| sy | number | Y 스케일 (1.0 = 원본) |
-| options | object | `{ space: 'world' | 'local' }` |
+| 파라미터 | 타입 | 기본값 | 설명 |
+|----------|------|--------|------|
+| name | string | - | 엔티티/그룹 이름 |
+| sx | number | - | X 스케일 (1.0 = 원본) |
+| sy | number | - | Y 스케일 (1.0 = 원본) |
+| options.space | 'world' \| 'local' | 'world' | 좌표계 |
+
+**반환값:** `boolean` - 성공 시 `true`, 실패 시 `false`
 
 ```javascript
 scale('box', 2, 2);             // 2배 확대
@@ -117,7 +119,7 @@ scale('child_entity', 1.2, 1.2);  // 의도와 다른 결과!
 피벗(회전 중심) 설정
 
 ```javascript
-setPivot(name, px, py)
+setPivot(name, px, py): boolean
 ```
 
 | 파라미터 | 타입 | 설명 |
@@ -125,6 +127,8 @@ setPivot(name, px, py)
 | name | string | 엔티티 이름 |
 | px | number | 피벗 X (로컬 좌표) |
 | py | number | 피벗 Y (로컬 좌표) |
+
+**반환값:** `boolean` - 성공 시 `true`, 실패 시 `false`
 
 ```javascript
 // 왼쪽 아래를 중심으로 회전

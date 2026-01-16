@@ -116,10 +116,10 @@ bash({ command: 'json' })             // JSON 출력
 
 각 도구의 description에 Claude Code와 동일한 패턴 강조:
 
-```
-read: "파일 읽기. edit/write 전에 반드시 먼저 확인."
-edit: "파일 부분 수정. ⚠️ read로 먼저 확인 필수."
-write: "파일 전체 작성. ⚠️ 기존 파일은 read로 먼저 확인."
+```javascript
+read: '파일 읽기. edit/write 전에 반드시 먼저 확인.'
+edit: '파일 부분 수정. ⚠️ read로 먼저 확인 필수.'
+write: '파일 전체 작성. ⚠️ 기존 파일은 read로 먼저 확인.'
 ```
 
 ## Consequences
