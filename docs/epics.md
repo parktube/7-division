@@ -91,7 +91,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR63 | lsp 도구 | 코드 인텔리전스 (도메인/함수 탐색), discovery 대체 |
 | FR64 | bash 도구 | 명령 실행 (씬 조회, 내보내기), scene/export 대체 |
 | FR65 | 레거시 도구 제거 | cad_code, discovery, scene, export, module 제거 |
-| FR66 | HMR 스타일 실행 | scene.json 영속성 제거, 매번 reset + main.js 재실행 (10.10) |
+| FR66 | HMR 스타일 실행 | 매번 reset + main.js 재실행, scene.json 동기화 유지 (10.10) |
 
 ### Non-Functional Requirements
 
@@ -868,13 +868,13 @@ So that **translate() 등 누적 변환이 발생하지 않는다** (FR66).
 
 현재 문제:
 ```
-edit → main.js 저장 → 실행 → scene.json에 누적 저장
+edit → main.js 저장 → 실행 (이전 씬 위에) → scene.json 저장
                               ↑ translate()가 누적됨
 ```
 
 HMR 스타일 해결:
 ```
-edit → main.js 저장 → reset() + 실행 → 브로드캐스트 (저장 안 함)
+edit → main.js 저장 → reset() + 실행 → 브로드캐스트 + scene.json 저장
                       ↑ 매번 clean 상태
 ```
 
@@ -888,17 +888,24 @@ edit → main.js 저장 → reset() + 실행 → 브로드캐스트 (저장 안 
 **Given** MCP 서버가 재시작될 때
 **When** main.js 파일이 존재하면
 **Then** main.js를 실행하여 씬을 복원한다
-**And** scene.json에서 복원하지 않는다
+**When** main.js가 없거나 실행 실패 시
+**Then** scene.json에서 폴백 복원한다
 
 **Given** bash reset 명령을 실행할 때
 **When** 씬이 초기화되면
 **Then** main.js는 재실행되지 않는다 (수동 reset 의도 존중)
+**And** scene.json은 빈 씬으로 업데이트된다
+
+**Given** edit/write 후 코드 실행이 실패할 때
+**When** 파일이 롤백되면
+**Then** 원본 코드가 재실행되어 씬이 복원된다
+**And** 사용자는 실패 전 상태를 본다
 
 **Technical Notes:**
 - `mcp-server.ts`의 `executeRunCadCode()` 수정
-- scene.json 저장 로직 제거 (`saveScene()` 호출 제거)
-- MCP 시작 시 scene.json 대신 main.js 실행으로 복원
-- 코드 소스(main.js)가 유일한 진실의 원천 (Single Source of Truth)
+- scene.json 저장 유지 (동기화, 폴백용)
+- MCP 시작 시 main.js 우선 → scene.json 폴백
+- 롤백 시 원본 코드 재실행으로 씬 복원
 
 **구현 위치:**
 ```typescript
@@ -912,11 +919,10 @@ async function executeRunCadCode(code: string) {
   const result = await runCadCode(exec, code, 'warn');
 
   if (result.success) {
-    // WebSocket 브로드캐스트만, scene.json 저장 안 함
     const sceneJson = exec.exportScene();
     const scene = JSON.parse(sceneJson);
     wsServer.broadcastScene(scene);
-    // saveScene(exec);  // 제거!
+    saveScene(exec);  // scene.json 동기화 유지
   }
 
   return result;
@@ -925,8 +931,9 @@ async function executeRunCadCode(code: string) {
 
 **예상 효과:**
 - translate/rotate/scale 누적 문제 완전 해결
-- 코드가 유일한 진실의 원천 (HMR 패러다임)
-- scene.json 의존성 제거로 아키텍처 단순화
+- 안정성 유지: scene.json 폴백으로 복원 보장
+- 롤백 UX 개선: 실패해도 이전 씬 상태 유지
+- HMR 패러다임: 웹 개발자에게 익숙한 패턴
 
 ---
 

@@ -1239,12 +1239,12 @@ apps/cad-mcp/src/
 
 ### 3.8 HMR 스타일 코드 실행 (Story 10.10)
 
-#### 문제: scene.json 영속성으로 인한 누적 변환
+#### 문제: 코드 재실행 시 누적 변환
 
 **현재 아키텍처 문제:**
 
 ```
-edit → main.js 저장 → 실행 → scene.json에 누적 저장
+edit → main.js 저장 → 실행 (이전 씬 위에) → scene.json 저장
                               ↑ translate()가 누적됨
 ```
 
@@ -1257,7 +1257,7 @@ edit → main.js 저장 → 실행 → scene.json에 누적 저장
 **새로운 아키텍처:**
 
 ```
-edit → main.js 저장 → reset() + 실행 → 브로드캐스트 (저장 안 함)
+edit → main.js 저장 → reset() + 실행 → 브로드캐스트 + scene.json 저장
                       ↑ 매번 clean 상태
 ```
 
@@ -1265,10 +1265,11 @@ edit → main.js 저장 → reset() + 실행 → 브로드캐스트 (저장 안 
 
 | 항목 | Before | After |
 |------|--------|-------|
-| 실행 전 상태 | scene.json 로드 (누적) | reset() (clean) |
-| 실행 후 저장 | scene.json 저장 | 저장 안 함 |
-| 진실의 원천 | scene.json | main.js |
-| MCP 재시작 시 | scene.json 로드 | main.js 실행 |
+| 실행 전 상태 | 이전 씬 유지 (누적) | reset() (clean) |
+| 실행 후 저장 | scene.json 저장 | scene.json 저장 (유지) |
+| 진실의 원천 | scene.json | main.js (실행), scene.json (폴백) |
+| MCP 재시작 시 | scene.json 로드 | main.js 실행 → scene.json 폴백 |
+| 롤백 시 | 파일만 복원 | 파일 복원 + 원본 재실행 |
 
 **구현 변경 (mcp-server.ts):**
 
@@ -1282,11 +1283,10 @@ async function executeRunCadCode(code: string) {
   const result = await runCadCode(exec, code, 'warn');
 
   if (result.success) {
-    // WebSocket 브로드캐스트만, scene.json 저장 안 함
     const sceneJson = exec.exportScene();
     const scene = JSON.parse(sceneJson);
     wsServer.broadcastScene(scene);
-    // saveScene(exec);  // 제거!
+    saveScene(exec);  // scene.json 동기화 유지
   }
 
   return result;
@@ -1296,21 +1296,51 @@ async function executeRunCadCode(code: string) {
 **MCP 서버 시작 시:**
 
 ```typescript
-// 기존: scene.json 로드
-// const restored = loadScene(exec);
+let restored = false;
 
-// 새로운: main.js 실행
+// 1차: main.js 실행으로 복원
 if (existsSync(SCENE_CODE_FILE)) {
-  const mainCode = readFileSync(SCENE_CODE_FILE, 'utf-8');
-  await executeRunCadCode(mainCode);
+  const result = await executeRunCadCode(readMainCode());
+  if (result.success) {
+    restored = true;
+    logger.info('Scene restored from main.js');
+  }
+}
+
+// 2차: main.js 실패 시 scene.json 폴백
+if (!restored) {
+  restored = loadScene(exec);
+  if (restored) {
+    logger.info('Scene restored from scene.json (fallback)');
+  }
+}
+```
+
+**롤백 시 씬 복원:**
+
+```typescript
+// edit/write 핸들러 내부
+if (!execResult.success) {
+  rollbackEdit(file, originalContent);
+
+  // 원본 코드 재실행으로 씬 복원
+  exec.exec('reset', {});
+  const origCode = readMainCode();
+  const result = await runCadCode(exec, origCode, 'warn');
+  if (result.success) {
+    broadcastScene();
+    saveScene(exec);
+  }
+
+  return { error: execResult.error, hint: '씬은 이전 상태로 복원됨' };
 }
 ```
 
 #### 장점
 
 1. **누적 문제 완전 해결**: 매번 clean 상태에서 시작
-2. **단일 진실의 원천**: main.js가 유일한 소스
-3. **아키텍처 단순화**: scene.json 의존성 제거
+2. **안정성 유지**: scene.json 폴백으로 복원 보장
+3. **롤백 UX 개선**: 실패해도 이전 씬 상태 유지
 4. **HMR 패러다임**: 웹 개발자에게 익숙한 패턴
 
 #### bash reset 명령 동작
