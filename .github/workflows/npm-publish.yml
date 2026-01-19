@@ -82,14 +82,14 @@ jobs:
 
       - name: Publish shared package
         working-directory: packages/shared
-        run: pnpm publish --no-git-checks --access public
+        run: pnpm publish --no-git-checks --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true  # May already be published
 
       - name: Publish MCP package
         working-directory: apps/cad-mcp
-        run: pnpm publish --no-git-checks --access public
+        run: pnpm publish --no-git-checks --access public --ignore-scripts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         continue-on-error: true  # May already be published
