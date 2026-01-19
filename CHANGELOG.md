@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.4.1] - 2026-01-19
+
+### Fixed
+
+#### 코드 리뷰 피드백 반영
+
+- **capture.ts 보안 개선**
+  - `--no-sandbox`: 로컬 URL 또는 CI 환경에서만 사용
+  - `--allow-running-insecure-content`: HTTPS 페이지에서만 사용
+  - `__injectScene` 실패 시 에러 throw (빈 스크린샷 방지)
+  - 동적 픽셀 샘플링으로 배경 감지
+
+- **씬 복원 안정성 강화**
+  - `restoreSceneFromMainCode`: 실패 시 fallback 씬 복원
+  - `undo/redo`: reset 전 씬 백업으로 실패 시 복구
+
+- **edit.ts 보안**
+  - `rollbackEdit`: path traversal 방어 (isValidFileName 검증)
+  - `replace` → `replaceAll` 일관성 적용
+
+### Documentation
+
+- **functions-style.md**: setFill, setStroke, drawOrder, createGroup, addToGroup, getDrawOrder, exists, getEntity, getWorldBounds 반환값 문서화
+- **tools-mcp.md**: snapshot/undo/redo, glob 패턴, edit 멀티라인, 에러 복구 워크플로우 추가
+- **SKILL.md**: edit 예시 수정, MCP 도구명 매핑 노트, reset 경고 강화
+- **CLAUDE.md**: CAD_VIEWER_URL 환경변수 문서화
+- **AGENTS.md**: 환경변수 섹션 추가
+
+---
+
 ## [0.4.0] - 2026-01-17
 
 ### Added
@@ -217,4 +247,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-*작성: 2026-01-09 | 최종 업데이트: 2026-01-17*
+*작성: 2026-01-09 | 최종 업데이트: 2026-01-19*

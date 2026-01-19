@@ -97,6 +97,17 @@ pnpm --filter @ai-native-cad/viewer dev
 # → http://localhost:5173/
 ```
 
+## Environment Variables
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `CAD_VIEWER_URL` | `https://parktube.github.io/7-division/` | Puppeteer 캡처 시 사용할 뷰어 URL. 로컬 개발 시 `http://localhost:5173` 설정 |
+
+```bash
+# 예시: 로컬 뷰어로 캡처
+CAD_VIEWER_URL=http://localhost:5173 pnpm --filter @ai-native-cad/mcp start
+```
+
 ## Development Rules
 
 - **Console 금지**: `logger` 사용 (`apps/cad-mcp/src/logger.ts`)

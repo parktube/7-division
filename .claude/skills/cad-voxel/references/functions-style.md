@@ -80,11 +80,17 @@ drawOrder('circle', 'above:rect');  // rect 바로 위로
 
 ### getDrawOrder
 
-Z-order 조회
+Z-order 조회 → `{ order: string[] }`
 
 ```javascript
 getDrawOrder(groupName?)
 ```
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| groupName | string | 그룹 이름 (생략 시 root level) |
+
+**반환값:** `{ order: string[] }` - 엔티티 이름 배열
 
 ```javascript
 getDrawOrder();           // root level 순서
@@ -157,11 +163,13 @@ lsp({ operation: 'describe', domain: 'query' })
 
 ### exists
 
-엔티티 존재 확인
+엔티티 존재 확인 → `boolean`
 
 ```javascript
-exists(name)  // → boolean
+exists(name)
 ```
+
+**반환값:** `true` 존재, `false` 없음
 
 ```javascript
 if (exists('player')) {
@@ -171,11 +179,13 @@ if (exists('player')) {
 
 ### getEntity
 
-엔티티 정보 조회
+엔티티 정보 조회 → `object | null`
 
 ```javascript
 getEntity(name)
 ```
+
+**반환값:** 엔티티 객체 또는 `null` (없을 경우)
 
 ```javascript
 var info = getEntity('robot_head');
@@ -190,11 +200,17 @@ var info = getEntity('robot_head');
 
 ### getWorldBounds
 
-월드 바운딩 박스
+월드 바운딩 박스 → `{ min_x, min_y, max_x, max_y }`
 
 ```javascript
 getWorldBounds(name)
-// → { min_x, min_y, max_x, max_y }
+```
+
+**반환값:** 바운딩 박스 객체
+
+```javascript
+var bounds = getWorldBounds('robot');
+// → { min_x: 10, min_y: 20, max_x: 100, max_y: 150 }
 ```
 
 ### fitToViewport

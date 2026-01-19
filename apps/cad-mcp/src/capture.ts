@@ -194,13 +194,16 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // Security: --no-sandbox only for local URLs or CI environments
     // For remote URLs, use sandboxed mode for security
     const isLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\b/.test(url);
+    const isHttps = /^https:\/\//.test(url);
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     const baseArgs = ['--disable-dev-shm-usage', '--disable-gpu'];
     const sandboxArgs = (isLocalUrl || isCI)
       ? ['--no-sandbox', '--disable-setuid-sandbox']
       : [];
-    // Mixed content args for HTTPS → ws://localhost connection
-    const mixedContentArgs = ['--allow-running-insecure-content', '--allow-insecure-localhost'];
+    // Mixed content args only when HTTPS page needs to connect to ws://localhost
+    const mixedContentArgs = isHttps
+      ? ['--allow-running-insecure-content', '--allow-insecure-localhost']
+      : [];
 
     browser = await puppeteer.launch({
       headless: true,

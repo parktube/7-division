@@ -364,6 +364,17 @@ write({ file: 'main', code: 'invalid syntax {{' })
 4. **lsp로 먼저 탐색**: 함수 사용법이 불확실하면 `lsp`로 확인
 5. **로컬 좌표 패턴**: 그룹 내 부품은 (0,0) 기준 생성 후 그룹 이동
 
+## 환경변수
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `CAD_VIEWER_URL` | `https://parktube.github.io/7-division/` | Puppeteer 캡처 시 사용할 뷰어 URL |
+
+```bash
+# 로컬 뷰어로 캡처
+CAD_VIEWER_URL=http://localhost:5173 npx @ai-native-cad/mcp start
+```
+
 ## 빠른 시작
 
 ```bash
@@ -418,4 +429,4 @@ logger.error('always');
 
 ---
 
-*최종 업데이트: 2026-01-17*
+*최종 업데이트: 2026-01-19*

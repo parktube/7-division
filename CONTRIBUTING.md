@@ -444,4 +444,4 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-*최종 업데이트: 2026-01-17*
+*최종 업데이트: 2026-01-19*
