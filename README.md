@@ -242,7 +242,7 @@ GitHub Pages (Viewer)          Local MCP Server
 - `drawText` - 텍스트를 베지어 경로로 변환 (opentype.js)
 
 **변환 (Transforms)**
-- `translate`, `rotate`, `scale`, `delete`
+- `translate`, `rotate`, `scale`, `deleteEntity`
 - `set_pivot` - 회전/스케일 중심점 설정
 - Dual Coordinate: `{ space: 'world' | 'local' }`
 - `duplicate`, `mirror` - 엔티티 복제/대칭 복제
