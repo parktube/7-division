@@ -67,7 +67,7 @@ function getDefaultUserDataDir(): string {
   return join(xdgConfig, appName);
 }
 
-function resolveSelectionFile(): string {
+export function resolveSelectionFile(): string {
   if (process.env.CAD_SELECTION_PATH) {
     return resolve(process.env.CAD_SELECTION_PATH);
   }
@@ -593,6 +593,63 @@ export async function runCadCode(
         // warn 모드: 경고 후 계속 실행
       }
 
+      // Upsert 패턴: draw_* 명령은 삭제 후 재생성 (draw_order는 제외 - z-order만 변경)
+      const isDrawCommand = command.startsWith('draw_') && command !== 'draw_order';
+      if (isDrawCommand && entityName) {
+        const existsResult = executor.exec('exists', { name: entityName });
+        if (existsResult.success && existsResult.data) {
+          try {
+            const parsed = JSON.parse(existsResult.data);
+            if (parsed.exists) {
+              // Lock 확인: 잠긴 엔티티는 삭제 불가
+              if (lockedEntities.has(entityName)) {
+                logger.warn(`[sandbox] Upsert: '${entityName}' is locked, skipping delete`);
+                warnings.push(`Warning: cannot upsert locked entity '${entityName}'`);
+                return false;
+              }
+              const deleteResult = executor.exec('delete', { name: entityName });
+              if (!deleteResult.success) {
+                logger.error(`[sandbox] Upsert: failed to delete '${entityName}': ${deleteResult.error}`);
+                return false;
+              }
+              logger.debug(`[sandbox] Upsert: deleted existing '${entityName}'`);
+            }
+          } catch {
+            logger.error(`[sandbox] Upsert: failed to parse exists result for '${entityName}': ${existsResult.data}`);
+            warnings.push(`Warning: failed to check existence of '${entityName}'`);
+            // Continue with command execution (treat as "not exists")
+          }
+        }
+      }
+
+      // createGroup Upsert: 기존 그룹 삭제 후 재생성 (중첩 그룹 문제 방지)
+      if (command === 'create_group' && entityName) {
+        const existsResult = executor.exec('exists', { name: entityName });
+        if (existsResult.success && existsResult.data) {
+          try {
+            const parsed = JSON.parse(existsResult.data);
+            if (parsed.exists) {
+              // Lock 확인: 잠긴 그룹은 삭제 불가
+              if (lockedEntities.has(entityName)) {
+                logger.warn(`[sandbox] Upsert: group '${entityName}' is locked, skipping delete`);
+                warnings.push(`Warning: cannot upsert locked group '${entityName}'`);
+                return false;
+              }
+              const deleteResult = executor.exec('delete', { name: entityName });
+              if (!deleteResult.success) {
+                logger.error(`[sandbox] Upsert: failed to delete group '${entityName}': ${deleteResult.error}`);
+                return false;
+              }
+              logger.debug(`[sandbox] Upsert: deleted existing group '${entityName}'`);
+            }
+          } catch {
+            logger.error(`[sandbox] Upsert: failed to parse exists result for group '${entityName}': ${existsResult.data}`);
+            warnings.push(`Warning: failed to check existence of group '${entityName}'`);
+            // Continue with command execution (treat as "not exists")
+          }
+        }
+      }
+
       const result = executor.exec(command, params);
       // draw_* 또는 create_group 명령어만 새 엔티티 생성으로 기록
       if (result.success && result.entity && (command.startsWith('draw_') || command === 'create_group')) {
@@ -836,8 +893,68 @@ const P = (x, y) => [S(x) + OX, S(y) + OY];
       return callCad('rotate', { name, angle, angle_unit: 'radian', space: options?.space || 'world' });
     });
 
-    // scale(name, sx, sy, options?) - options: { space: 'world' | 'local' }
-    bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number, options?: { space?: 'world' | 'local' }) => {
+    // scale(name, sx, sy, options?) - options: { space: 'world' | 'local', around?: 'origin' | 'center' }
+    // around: 'center'면 엔티티 중심 기준으로 scale (위치 유지)
+    bindCadFunction(vm, 'scale', (name: string, sx: number, sy: number, options?: { space?: 'world' | 'local'; around?: 'origin' | 'center' }) => {
+      const around = options?.around || 'origin';
+
+      if (around === 'center') {
+        // 1. scale 전 world center 저장
+        const beforeResult = executor.exec('get_entity', { name });
+        if (!beforeResult.success || !beforeResult.data) return false;
+        let beforeEntity;
+        try {
+          beforeEntity = JSON.parse(beforeResult.data);
+        } catch {
+          logger.error(`[scale around:center] ${name} failed to parse beforeEntity JSON`);
+          return false;
+        }
+        const beforeBounds = beforeEntity.world?.bounds;
+        if (!beforeBounds) return false;
+        const beforeCenter = [
+          (beforeBounds.min_x + beforeBounds.max_x) / 2,
+          (beforeBounds.min_y + beforeBounds.max_y) / 2
+        ];
+        logger.debug(`[scale around:center] ${name} beforeCenter: [${beforeCenter[0]}, ${beforeCenter[1]}]`);
+
+        // 2. scale 적용
+        const scaleResult = callCad('scale', { name, sx, sy, space: options?.space || 'world' });
+        if (!scaleResult) return false;
+
+        // 3. scale 후 world center 계산
+        const afterResult = executor.exec('get_entity', { name });
+        if (!afterResult.success || !afterResult.data) return false;
+        let afterEntity;
+        try {
+          afterEntity = JSON.parse(afterResult.data);
+        } catch {
+          logger.error(`[scale around:center] ${name} failed to parse afterEntity JSON`);
+          return false;
+        }
+        const afterBounds = afterEntity.world?.bounds;
+        if (!afterBounds) return false;
+        const afterCenter = [
+          (afterBounds.min_x + afterBounds.max_x) / 2,
+          (afterBounds.min_y + afterBounds.max_y) / 2
+        ];
+        logger.debug(`[scale around:center] ${name} afterCenter: [${afterCenter[0]}, ${afterCenter[1]}]`);
+
+        // 4. 위치 보정 (translate)
+        const dx = beforeCenter[0] - afterCenter[0];
+        const dy = beforeCenter[1] - afterCenter[1];
+        logger.debug(`[scale around:center] ${name} translate: dx=${dx}, dy=${dy}`);
+        if (dx !== 0 || dy !== 0) {
+          const translateResult = callCad('translate', { name, dx, dy, space: 'world' });
+          logger.debug(`[scale around:center] ${name} translate result: ${translateResult}`);
+          if (!translateResult) {
+            logger.error(`[scale around:center] ${name} translate failed`);
+            return false;
+          }
+        }
+
+        return true;
+      }
+
       return callCad('scale', { name, sx, sy, space: options?.space || 'world' });
     });
 

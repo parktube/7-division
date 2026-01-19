@@ -29,10 +29,10 @@ describe('AnthropicProvider', () => {
 
   describe('convertToolSchema', () => {
     it('should convert canonical schema to Anthropic format', () => {
-      const canonical = CAD_TOOLS['run_cad_code'];
+      const canonical = CAD_TOOLS['write'];
       const anthropic = provider.convertToolSchema(canonical);
 
-      expect(anthropic).toHaveProperty('name', 'run_cad_code');
+      expect(anthropic).toHaveProperty('name', 'write');
       expect(anthropic).toHaveProperty('description');
       expect(anthropic).toHaveProperty('input_schema');
       expect(anthropic.input_schema).toHaveProperty('type', 'object');

@@ -13,8 +13,8 @@ date: '2026-01-14'
 
 # Architecture Document - AI-Native CAD
 
-**Last Updated:** 2026-01-14
-**Status:** Epic 1~8 완료, Epic 9 (웹 아키텍처) 준비 중
+**Last Updated:** 2026-01-16
+**Status:** Epic 1~9 완료, Epic 10 (AX 개선) 진행 중
 
 _이 문서는 BMAD Architecture Workflow로 작성되었습니다._
 
@@ -1082,11 +1082,281 @@ bench('WebSocket RTT', async () => {
 
 ---
 
+## Part 3: AX Improvement (Epic 10)
+
+### 3.1 Problem Statement
+
+LLM이 MCP CAD 도구를 올바르게 사용하지 못하는 문제:
+
+| 문제 | 원인 | 결과 |
+|------|------|------|
+| Read-first 패턴 무시 | `cad_code`가 "실행기"로 인식됨 | 기존 코드 확인 없이 새 코드 작성 |
+| 기존 모듈 무시 | 모듈 목록 확인 없이 작업 | 중복 모듈 생성 |
+| 통합 도구 한계 | 하나의 도구에 다기능 통합 | "기본 모드"만 사용 |
+
+**근본 원인 분석:**
+
+| 항목 | Claude Code | MCP CAD (현재) |
+|------|-------------|----------------|
+| 도구 구조 | Read/Edit/Write **분리** | cad_code 하나에 **통합** |
+| 행동 명확성 | 이름 = 행동 | 이름 ≠ 행동 |
+| Read-first 강제 | Description 명시 + 에러 반환 | 없음 |
+| 결과 | 올바른 패턴 | **잘못된 패턴** |
+
+**핵심 통찰**: LLM은 이미 Claude Code 도구 패턴을 학습함. 같은 이름 = 같은 행동 기대.
+
+### 3.2 Solution: Claude Code Pattern Alignment
+
+MCP CAD 도구를 **Claude Code 패턴과 완전히 일치**하도록 재설계.
+
+#### 도구 매핑
+
+| Claude Code | MCP CAD (신규) | 역할 |
+|-------------|----------------|------|
+| Glob | `glob` | 파일 목록 (main + 모듈) |
+| Read | `read` | 파일 읽기 |
+| Edit | `edit` | 파일 부분 수정 → 자동 실행 |
+| Write | `write` | 파일 전체 작성 → 자동 실행 |
+| LSP | `lsp` | 코드 인텔리전스 (함수 탐색) |
+| Bash | `bash` | 명령 실행 (씬 조회, 내보내기 등) |
+
+#### 제거되는 도구
+
+| 기존 도구 | 대체 | 이유 |
+|----------|------|------|
+| `cad_code` | `read`, `edit`, `write` | 분리된 도구로 Read-first 유도 |
+| `module` | `glob`, `read`, `edit`, `write` | 파일 관리 패턴 통합 |
+| `discovery` | `lsp` | Claude Code LSP와 일치 |
+| `scene` | `bash` | 명령 실행 패턴 통합 |
+| `export` | `bash` | 명령 실행 패턴 통합 |
+
+### 3.3 New Tool Architecture
+
+#### File Management (glob, read, edit, write)
+
+```javascript
+// 파일 목록
+glob({})                              // ['main', 'iso_lib', 'city_lib']
+glob({ pattern: '*_lib' })            // ['iso_lib', 'city_lib']
+
+// 파일 읽기
+read({ file: 'main' })                // main 코드 반환
+read({ file: 'iso_lib' })             // 모듈 코드 반환
+
+// 파일 수정 (부분) → 자동 실행
+edit({
+  file: 'main',
+  old_code: 'drawCircle(...)',
+  new_code: 'drawRect(...)'
+})
+
+// 파일 작성 (전체) → 자동 실행
+write({ file: 'main', code: '...' })
+write({ file: 'new_lib', code: '...' })  // 새 모듈 생성
+```
+
+#### Code Intelligence (lsp)
+
+```javascript
+// 도메인 목록
+lsp({ operation: 'domains' })
+
+// 함수 설명
+lsp({ operation: 'describe', domain: 'primitives' })
+
+// 함수 스키마
+lsp({ operation: 'schema', name: 'drawCircle' })
+```
+
+#### Command Execution (bash)
+
+```javascript
+// 씬 조회
+bash({ command: 'info' })             // 씬 정보
+bash({ command: 'tree' })             // 씬 트리 구조
+bash({ command: 'groups' })           // 그룹 목록
+bash({ command: 'draw_order' })       // z-order
+
+// 씬 조작
+bash({ command: 'reset' })            // 씬 초기화
+
+// 내보내기
+bash({ command: 'capture' })          // 스크린샷 (PNG)
+bash({ command: 'svg' })              // SVG 출력
+bash({ command: 'json' })             // JSON 출력
+```
+
+### 3.4 Description Strategy
+
+각 도구의 description에 Claude Code와 동일한 패턴 강조:
+
+```typescript
+const TOOL_DESCRIPTIONS = {
+  glob: 'CAD 파일 목록 조회. main과 모듈 파일들.',
+  read: '파일 읽기. edit/write 전에 반드시 먼저 확인.',
+  edit: '파일 부분 수정 → 자동 실행. ⚠️ read로 먼저 확인 필수.',
+  write: '파일 전체 작성 → 자동 실행. ⚠️ 기존 파일은 read로 먼저 확인.',
+  lsp: 'CAD 함수 탐색. 도메인 목록, 함수 시그니처, 스키마 조회.',
+  bash: '명령 실행. 씬 조회(info/tree/groups), 내보내기(capture/svg/json).',
+};
+```
+
+### 3.5 Implementation Plan
+
+| Phase | 범위 | 산출물 |
+|-------|------|--------|
+| 1 | 도구 설계 | ADR-008 (완료), 스키마 정의 |
+| 2 | 구현 | glob, read, edit, write, lsp, bash |
+| 3 | 마이그레이션 | 레거시 도구 deprecated → 제거 |
+| 4 | 문서화 | CLAUDE.md, docs 업데이트 |
+
+#### Phase 2 상세 태스크
+
+```
+apps/cad-mcp/src/
+├── tools/
+│   ├── glob.ts      # 파일 목록
+│   ├── read.ts      # 파일 읽기
+│   ├── edit.ts      # 파일 수정 → 실행
+│   ├── write.ts     # 파일 작성 → 실행
+│   ├── lsp.ts       # 코드 인텔리전스
+│   └── bash.ts      # 명령 실행
+└── schema.ts        # 새 스키마 정의
+```
+
+### 3.6 Expected Benefits
+
+| 항목 | Before | After |
+|------|--------|-------|
+| Read-first 패턴 준수 | ~30% | >95% |
+| 기존 모듈 재사용 | ~40% | >90% |
+| 도구 학습 비용 | 새로운 학습 필요 | 0 (Claude Code 패턴 그대로) |
+| 도구 개수 | 5개 (통합) | 6개 (분리, 명확) |
+
+### 3.7 Related Documents
+
+- [ADR-008](./adr/008-tool-pattern-alignment.md) - MCP 도구 패턴 정렬 결정
+
+### 3.8 HMR 스타일 코드 실행 (Story 10.10)
+
+#### 문제: 코드 재실행 시 누적 변환
+
+**현재 아키텍처 문제:**
+
+```
+edit → main.js 저장 → 실행 (이전 씬 위에) → scene.json 저장
+                              ↑ translate()가 누적됨
+```
+
+- 코드에 `translate('entity', 10, 0)`가 있으면
+- 매 edit마다 translate가 추가 적용됨
+- 결과: 의도치 않은 위치 이동
+
+#### 해결: HMR (Hot Module Replacement) 스타일 실행
+
+**새로운 아키텍처:**
+
+```
+edit → main.js 저장 → reset() + 실행 → 브로드캐스트 + scene.json 저장
+                      ↑ 매번 clean 상태
+```
+
+**핵심 변경:**
+
+| 항목 | Before | After |
+|------|--------|-------|
+| 실행 전 상태 | 이전 씬 유지 (누적) | reset() (clean) |
+| 실행 후 저장 | scene.json 저장 | scene.json 저장 (유지) |
+| 진실의 원천 | scene.json | main.js (실행), scene.json (폴백) |
+| MCP 재시작 시 | scene.json 로드 | main.js 실행 → scene.json 폴백 |
+| 롤백 시 | 파일만 복원 | 파일 복원 + 원본 재실행 |
+
+**구현 변경 (mcp-server.ts):**
+
+```typescript
+async function executeRunCadCode(code: string) {
+  const exec = getExecutor();
+
+  // HMR 스타일: 매번 clean 상태에서 시작
+  exec.exec('reset', {});
+
+  const result = await runCadCode(exec, code, 'warn');
+
+  if (result.success) {
+    const sceneJson = exec.exportScene();
+    const scene = JSON.parse(sceneJson);
+    wsServer.broadcastScene(scene);
+    saveScene(exec);  // scene.json 동기화 유지
+  }
+
+  return result;
+}
+```
+
+**MCP 서버 시작 시:**
+
+```typescript
+let restored = false;
+
+// 1차: main.js 실행으로 복원
+if (existsSync(SCENE_CODE_FILE)) {
+  const result = await executeRunCadCode(readMainCode());
+  if (result.success) {
+    restored = true;
+    logger.info('Scene restored from main.js');
+  }
+}
+
+// 2차: main.js 실패 시 scene.json 폴백
+if (!restored) {
+  restored = loadScene(exec);
+  if (restored) {
+    logger.info('Scene restored from scene.json (fallback)');
+  }
+}
+```
+
+**롤백 시 씬 복원:**
+
+```typescript
+// edit/write 핸들러 내부
+if (!execResult.success) {
+  rollbackEdit(file, originalContent);
+
+  // 원본 코드 재실행으로 씬 복원
+  exec.exec('reset', {});
+  const origCode = readMainCode();
+  const result = await runCadCode(exec, origCode, 'warn');
+  if (result.success) {
+    broadcastScene();
+    saveScene(exec);
+  }
+
+  return { error: execResult.error, hint: '씬은 이전 상태로 복원됨' };
+}
+```
+
+#### 장점
+
+1. **누적 문제 완전 해결**: 매번 clean 상태에서 시작
+2. **안정성 유지**: scene.json 폴백으로 복원 보장
+3. **롤백 UX 개선**: 실패해도 이전 씬 상태 유지
+4. **HMR 패러다임**: 웹 개발자에게 익숙한 패턴
+
+#### bash reset 명령 동작
+
+- `bash({ command: 'reset' })`: 수동 reset, main.js 재실행 안 함
+- 사용자가 의도적으로 빈 씬을 원할 때 사용
+- edit/write 후 자동 reset과 구분됨
+
+---
+
 ## Related Documents
 
 - [PRD](./prd.md) - 제품 요구사항
 - [Epics](./epics.md) - 에픽 목록
 - [ADR-007](./adr/007-web-architecture.md) - 웹 아키텍처 결정
+- [ADR-008](./adr/008-tool-pattern-alignment.md) - MCP 도구 패턴 정렬
 
 ---
 
