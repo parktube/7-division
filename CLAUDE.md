@@ -110,7 +110,7 @@ CAD_VIEWER_URL=http://localhost:5173 pnpm --filter @ai-native-cad/mcp start
 
 ## Development Rules
 
-- **Console 금지**: `logger` 사용 (`apps/cad-mcp/src/logger.ts`)
+- **Console 금지** (cad-mcp): `logger` 사용 (`apps/cad-mcp/src/logger.ts`). viewer는 예외.
 - **Pre-commit**: `npm install` 후 자동 실행 (fmt, eslint --fix)
 - **CI**: fmt → clippy → test → build (Rust), eslint → tsc → vitest (TS)
 - **Git**: `main` 브랜치, SSH 키 `github.com-jungjaehoon`
