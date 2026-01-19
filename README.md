@@ -331,9 +331,9 @@ GitHub Pages (Viewer)          Local MCP Server
 | Epic 7 | 17 stories | ✅ done |
 | Epic 8 | 4 stories | ✅ done |
 | Epic 9 | 10 stories | ✅ done |
-| Epic 10 | 11 stories | ✅ done |
+| Epic 10 | 10 stories | ✅ done |
 
-**총 79개 스토리 완료**
+**총 78개 스토리 완료**
 
 ## Contributing
 

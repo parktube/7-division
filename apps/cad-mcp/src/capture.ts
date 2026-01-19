@@ -243,10 +243,11 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
       if (injected) {
         // Wait for render after successful injection
-        await new Promise(done => setTimeout(done, 1000));
+        await new Promise(done => setTimeout(done, waitMs));
       } else {
-        // Injection failed - log warning and proceed (capture will show whatever is rendered)
-        logger.warn('__injectScene not available after retries - capture may show empty or stale scene');
+        // Injection failed - abort capture to avoid empty/misleading screenshots
+        logger.error('__injectScene not available after retries - aborting capture');
+        throw new Error('Scene injection failed: __injectScene not available in viewer');
       }
     } else {
       // Wait for WebSocket connection and scene to load

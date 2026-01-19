@@ -64,7 +64,8 @@ edit({ file: 'main', old_code: "drawCircle('sun', 0, 100, 30)", new_code: "drawC
 ## Design Workflow
 
 Before coding:
-1. `lsp({ operation: 'symbols', file: '...' })` - Check for similar existing code
+1. `lsp({ operation: 'symbols', file: 'main' })` - Check main for similar code
+   - Or use `file: '<module_name>'` from `glob()` results
 2. Propose approach to user: extend existing vs create new
 3. Get confirmation before implementing
 
@@ -201,7 +202,8 @@ bash({ command: 'capture' })     // PNG screenshot
 bash({ command: 'svg' })         // SVG vector
 bash({ command: 'json' })        // JSON
 
-// Reset (caution!)
+// ⚠️ Reset - DESTRUCTIVE! Clears all scene data.
+// Cannot be recovered by undo/redo. Export or snapshot first!
 bash({ command: 'reset' })
 ```
 
