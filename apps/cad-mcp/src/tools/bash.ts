@@ -291,7 +291,9 @@ export async function handleBash(
 
       case 'capture': {
         try {
-          const result = await captureViewport();
+          // Get current scene data for direct injection (bypasses WebSocket)
+          const sceneJson = exec.exportScene();
+          const result = await captureViewport({ sceneData: sceneJson });
           if (result.success && result.path) {
             return {
               success: true,

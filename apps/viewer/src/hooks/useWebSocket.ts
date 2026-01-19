@@ -120,6 +120,22 @@ export function __resetStoreForTesting() {
   emitChange()
 }
 
+/**
+ * Inject scene data directly (for Puppeteer capture without WebSocket)
+ * Usage: window.__injectScene(sceneData)
+ */
+function injectScene(scene: Scene) {
+  store.scene = scene
+  store.connectionState = 'connected'
+  store.error = null
+  emitChange()
+}
+
+// Expose to window for Puppeteer capture
+if (typeof window !== 'undefined') {
+  (window as unknown as { __injectScene: typeof injectScene }).__injectScene = injectScene
+}
+
 // Cached snapshot for useSyncExternalStore
 let cachedSnapshot: WebSocketStore | null = null
 
