@@ -54,7 +54,8 @@ cad-engine/*.svg
 # ===================
 .agentvibes/
 .bmad/
-.claude/
+.claude/*
+!.claude/skills/
 .codex/
 
 # MCP config
