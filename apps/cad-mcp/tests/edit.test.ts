@@ -105,7 +105,7 @@ describe('edit 도구', () => {
       expect(content).toBe('const x = 100;\nconst y = 20;');
     });
 
-    it('should only replace first occurrence', () => {
+    it('should replace all occurrences (replaceAll for consistency with run_cad_code)', () => {
       // Create file with duplicate content
       writeFileSync(testModulePath, 'const a = 1;\nconst a = 1;', 'utf-8');
 
@@ -117,9 +117,9 @@ describe('edit 도구', () => {
 
       expect(result.success).toBe(true);
 
-      // Verify only first occurrence is replaced
+      // Verify all occurrences are replaced
       const content = readFileSync(testModulePath, 'utf-8');
-      expect(content).toBe('const a = 2;\nconst a = 1;');
+      expect(content).toBe('const a = 2;\nconst a = 2;');
     });
 
     it('should support empty new_code for deletion', () => {

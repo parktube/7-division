@@ -125,8 +125,8 @@ export function handleEdit(input: EditInput): EditOutput {
       };
     }
 
-    // Replace old_code with new_code (first occurrence only)
-    const updatedContent = currentContent.replace(old_code, new_code);
+    // Replace old_code with new_code (all occurrences for consistency with previous run_cad_code)
+    const updatedContent = currentContent.replaceAll(old_code, new_code);
 
     // Write the modified content
     writeFileContent(file, updatedContent);
