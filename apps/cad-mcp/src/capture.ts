@@ -241,12 +241,13 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         }, options.sceneData);
       }
 
-      if (!injected) {
-        logger.warn('__injectScene not available after retries - viewer may not have this function deployed');
+      if (injected) {
+        // Wait for render after successful injection
+        await new Promise(done => setTimeout(done, 1000));
+      } else {
+        // Injection failed - log warning and proceed (capture will show whatever is rendered)
+        logger.warn('__injectScene not available after retries - capture may show empty or stale scene');
       }
-
-      // Wait for render
-      await new Promise(done => setTimeout(done, 1000));
     } else {
       // Wait for WebSocket connection and scene to load
       // Instead of fixed timeout, wait for scene to have entities

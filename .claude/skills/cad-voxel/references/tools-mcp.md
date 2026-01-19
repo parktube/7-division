@@ -156,6 +156,8 @@ bash({ command: 'snapshots' }) // 스냅샷 히스토리 조회
 
 ## 워크플로우 예시
 
+### 기본 워크플로우
+
 ```
 1. glob() → 기존 모듈 확인
 2. read({ file: 'main' }) → 현재 코드 확인
@@ -164,6 +166,18 @@ bash({ command: 'snapshots' }) // 스냅샷 히스토리 조회
 5. bash({ command: 'capture' }) → 결과 확인
 6. bash({ command: 'entity', name: '...' }) → 좌표 확인
 7. edit({ file: 'main', ... }) → 수정 + 실행
+```
+
+### 에러 복구가 필요한 경우
+
+```
+1. bash({ command: 'snapshot' }) → 수정 전 상태 저장
+2. write/edit 실행
+   - 성공 → 계속 진행
+   - 실패 → 자동 롤백 (파일 + 씬 복원)
+3. 수동 복구 필요 시:
+   - bash({ command: 'undo' }) → 스냅샷으로 복원
+   - bash({ command: 'snapshots' }) → 히스토리 확인
 ```
 
 ## 트랜잭션 동작

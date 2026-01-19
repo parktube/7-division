@@ -8,7 +8,7 @@ lsp({ operation: 'describe', domain: 'style' })
 
 ### setFill
 
-채우기 색상
+채우기 색상 → `boolean`
 
 ```javascript
 setFill(name, color)
@@ -18,6 +18,8 @@ setFill(name, color)
 |----------|------|------|
 | name | string | 엔티티 이름 |
 | color | number[] | `[r, g, b, a]` (0~1 범위) |
+
+**반환값:** 성공 시 `true`, 엔티티가 없으면 `false`
 
 ```javascript
 setFill('box', [1, 0, 0, 1]);       // 빨강 (불투명)
@@ -35,7 +37,7 @@ setFill('box', [1, 1, 1, 0]);       // 투명
 
 ### setStroke
 
-테두리 색상 및 두께
+테두리 색상 및 두께 → `boolean`
 
 ```javascript
 setStroke(name, color, width?)
@@ -47,6 +49,8 @@ setStroke(name, color, width?)
 | color | number[] | `[r, g, b, a]` |
 | width | number | 선 두께 (기본: 1) |
 
+**반환값:** 성공 시 `true`, 엔티티가 없으면 `false`
+
 ```javascript
 setStroke('box', [0, 0, 0, 1], 2);  // 검정 테두리, 두께 2
 setStroke('box', [0, 0, 0, 0]);     // 테두리 없음
@@ -54,7 +58,7 @@ setStroke('box', [0, 0, 0, 0]);     // 테두리 없음
 
 ### drawOrder
 
-Z-order 설정
+Z-order 설정 → `boolean`
 
 ```javascript
 drawOrder(name, order)
@@ -64,6 +68,8 @@ drawOrder(name, order)
 |----------|------|------|
 | name | string | 엔티티 이름 |
 | order | string/number | `'front'`, `'back'`, 숫자, `'above:target'` |
+
+**반환값:** 성공 시 `true`, 엔티티가 없으면 `false`
 
 ```javascript
 drawOrder('circle', 'front');       // 맨 앞으로
@@ -98,7 +104,7 @@ lsp({ operation: 'describe', domain: 'groups' })
 
 ### createGroup
 
-그룹 생성
+그룹 생성 → `boolean`
 
 ```javascript
 createGroup(name, children)
@@ -108,6 +114,8 @@ createGroup(name, children)
 |----------|------|------|
 | name | string | 그룹 이름 |
 | children | string[] | 자식 엔티티 이름 배열 |
+
+**반환값:** 성공 시 `true`
 
 ```javascript
 drawRect('body', 0, 0, 20, 30);
@@ -120,11 +128,18 @@ translate('robot', 100, 50);
 
 ### addToGroup
 
-기존 그룹에 엔티티 추가
+기존 그룹에 엔티티 추가 → `boolean`
 
 ```javascript
 addToGroup(groupName, entityName)
 ```
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| groupName | string | 대상 그룹 이름 |
+| entityName | string | 추가할 엔티티 이름 |
+
+**반환값:** 성공 시 `true`, 그룹이나 엔티티가 없으면 `false`
 
 ```javascript
 drawCircle('antenna', 0, 35, 3);
@@ -184,11 +199,17 @@ getWorldBounds(name)
 
 ### fitToViewport
 
-뷰포트에 맞추기
+뷰포트에 맞추기 → `void`
 
 ```javascript
 fitToViewport(width, height, options?)
 ```
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| width | number | 뷰포트 너비 |
+| height | number | 뷰포트 높이 |
+| options | object | `{ padding?: number }` |
 
 ```javascript
 fitToViewport(800, 600);
