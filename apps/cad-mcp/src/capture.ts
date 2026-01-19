@@ -238,7 +238,9 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           type WindowWithInject = Window & { __injectScene?: (scene: unknown) => void };
           const win = window as WindowWithInject;
           if (win.__injectScene) {
-            win.__injectScene(sceneJson);
+            // sceneJson이 문자열이면 파싱 (exportScene()은 string 반환)
+            const scene = typeof sceneJson === 'string' ? JSON.parse(sceneJson) : sceneJson;
+            win.__injectScene(scene);
             return true;
           }
           return false;
