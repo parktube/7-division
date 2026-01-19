@@ -289,7 +289,7 @@ GitHub Pages (Viewer)          Local MCP Server
 | `lsp` | 함수 탐색 (domains, describe, schema) |
 | `bash` | 씬 조회/내보내기 (tree, capture, svg 등) |
 
-**Sandbox 함수 도메인** (`discovery describe <domain>`)
+**Sandbox 함수 도메인** (`lsp({ operation: 'describe', domain: '...' })`)
 ```
 📦 primitives, text
 🔄 transforms, boolean, geometry

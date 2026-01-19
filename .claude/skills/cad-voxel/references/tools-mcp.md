@@ -25,6 +25,12 @@ glob({ pattern: 'house_*' })
 // → house_lib, house_advanced
 ```
 
+**패턴 문법:**
+- `*` - 0개 이상의 문자 매칭 (예: `house_*` → house_lib, house_advanced)
+- `?` - 정확히 1개의 문자 매칭 (예: `car_?` → car_0, car_1)
+- 정규식이나 character class는 지원하지 않음
+- 파일명에는 영문, 숫자, 밑줄, 하이픈만 허용
+
 ## read - 파일 읽기
 
 ```javascript
@@ -47,9 +53,23 @@ edit({
 // → 파일 수정 + 코드 실행 + 결과 반환
 
 // 실패 시 자동 롤백 (파일 변경 없음)
+
+// 멀티라인 수정 예시 (들여쓰기/줄바꿈 정확히 일치 필요)
+edit({
+  file: 'main',
+  old_code: `function draw() {
+  drawRect('a', 0, 0, 10, 10);
+}`,
+  new_code: `function draw() {
+  drawRect('a', 0, 0, 20, 20);
+  drawCircle('b', 30, 0, 5);
+}`
+})
 ```
 
-**주의**: `old_code`는 정확히 일치해야 함
+**주의**:
+- `old_code`는 공백/들여쓰기/줄바꿈까지 정확히 일치해야 함
+- 모든 일치 항목이 교체됨 (replaceAll 동작)
 
 ## write - 전체 작성 (자동 실행)
 
@@ -75,6 +95,13 @@ buildHouse('h1', 0, 0);
 `
 })
 ```
+
+**동작 특성:**
+- 파일명에 확장자 없이 지정 (자동으로 `.js` 추가)
+- 저장 즉시 실행됨 (MCP 서버가 코드 실행)
+- 모듈 파일(`house_lib`) 작성 후 `main`에서 `import 'house_lib'`로 사용
+- 실행 순서: 모듈 등록 → main 실행 (import가 모듈 코드로 치환됨)
+- 실패 시 파일과 씬 모두 롤백됨
 
 ## lsp - 코드 탐색
 
@@ -118,6 +145,13 @@ bash({ command: 'json' })       // JSON
 
 // 초기화 (주의!)
 bash({ command: 'reset' })
+
+// 스냅샷/undo/redo (세션 내 상태 관리)
+bash({ command: 'snapshot' })  // 현재 씬 스냅샷 저장
+bash({ command: 'undo' })      // 이전 스냅샷으로 복원
+bash({ command: 'redo' })      // 다음 스냅샷으로 이동
+bash({ command: 'snapshots' }) // 스냅샷 히스토리 조회
+// 💡 undo/redo 실패 시 현재 씬 상태 자동 복원
 ```
 
 ## 워크플로우 예시
@@ -134,6 +168,9 @@ bash({ command: 'reset' })
 
 ## 트랜잭션 동작
 
-- `edit`/`write` 실행 시 코드가 실패하면 **파일 자동 롤백**
+- `edit`/`write` 실행 시 코드가 실패하면:
+  1. **파일 자동 롤백**: 수정 전 원본 파일 복원
+  2. **씬 자동 복원**: main.js 재실행으로 이전 씬 상태 복구
 - 안전하게 실험 가능
 - 실패 메시지에서 에러 원인 확인 후 수정
+- 수동 복구: `bash({ command: 'undo' })`로 스냅샷 기반 복원

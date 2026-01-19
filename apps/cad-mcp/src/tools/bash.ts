@@ -384,8 +384,9 @@ export async function handleBash(
           };
         }
 
-        // Save current index for potential rollback
+        // Save current index and scene for potential rollback
         const previousIndex = snapshotIndex;
+        const currentSceneBackup = exec.exportScene();
 
         // Move back in history
         snapshotIndex--;
@@ -397,8 +398,10 @@ export async function handleBash(
 
         // Check if import had errors
         if (importResult.errors && importResult.errors.length > 0) {
-          // Rollback snapshotIndex
+          // Rollback both snapshotIndex and scene state
           snapshotIndex = previousIndex;
+          exec.exec('reset', {});
+          exec.importScene(currentSceneBackup);
           return {
             success: false,
             data: {},
@@ -430,8 +433,9 @@ export async function handleBash(
           };
         }
 
-        // Save current index for potential rollback
+        // Save current index and scene for potential rollback
         const previousIndex = snapshotIndex;
+        const currentSceneBackup = exec.exportScene();
 
         // Move forward in history
         snapshotIndex++;
@@ -443,8 +447,10 @@ export async function handleBash(
 
         // Check if import had errors
         if (importResult.errors && importResult.errors.length > 0) {
-          // Rollback snapshotIndex
+          // Rollback both snapshotIndex and scene state
           snapshotIndex = previousIndex;
+          exec.exec('reset', {});
+          exec.importScene(currentSceneBackup);
           return {
             success: false,
             data: {},

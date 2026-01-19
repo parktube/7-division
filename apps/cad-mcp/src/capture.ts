@@ -191,20 +191,20 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
     // Launch headless browser (Puppeteer v22+ uses new headless mode by default)
     logger.debug('Launching headless browser');
-    // Security Note: --no-sandbox and --disable-setuid-sandbox are required for
-    // running Puppeteer in CI/containerized environments (Docker, GitHub Actions).
-    // --allow-running-insecure-content allows HTTPS pages to connect to ws://localhost
-    // This is acceptable because we're connecting to our own local MCP server.
+    // Security: --no-sandbox only for local URLs or CI environments
+    // For remote URLs, use sandboxed mode for security
+    const isLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\b/.test(url);
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const baseArgs = ['--disable-dev-shm-usage', '--disable-gpu'];
+    const sandboxArgs = (isLocalUrl || isCI)
+      ? ['--no-sandbox', '--disable-setuid-sandbox']
+      : [];
+    // Mixed content args for HTTPS → ws://localhost connection
+    const mixedContentArgs = ['--allow-running-insecure-content', '--allow-insecure-localhost'];
+
     browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--allow-running-insecure-content',
-        '--allow-insecure-localhost',
-      ],
+      args: [...baseArgs, ...sandboxArgs, ...mixedContentArgs],
     });
 
     const page = await browser.newPage();
@@ -222,18 +222,27 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // If scene data is provided, inject it directly (bypass WebSocket)
     if (options.sceneData) {
       logger.debug('Injecting scene data directly');
-      const injected = await page.evaluate((sceneJson) => {
-        // Wait for __injectScene to be available (React mount)
-        type WindowWithInject = Window & { __injectScene?: (scene: unknown) => void };
-        const win = window as WindowWithInject;
-        if (win.__injectScene) {
-          win.__injectScene(sceneJson);
-          return true;
+
+      // Retry injection with polling (React may not be mounted yet)
+      let injected = false;
+      const maxRetries = 5;
+      for (let i = 0; i < maxRetries && !injected; i++) {
+        if (i > 0) {
+          await new Promise(done => setTimeout(done, 500));
         }
-        return false;
-      }, options.sceneData);
+        injected = await page.evaluate((sceneJson) => {
+          type WindowWithInject = Window & { __injectScene?: (scene: unknown) => void };
+          const win = window as WindowWithInject;
+          if (win.__injectScene) {
+            win.__injectScene(sceneJson);
+            return true;
+          }
+          return false;
+        }, options.sceneData);
+      }
+
       if (!injected) {
-        logger.warn('__injectScene not available - viewer may not have this function deployed');
+        logger.warn('__injectScene not available after retries - viewer may not have this function deployed');
       }
 
       // Wait for render
@@ -269,11 +278,33 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           const ctx = canvas.getContext('2d');
           if (!ctx) return false;
 
-          // Sample some pixels to see if anything is drawn
-          const imageData = ctx.getImageData(canvas.width / 2, canvas.height / 2, 1, 1);
-          const [r, g, b] = imageData.data;
-          // Background is light gray (~230,230,230), check if different
-          return r !== 230 || g !== 230 || b !== 230;
+          // Sample multiple pixels and check for variation (not uniform background)
+          const w = canvas.width;
+          const h = canvas.height;
+          const samplePoints = [
+            [w / 2, h / 2],
+            [w / 4, h / 4],
+            [3 * w / 4, h / 4],
+            [w / 4, 3 * h / 4],
+            [3 * w / 4, 3 * h / 4],
+          ];
+
+          const samples = samplePoints.map(([x, y]) => {
+            const data = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+            return [data[0], data[1], data[2]];
+          });
+
+          // Check if all samples are the same (uniform background)
+          const first = samples[0];
+          const tolerance = 5;
+          const allSame = samples.every(([r, g, b]) =>
+            Math.abs(r - first[0]) <= tolerance &&
+            Math.abs(g - first[1]) <= tolerance &&
+            Math.abs(b - first[2]) <= tolerance
+          );
+
+          // If not all same, something is drawn
+          return !allSame;
         });
 
         logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);

@@ -22,6 +22,8 @@ Create Crossy Road style isometric voxel art with AI-Native CAD.
 | `mcp__ai-native-cad__lsp` | Explore functions | - |
 | `mcp__ai-native-cad__bash` | Scene commands | Bash |
 
+> **Note**: In examples below, `glob()`, `read()`, etc. are shorthand for the full MCP tool names above.
+
 ### ES5 Syntax Only
 
 CAD engine only supports ES5. Use `var`, not `const`/`let`. No arrow functions or template literals.
@@ -55,8 +57,8 @@ write({ file: 'main', code: "drawCircle('sun', 0, 100, 30)" })
 bash({ command: 'capture' })
 bash({ command: 'entity', name: 'sun' })
 
-// 5. Edit if needed (auto-executes)
-edit({ file: 'main', old_code: 'radius: 30', new_code: 'radius: 50' })
+// 5. Edit if needed (auto-executes, old_code must match exactly)
+edit({ file: 'main', old_code: "drawCircle('sun', 0, 100, 30)", new_code: "drawCircle('sun', 0, 100, 50)" })
 ```
 
 ## Design Workflow

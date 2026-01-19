@@ -181,7 +181,7 @@ function getAllMCPTools() {
  * Restore scene from main.js after rollback
  * Returns true if scene was successfully restored
  *
- * Note: Validates code BEFORE reset to avoid leaving empty scene on failure
+ * Note: Validates code BEFORE reset and keeps fallback for runtime failures
  */
 async function restoreSceneFromMainCode(exec: CADExecutor): Promise<boolean> {
   const origCode = readMainCode()
@@ -191,10 +191,19 @@ async function restoreSceneFromMainCode(exec: CADExecutor): Promise<boolean> {
   const origPreprocessed = preprocessCode(origCode)
   if (origPreprocessed.errors.length > 0) return false
 
+  // Backup current scene in case runtime execution fails
+  const fallbackScene = exec.exportScene()
+
   // Now safe to reset since code is valid
   exec.exec('reset', {})
   const restoreResult = await runCadCode(exec, origPreprocessed.code, 'warn')
-  if (!restoreResult.success) return false
+
+  if (!restoreResult.success) {
+    // Runtime failure: restore from fallback
+    logger.warn('restoreSceneFromMainCode: runtime failed, restoring fallback scene')
+    exec.importScene(fallbackScene)
+    return false
+  }
 
   const sceneJson = exec.exportScene()
   const scene = JSON.parse(sceneJson) as Scene

@@ -152,7 +152,12 @@ export function handleEdit(input: EditInput): EditOutput {
 
 /**
  * Rollback edit by restoring original content
+ * Note: Validates filename to prevent path traversal attacks
  */
 export function rollbackEdit(file: string, originalContent: string): void {
+  // Security: Validate filename before writing
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid file name for rollback: '${file}'`);
+  }
   writeFileContent(file, originalContent);
 }
