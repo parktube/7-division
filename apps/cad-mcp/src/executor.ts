@@ -837,8 +837,13 @@ export class CADExecutor {
     const children = (rawChildren as string[] | undefined) || [];
     const childrenJson = JSON.stringify(children);
 
-    const result = this.scene.create_group(name, childrenJson);
-    return { success: true, entity: result, type: 'group' };
+    try {
+      const result = this.scene.create_group(name, childrenJson);
+      return { success: true, entity: result, type: 'group' };
+    } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      return { success: false, error: `create_group: ${errorMessage}` };
+    }
   }
 
   private ungroupEntity(input: Record<string, unknown>): ToolResult {

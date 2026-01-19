@@ -4,7 +4,7 @@
 
 import type { LLMProvider } from './providers/types.js';
 import type { DomainName, ToolSchema } from './schema.js';
-import { getToolsForDomains } from './discovery.js';
+import { getToolsForDomains } from './tool-registry.js';
 import { CADExecutor, type ToolResult } from './executor.js';
 import { logger } from './logger.js';
 

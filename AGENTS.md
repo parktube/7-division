@@ -23,89 +23,89 @@ GitHub Pages (Viewer)          Local MCP Server
 └── modules/         # 저장된 모듈
 ```
 
-## MCP 도메인 도구 (5개)
+## MCP 도구 (6개)
 
-MCP 서버는 5개의 도메인 도구를 제공합니다:
+Claude Code 패턴과 일치하도록 설계된 도구입니다:
 
-| 도구 | 설명 | 주요 액션 |
-|------|------|----------|
-| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
-| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
-| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
-| `export` | 내보내기 | json, svg, capture |
-| `module` | 모듈 관리 | save, list, get, delete |
+| 도구 | 설명 | Claude Code 대응 |
+|------|------|------------------|
+| `glob` | 파일 목록 조회 | Glob |
+| `read` | 파일 읽기 | Read |
+| `edit` | 파일 부분 수정 → 자동 실행 | Edit |
+| `write` | 파일 전체 작성 → 자동 실행 | Write |
+| `lsp` | 코드 인텔리전스 (함수 탐색) | LSP |
+| `bash` | 명령 실행 (씬 조회, 내보내기) | Bash |
 
-### cad_code (핵심 도구)
+### 파일 관리 (glob, read, edit, write)
 
-CAD JavaScript 실행 환경. 함수/클래스/재귀 모두 가능.
+**파일명 규칙**: 확장자 없이 논리적 이름 사용
+- `'main'` → `~/.ai-native-cad/scene.code.js`
+- `'iso_lib'` → `~/.ai-native-cad/modules/iso_lib.js`
 
 ```javascript
-// 기본 실행
-cad_code({ code: "drawCircle('c', 0, 0, 50)" })
+// 파일 목록
+glob({})                              // ['main', 'iso_lib', 'city_lib']
+glob({ pattern: '*_lib' })            // ['iso_lib', 'city_lib']
 
-// 파일 읽기
-cad_code({ file: 'main' })
+// 파일 읽기 (⚠️ edit/write 전에 반드시!)
+read({ file: 'main' })                // main 코드 반환
+read({ file: 'iso_lib' })             // 모듈 코드 반환
 
-// 파일에 쓰기
-cad_code({ file: 'main', code: "drawCircle('c', 0, 0, 50)" })
+// 파일 수정 (부분) → 자동 실행 → 실패 시 자동 롤백
+edit({
+  file: 'main',
+  old_code: 'drawCircle(...)',
+  new_code: 'drawRect(...)'
+})
 
-// 추가 모드 (+ prefix)
-cad_code({ file: 'main', code: "+setFill('c', [1, 0, 0, 1])" })
-
-// 부분 수정
-cad_code({ file: 'main', old_code: 'radius: 50', new_code: 'radius: 100' })
+// 파일 작성 (전체) → 자동 실행 → 실패 시 자동 롤백
+write({ file: 'main', code: '...' })
+write({ file: 'new_lib', code: '...' })  // 새 모듈 생성
 ```
 
-### discovery (탐색 도구)
+### 코드 인텔리전스 (lsp)
 
 ```javascript
 // 도메인 목록
-discovery({ action: 'list_domains' })
+lsp({ operation: 'domains' })
 
 // 도메인별 함수 시그니처
-discovery({ action: 'describe', domain: 'primitives' })
+lsp({ operation: 'describe', domain: 'primitives' })
 
-// 특정 함수 상세
-discovery({ action: 'get_schema', name: 'drawCircle' })
+// 특정 함수 상세 스키마
+lsp({ operation: 'schema', name: 'drawCircle' })
+
+// 파일 내 심볼 조회
+lsp({ operation: 'symbols', file: 'main' })
 ```
 
-### scene (씬 조회)
+### 명령 실행 (bash)
 
 ```javascript
-scene({ action: 'info' })       // 씬 요약 (entityCount, bounds)
-scene({ action: 'overview' })   // 트리 구조 (groups, hierarchy)
-scene({ action: 'selection' })  // 선택된 엔티티
-scene({ action: 'reset' })      // 씬 초기화 (⚠️ 되돌릴 수 없음)
-```
+// 씬 조회
+bash({ command: 'info' })             // 씬 정보
+bash({ command: 'tree' })             // 씬 트리 구조
+bash({ command: 'groups' })           // 그룹 목록
+bash({ command: 'draw_order' })       // z-order
+bash({ command: 'entity', name: 'box' })  // 엔티티 좌표 조회
 
-### export (내보내기)
+// 씬 조작
+bash({ command: 'reset' })            // 씬 초기화
 
-```javascript
-export({ action: 'json' })      // 전체 씬 JSON
-export({ action: 'svg' })       // SVG 벡터
-export({ action: 'capture' })   // PNG 스크린샷
-export({ action: 'capture', clearSketch: true })  // 캡처 후 스케치 클리어
-```
+// 내보내기
+bash({ command: 'capture' })          // 스크린샷 (PNG)
+bash({ command: 'svg' })              // SVG 출력
+bash({ command: 'json' })             // JSON 출력
 
-### module (모듈 관리)
-
-```javascript
-// 모듈 저장
-module({ action: 'save', name: 'house_lib', code: 'class House {...}' })
-
-// 모듈 목록
-module({ action: 'list' })
-
-// 모듈 조회
-module({ action: 'get', name: 'house_lib' })
-
-// 모듈 삭제
-module({ action: 'delete', name: 'house_lib' })
+// 스냅샷 (undo/redo)
+bash({ command: 'snapshot' })         // 스냅샷 저장
+bash({ command: 'undo' })             // 이전 스냅샷 복원
+bash({ command: 'redo' })             // 다음 스냅샷 복원
 ```
 
 ## 도메인 목록 (Sandbox 함수)
 
-`discovery(action='describe', domain='...')`으로 상세 확인
+`lsp({ operation: 'describe', domain: '...' })`으로 상세 확인
 
 ```
 📦 도형 생성
@@ -221,7 +221,7 @@ fitToViewport(width, height, options?)    // 자동 스케일 계산
 
 ```javascript
 // 모듈 저장 - 구조적인 클래스 패턴
-module({ action: 'save', name: 'house_lib', code: `
+write({ file: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
@@ -255,7 +255,7 @@ class House {
 `})
 
 // main에서 사용
-cad_code({ file: 'main', code: `
+write({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
@@ -338,23 +338,42 @@ getDrawOrder();           // root level 순서
 getDrawOrder('group_a');  // 그룹 내부 순서
 ```
 
-## 트랜잭션 동작
+## HMR 스타일 코드 실행
 
-코드 실행 실패 시 **파일이 변경되지 않습니다** (자동 롤백):
+`edit`/`write` 도구는 **HMR (Hot Module Reload)** 스타일로 동작합니다:
+
+1. 코드 검증 (preprocess)
+2. 검증 성공 시 씬 reset
+3. 전체 코드 재실행
+4. 실패 시 파일 + 씬 자동 롤백
 
 ```javascript
 // 기존 코드에 const x = 10;이 있을 때
-cad_code({ file: 'main', code: '+const x = 20;' })  // 실패 - 변수 재정의
-// → 파일 변경 없음, 안전하게 실험 가능
+edit({ file: 'main', old_code: 'const x = 10;', new_code: 'const x = 20;' })
+// → 성공: 씬 reset 후 전체 코드 재실행
+
+write({ file: 'main', code: 'invalid syntax {{' })
+// → 실패: 파일 원본 복원, 씬 이전 상태 복원
 ```
 
 ## 에이전트 주의사항
 
-1. **cad_code가 메인**: 모든 도형 조작은 `cad_code`로 JavaScript 실행
-2. **reset 금지**: 기존 엔티티는 직접 수정 (추가 모드 `+` 사용)
-3. **씬은 영속적**: MCP 재시작 후에도 scene.json에서 자동 복원
-4. **discovery 먼저**: 함수 사용법이 불확실하면 `discovery`로 확인
+1. **read-first 패턴**: `edit`/`write` 전에 반드시 `read`로 파일 확인
+2. **reset 자동 처리**: `edit`/`write` 실행 시 자동으로 reset + 재실행
+3. **씬은 영속적**: MCP 재시작 후에도 main.js에서 자동 복원
+4. **lsp로 먼저 탐색**: 함수 사용법이 불확실하면 `lsp`로 확인
 5. **로컬 좌표 패턴**: 그룹 내 부품은 (0,0) 기준 생성 후 그룹 이동
+
+## 환경변수
+
+| 변수 | 기본값 | 설명 |
+|------|--------|------|
+| `CAD_VIEWER_URL` | `https://parktube.github.io/7-division/` | Puppeteer 캡처 시 사용할 뷰어 URL |
+
+```bash
+# 로컬 뷰어로 캡처
+CAD_VIEWER_URL=http://localhost:5173 npx @ai-native-cad/mcp start
+```
 
 ## 빠른 시작
 
@@ -395,9 +414,9 @@ pnpm --filter @ai-native-cad/viewer dev
 **Console 금지** - `logger` 사용:
 
 ```typescript
-import { logger } from "./logger.js";
-logger.debug("dev only");
-logger.error("always");
+import { logger } from './logger.js';
+logger.debug('dev only');
+logger.error('always');
 ```
 
 ## CI/Pre-commit
@@ -410,4 +429,4 @@ logger.error("always");
 
 ---
 
-*최종 업데이트: 2026-01-15*
+*최종 업데이트: 2026-01-19*

@@ -23,6 +23,8 @@ export interface CaptureOptions {
   outputPath?: string;
   waitMs?: number;
   forceMethod?: 'electron' | 'puppeteer';
+  /** Scene data to inject directly (bypasses WebSocket for Puppeteer capture) */
+  sceneData?: unknown;
 }
 
 export interface CaptureResult {
@@ -143,9 +145,9 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     : resolve(__dirname, '../../viewer/capture.png');
 
   const {
-    // Default to localhost:5173 for local dev, fallback to GitHub Pages
-    // Can override with CAD_VIEWER_URL environment variable
-    url = process.env.CAD_VIEWER_URL || 'http://localhost:5173',
+    // Default to GitHub Pages for production use
+    // Puppeteer uses --allow-running-insecure-content to allow HTTPS → WS localhost
+    url = process.env.CAD_VIEWER_URL || 'https://parktube.github.io/7-division/',
     width = 2400,
     height = 1500,
     outputPath = defaultOutputPath,
@@ -189,18 +191,23 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
     // Launch headless browser (Puppeteer v22+ uses new headless mode by default)
     logger.debug('Launching headless browser');
-    // Security Note: --no-sandbox and --disable-setuid-sandbox are required for
-    // running Puppeteer in CI/containerized environments (Docker, GitHub Actions).
-    // This is acceptable here because we're capturing our own local viewer,
-    // not navigating to untrusted URLs.
+    // Security: --no-sandbox only for local URLs or CI environments
+    // For remote URLs, use sandboxed mode for security
+    const isLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\b/.test(url);
+    const isHttps = /^https:\/\//.test(url);
+    const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+    const baseArgs = ['--disable-dev-shm-usage', '--disable-gpu'];
+    const sandboxArgs = (isLocalUrl || isCI)
+      ? ['--no-sandbox', '--disable-setuid-sandbox']
+      : [];
+    // Mixed content args only when HTTPS page needs to connect to ws://localhost
+    const mixedContentArgs = isHttps
+      ? ['--allow-running-insecure-content', '--allow-insecure-localhost']
+      : [];
+
     browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-      ],
+      args: [...baseArgs, ...sandboxArgs, ...mixedContentArgs],
     });
 
     const page = await browser.newPage();
@@ -215,44 +222,98 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // Navigate to viewer with increased timeout
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Wait for WebSocket connection and scene to load
-    // Instead of fixed timeout, wait for scene to have entities
-    let sceneLoaded = false;
-    const maxWaitTime = waitMs;
-    const checkInterval = 500;
-    let elapsed = 0;
+    // If scene data is provided, inject it directly (bypass WebSocket)
+    if (options.sceneData) {
+      logger.debug('Injecting scene data directly');
 
-    while (elapsed < maxWaitTime && !sceneLoaded) {
-      await new Promise(done => setTimeout(done, checkInterval));
-      elapsed += checkInterval;
-
-      // Check if scene has entities
-      sceneLoaded = await page.evaluate(() => {
-        // Check if there are any rendered entities in the canvas
-        const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-        if (!canvas) return false;
-
-        // Check WebSocket connection state from window
-        type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
-        const win = window as WindowWithWS;
-
-        // If we have entity count exposed, use it
-        if (typeof win.__sceneEntityCount === 'number') {
-          return win.__sceneEntityCount > 0;
+      // Retry injection with polling (React may not be mounted yet)
+      let injected = false;
+      const maxRetries = 5;
+      for (let i = 0; i < maxRetries && !injected; i++) {
+        if (i > 0) {
+          await new Promise(done => setTimeout(done, 500));
         }
+        injected = await page.evaluate((sceneJson) => {
+          type WindowWithInject = Window & { __injectScene?: (scene: unknown) => void };
+          const win = window as WindowWithInject;
+          if (win.__injectScene) {
+            win.__injectScene(sceneJson);
+            return true;
+          }
+          return false;
+        }, options.sceneData);
+      }
 
-        // Fallback: check if canvas has been drawn to (not just background)
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return false;
+      if (injected) {
+        // Wait for render after successful injection
+        await new Promise(done => setTimeout(done, waitMs));
+      } else {
+        // Injection failed - abort capture to avoid empty/misleading screenshots
+        logger.error('__injectScene not available after retries - aborting capture');
+        throw new Error('Scene injection failed: __injectScene not available in viewer');
+      }
+    } else {
+      // Wait for WebSocket connection and scene to load
+      // Instead of fixed timeout, wait for scene to have entities
+      let sceneLoaded = false;
+      const maxWaitTime = waitMs;
+      const checkInterval = 500;
+      let elapsed = 0;
 
-        // Sample some pixels to see if anything is drawn
-        const imageData = ctx.getImageData(canvas.width / 2, canvas.height / 2, 1, 1);
-        const [r, g, b] = imageData.data;
-        // Background is light gray (~230,230,230), check if different
-        return r !== 230 || g !== 230 || b !== 230;
-      });
+      while (elapsed < maxWaitTime && !sceneLoaded) {
+        await new Promise(done => setTimeout(done, checkInterval));
+        elapsed += checkInterval;
 
-      logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);
+        // Check if scene has entities
+        sceneLoaded = await page.evaluate(() => {
+          // Check if there are any rendered entities in the canvas
+          const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+          if (!canvas) return false;
+
+          // Check WebSocket connection state from window
+          type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
+          const win = window as WindowWithWS;
+
+          // If we have entity count exposed, use it
+          if (typeof win.__sceneEntityCount === 'number') {
+            return win.__sceneEntityCount > 0;
+          }
+
+          // Fallback: check if canvas has been drawn to (not just background)
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return false;
+
+          // Sample multiple pixels and check for variation (not uniform background)
+          const w = canvas.width;
+          const h = canvas.height;
+          const samplePoints = [
+            [w / 2, h / 2],
+            [w / 4, h / 4],
+            [3 * w / 4, h / 4],
+            [w / 4, 3 * h / 4],
+            [3 * w / 4, 3 * h / 4],
+          ];
+
+          const samples = samplePoints.map(([x, y]) => {
+            const data = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+            return [data[0], data[1], data[2]];
+          });
+
+          // Check if all samples are the same (uniform background)
+          const first = samples[0];
+          const tolerance = 5;
+          const allSame = samples.every(([r, g, b]) =>
+            Math.abs(r - first[0]) <= tolerance &&
+            Math.abs(g - first[1]) <= tolerance &&
+            Math.abs(b - first[2]) <= tolerance
+          );
+
+          // If not all same, something is drawn
+          return !allSame;
+        });
+
+        logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);
+      }
     }
 
     // Log WebSocket status for debugging

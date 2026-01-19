@@ -3,7 +3,7 @@
 > **협업 리더**: @parktube
 > **Repository**: https://github.com/parktube/7-division
 
-**현재 상태**: Epic 1~9 완료 (MVP + 웹 아키텍처)
+**현재 상태**: Epic 1~10 완료 (MVP + 웹 아키텍처 + AX 개선)
 
 ## Quick Start
 
@@ -57,32 +57,41 @@ cat docs/sprint-artifacts/sprint-status.yaml
 
 ---
 
-## MCP 도메인 도구
+## MCP 도구
 
-MCP 서버는 5개의 도메인 도구를 제공합니다:
+MCP 서버는 Claude Code 패턴과 정렬된 6개의 도구를 제공합니다:
 
-| 도구 | 설명 | 주요 액션 |
-|------|------|----------|
-| `cad_code` | JavaScript 코드 실행/편집 | 파일 읽기, 쓰기, 추가, 부분 수정 |
-| `discovery` | 함수 탐색 | list_domains, describe, list_tools, get_schema |
-| `scene` | 씬 상태 조회 | info, overview, groups, selection, reset |
-| `export` | 내보내기 | json, svg, capture |
-| `module` | 모듈 관리 | save, list, get, delete |
+| 도구 | 설명 | Claude Code 대응 |
+|------|------|------------------|
+| `glob` | 파일 목록 조회 | Glob |
+| `read` | 파일 읽기 | Read |
+| `edit` | 파일 부분 수정 → 자동 실행 | Edit |
+| `write` | 파일 전체 작성 → 자동 실행 | Write |
+| `lsp` | 함수 탐색 | LSP |
+| `bash` | 씬 조회/내보내기 | Bash |
 
 ### 기본 사용법
 
 ```javascript
-// 코드 실행
-cad_code({ code: "drawCircle('c1', 0, 0, 50)" })
+// 파일 목록 조회
+glob({})                              // ['main', 'house_lib', ...]
+glob({ pattern: '*_lib' })            // 패턴 필터
 
-// 파일에 추가 (+ prefix)
-cad_code({ file: 'main', code: "+setFill('c1', [1, 0, 0, 1])" })
+// 파일 읽기 (⚠️ edit/write 전에 필수!)
+read({ file: 'main' })
+
+// 파일 수정 → 자동 실행
+edit({ file: 'main', old_code: '...', new_code: '...' })
+
+// 파일 전체 작성 → 자동 실행
+write({ file: 'main', code: "drawCircle('c1', 0, 0, 50)" })
 
 // 함수 탐색
-discovery({ action: 'describe', domain: 'primitives' })
+lsp({ operation: 'describe', domain: 'primitives' })
 
 // 씬 상태 확인
-scene({ action: 'overview' })
+bash({ command: 'tree' })
+bash({ command: 'capture' })
 ```
 
 ### 주요 Sandbox 함수
@@ -103,7 +112,7 @@ scene({ action: 'overview' })
 
 ```javascript
 // 모듈 저장
-module({ action: 'save', name: 'house_lib', code: `
+write({ file: 'house_lib', code: `
 class House {
   constructor(name, x, y) {
     this.name = name;
@@ -153,7 +162,7 @@ class House {
 `})
 
 // main에서 사용
-cad_code({ file: 'main', code: `
+write({ file: 'main', code: `
 import 'house_lib';
 new House('h1', 0, 0).build();
 new House('h2', 100, 0).build();
@@ -435,4 +444,4 @@ npm install -g @anthropic-ai/claude-code
 
 ---
 
-*최종 업데이트: 2026-01-15*
+*최종 업데이트: 2026-01-19*
