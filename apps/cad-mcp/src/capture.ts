@@ -220,7 +220,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     });
 
     // Navigate to viewer with increased timeout
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    // Use networkidle0 to ensure React app is fully mounted before injection
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
 
     // If scene data is provided, inject it directly (bypass WebSocket)
     if (options.sceneData) {
@@ -245,8 +246,30 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       }
 
       if (injected) {
-        // Wait for render after successful injection
-        await new Promise(done => setTimeout(done, waitMs));
+        // Wait for Canvas component to mount and render
+        let canvasReady = false;
+        const maxWaitTime = waitMs;
+        const checkInterval = 200;
+        let elapsed = 0;
+
+        while (elapsed < maxWaitTime && !canvasReady) {
+          await new Promise(done => setTimeout(done, checkInterval));
+          elapsed += checkInterval;
+
+          canvasReady = await page.evaluate(() => {
+            const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+            if (!canvas) return false;
+            // Check if canvas has non-zero dimensions
+            return canvas.width > 0 && canvas.height > 0;
+          });
+        }
+
+        if (!canvasReady) {
+          logger.warn('Canvas not ready after injection, proceeding with capture anyway');
+        }
+
+        // Additional wait for render to complete
+        await new Promise(done => setTimeout(done, 500));
       } else {
         // Injection failed - abort capture to avoid empty/misleading screenshots
         logger.error('__injectScene not available after retries - aborting capture');
