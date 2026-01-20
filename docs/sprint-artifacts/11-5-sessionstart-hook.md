@@ -45,6 +45,12 @@ So that **이전 작업을 이어서 할 수 있다** (FR71).
 **When** `initialize` 응답을 보낼 때
 **Then** `sessionContext` 필드에 Hook 결과가 포함된다
 
+### AC7: 빈 데이터 처리
+**Given** 체크포인트나 결정이 없을 때
+**When** `onSessionInit` Hook이 실행되면
+**Then** checkpoint=null, decisions=[]로 정상 응답한다
+**And** 에러 없이 세션이 시작된다
+
 ## Tasks / Subtasks
 
 - [ ] Task 1: 설정 파일 관리 (AC: #5)
