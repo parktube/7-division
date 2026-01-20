@@ -2,6 +2,8 @@
 
 AI 에이전트(Claude, Gemini, Cursor, Copilot 등)를 위한 개발 규칙.
 
+**[Live Demo](https://parktube.github.io/7-division/)** | **[npm Package](https://www.npmjs.com/package/@ai-native-cad/mcp)**
+
 ## 아키텍처 개요
 
 ```

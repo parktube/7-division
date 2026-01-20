@@ -3,6 +3,8 @@
 > **협업 리더**: @parktube
 > **Repository**: https://github.com/parktube/7-division
 
+**[Live Demo](https://parktube.github.io/7-division/)** | **[npm Package](https://www.npmjs.com/package/@ai-native-cad/mcp)**
+
 **현재 상태**: Epic 1~10 완료 (MVP + 웹 아키텍처 + AX 개선)
 
 ## Quick Start

@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code when working with code in this repository.
 
+**[Live Demo](https://parktube.github.io/7-division/)** | **[npm Package](https://www.npmjs.com/package/@ai-native-cad/mcp)**
+
 ## Project Overview
 
 **7-division (도화지)**: AI-Native CAD 프로젝트
