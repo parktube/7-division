@@ -247,10 +247,10 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 | ID | 요구사항 | ADR | 수용 기준 |
 |----|---------|-----|----------|
-| FR75 | Graph Health Metrics | [ADR-0019](./adr/0019-graph-health-metrics.md) | debates >= 10% 유지. Stale Decision(90일) 감지 |
-| FR76 | Anti-Echo Chamber | [ADR-0021](./adr/0021-anti-echo-chamber.md) | 반론 장려. "다른 관점에서..." 제안 |
-| FR77 | Adaptive Mentoring | [ADR-0020](./adr/0020-adaptive-mentoring.md) | 숙련도별 힌트 수준 조절. 초보자 상세, 숙련자 간략 |
-| FR78 | Module Recommendation | [ADR-0024](./adr/0024-module-library-recommendation.md) | MAMA 임베딩으로 "의자 만들어줘" → chair 모듈 추천 |
+| FR75 | Configurable Context | [ADR-0017](./adr/0017-configurable-context.md) | none/hint/full 모드. 토큰 사용량 조절 |
+| FR76 | Adaptive Mentoring | [ADR-0020](./adr/0020-adaptive-mentoring.md) | 숙련도별 힌트 수준 조절. 초보자 상세, 숙련자 간략 |
+| FR77 | Graph Health Metrics | [ADR-0019](./adr/0019-graph-health-metrics.md) | debates >= 10% 유지. Stale Decision(90일) 감지 |
+| FR78 | Anti-Echo Chamber | [ADR-0021](./adr/0021-anti-echo-chamber.md) | 반론 장려. "다른 관점에서..." 제안 |
 
 #### Phase 11.4: Learning Track (신규)
 

@@ -95,13 +95,14 @@ So that **이전 작업을 이어서 할 수 있다** (FR71).
 
 ### Technical Requirements
 
-**설정 파일 (ADR-0017):**
+**설정 파일 (`~/.ai-native-cad/config.json`, ADR-0017):**
 ```json
-// ~/.ai-native-cad/config.json
 {
-  "contextInjection": "hint"  // "none" | "hint" | "full"
+  "contextInjection": "hint"
 }
 ```
+
+> `contextInjection`: `"none"` | `"hint"` | `"full"`
 
 **HookRegistry 인터페이스:**
 ```typescript

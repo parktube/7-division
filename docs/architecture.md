@@ -153,7 +153,7 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 
 #### Requirements Overview
 
-**Functional Requirements (PRD FR67~FR80):**
+**Functional Requirements (PRD FR67~FR87):**
 
 | Phase | FR | 요구사항 | ADR |
 |-------|-----|---------|-----|
@@ -169,8 +169,13 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 | Intelligence | FR76 | Adaptive Mentoring | ADR-0020 |
 | Intelligence | FR77 | Graph Health Metrics | ADR-0019 |
 | Intelligence | FR78 | Anti-Echo Chamber | ADR-0021 |
-| Platform | FR79 | LLM Adapter Pattern | ADR-0023 |
-| Platform | FR80 | Module Library Recommendation | ADR-0024 |
+| Learning | FR81 | Learning Progress Storage | ADR-0025 |
+| Learning | FR82 | User Growth Metrics | ADR-0025 |
+| Learning | FR83 | DesignHints System | ADR-0025 |
+| Learning | FR84 | Terminology Evolution | ADR-0025 |
+| Platform | FR85 | MCP 내부 통합 | - |
+| Platform | FR86 | 도메인 폴더 구조 | - |
+| Platform | FR87 | LLM Adapter Pattern | ADR-0023 |
 
 **Non-Functional Requirements:**
 - 임베딩 생성: < 50ms (multilingual-e5)
@@ -764,6 +769,51 @@ CREATE TABLE hints (
 );
 
 CREATE INDEX idx_hints_tool ON hints(tool_name);
+
+-- learnings: 사용자 학습 진행 (Phase 11.4)
+CREATE TABLE learnings (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  concept TEXT NOT NULL,           -- '60-30-10 법칙', '동선', 'Japandi'
+  domain TEXT,                     -- 'color_theory', 'spatial', 'style'
+  understanding_level INTEGER DEFAULT 1 CHECK(understanding_level BETWEEN 1 AND 4),
+  first_introduced INTEGER,        -- Unix timestamp (seconds)
+  last_applied INTEGER,
+  applied_count INTEGER DEFAULT 0,
+  created_at INTEGER
+);
+
+CREATE INDEX idx_learnings_user ON learnings(user_id);
+CREATE UNIQUE INDEX idx_learnings_user_concept ON learnings(user_id, concept);
+
+-- growth_metrics: 사용자 성장 지표 (Phase 11.4)
+CREATE TABLE growth_metrics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  metric_type TEXT NOT NULL,       -- 'independent_decision', 'concept_applied',
+                                   -- 'tradeoff_predicted', 'terminology_used'
+  related_learning_id TEXT,
+  related_decision_id TEXT,
+  context TEXT,
+  created_at INTEGER,              -- Unix timestamp (seconds)
+  FOREIGN KEY (related_learning_id) REFERENCES learnings(id),
+  FOREIGN KEY (related_decision_id) REFERENCES decisions(id)
+);
+
+CREATE INDEX idx_growth_metrics_user ON growth_metrics(user_id);
+
+-- terminology_evolution: 용어 변화 추적 (Phase 11.4)
+CREATE TABLE terminology_evolution (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  before_term TEXT NOT NULL,       -- '미니멀하게'
+  after_term TEXT NOT NULL,        -- 'Japandi 스타일로'
+  learning_id TEXT,                -- 관련 학습 ID
+  created_at INTEGER,
+  FOREIGN KEY (learning_id) REFERENCES learnings(id)
+);
+
+CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 ```
 
 #### 4.6.2 5-Layer Narrative for Reasoning
@@ -996,7 +1046,8 @@ apps/cad-mcp/
 | **Phase 1: Core** | DB + 4 Tools | mama.db, save/search/update/load | FR67-70 |
 | **Phase 2: Hook** | Hook System | onSessionInit, preToolList, postExecute | FR71-74 |
 | **Phase 3: Intelligence** | 컨텍스트 + 멘토링 | Configurable Context, Adaptive Mentoring | FR75-78 |
-| **Phase 4: Platform** | LLM Adapter + 모듈 추천 | LLMAdapter, Module Library | FR79-80 |
+| **Phase 4: Learning** | 사용자 성장 추적 | learnings, growth_metrics | FR81-84 |
+| **Phase 5: Platform** | LLM Adapter + MCP 통합 | LLMAdapter, 도메인 폴더 | FR85-87 |
 
 #### Phase 1: Core (FR67-70)
 
@@ -1024,13 +1075,19 @@ apps/cad-mcp/
 - [ ] Anti-Echo Chamber 경고 구현 (ADR-0021)
 - [ ] 90일 이상 된 결정 경고
 
-#### Phase 4: Platform (FR79-80)
+#### Phase 4: Learning Track (FR81-84)
 
+- [ ] learnings 테이블 구현 (개념 학습 저장)
+- [ ] growth_metrics 테이블 구현 (성장 지표)
+- [ ] DesignHints 시스템 구현 (Human CoT 유도)
+- [ ] terminology_evolution 테이블 구현 (용어 변화)
+
+#### Phase 5: Platform (FR85-87)
+
+- [ ] MCP 내부 통합 (npm install 시 MAMA 포함)
+- [ ] 도메인 폴더 구조 (domains/)
 - [ ] LLMAdapter 인터페이스 정의
-- [ ] ClaudeAdapter 구현
-- [ ] OllamaAdapter 구현
-- [ ] 모듈 메타데이터 파싱 (JSDoc)
-- [ ] 모듈 추천 API 구현
+- [ ] ClaudeAdapter, OllamaAdapter 구현
 
 ### 4.11 Architecture Validation
 
@@ -1050,7 +1107,8 @@ apps/cad-mcp/
 | FR67-70 (Core) | MAMA Module (4 Tools) | Phase 1 |
 | FR71-74 (Hook) | Hook Registry | Phase 2 |
 | FR75-78 (Intelligence) | Configurable Context, Mentoring | Phase 3 |
-| FR79-80 (Platform) | LLMAdapter, Module Library | Phase 4 |
+| FR81-84 (Learning) | Learning Progress, Growth Metrics | Phase 4 |
+| FR85-87 (Platform) | LLMAdapter, MCP 통합 | Phase 5 |
 
 #### Technical Risk Assessment
 

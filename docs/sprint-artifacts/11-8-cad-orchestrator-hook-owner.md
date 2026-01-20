@@ -104,18 +104,21 @@ class CADOrchestrator {
   async handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
     try {
       switch (request.method) {
-        case 'initialize':
+        case 'initialize': {
           const sessionContext = await this.hooks.onSessionInit();
           return { ...baseInitResponse, sessionContext };
+        }
 
-        case 'tools/list':
+        case 'tools/list': {
           const tools = getBaseToolDefinitions();
           const enhanced = await this.hooks.preToolList(tools);
           return { tools: enhanced };
+        }
 
-        case 'tools/call':
+        case 'tools/call': {
           const result = await executeToolCall(request);
           return await this.hooks.postExecute(request.params.name, result);
+        }
 
         default:
           return handleOtherRequests(request);

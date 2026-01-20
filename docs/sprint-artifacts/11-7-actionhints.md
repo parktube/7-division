@@ -14,9 +14,9 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
 **Given** `edit`/`write` 도구 실행이 완료될 때
 **When** `postExecute` Hook이 실행되면
 **Then** actionHints가 결과에 포함된다:
-  - `next_steps`: 다음 작업 제안
-  - `module_hints`: 관련 모듈 추천
-  - `save_suggestion`: 결정 저장 제안
+  - `nextSteps`: 다음 작업 제안
+  - `moduleHints`: 관련 모듈 추천
+  - `saveSuggestion`: 결정 저장 제안
 
 ### AC2: 컨텍스트 기반 next_steps
 **Given** 방(room)을 생성한 후

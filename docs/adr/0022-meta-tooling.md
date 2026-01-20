@@ -59,7 +59,7 @@ LLM이 필요할 때 직접 JavaScript 코드를 작성하여 도구를 조립�
 - **트랜잭션**: WASM 엔진의 Undo 스택을 활용한 원자적 실행 보장
 - **피드백**: 스택트레이스를 LLM에게 전달하여 자가 수정 유도
 
-### 2. 노출되는 CAD 함수
+### 2.1 노출되는 CAD 함수
 
 ```javascript
 // Primitives
@@ -97,7 +97,7 @@ delete_entity({ name })
 
 > **Note**: Geometry 함수들은 CAD 엔진 고도화 시 추가 예정. 현재는 Primitives, Transforms, Styles, Groups, Query, Delete 함수 제공.
 
-### 3. 예시: 기어 톱니 그리기
+### 2.2 예시: 기어 톱니 그리기
 
 예시 1: 제어 흐름과 수식 사용 (기어 톱니)
 
@@ -131,7 +131,7 @@ run_cad_code(`
 `);
 ```
 
-### 3. 에러 피드백 기반 수정
+### 2.3 에러 피드백 기반 수정
 
 ```json
 {
@@ -146,16 +146,16 @@ run_cad_code(`
 
 LLM이 에러를 분석하고 코드를 수정하여 재시도 가능.
 
-### 4. 샌드박스 정책
+### 2.4 샌드박스 정책
 
 **보안 원칙:**
 - 타임아웃 및 메모리 제한 적용
 - 파일/네트워크 접근 차단
 - Node.js 내장 모듈 사용 불가
 
-> 구체적인 제한값과 차단 목록은 구현 스펙(`apps/cad-mcp/src/sandbox/config.ts`)에서 정의됨
+> 구체적인 제한값과 차단 목록은 구현 시 별도 설정 파일에서 정의됨
 
-### 5. MAMA Action Hints 흐름
+### 3. MAMA Action Hints 흐름
 
 패턴 저장 기능을 제공하지 않는다. 의도 일관성은 MAMA가 담당:
 
