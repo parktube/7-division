@@ -62,15 +62,18 @@ So that **토큰 사용량을 조절할 수 있다** (FR75).
 
 ### Technical Requirements
 
-**설정 파일:**
+**설정 파일 (`~/.ai-native-cad/config.json`):**
 ```json
-// ~/.ai-native-cad/config.json
 {
-  "contextInjection": "hint",  // "none" | "hint" | "full"
-  "maxDecisions": 5,           // full 모드 시 최대 결정 수
-  "maxCheckpointAge": 7        // 체크포인트 최대 일수
+  "contextInjection": "hint",
+  "maxDecisions": 5,
+  "maxCheckpointAge": 7
 }
 ```
+
+> - `contextInjection`: `"none"` | `"hint"` | `"full"`
+> - `maxDecisions`: full 모드 시 최대 결정 수
+> - `maxCheckpointAge`: 체크포인트 최대 일수
 
 **set_context_mode 도구:**
 ```typescript
