@@ -23,12 +23,18 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
 ### AC3: OllamaAdapter 구현
 **Given** OllamaAdapter를 구현했을 때
 **When** 로컬 Ollama 서버에 연결하면
-**Then** 로컬 LLM으로 CAD 작업이 가능하다
+**Then** 기본 CAD 명령(`glob`, `read`, `write`)이 수행된다
+**And** 응답에 `adapter: 'ollama'` 식별자가 포함된다
+
+> **최소 성공 시나리오**: `glob()` 호출 → 파일 목록 반환 확인
 
 ### AC4: OpenAIAdapter 구현 (선택)
 **Given** OpenAIAdapter를 구현했을 때
 **When** OpenAI API로 연결하면
-**Then** GPT 모델로 CAD 작업이 가능하다
+**Then** 기본 CAD 명령(`glob`, `read`, `write`)이 수행된다
+**And** 응답에 `adapter: 'openai'` 식별자가 포함된다
+
+> **최소 성공 시나리오**: `glob()` 호출 → 파일 목록 반환 확인
 
 ### AC5: Adapter 런타임 교체
 **Given** 런타임에 Adapter를 교체할 때

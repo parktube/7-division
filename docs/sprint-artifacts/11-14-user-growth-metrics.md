@@ -93,15 +93,20 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 ```sql
 CREATE TABLE growth_metrics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,         -- 사용자 식별자 (다중 사용자 지원)
   metric_type TEXT NOT NULL,     -- 'independent_decision', 'concept_applied',
                                  -- 'tradeoff_predicted', 'terminology_used'
   related_learning_id TEXT,
   related_decision_id TEXT,
   context TEXT,                  -- 어떤 상황에서 발생했는지
-  created_at INTEGER,
+  created_at INTEGER,            -- Unix timestamp (seconds)
   FOREIGN KEY (related_learning_id) REFERENCES learnings(id),
   FOREIGN KEY (related_decision_id) REFERENCES decisions(id)
 );
+
+-- 사용자별 성장 지표 조회 최적화
+CREATE INDEX idx_growth_metrics_user ON growth_metrics(user_id);
+CREATE INDEX idx_growth_metrics_type ON growth_metrics(metric_type);
 ```
 
 **성장 지표 정의:**

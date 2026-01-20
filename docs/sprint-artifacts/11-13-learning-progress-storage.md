@@ -83,12 +83,14 @@ CREATE TABLE learnings (
   concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
   domain TEXT,                   -- 'color_theory', 'spatial', 'style'
   understanding_level INTEGER DEFAULT 1 CHECK(understanding_level BETWEEN 1 AND 4),
-  first_introduced INTEGER,
-  last_applied INTEGER,
+  first_introduced INTEGER,      -- Unix timestamp (seconds)
+  last_applied INTEGER,          -- Unix timestamp (seconds)
   applied_count INTEGER DEFAULT 0,
   user_explanation TEXT,         -- 사용자가 개념을 설명한 기록
-  created_at INTEGER
+  created_at INTEGER             -- Unix timestamp (seconds)
 );
+
+-- 타임스탬프 컬럼은 모두 Unix epoch seconds (Date.now() / 1000)
 
 -- 빈번한 검색 최적화를 위한 인덱스
 CREATE INDEX idx_learnings_user ON learnings(user_id);

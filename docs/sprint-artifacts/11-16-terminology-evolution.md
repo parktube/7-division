@@ -35,6 +35,10 @@ So that **성장을 가시화할 수 있다** (FR84).
 **When** 같은 의미의 더 전문적인 용어를 사용하면
 **Then** 자동으로 terminology_evolution에 기록된다
 
+> **감지 기준** (우선순위):
+> 1. **매핑 사전 매치**: `term_mappings` 테이블의 before→after 매핑
+> 2. **임베딩 유사도**: cosine similarity ≥ 0.85 + 전문성 점수 증가
+
 ## Tasks / Subtasks
 
 - [ ] Task 1: terminology_evolution 테이블 생성 (AC: #1, #2)
