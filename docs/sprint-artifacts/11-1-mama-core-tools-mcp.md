@@ -102,7 +102,7 @@ So that **설계 결정을 저장하고 검색할 수 있다** (FR67).
 
 - **MCP 서버 내부 통합**: 별도 플러그인 없이 `@ai-native-cad/mcp`에 포함
 - **DB 위치**: `~/.ai-native-cad/data/mama.db` (ADR-0016)
-- **MCP Tool Names**: `mcp__ai-native-cad__mama_save`, `mama_search`, `mama_update`, `mama_checkpoint`
+- **MCP Tool Names**: `mcp__ai-native-cad__mama_save`, `mcp__ai-native-cad__mama_search`, `mcp__ai-native-cad__mama_update`, `mcp__ai-native-cad__mama_checkpoint`
 - **기존 MAMA v1.5.0 패턴 재사용** (ADR-0011)
 
 ### Technical Requirements
@@ -155,7 +155,7 @@ CREATE TABLE decisions (
   reasoning TEXT,
   outcome TEXT,              -- 'success', 'failed', 'partial', NULL(pending)
   confidence REAL DEFAULT 0.5,
-  embedding BLOB,            -- Float32Array (Phase 2에서 구현)
+  embedding BLOB,            -- Float32Array (시맨틱 검색용, Story 11.2 이후 구현)
   created_at INTEGER NOT NULL,
   updated_at INTEGER
 );

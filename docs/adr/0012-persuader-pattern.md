@@ -16,7 +16,9 @@ MAMA 도구가 Claude와 어떻게 상호작용할지 결정해야 한다. 명�
 
 **도구는 명령자가 아니라 설득자**
 
-Tool Description 스타일:
+> **원칙**: 도구 설명은 행동을 유도하되 강제하지 않는다. 아래는 예시 포맷이며, 구체적인 스타일(이모지, 섹션명)은 구현 시 조정 가능.
+
+Tool Description 스타일 (예시):
 ```
 ⚡ TRIGGERS - Call this when:
 • User says: "기억해줘", "remember", "decided"

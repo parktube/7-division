@@ -93,9 +93,9 @@ interface CADToolResult {
   data: unknown;
   error?: string;
   actionHints?: {
-    next_steps?: NextStep[];
-    module_hints?: string[];
-    save_suggestion?: SaveSuggestion;
+    nextSteps?: NextStep[];      // camelCase로 통일
+    moduleHints?: string[];
+    saveSuggestion?: SaveSuggestion;
   };
 }
 

@@ -86,9 +86,16 @@ ungroup({ name })
 list_entities()  // → string[]
 get_entity({ name })  // → Entity
 
+// Geometry (확장 예정)
+get_intersection({ a, b })  // 두 엔티티 교차점
+get_point_at_distance({ entity, from, distance })  // 특정 거리의 점
+trim_at_point({ entity, point, keep })  // 트리밍
+
 // Delete
 delete_entity({ name })
 ```
+
+> **Note**: Geometry 함수들은 CAD 엔진 고도화 시 추가 예정. 현재는 Primitives, Transforms, Styles, Groups, Query, Delete 함수 제공.
 
 ### 3. 예시: 기어 톱니 그리기
 
@@ -120,7 +127,7 @@ run_cad_code(`
   const p2 = get_point_at_distance({ entity: "wall_1", from: p1.points[0], distance: 20 });
   
   // 3. 해당 점을 기준으로 트리밍
-  trim_at({ entity: "wall_1", point: p2.point, keep: "start" });
+  trim_at_point({ entity: "wall_1", point: p2.point, keep: "start" });
 `);
 ```
 

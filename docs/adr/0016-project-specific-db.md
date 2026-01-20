@@ -32,18 +32,16 @@ MAMA 메모리 DB의 위치와 구조를 결정해야 한다. 글로벌 단일 D
 - `furniture:chair_ergonomics` - 가구 설계 결정
 - `interior:wall_thickness` - 인테리어 설계 결정
 
-**DB 스키마:**
-```sql
-CREATE TABLE decisions (
-  id TEXT PRIMARY KEY,
-  topic TEXT NOT NULL,           -- 'voxel:chicken', 'furniture:chair' 등
-  decision TEXT NOT NULL,
-  reasoning TEXT,
-  outcome TEXT,
-  confidence REAL DEFAULT 0.5,
-  created_at INTEGER
-);
+**DB 개념 모델:**
 ```
+decisions 테이블:
+├── id (PK)
+├── topic (도메인 prefix 포함, 예: 'voxel:chicken')
+├── decision, reasoning, outcome, confidence
+└── created_at
+```
+
+> **구현 스펙**: 상세 스키마는 `apps/cad-mcp/src/mama/schema.ts` 참조
 
 ## Rationale
 

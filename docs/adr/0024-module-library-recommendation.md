@@ -67,6 +67,8 @@ Score = (semantic_similarity × 0.6) + (usage_frequency × 0.3) + (recency × 0.
 | usage_frequency | 0.3 | 사용 횟수 정규화 |
 | recency | 0.1 | 최근 사용일 기준 |
 
+> **가중치 검증 필요**: 위 값은 초기 추정치. 실제 사용 데이터 수집 후 A/B 테스트로 최적화 권장.
+
 ---
 
 ## 4. 아키텍처

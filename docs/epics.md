@@ -803,7 +803,8 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 
 **Given** 사용자가 AI 제안 없이 결정을 내릴 때
 **When** "침대는 계단에서 안 보이는 곳에 놓을게 (동선 때문에)"라고 말하면
-**Then** growth_metrics에 type='independent_decision', related_learning_id=동선 기록
+**Then** growth_metrics에 type='independent_decision', related_learning_id 기록
+> **매핑 기준**: "동선" 키워드가 learnings 테이블의 concept과 일치하면 해당 learning.id 연결
 
 **Given** 사용자가 트레이드오프를 먼저 언급할 때
 **When** "나무 난간으로 바꾸면 개방감이 줄어들겠지?"라고 말하면
