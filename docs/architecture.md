@@ -14,7 +14,7 @@ date: '2026-01-14'
 # Architecture Document - AI-Native CAD
 
 **Last Updated:** 2026-01-16
-**Status:** Epic 1~9 완료, Epic 10 (AX 개선) 진행 중
+**Status:** Epic 1~10 완료, Epic 11 (MAMA Integration) 계획 중
 
 _이 문서는 BMAD Architecture Workflow로 작성되었습니다._
 
@@ -1348,6 +1348,212 @@ if (!execResult.success) {
 - `bash({ command: 'reset' })`: 수동 reset, main.js 재실행 안 함
 - 사용자가 의도적으로 빈 씬을 원할 때 사용
 - edit/write 후 자동 reset과 구분됨
+
+---
+
+## Part 4: MAMA Integration (Epic 11) - 계획됨
+
+> AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
+
+### 4.1 Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    MAMA + CAD Architecture                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐         ┌─────────────────┐                    │
+│  │  메인 LLM   │         │  MAMA           │                    │
+│  │  (Claude)   │◄───────►│  + 로컬 LLM     │                    │
+│  │             │         │  (exaone 2.4B)  │                    │
+│  │  • 사용자 대화│         │                 │                    │
+│  │  • 복잡한 추론│         │  • ActionHints  │                    │
+│  │  • 최종 코드 │         │  • 결정 저장    │                    │
+│  └─────────────┘         │  • 모듈 추천    │                    │
+│                          └─────────────────┘                    │
+│                                   │                              │
+│                                   ▼                              │
+│                          ┌─────────────────┐                    │
+│                          │  Local DB       │                    │
+│                          │  (SQLite)       │                    │
+│                          └─────────────────┘                    │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Core Tools (4개)
+
+| 도구 | 용도 |
+|------|------|
+| `save` | Decision 또는 Checkpoint 저장 |
+| `search` | 시맨틱 검색 또는 최근 항목 조회 |
+| `update` | 결정 결과 추적 (success/failed/partial) |
+| `load_checkpoint` | 세션 복원 |
+
+**원칙**: 도구 수 최소화 → Claude 추론 유연성 증가
+
+### 4.3 LLM-Agnostic Architecture
+
+```typescript
+// 공통 인터페이스
+interface LLMAdapter {
+  chat(messages: Message[], tools: ToolDef[]): Promise<LLMResponse>;
+}
+
+// Claude Adapter
+class ClaudeAdapter implements LLMAdapter { ... }
+
+// Ollama Adapter (로컬)
+class OllamaAdapter implements LLMAdapter { ... }
+```
+
+**장점**: 도구 실행 로직은 LLM과 **완전 분리**. 어댑터만 교체하면 어떤 LLM이든 사용 가능.
+
+### 4.4 LLM 역할 분담
+
+| 역할 | 메인 LLM (Claude/Ollama) | 로컬 LLM (exaone 2.4B) |
+|------|-------------------------|------------------------|
+| 사용자 대화 | ✅ | ❌ |
+| 설계 추론 | ✅ | ❌ |
+| **ActionHints 생성** | ✅ | ❌ |
+| **번역 (한↔영)** | ❌ | ✅ |
+| **검색 결과 랭킹** | ❌ | ✅ |
+| 최종 코드 결정 | ✅ | ❌ |
+
+**핵심**: 로컬 LLM은 추론 불가 → 번역 + 랭킹만 담당 (현재 MAMA 수준)
+
+### 4.5 Hook 시스템 (Claude Code 패턴 미러링)
+
+```
+CAD 내부 Hook 시스템:
+┌─────────────────────────────────────────────────────────────┐
+│ onSessionInit (SessionStart 패턴)                            │
+│ - 마지막 체크포인트 로드                                        │
+│ - 최근 결정 요약 제공                                          │
+│ - 프로젝트별 힌트 준비                                         │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ preExecute (PreToolUse 패턴)                                 │
+│ - Lock Guard: 잠긴 엔티티 수정 차단                             │
+│ - MAMA Hook: 동적 제약 조건 체크                               │
+│ - Dynamic Hints: 상황별 힌트 주입                              │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ [run_cad_code 실행]                                          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ ActionHints (PostToolUse 패턴)                               │
+│ - next_steps: 다음 작업 제안                                   │
+│ - module_hints: 관련 모듈 추천                                 │
+│ - save_suggestion: 결정 저장 제안                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**원칙**: Claude Code Hook 패턴을 내부화하여 모든 LLM에서 동일하게 작동
+
+### 4.6 배포 아키텍처
+
+**결정**: MCP 서버 내부 통합 (별도 플러그인 X)
+
+```
+apps/cad-mcp/
+├── src/
+│   ├── mama/           # MAMA 모듈 (통합)
+│   │   ├── db.ts
+│   │   ├── tools.ts
+│   │   └── search.ts
+│   └── ...
+└── package.json        # 단일 패키지로 배포
+```
+
+**장점**: npm install 시 MAMA 포함, 별도 설정 불필요
+
+### 4.7 저장 구조
+
+```
+~/.ai-native-cad/
+├── data/
+│   └── mama.db         # 단일 DB (topic prefix로 도메인 구분)
+└── domains/            # 도메인 지식 (읽기 전용)
+    ├── voxel/
+    │   ├── DOMAIN.md
+    │   ├── workflows/
+    │   ├── rules/
+    │   └── functions/
+    ├── furniture/
+    └── interior/
+```
+
+**원칙**: DB는 결정/체크포인트만, 도메인 지식은 폴더로 관리
+
+### 4.8 데이터 스키마
+
+```sql
+-- decisions: 설계 결정 저장 (MAMA Core)
+CREATE TABLE decisions (
+  id TEXT PRIMARY KEY,
+  topic TEXT NOT NULL,           -- 'furniture:chair', 'voxel:chicken' 등
+  decision TEXT NOT NULL,
+  reasoning TEXT,
+  outcome TEXT,                  -- 'success', 'failed', 'partial'
+  confidence REAL DEFAULT 0.5,
+  created_at INTEGER
+);
+
+-- decision_edges: 결정 관계 (Reasoning Graph)
+CREATE TABLE decision_edges (
+  from_id TEXT,
+  to_id TEXT,
+  relationship TEXT,             -- 'supersedes', 'builds_on', 'debates', 'synthesizes'
+  PRIMARY KEY (from_id, to_id, relationship)
+);
+
+-- sessions: 세션/체크포인트
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  summary TEXT,
+  next_steps TEXT,
+  open_files TEXT,
+  created_at INTEGER
+);
+
+-- hints: 도구별 동적 힌트
+CREATE TABLE hints (
+  id INTEGER PRIMARY KEY,
+  tool_name TEXT NOT NULL,
+  hint_text TEXT NOT NULL,
+  priority INTEGER DEFAULT 5,
+  tags TEXT,                     -- JSON: ["wall", "room", "extend"]
+  source TEXT                    -- 'user', 'system', 'learned'
+);
+```
+
+### 4.9 Reasoning Graph
+
+```
+Decision A (topic: auth_strategy)
+    │
+    ├─builds_on→ Decision B (topic: auth_implementation)
+    │
+    └─debates→ Decision C (topic: auth_alternative)
+                   │
+                   └─synthesizes→ Decision D (최종 결론)
+```
+
+**관계 유형**:
+- `supersedes`: 같은 topic의 새 결정이 이전 결정을 대체
+- `builds_on`: 기존 결정 위에 구축
+- `debates`: 대안 제시
+- `synthesizes`: 여러 결정을 종합
+
+### 4.10 Related Documents
+
+- [ADR-0011](./adr/0011-mama-core-reuse.md) - MAMA Core 4 Tools 재사용
+- [ADR-0018](./adr/0018-llm-agnostic-hooks.md) - LLM-Agnostic Hook Abstraction
+- [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md) - LLM-Agnostic 아키텍처
 
 ---
 

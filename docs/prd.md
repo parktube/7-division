@@ -1,5 +1,5 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 inputDocuments:
   - docs/analysis/product-brief-r2-7f-division-2025-12-14.md
   - docs/ax-design-guide.md
@@ -21,7 +21,7 @@ date: '2025-12-14'
 **Author:** Hoons
 **Date:** 2025-01-06
 **Last Updated:** 2026-01-16
-**Status:** Epic 1~9 완료, Epic 10 (AX 개선) 계획 중
+**Status:** Epic 1~10 완료, Epic 11 (MAMA Integration) 계획 중
 
 ---
 
@@ -48,7 +48,7 @@ AI는 자동 생성기가 아닌 협업적 창작 파트너로서, 질문하고 
 **Technical Type:** Web App (브라우저 + Local MCP)
 **Domain:** Design Tools / Creative
 **Complexity:** High (새로운 패러다임)
-**Project Context:** Epic 1~9 완료, AX 개선 진행 중
+**Project Context:** Epic 1~10 완료, MAMA Integration 계획 중
 
 ---
 
@@ -198,7 +198,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 ## Functional Requirements
 
-### 완료 (FR1~FR50) ✅
+### 완료 (FR1~FR66) ✅
 
 | Epic | FR | 요약 |
 |------|-----|------|
@@ -206,81 +206,112 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | 4~5 | FR21~FR29 | 그룹화, 피봇, Selection UI |
 | 7 | FR31~FR42 | 3패널, 트리뷰, 스케치 모드, 이중 좌표 |
 | 8 | FR43~FR50 | Boolean 연산, 기하 분석, 텍스트 렌더링 |
+| 9 | FR51~FR58 | 웹 아키텍처 (모노레포, WebSocket, GitHub Pages, npm) |
+| 10 | FR59~FR66 | AX 개선 (Claude Code 패턴 MCP 도구: glob, read, edit, write, lsp, bash) |
 
-상세: [epics.md](./epics.md) 참조
+상세: [epics.md](./epics.md), [ADR-007](./adr/007-web-architecture.md), [ADR-008](./adr/008-tool-pattern-alignment.md) 참조
 
-### 완료: 웹 아키텍처 (FR51~FR58) ✅
+### 계획 중: Epic 11 - MAMA Integration (FR67~FR79)
 
-| ID | 요구사항 | 설명 |
-|----|---------|------|
-| FR51 | 모노레포 전환 | pnpm workspace (apps/viewer, apps/cad-mcp, packages/shared) |
-| FR52 | WebSocket 통신 | MCP ↔ Viewer 실시간 동기화 |
-| FR53 | MCP stdio 서버 | Claude Code 연동 |
-| FR54 | MCP WebSocket 서버 | Viewer 연동 |
-| FR55 | GitHub Pages 배포 | 정적 호스팅 |
-| FR56 | npm 패키지 배포 | @ai-native-cad/mcp |
-| FR57 | 온보딩 UI | MCP 미연결 시 가이드 |
-| FR58 | 버전 호환성 체크 | MCP ↔ Viewer 버전 검증 |
+> AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
-### 진행 중: AX 개선 - MCP 도구 재설계 (FR59~FR65)
+#### 왜 MAMA가 필요한가?
 
-**문제**: LLM이 MCP CAD 도구를 올바르게 사용하지 못함
-- `cad_code`를 "실행기"로 인식 → Read-first 패턴 무시
-- 기존 모듈 확인 없이 새 모듈 생성
-- 통합 도구의 "기본 모드"만 사용
+**현재 AI 도구의 한계:**
 
-**해결**: Claude Code 패턴과 완전히 일치하도록 도구 재설계
-
-| ID | 요구사항 | 설명 |
-|----|---------|------|
-| FR59 | glob 도구 | 파일 목록 조회 (main + 모듈), Glob 패턴 일치 |
-| FR60 | read 도구 | 파일 읽기, Read-first 패턴 강제 |
-| FR61 | edit 도구 | 파일 부분 수정 → 자동 실행, old_code/new_code |
-| FR62 | write 도구 | 파일 전체 작성 → 자동 실행 |
-| FR63 | lsp 도구 | 코드 인텔리전스 (도메인/함수 탐색) |
-| FR64 | bash 도구 | 명령 실행 (씬 조회, 내보내기, reset) |
-| FR65 | 레거시 도구 제거 | cad_code, discovery, scene, export, module 제거 |
-| FR66 | HMR 스타일 실행 | 매번 reset + main.js 재실행, scene.json 동기화 유지 |
-
-**도구 매핑**:
 ```
-Claude Code       →   MCP CAD (신규)
-─────────────────────────────────────
-Glob              →   glob
-Read              →   read
-Edit              →   edit
-Write             →   write
-LSP               →   lsp
-Bash              →   bash
+[월요일] "외벽은 200mm, 내벽은 100mm로 해줘" → AI: 완료!
+[수요일] "벽 하나 더 그려줘" → AI: 벽 두께를 알려주세요.
+         → 나: (또 설명해야 하나...)
+
+[3개월 후]
+- 내가 선호하는 작업 방식? 모름
+- 자주 쓰는 모듈? 모름
+- 프로젝트 맥락? 매번 새로움
 ```
+
+**MAMA 도입 후:**
+
+```
+[수요일] "벽 하나 더 그려줘"
+→ AI: 외벽 200mm로 그릴까요, 내벽 100mm로 그릴까요?
+       (지난 월요일에 정한 기준입니다)
+
+[3개월 후]
+- "평소처럼 wall_extend 모듈 쓸까요?"
+- "이 프로젝트에서는 항상 동쪽부터 시작하셨죠"
+- "비슷한 작업할 때 OOO 방식이 잘 됐었어요"
+```
+
+> **MAMA = AI에게 장기 기억을 주어 진정한 설계 파트너로 만드는 시스템**
+
+#### Functional Requirements 상세
+
+| ID | 요구사항 | 설명 | 수용 기준 |
+|----|---------|------|----------|
+| FR67 | 세션 컨텍스트 자동 로드 | 세션 시작 시 이전 작업 상태, 결정을 자동으로 제공 | SessionStart 시 최근 5개 결정 + 마지막 체크포인트 자동 주입 |
+| FR68 | Claude 주도 결정 저장 | 중요 설계 결정 저장 (topic, decision, reasoning) | LLM이 save 호출 시 topic으로 분류, reasoning 필수 |
+| FR69 | Reasoning Graph | 결정 관계 추적 (supersedes, builds_on, debates, synthesizes) | 같은 topic 결정 시 자동 supersede, 관계 명시적 지정 가능 |
+| FR70 | Outcome Tracking | 결정의 성공/실패 기록 (success, failed, partial) | update 도구로 결과 기록, 실패 시 reasoning 필수 |
+| FR71 | LLM-Agnostic 설계 | Claude 외 LLM (Ollama, OpenAI) 교체 가능 | LLMAdapter 인터페이스로 분리, Ollama PoC 검증 완료 |
+| FR72 | 로컬 LLM 하이브리드 | exaone 2.4B로 번역 + 검색 랭킹 | 현재 MAMA 수준, ActionHints 생성은 메인 LLM |
+| FR73 | 4 Core Tools | save, search, update, load_checkpoint | 현재 MAMA 도구 그대로 재사용 |
+| FR74 | 컨텍스트 주입 레벨 | none, hint, full 설정 가능 | config.yaml에서 설정, 기본값 hint |
+| FR75 | Bias Warning | Echo Chamber, Stale Decision(90일) 감지 | debates < 10% 시 경고, 90일 이상 결정 stale 표시 |
+| FR76 | 모듈 추천 | MAMA 임베딩으로 모듈 의미 검색 | "의자 만들어줘" → chair 모듈 추천 |
+| FR77 | MCP 내부 통합 | MAMA를 MCP 서버 내부에 통합 배포 | npm install 시 MAMA 포함, 별도 설정 불필요 |
+| FR78 | ActionHints System | 메인 LLM이 생성, MAMA가 저장/검색 | 도구 실행 후 next_steps, module_hints 반환 |
+| FR79 | 도메인 폴더 구조 | domains/ 폴더에 워크플로우, 규칙, 함수 가이드 | voxel/, furniture/, interior/ 기본 제공 |
+
+#### 데이터 스키마
+
+```sql
+-- decisions: 설계 결정 저장
+decisions (id, topic, decision, reasoning, outcome, confidence, created_at)
+
+-- decision_edges: 결정 관계 (Reasoning Graph)
+decision_edges (from_id, to_id, relationship)  -- supersedes, builds_on, debates, synthesizes
+
+-- sessions: 세션/체크포인트
+sessions (id, summary, next_steps, open_files, created_at)
+
+-- hints: 도구별 힌트
+hints (id, tool_name, hint_text, priority, tags, source)
+```
+
+#### 의존성
+
+- **better-sqlite3**: 로컬 DB (MCP 패키지에 포함)
+- **현재 MAMA 코드**: Core 4 Tools 재사용
+- **exaone 2.4B**: 번역 + 검색 랭킹 (선택적)
+
+상세 설계: [ADR-0011](./adr/0011-mama-core-reuse.md), [ADR-0018](./adr/0018-llm-agnostic-hooks.md), [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md)
 
 ## Non-Functional Requirements
 
-### 완료 (NFR1~NFR20) ✅
+### 완료 (NFR1~NFR26) ✅
 
-성능, 오프라인 동작, 패널 리사이즈 60fps - 모두 충족.
+| 범위 | 요약 |
+|------|------|
+| NFR1~NFR20 | 성능, 오프라인 동작, 패널 리사이즈 60fps |
+| NFR21~NFR23 | 웹 아키텍처 (WebSocket RTT < 15ms, 온보딩 < 1분) |
+| NFR24~NFR26 | AX 개선 (Read-first > 95%, 모듈 재사용 > 90%) |
 
-### 완료: 웹 아키텍처 ✅
-
-| ID | 요구사항 | 목표 |
-|----|---------|------|
-| NFR21 | WebSocket RTT | p50 < 15ms, p95 < 50ms |
-| NFR22 | 첫 온보딩 | < 1분 (npx 한 줄) |
-| NFR23 | 브라우저 호환 | Chrome, Firefox, Safari |
-
-### 진행 중: AX 개선
+### 계획 중: Epic 11 - MAMA (NFR27~NFR31)
 
 | ID | 요구사항 | 목표 |
 |----|---------|------|
-| NFR24 | Read-first 패턴 준수율 | > 95% |
-| NFR25 | 기존 모듈 재사용율 | > 90% |
-| NFR26 | 도구 학습 비용 | 0 (Claude Code 패턴 그대로) |
+| NFR27 | MAMA 검색 응답 | < 100ms (로컬 DB) |
+| NFR28 | 컨텍스트 주입 | SessionStart 시 자동 로드 |
+| NFR29 | LLM-Agnostic | Claude, OpenAI, Ollama 교체 가능 |
+| NFR30 | MCP 패키지 크기 | < 50MB (MAMA + 도메인 지식 포함) |
+| NFR31 | 로컬 LLM 지연 | exaone 번역/검색 < 200ms |
 
 ---
 
 ## Product Scope
 
-### 완료 (Epic 1~9) ✅
+### 완료 (Epic 1~10) ✅
 
 | Epic | 산출물 |
 |------|--------|
@@ -289,27 +320,34 @@ Bash              →   bash
 | 7 | React 뷰어, 3패널, 스케치 모드 |
 | 8 | Manifold Boolean, 텍스트 렌더링 |
 | 9 | 웹 아키텍처 (모노레포, WebSocket, GitHub Pages) |
+| 10 | AX 개선 (Claude Code 패턴 MCP 도구) |
 
-### 현재 진행: Epic 10 - AX 개선 (MCP 도구 재설계)
+### 계획 중: Epic 11 - MAMA Integration
 
-**목표**: LLM이 MCP 도구를 Claude Code처럼 자연스럽게 사용
+> AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
-**배경**: LLM은 이미 Claude Code 도구 패턴을 학습함. 같은 패턴을 사용하면 학습 비용 제로.
+**핵심 원칙**: Claude는 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함께 경험을 축적하며 성장하는 파트너
 
-| Phase | 범위 | 산출물 |
-|-------|------|--------|
-| 1 | 도구 설계 | ADR-008, 새 도구 스키마 정의 |
-| 2 | 구현 | glob, read, edit, write, lsp, bash |
-| 3 | 마이그레이션 | 레거시 도구 deprecated → 제거 |
-| 4 | 문서화 | CLAUDE.md, docs 업데이트 |
+| 기능 | 설명 |
+|------|------|
+| 세션 연속성 | 이전 작업 상태, 결정을 자동으로 로드 |
+| 결정 저장 | Claude 주도 설계 결정 저장 (topic, decision, reasoning) |
+| Reasoning Graph | 결정 관계 추적 (supersedes, builds_on, debates) |
+| LLM-Agnostic | Claude 외 다른 LLM (Ollama, OpenAI) 교체 가능 |
+| 로컬 LLM 하이브리드 | exaone 2.4B로 번역 + 검색 랭킹 (현재 MAMA 수준) |
+
+**성공 기준:**
+- 30일 후 맥락 기억, "이 AI는 나를 안다" 체감
+- 작은 LLM + MAMA = 큰 LLM의 효과 검증
 
 ### Post-MVP
 
 | 항목 | 설명 |
 |------|------|
-| MAMA 통합 | 세션 연속성, 결정 저장 |
-| DXF 출력 | 2D 업계 표준 |
+| SVG/DXF Import | 외부 파일 → JS 코드 변환 |
 | 3D 확장 | STEP/STL, wgpu |
+| 채팅 UI | 별도 웹 인터페이스 |
+
 
 ---
 
@@ -355,29 +393,174 @@ Bash              →   bash
 | AI 의도 오해석 | 반복 수정, 피드백 루프 |
 | React 전환 시 렌더링 버그 | 기존 로직 정확 포팅 + 비교 테스트 |
 | Transform 로직 복잡도 | 단위 테스트 작성 |
+| LLM 일관성 저하 | 설명 고정, 힌트만 동적 |
+| 인지 과부하 | Progressive Disclosure (none/hint/full) |
+| 수요 불확실 | PoC에 사용자 인터뷰 병행 |
+| Echo Chamber | debates ≥ 10% 유지 |
+
+---
+
+## Innovation & Novel Patterns
+
+### 핵심 혁신: AX-First MAMA
+
+> **MAMA의 사용자는 LLM이다.** 인간이 아닌 AI의 경험(Agent eXperience)을 최적화한다.
+
+**AX 설계 원칙:**
+
+| 원칙 | 적용 |
+|------|------|
+| 설명 고정 + 힌트 동적 | 함수 설명은 고정, 프로젝트 맥락만 힌트로 주입 |
+| Progressive Disclosure | MAMA가 LLM에게 정보를 점진적으로 제공 |
+| LLM이 UX를 이끈다 | MAMA → LLM → 인간 순서의 정보 흐름 |
+
+### 코드 기반 도구 확장
+
+**이전 접근 (도구 추가):**
+```
+❌ 도구 100개 나열 → LLM 혼란
+```
+
+**현재 접근 (코드 + LSP):**
+```
+✅ run_cad_code 샌드박스에서 함수 조합/생성
+✅ LSP로 새 함수 시그니처 노출
+✅ MAMA가 함수별 힌트 동적 주입
+```
+
+**함수 노출 구조:**
+```
+lsp({ operation: 'domains' })                         → 도메인 목록
+lsp({ operation: 'describe', domain: 'primitives' }) → 함수 시그니처
+lsp({ operation: 'schema', name: 'drawCircle' })     → 상세 + 💡 동적 힌트
+```
+
+### Top-Down Learning with AI Guide
+
+```
+전통 CAD (Bottom-Up):   선 → 면 → 3D → ... 6개월 후 의자
+우리 접근 (Top-Down):   "의자 만들자" → 필요한 것 그때그때 학습
+
+LLM이 가이드, MAMA가 맥락 기억, 인간이 의사결정
+```
+
+### CAD Domain Workflows (BMAD 확장)
+
+| BMAD | CAD MAMA |
+|------|----------|
+| PM Agent | 가구 Guide, PCB Guide |
+| create-prd workflow | furniture-chair workflow |
+| PRD.md | 의자 설계 + 제조 파일 + 사용자 성장 |
+
+### 플랫폼 확장성
+
+> DRP(Design Reasoning Protocol)가 성공하면 **모든 '의도 기반 창작 도구'**에 적용 가능
+
+```
+📐 CAD/제조 (현재 Focus)
+✏️ 전문 집필/기획
+💼 비즈니스 분석
+⚡ 회로 설계 (PCB)
+```
+
+### Validation Approach
+
+| 검증 항목 | 방법 | 목표 |
+|----------|------|------|
+| 타겟 사용자 존재? | 메이커 커뮤니티 인터뷰 | 5명 이상 |
+| AI 기억의 효과? | A/B 비교 | 반복 질문 50% 감소 |
+| LLM 행동 변화? | 힌트 유/무 비교 | 효율성 측정 |
+
+---
+
+## Developer Tool Specific Requirements
+
+### 아키텍처 개요
+
+| 구성요소 | 역할 |
+|---------|------|
+| MCP 서버 | CAD MAMA + CAD 엔진 통합 배포 |
+| 메인 LLM | 설계 추론, 코드 생성, ActionHints 생성 |
+| 로컬 LLM | 번역, 검색 결과 랭킹 (현재 MAMA 수준) |
+| Index DB | 워크플로우/함수/규칙 임베딩 검색 |
+
+### 저장 구조: 단일 DB + 도메인 폴더
+
+**현재 MAMA 구조 유지 (Party Mode 결론)**
+
+```
+.cad/
+├── mama.db              # 단일 DB (현재 MAMA 구조)
+│   ├── decisions        # topic prefix로 도메인 구분
+│   ├── checkpoints      # furniture:*, voxel:*, etc.
+│   └── embeddings
+└── domains/             # 도메인 지식 (폴더, 읽기 전용)
+    ├── voxel/
+    │   ├── DOMAIN.md
+    │   ├── workflows/
+    │   ├── rules/
+    │   └── functions/
+    ├── furniture/
+    └── ...
+```
+
+**장점:**
+- 크로스 도메인 검색 가능
+- 현재 MAMA 코드 재사용
+- 구조 단순, 배포 용이
+
+### 도메인 지식 구조
+
+| 폴더 | 내용 |
+|------|------|
+| `DOMAIN.md` | 도메인 개요, 기본 힌트 |
+| `workflows/` | PRD→완성 워크플로우 (BMAD 스타일) |
+| `rules/` | 도메인 규칙 (z-order, 좌표계 등) |
+| `functions/` | 함수 가이드, 예시 |
+
+### 설치 및 배포
+
+- npm: `npx @ai-native-cad/mcp start`
+- 도메인 폴더: MCP 패키지에 포함
+- DB: 첫 실행 시 자동 생성
+
+### LLM 역할 분담
+
+| LLM | 역할 | 비고 |
+|-----|------|------|
+| 메인 LLM (Claude/Ollama) | 설계 추론, ActionHints 생성 | 교체 가능 |
+| 로컬 LLM (exaone 2.4B) | 번역, 검색 랭킹 | 현재 MAMA 수준 |
 
 ---
 
 ## Definition of Done
 
-### 완료 (Epic 1~9) ✅
+### 완료 (Epic 1~10) ✅
 
 - ✅ WASM 엔진, 도형 6종, 그룹/피봇
 - ✅ React 뷰어, 3패널, 스케치 모드
 - ✅ Boolean 연산, 텍스트 렌더링
 - ✅ 웹 아키텍처 (모노레포, WebSocket, GitHub Pages)
+- ✅ AX 개선 (Claude Code 패턴 MCP 도구: glob, read, edit, write, lsp, bash)
 
-### 현재 목표: Epic 10 - AX 개선
+### 계획: Epic 11 - MAMA Integration (Scoping)
 
-- [x] ADR-008 작성 (도구 패턴 정렬)
-- [x] glob 도구 구현
-- [x] read 도구 구현
-- [x] edit 도구 구현
-- [x] write 도구 구현
-- [x] lsp 도구 구현
-- [x] bash 도구 구현
-- [x] 레거시 도구 제거
-- [x] AX 검증 및 문서화
-- [x] HMR 스타일 실행 (매번 reset + main.js 재실행)
+**배포 아키텍처**: MCP 서버 내부 통합 (별도 플러그인 X)
+
+#### Epic 11.1: Core (MVP)
+- [ ] MAMA Core 4 Tools MCP 통합 (save, search, update, load_checkpoint)
+- [ ] 세션 컨텍스트 자동 로드 (SessionStart 훅)
+- [ ] Reasoning Graph 기본 구현
+- [ ] 단일 DB + topic prefix 구조
+
+#### Epic 11.2: Intelligence
+- [ ] ActionHints System (메인 LLM이 생성, MAMA가 저장/검색)
+- [ ] Query Language (엔티티 탐색)
+- [ ] 로컬 LLM 통합 (번역 + 검색 랭킹, 현재 MAMA 수준)
+
+#### Epic 11.3: Platform
+- [ ] 도메인 폴더 구조 (voxel, furniture, interior)
+- [ ] 워크플로우 템플릿 (BMAD 스타일)
+- [ ] LLM-Agnostic 아키텍처 (Ollama PoC)
 
 ---

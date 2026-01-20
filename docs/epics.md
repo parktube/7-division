@@ -1,6 +1,6 @@
 ---
 status: ready-for-dev
-currentEpic: 10
+currentEpic: 11
 stepsCompleted:
   - step-01-validate-prerequisites
   - step-02-design-epics
@@ -31,7 +31,8 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 7 | 인간-LLM 협업 UI | ✅ 완료 |
 | 8 | Manifold 기하 엔진 + 텍스트 렌더링 | ✅ 완료 |
 | 9 | 웹 아키텍처 전환 | ✅ 완료 |
-| 10 | AX 개선 - MCP 도구 재설계 | 🚧 진행 중 |
+| 10 | AX 개선 - MCP 도구 재설계 | ✅ 완료 |
+| 11 | MAMA Integration | 📋 계획됨 |
 
 ---
 
@@ -93,6 +94,24 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR65 | 레거시 도구 제거 | cad_code, discovery, scene, export, module 제거 |
 | FR66 | HMR 스타일 실행 | 매번 reset + main.js 재실행, scene.json 동기화 유지 (10.10) |
 
+### Epic 11 Functional Requirements (계획됨)
+
+| ID | 기능 | 설명 |
+|----|------|------|
+| FR67 | 세션 컨텍스트 자동 로드 | 세션 시작 시 이전 작업 상태, 결정을 자동으로 제공 |
+| FR68 | Claude 주도 결정 저장 | 중요 설계 결정을 저장 (topic, decision, reasoning) |
+| FR69 | Reasoning Graph | 결정 관계 (supersedes, builds_on, debates, synthesizes) |
+| FR70 | Outcome Tracking | 결정의 성공/실패 기록 (success, failed, partial) |
+| FR71 | LLM-Agnostic 설계 | Claude 외 LLM (Ollama, OpenAI) 교체 가능 |
+| FR72 | 로컬 LLM 하이브리드 | exaone 2.4B로 번역 + 검색 랭킹 (현재 MAMA 수준) |
+| FR73 | 4 Core Tools | save, search, update, load_checkpoint |
+| FR74 | 컨텍스트 주입 레벨 | none, hint, full 설정 가능 |
+| FR75 | Bias Warning | Echo Chamber, Stale Decision(90일) 감지 |
+| FR76 | 모듈 추천 | MAMA 임베딩으로 모듈 의미 검색 |
+| FR77 | MCP 내부 통합 | MAMA를 MCP 서버 내부에 통합 배포 (별도 플러그인 X) |
+| FR78 | ActionHints System | 메인 LLM이 생성, MAMA가 저장/검색 |
+| FR79 | 도메인 폴더 구조 | domains/ 폴더에 워크플로우, 규칙, 함수 가이드 |
+
 ### Non-Functional Requirements
 
 | ID | 요구사항 | 설명 |
@@ -106,6 +125,9 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | NFR24 | Read-first 패턴 준수율 | > 95% |
 | NFR25 | 기존 모듈 재사용율 | > 90% |
 | NFR26 | 도구 학습 비용 | 0 (Claude Code 패턴 그대로) |
+| NFR27 | MAMA 검색 응답 | < 100ms (로컬 DB) |
+| NFR28 | 컨텍스트 주입 | SessionStart 시 자동 로드 |
+| NFR29 | LLM-Agnostic | Claude, OpenAI, Ollama 교체 가능 |
 
 ### Technical Stack
 
@@ -950,6 +972,59 @@ async function executeRunCadCode(code: string) {
 - 안정성 유지: scene.json 폴백으로 복원 보장
 - 롤백 UX 개선: 실패해도 이전 씬 상태 유지
 - HMR 패러다임: 웹 개발자에게 익숙한 패턴
+
+---
+
+## Epic 11: MAMA Integration - 계획됨
+
+> AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
+
+### 목표
+
+Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함께 경험을 축적하며 성장하는 파트너가 된다.
+
+### Phase 구조 (Scoping)
+
+**배포 아키텍처**: MCP 서버 내부 통합 (별도 플러그인 X)
+
+#### Phase 11.1: Core (MVP)
+| Story | 제목 | FR |
+|-------|------|-----|
+| 11.1.1 | MAMA Core 4 Tools MCP 통합 | FR73, FR77 |
+| 11.1.2 | 세션 컨텍스트 자동 로드 | FR67, FR74 |
+| 11.1.3 | Reasoning Graph 기본 구현 | FR68, FR69, FR70 |
+| 11.1.4 | 단일 DB + topic prefix 구조 | - |
+
+#### Phase 11.2: Intelligence
+| Story | 제목 | FR |
+|-------|------|-----|
+| 11.2.1 | ActionHints System | FR78 |
+| 11.2.2 | Query Language (엔티티 탐색) | - |
+| 11.2.3 | 로컬 LLM 통합 (번역 + 검색 랭킹) | FR72 |
+| 11.2.4 | Bias Warning | FR75 |
+
+#### Phase 11.3: Platform
+| Story | 제목 | FR |
+|-------|------|-----|
+| 11.3.1 | 도메인 폴더 구조 | FR79 |
+| 11.3.2 | 워크플로우 템플릿 (BMAD 스타일) | - |
+| 11.3.3 | LLM-Agnostic 아키텍처 (Ollama PoC) | FR71 |
+| 11.3.4 | 모듈 추천 시스템 | FR76 |
+
+### 성공 기준
+
+| 지표 | 목표 |
+|------|------|
+| **파트너십 형성** | 30일 후 "이 AI는 나를 안다" 체감 |
+| **세션 연속성** | 이전 결정을 자동으로 기억 |
+| **건강한 관계** | debates >= 10%, 외부 증거 포함 |
+| **검색 응답** | < 100ms (로컬 DB) |
+
+### 참고 문서
+
+- [ADR-0011](./adr/0011-mama-core-reuse.md) - MAMA Core 4 Tools 재사용
+- [ADR-0018](./adr/0018-llm-agnostic-hooks.md) - LLM-Agnostic Hook 추상화
+- [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md) - LLM-Agnostic 아키텍처
 
 ---
 
