@@ -211,81 +211,142 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 상세: [epics.md](./epics.md), [ADR-007](./adr/007-web-architecture.md), [ADR-008](./adr/008-tool-pattern-alignment.md) 참조
 
-### 계획 중: Epic 11 - MAMA Integration (FR67~FR79)
+### 계획 중: Epic 11 - MAMA Integration (FR67~FR80)
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
-#### 왜 MAMA가 필요한가?
+#### 핵심 철학 (ADR-0010)
 
-**현재 AI 도구의 한계:**
+**Claude는 자동화 도구가 아니라, 인간 설계자와 경험을 공유하며 함께 성장하는 설계 마스터(Master)**
+
+| 잘못된 이해 | 올바른 이해 |
+|------------|------------|
+| MAMA = 메모리 시스템 | MAMA = **파트너십을 만드는 경험 축적 시스템** |
+| 효율성이 목표 | **관계의 깊이**가 목표 |
+| 매번 리셋 | 경험이 축적됨 |
+
+#### Phase 11.1: Core (MVP)
+
+| ID | 요구사항 | ADR | 수용 기준 |
+|----|---------|-----|----------|
+| FR67 | 4 Core Tools MCP 통합 | [ADR-0011](./adr/0011-mama-core-reuse.md) | save, search, update, load_checkpoint MCP 도구로 제공 |
+| FR68 | 결정 저장 + Reasoning Graph | [ADR-0013](./adr/0013-edge-types-reasoning.md) | topic, decision, reasoning 저장. supersedes/builds_on/debates/synthesizes 관계 |
+| FR69 | 단일 DB + topic prefix | [ADR-0016](./adr/0016-project-specific-db.md) | `voxel:*`, `furniture:*` 등 prefix로 도메인 구분 |
+| FR70 | Outcome Tracking | [ADR-0011](./adr/0011-mama-core-reuse.md) | update 도구로 success/failed/partial 기록 |
+
+#### Phase 11.2: Hook System (핵심)
+
+| ID | 요구사항 | ADR | 수용 기준 |
+|----|---------|-----|----------|
+| FR71 | SessionStart Hook | [ADR-0017](./adr/0017-configurable-context.md) | 세션 시작 시 최근 결정 + 체크포인트 주입. none/hint/full 모드 |
+| FR72 | Dynamic Hint Injection | [ADR-0015](./adr/0015-dynamic-hint-injection.md) | Tool Definition에 DB 힌트 자동 주입. edit_hint 도구 제공 |
+| FR73 | ActionHints (next_steps) | [ADR-0014](./adr/0014-progressive-workflow.md) | 도구 실행 후 next_steps 반환. 다음 작업 제안 |
+| FR74 | LLM-Agnostic Hook Owner | [ADR-0018](./adr/0018-llm-agnostic-hooks.md) | CADOrchestrator가 Hook 관리. LLMAdapter로 Claude/Ollama 교체 가능 |
+
+#### Phase 11.3: Intelligence
+
+| ID | 요구사항 | ADR | 수용 기준 |
+|----|---------|-----|----------|
+| FR75 | Graph Health Metrics | [ADR-0019](./adr/0019-graph-health-metrics.md) | debates >= 10% 유지. Stale Decision(90일) 감지 |
+| FR76 | Anti-Echo Chamber | [ADR-0021](./adr/0021-anti-echo-chamber.md) | 반론 장려. "다른 관점에서..." 제안 |
+| FR77 | Adaptive Mentoring | [ADR-0020](./adr/0020-adaptive-mentoring.md) | 숙련도별 힌트 수준 조절. 초보자 상세, 숙련자 간략 |
+| FR78 | Module Recommendation | [ADR-0024](./adr/0024-module-library-recommendation.md) | MAMA 임베딩으로 "의자 만들어줘" → chair 모듈 추천 |
+
+#### Phase 11.4: Platform
+
+| ID | 요구사항 | ADR | 수용 기준 |
+|----|---------|-----|----------|
+| FR79 | MCP 내부 통합 | - | npm install 시 MAMA 포함. 별도 설정 불필요 |
+| FR80 | 도메인 폴더 구조 | - | domains/ 폴더에 voxel/, furniture/, interior/ 기본 제공 |
+
+#### Hook 시스템 상세 (ADR-0015 + ADR-0018)
 
 ```
-[월요일] "외벽은 200mm, 내벽은 100mm로 해줘" → AI: 완료!
-[수요일] "벽 하나 더 그려줘" → AI: 벽 두께를 알려주세요.
-         → 나: (또 설명해야 하나...)
-
-[3개월 후]
-- 내가 선호하는 작업 방식? 모름
-- 자주 쓰는 모듈? 모름
-- 프로젝트 맥락? 매번 새로움
+┌─────────────────────────────────────────────────────────────┐
+│ 1. SessionStart Hook (onSessionInit)                        │
+│    - 마지막 체크포인트 로드                                    │
+│    - 최근 결정 요약 (contextInjection 모드에 따라)              │
+│    - 프로젝트별 힌트 준비                                      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Tool Definition Hook (preToolList)                       │
+│    - 각 도구 description에 동적 힌트 주입                      │
+│    - DB에서 해당 도구의 hints 조회                            │
+│    - "💡 외벽 두께 표준: 200mm" 형식                          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 3. [CAD 도구 실행]                                          │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 4. ActionHints Hook (postExecute)                           │
+│    - next_steps: 다음 작업 제안                               │
+│    - module_hints: 관련 모듈 추천                             │
+│    - save_suggestion: 결정 저장 제안                          │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-**MAMA 도입 후:**
-
-```
-[수요일] "벽 하나 더 그려줘"
-→ AI: 외벽 200mm로 그릴까요, 내벽 100mm로 그릴까요?
-       (지난 월요일에 정한 기준입니다)
-
-[3개월 후]
-- "평소처럼 wall_extend 모듈 쓸까요?"
-- "이 프로젝트에서는 항상 동쪽부터 시작하셨죠"
-- "비슷한 작업할 때 OOO 방식이 잘 됐었어요"
-```
-
-> **MAMA = AI에게 장기 기억을 주어 진정한 설계 파트너로 만드는 시스템**
-
-#### Functional Requirements 상세
-
-| ID | 요구사항 | 설명 | 수용 기준 |
-|----|---------|------|----------|
-| FR67 | 세션 컨텍스트 자동 로드 | 세션 시작 시 이전 작업 상태, 결정을 자동으로 제공 | SessionStart 시 최근 5개 결정 + 마지막 체크포인트 자동 주입 |
-| FR68 | Claude 주도 결정 저장 | 중요 설계 결정 저장 (topic, decision, reasoning) | LLM이 save 호출 시 topic으로 분류, reasoning 필수 |
-| FR69 | Reasoning Graph | 결정 관계 추적 (supersedes, builds_on, debates, synthesizes) | 같은 topic 결정 시 자동 supersede, 관계 명시적 지정 가능 |
-| FR70 | Outcome Tracking | 결정의 성공/실패 기록 (success, failed, partial) | update 도구로 결과 기록, 실패 시 reasoning 필수 |
-| FR71 | LLM-Agnostic 설계 | Claude 외 LLM (Ollama, OpenAI) 교체 가능 | LLMAdapter 인터페이스로 분리, Ollama PoC 검증 완료 |
-| FR72 | 로컬 LLM 하이브리드 | exaone 2.4B로 번역 + 검색 랭킹 | 현재 MAMA 수준, ActionHints 생성은 메인 LLM |
-| FR73 | 4 Core Tools | save, search, update, load_checkpoint | 현재 MAMA 도구 그대로 재사용 |
-| FR74 | 컨텍스트 주입 레벨 | none, hint, full 설정 가능 | config.yaml에서 설정, 기본값 hint |
-| FR75 | Bias Warning | Echo Chamber, Stale Decision(90일) 감지 | debates < 10% 시 경고, 90일 이상 결정 stale 표시 |
-| FR76 | 모듈 추천 | MAMA 임베딩으로 모듈 의미 검색 | "의자 만들어줘" → chair 모듈 추천 |
-| FR77 | MCP 내부 통합 | MAMA를 MCP 서버 내부에 통합 배포 | npm install 시 MAMA 포함, 별도 설정 불필요 |
-| FR78 | ActionHints System | 메인 LLM이 생성, MAMA가 저장/검색 | 도구 실행 후 next_steps, module_hints 반환 |
-| FR79 | 도메인 폴더 구조 | domains/ 폴더에 워크플로우, 규칙, 함수 가이드 | voxel/, furniture/, interior/ 기본 제공 |
 
 #### 데이터 스키마
 
 ```sql
--- decisions: 설계 결정 저장
-decisions (id, topic, decision, reasoning, outcome, confidence, created_at)
+-- decisions: 설계 결정 저장 (ADR-0011)
+CREATE TABLE decisions (
+  id TEXT PRIMARY KEY,
+  topic TEXT NOT NULL,           -- 'voxel:chicken', 'furniture:chair' 등
+  decision TEXT NOT NULL,
+  reasoning TEXT,
+  outcome TEXT,                  -- 'success', 'failed', 'partial'
+  confidence REAL DEFAULT 0.5,
+  created_at INTEGER
+);
 
--- decision_edges: 결정 관계 (Reasoning Graph)
-decision_edges (from_id, to_id, relationship)  -- supersedes, builds_on, debates, synthesizes
+-- decision_edges: 결정 관계 (ADR-0013)
+CREATE TABLE decision_edges (
+  from_id TEXT,
+  to_id TEXT,
+  relationship TEXT,             -- 'supersedes', 'builds_on', 'debates', 'synthesizes'
+  PRIMARY KEY (from_id, to_id, relationship)
+);
 
 -- sessions: 세션/체크포인트
-sessions (id, summary, next_steps, open_files, created_at)
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  summary TEXT,
+  next_steps TEXT,
+  open_files TEXT,
+  created_at INTEGER
+);
 
--- hints: 도구별 힌트
-hints (id, tool_name, hint_text, priority, tags, source)
+-- hints: 도구별 동적 힌트 (ADR-0015)
+CREATE TABLE hints (
+  id INTEGER PRIMARY KEY,
+  tool_name TEXT NOT NULL,       -- 'draw_rect', 'create_group' 등
+  hint_text TEXT NOT NULL,
+  priority INTEGER DEFAULT 5,
+  tags TEXT,                     -- JSON: ["wall", "room", "extend"]
+  source TEXT                    -- 'user', 'system', 'learned'
+);
 ```
 
-#### 의존성
+#### 관련 ADR 목록
 
-- **better-sqlite3**: 로컬 DB (MCP 패키지에 포함)
-- **현재 MAMA 코드**: Core 4 Tools 재사용
-- **exaone 2.4B**: 번역 + 검색 랭킹 (선택적)
-
-상세 설계: [ADR-0011](./adr/0011-mama-core-reuse.md), [ADR-0018](./adr/0018-llm-agnostic-hooks.md), [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md)
+| ADR | 제목 | Phase |
+|-----|------|-------|
+| [0010](./adr/0010-partnership-philosophy.md) | Partnership Philosophy | 철학 |
+| [0011](./adr/0011-mama-core-reuse.md) | MAMA Core 4 Tools | 11.1 |
+| [0013](./adr/0013-edge-types-reasoning.md) | Edge Types (Reasoning Graph) | 11.1 |
+| [0014](./adr/0014-progressive-workflow.md) | Progressive Workflow (next_steps) | 11.2 |
+| [0015](./adr/0015-dynamic-hint-injection.md) | Dynamic Hint Injection | 11.2 |
+| [0016](./adr/0016-project-specific-db.md) | 단일 DB + Topic Prefix | 11.1 |
+| [0017](./adr/0017-configurable-context.md) | Configurable Context | 11.2 |
+| [0018](./adr/0018-llm-agnostic-hooks.md) | LLM-Agnostic Hooks | 11.2 |
+| [0019](./adr/0019-graph-health-metrics.md) | Graph Health Metrics | 11.3 |
+| [0020](./adr/0020-adaptive-mentoring.md) | Adaptive Mentoring | 11.3 |
+| [0021](./adr/0021-anti-echo-chamber.md) | Anti-Echo Chamber | 11.3 |
+| [0023](./adr/0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent Architecture | 11.2 |
+| [0024](./adr/0024-module-library-recommendation.md) | Module Recommendation | 11.3 |
 
 ## Non-Functional Requirements
 
@@ -326,19 +387,17 @@ hints (id, tool_name, hint_text, priority, tags, source)
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
-**핵심 원칙**: Claude는 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함께 경험을 축적하며 성장하는 파트너
-
-| 기능 | 설명 |
-|------|------|
-| 세션 연속성 | 이전 작업 상태, 결정을 자동으로 로드 |
-| 결정 저장 | Claude 주도 설계 결정 저장 (topic, decision, reasoning) |
-| Reasoning Graph | 결정 관계 추적 (supersedes, builds_on, debates) |
-| LLM-Agnostic | Claude 외 다른 LLM (Ollama, OpenAI) 교체 가능 |
-| 로컬 LLM 하이브리드 | exaone 2.4B로 번역 + 검색 랭킹 (현재 MAMA 수준) |
+| Phase | 핵심 기능 | FR |
+|-------|----------|-----|
+| **11.1 Core** | 4 Core Tools, Reasoning Graph, 단일 DB | FR67~FR70 |
+| **11.2 Hook System** | SessionStart, Dynamic Hint, ActionHints, LLM-Agnostic | FR71~FR74 |
+| **11.3 Intelligence** | Graph Health, Anti-Echo, Adaptive Mentoring, Module Rec | FR75~FR78 |
+| **11.4 Platform** | MCP 통합, 도메인 폴더 | FR79~FR80 |
 
 **성공 기준:**
 - 30일 후 맥락 기억, "이 AI는 나를 안다" 체감
-- 작은 LLM + MAMA = 큰 LLM의 효과 검증
+- debates >= 10% 유지 (Anti-Echo Chamber)
+- 검색 응답 < 100ms
 
 ### Post-MVP
 
@@ -547,8 +606,16 @@ LLM이 가이드, MAMA가 맥락 기억, 인간이 의사결정
 
 **배포 아키텍처**: MCP 서버 내부 통합 (별도 플러그인 X)
 
+**MAMA MCP 도구 (LLM 호출용):**
+| 도구 | MCP 이름 | 역할 |
+|------|---------|------|
+| save | `mcp__ai-native-cad__mama_save` | 결정/체크포인트 저장 |
+| search | `mcp__ai-native-cad__mama_search` | 시맨틱 검색 |
+| update | `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 |
+| checkpoint | `mcp__ai-native-cad__mama_checkpoint` | 체크포인트 로드 |
+
 #### Epic 11.1: Core (MVP)
-- [ ] MAMA Core 4 Tools MCP 통합 (save, search, update, load_checkpoint)
+- [ ] MAMA Core 4 Tools MCP 통합 (mama_save, mama_search, mama_update, mama_checkpoint)
 - [ ] 세션 컨텍스트 자동 로드 (SessionStart 훅)
 - [ ] Reasoning Graph 기본 구현
 - [ ] 단일 DB + topic prefix 구조
