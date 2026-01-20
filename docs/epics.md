@@ -110,8 +110,13 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR76 | Adaptive Mentoring | Intelligence | ADR-0020 | 사용자 수준별 힌트 조절 |
 | FR77 | Graph Health Metrics | Intelligence | ADR-0019 | 그래프 건강도 측정 |
 | FR78 | Anti-Echo Chamber | Intelligence | ADR-0021 | 에코챔버 방지 경고 |
-| FR79 | LLM Adapter Pattern | Platform | ADR-0023 | Claude, OpenAI, Ollama 교체 가능 |
-| FR80 | Module Library Recommendation | Platform | ADR-0024 | MAMA 임베딩 기반 모듈 추천 |
+| FR81 | Learning Progress Storage | Learning | ADR-0025 | 배운 개념 저장, understanding_level 추적 |
+| FR82 | User Growth Metrics | Learning | ADR-0025 | 독립 결정, 개념 적용, 트레이드오프 예측 |
+| FR83 | DesignHints System | Learning | ADR-0025 | Human CoT 유도, 옵션 제시 |
+| FR84 | Terminology Evolution | Learning | ADR-0025 | 용어 변화 추적 ("미니멀"→"Japandi") |
+| FR85 | MCP 내부 통합 | Platform | - | npm install 시 MAMA 포함 |
+| FR86 | 도메인 폴더 구조 | Platform | - | domains/ 폴더 기본 제공 |
+| FR87 | LLM Adapter Pattern | Platform | ADR-0023 | Claude, OpenAI, Ollama 교체 가능 |
 
 ### Non-Functional Requirements
 
@@ -373,12 +378,26 @@ Hook Flow:
 
 **품질 게이트**: none/hint/full 모드 동작, 90일 이상 결정 경고
 
-#### Phase 11.4: Platform (FR79-80)
+#### Phase 11.4: Learning Track (FR81-84) ⭐ 신규
+
+> "만들고 싶은 것을 만들면서, 만드는 법을 배운다"
 
 | Story | 제목 | FR | ADR |
 |-------|------|-----|-----|
-| 11.4.1 | LLM Adapter Pattern | FR79 | ADR-0023 |
-| 11.4.2 | Module Library Recommendation | FR80 | ADR-0024 |
+| 11.4.1 | Learning Progress Storage | FR81 | ADR-0025 |
+| 11.4.2 | User Growth Metrics | FR82 | ADR-0025 |
+| 11.4.3 | DesignHints System | FR83 | ADR-0025 |
+| 11.4.4 | Terminology Evolution | FR84 | ADR-0025 |
+
+**품질 게이트**: 개념 학습 기록, 성장 지표 추적, Human CoT 유도 동작
+
+#### Phase 11.5: Platform (FR85-87)
+
+| Story | 제목 | FR | ADR |
+|-------|------|-----|-----|
+| 11.5.1 | MCP 내부 통합 | FR85 | - |
+| 11.5.2 | 도메인 폴더 구조 | FR86 | - |
+| 11.5.3 | LLM Adapter Pattern | FR87 | ADR-0023 |
 
 **품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작, 모듈 추천 검증
 
@@ -389,6 +408,8 @@ Hook Flow:
 | **파트너십 형성** | 30일 후 "이 AI는 나를 안다" 체감 |
 | **세션 연속성** | 이전 결정을 자동으로 기억 |
 | **건강한 관계** | debates >= 10%, 외부 증거 포함 |
+| **사용자 성장** | 30일 후 독립 결정 비율 70%+ |
+| **개념 적용** | 배운 개념 재적용률 50%+ |
 | **검색 응답** | < 100ms (로컬 DB) |
 | **Hook 실행** | < 10ms (동기화 작업) |
 
@@ -764,30 +785,189 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
 
 ---
 
-### Story 11.4.2: Module Library Recommendation
+## Phase 11.4: Learning Track Stories
+
+### Story 11.4.1: Learning Progress Storage
 
 As a **LLM 에이전트**,
-I want **MAMA 임베딩으로 모듈을 추천받기를**,
-So that **적절한 모듈을 빠르게 찾을 수 있다** (FR80).
+I want **사용자가 배운 개념을 저장하기를**,
+So that **성장 여정을 추적할 수 있다** (FR81).
 
 **Acceptance Criteria:**
 
-**Given** 사용자가 "마을을 만들고 싶어"라고 말할 때
-**When** 모듈 추천이 실행되면
-**Then** house_lib(0.87), tree_lib(0.72) 순으로 추천된다
+**Given** 사용자에게 새로운 개념(60-30-10 법칙)을 소개할 때
+**When** 사용자가 이해를 표현하면 ("아, 그래서 넓어 보이는 거구나")
+**Then** learnings 테이블에 concept='60-30-10', understanding_level=2로 저장된다
 
-**Given** 모듈 메타데이터(JSDoc)가 있을 때
-**When** 모듈이 저장되면
-**Then** description이 임베딩되어 검색 가능해진다
+**Given** 사용자가 배운 개념을 직접 적용할 때
+**When** "우드톤 30% 정도로 할게요"라고 말하면
+**Then** applied_count가 증가하고 understanding_level이 3으로 업데이트된다
 
-**Given** 모듈을 사용할 때
-**When** 사용 횟수가 기록되면
-**Then** usage_frequency가 추천 점수에 반영된다 (30% 가중치)
+**Given** 다음 세션에서 같은 개념이 관련될 때
+**When** 색상 관련 작업을 시작하면
+**Then** "💡 지은님은 60-30-10 법칙을 알고 계세요 (2번 적용)"가 주입된다
 
 **Technical Notes:**
-- Score = (semantic_similarity × 0.6) + (usage_frequency × 0.3) + (recency × 0.1)
-- 2-Layer 추천: 임베딩 검색 → LLM 최종 결정
-- ADR-0024 참조
+- understanding_level: 1(소개됨) → 2(이해함) → 3(적용함) → 4(숙달)
+- 숙달 = 3번 이상 독립적으로 적용
+- ADR-0025 참조
+
+---
+
+### Story 11.4.2: User Growth Metrics
+
+As a **시스템**,
+I want **사용자의 성장 지표를 자동 추적하기를**,
+So that **멘토링 수준을 조절할 수 있다** (FR82).
+
+**Acceptance Criteria:**
+
+**Given** 사용자가 AI 제안 없이 결정을 내릴 때
+**When** "침대는 계단에서 안 보이는 곳에 놓을게 (동선 때문에)"라고 말하면
+**Then** growth_metrics에 type='independent_decision', related_learning_id=동선 기록
+
+**Given** 사용자가 트레이드오프를 먼저 언급할 때
+**When** "나무 난간으로 바꾸면 개방감이 줄어들겠지?"라고 말하면
+**Then** growth_metrics에 type='tradeoff_predicted' 기록
+
+**Given** 30일 후 성장 리포트를 생성할 때
+**When** 체크포인트를 저장하면
+**Then** 독립 결정 비율, 개념 적용 횟수가 요약된다
+
+**Technical Notes:**
+- metric_type: 'independent_decision', 'concept_applied', 'tradeoff_predicted', 'terminology_used'
+- Adaptive Mentoring과 연동: 성장 지표에 따라 힌트 수준 조절
+- ADR-0025 참조
+
+---
+
+### Story 11.4.3: DesignHints System
+
+As a **LLM 에이전트**,
+I want **DesignHints로 Human CoT를 유도하기를**,
+So that **사용자가 스스로 생각하며 배운다** (FR83).
+
+**Acceptance Criteria:**
+
+**Given** 사용자가 "미니멀하게 해줘"라고 말할 때
+**When** AI가 응답하면
+**Then** 바로 만들지 않고 스타일 옵션을 제시한다:
+  - "Japandi: 따뜻한 나무톤, 자연 소재"
+  - "Bauhaus: 기하학적, 기능 중심"
+  - "Muji: 극도로 절제된, 무채색"
+
+**Given** 사용자가 선택을 하면
+**When** 선택 이유를 설명하면 ("Japandi가 내 취향이었구나")
+**Then** 학습 기록에 "사용자가 자신의 취향에 이름을 붙임"으로 저장된다
+
+**Given** DesignHints 템플릿이 정의되어 있을 때
+**When** 도구 실행 결과가 반환되면
+**Then** design_hints 필드가 포함된다:
+  - next_concepts: 다음에 배울 개념
+  - questions: 사용자 생각을 유도하는 질문
+  - options: 선택지와 트레이드오프
+
+**Technical Notes:**
+- DesignHints는 ActionHints의 UX 버전 (AX-UX 대칭)
+- Human CoT 원칙: 바로 만들지 않고, 왜 그런지 설명, 선택하게 함
+- ADR-0025 참조
+
+---
+
+### Story 11.4.4: Terminology Evolution
+
+As a **시스템**,
+I want **사용자의 언어 변화를 추적하기를**,
+So that **성장을 가시화할 수 있다** (FR84).
+
+**Acceptance Criteria:**
+
+**Given** 초기에 사용자가 "미니멀하게"라고 말했을 때
+**When** 나중에 "Japandi 스타일로"라고 표현하면
+**Then** terminology_evolution에 before='미니멀하게', after='Japandi 스타일로' 기록
+
+**Given** 초기에 "색감 어떻게?"라고 물었을 때
+**When** 나중에 "60-30-10 비율 맞춰서"라고 표현하면
+**Then** 관련 learning_id와 함께 기록된다
+
+**Given** 30일 성장 리포트를 생성할 때
+**When** 언어 변화가 있으면
+**Then** "💬 언어의 변화" 섹션에 before→after 목록이 포함된다
+
+**Technical Notes:**
+- 자동 감지: 같은 의미의 더 전문적인 용어 사용 시
+- 학습과 연결: 어떤 개념 학습 후 용어가 바뀌었는지 추적
+- ADR-0025 참조
+
+---
+
+## Phase 11.5: Platform Stories
+
+### Story 11.5.1: MCP 내부 통합
+
+As a **개발자**,
+I want **MAMA가 MCP 서버에 내장되기를**,
+So that **별도 설치 없이 사용할 수 있다** (FR85).
+
+**Acceptance Criteria:**
+
+**Given** npm install @ai-native-cad/mcp를 실행할 때
+**When** 패키지가 설치되면
+**Then** MAMA 모듈이 함께 포함된다
+
+**Given** MCP 서버를 시작할 때
+**When** MAMA DB가 없으면
+**Then** ~/.ai-native-cad/data/mama.db가 자동 생성된다
+
+**Technical Notes:**
+- MAMA 코드를 MCP 패키지에 번들
+- SQLite + better-sqlite3
+- ADR-0011 참조
+
+---
+
+### Story 11.5.2: 도메인 폴더 구조
+
+As a **개발자**,
+I want **도메인별 지식이 폴더로 제공되기를**,
+So that **도메인 확장이 용이하다** (FR86).
+
+**Acceptance Criteria:**
+
+**Given** MCP 서버가 시작될 때
+**When** domains/ 폴더를 확인하면
+**Then** voxel/, furniture/, interior/ 기본 제공
+
+**Given** 새 도메인을 추가할 때
+**When** domains/jewelry/를 만들면
+**Then** DOMAIN.md, workflows/, rules/, functions/ 구조 따름
+
+**Technical Notes:**
+- 도메인 지식은 읽기 전용
+- MCP 패키지에 포함
+- ADR-0016 참조
+
+---
+
+### Story 11.5.3: LLM Adapter Pattern
+
+As a **개발자**,
+I want **LLMAdapter 인터페이스로 LLM을 교체할 수 있기를**,
+So that **Claude 외 LLM도 사용할 수 있다** (FR87).
+
+**Acceptance Criteria:**
+
+**Given** LLMAdapter 인터페이스가 정의되었을 때
+**When** ClaudeAdapter를 구현하면
+**Then** Claude API로 chat, toolCalling이 동작한다
+
+**Given** OllamaAdapter를 구현했을 때
+**When** 로컬 Ollama 서버에 연결하면
+**Then** 로컬 LLM으로 CAD 작업이 가능하다
+
+**Technical Notes:**
+- LLMAdapter 인터페이스: chat(), supportsStreaming(), supportsToolCalling()
+- ADR-0023 참조 (PoC 검증 완료)
 
 ---
 
@@ -809,6 +989,7 @@ So that **적절한 모듈을 빠르게 찾을 수 있다** (FR80).
 | [ADR-0021](./adr/0021-anti-echo-chamber.md) | Anti-Echo Chamber | 에코챔버 방지 경고 |
 | [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent | LLMAdapter 패턴 |
 | [ADR-0024](./adr/0024-module-library-recommendation.md) | Module Library | 시맨틱 모듈 추천 |
+| [ADR-0025](./adr/0025-learning-track.md) | Learning Track | 사용자 성장 추적, Human CoT 유도 |
 
 ---
 

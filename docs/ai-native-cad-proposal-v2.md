@@ -15,7 +15,7 @@
 3. [철학적 기반](#3-철학적-기반)
 4. [지금까지 완료한 것](#4-지금까지-완료한-것)
 5. [Epic 11: MAMA Integration](#5-epic-11-mama-integration)
-6. [유즈케이스: 민수의 첫 복셀아트](#6-유즈케이스-민수의-첫-복셀아트)
+6. [유즈케이스: 지은의 복층 인테리어](#6-유즈케이스-지은의-복층-인테리어)
 7. [로드맵과 산출물](#7-로드맵과-산출물)
 8. [리스크와 협업](#8-리스크와-협업)
 
@@ -69,6 +69,64 @@
 
 **Epic 11의 핵심 비전**:
 단순히 "그려주는 AI"를 넘어, **사용자의 설계 의도를 기억하여 세션을 넘나드는 '지능형 파트너십'**을 구축한다.
+
+### MAMA가 다른 Memory 시스템과 다른 점
+
+#### 1. Reasoning Repository, not Data Repository
+
+```
+기존 메모리 시스템 (RAG, Mem0, Letta):
+"닭 색깔 = 노란색" 저장
+→ LLM: "노란색이라고 하네요"
+
+MAMA:
+"닭 색깔 = 노란색,
+ reasoning: Crossy Road 원작 참고 + 사용자 선호,
+ debates: 흰색 고려했으나 기각"
+→ LLM: "노란색인데, 원작 스타일 유지 + 당신 취향 반영한 거예요"
+```
+
+**Data는 목적지, Reasoning이 출발점**.
+LLM은 "무엇"보다 "왜"를 알 때 더 나은 파트너가 된다.
+
+#### 2. Delta Storage: LLM이 이미 아는 건 저장하지 않는다
+
+```
+기존: "원은 360도입니다" 저장 (LLM이 이미 앎)
+MAMA: "이 프로젝트에서 원은 8각형으로 근사한다" 저장 (프로젝트 특수 결정)
+```
+
+**LLM이 모르는 것만 저장** = 토큰 효율 + 의미 있는 컨텍스트.
+
+#### 3. Claude-to-Claude Protocol
+
+체크포인트는 **"Claude가 Claude에게"** 전달하는 프로토콜.
+
+```
+인간이 작성한 요약:
+"닭 작업 중. 노란색. 다음에 날개 하기."
+
+MAMA 체크포인트 (Claude가 작성):
+"📍 지금까지: Crossy Road 스타일 확정, 색상 팔레트 노란색/주황색,
+ 몸통 완성. 다음 Claude에게: z-order 이슈 있었음 (stackZ로 해결),
+ 날개는 몸통보다 -0.5 레이어 뒤에 배치 권장."
+```
+
+다음 세션의 Claude가 **즉시 맥락에 들어갈 수 있는** 형식.
+
+#### 4. Critical Fluidity: 제안하는 과거, 명령하는 법칙이 아님
+
+```
+경직된 시스템:
+"규칙: 닭은 항상 노란색" → 변경 불가
+
+MAMA (Critical Fluidity):
+"💡 이전에 노란색으로 결정했어요. 다른 색으로 바꿀까요?"
+→ 과거 결정은 '제안'이지 '명령'이 아님
+```
+
+**Einstein's Pen 원칙**: AI 지능은 인간의 Agency 없이는 'Imaginary'.
+저장된 로직은 "suggested past"이지 "immutable law"가 아니다.
 
 ---
 
@@ -194,14 +252,15 @@ packages/
 
 Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함께 경험을 축적하며 성장하는 파트너가 된다.
 
-### 4개 Phase, 14개 Story
+### 5개 Phase, 18개 Story
 
 | Phase | 핵심 기능 | FR | Stories |
 |-------|----------|-----|---------|
 | **11.1 Core** | 4 Core Tools, Reasoning Graph, 단일 DB | FR67-70 | 4개 |
 | **11.2 Hook System** | SessionStart, Dynamic Hint, ActionHints, LLM-Agnostic | FR71-74 | 4개 |
 | **11.3 Intelligence** | Context 모드, Adaptive Mentoring, Graph Health, Anti-Echo | FR75-78 | 4개 |
-| **11.4 Platform** | LLM Adapter, Module Recommendation | FR79-80 | 2개 |
+| **11.4 Learning Track** | Learning Progress, Growth Metrics, DesignHints, Terminology | FR81-84 | 4개 |
+| **11.5 Platform** | MCP 통합, 도메인 폴더, LLM Adapter | FR85-87 | 3개 |
 
 ### Phase 11.1: Core (MVP)
 
@@ -266,7 +325,32 @@ LLM: "기존 스타일(노란색)을 적용할까요?"
 | **Graph Health Metrics** | debates >= 10% 유지 (ADR-0019) |
 | **Anti-Echo Chamber** | 반론 장려, "다른 관점에서..." 제안 (ADR-0021) |
 
-### Phase 11.4: Platform
+### Phase 11.4: Learning Track ⭐ 신규
+
+> "만들고 싶은 것을 만들면서, 만드는 법을 배운다"
+
+| 기능 | 설명 |
+|------|------|
+| **Learning Progress** | 배운 개념 저장 (60-30-10, 동선 등), understanding_level 추적 |
+| **Growth Metrics** | 독립 결정 횟수, 개념 적용 횟수, 트레이드오프 예측 |
+| **DesignHints** | Human CoT 유도 - 바로 만들지 않고 옵션 제시, 왜 그런지 설명 |
+| **Terminology Evolution** | 사용자 언어 변화 추적 ("미니멀" → "Japandi") |
+
+**Human CoT 유도 원칙 (AX-UX 대칭):**
+
+```
+ActionHints (AX): AI의 다음 행동 유도
+    "방을 만들었으니 → 문 추가 고려"
+
+DesignHints (UX): 인간의 다음 생각 유도
+    "미니멀에도 종류가 있어요:
+     - Japandi: 따뜻한 나무톤
+     - Bauhaus: 기하학적
+     - Muji: 극도로 절제된
+     어떤 게 끌리세요?"
+```
+
+### Phase 11.5: Platform
 
 | 기능 | 설명 |
 |------|------|
@@ -303,121 +387,275 @@ CREATE TABLE sessions (
   open_files TEXT,
   created_at INTEGER
 );
+
+-- learnings: 배운 개념 저장 (Phase 11.4 Learning Track)
+CREATE TABLE learnings (
+  id TEXT PRIMARY KEY,
+  concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
+  domain TEXT,                   -- 'color_theory', 'spatial', 'style'
+  understanding_level INTEGER,   -- 1: 소개됨, 2: 이해함, 3: 적용함, 4: 숙달
+  first_introduced INTEGER,
+  last_applied INTEGER,
+  applied_count INTEGER DEFAULT 0,
+  user_explanation TEXT,         -- 사용자가 개념을 설명한 기록
+  created_at INTEGER
+);
+
+-- growth_metrics: 성장 지표
+CREATE TABLE growth_metrics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  metric_type TEXT NOT NULL,     -- 'independent_decision', 'concept_applied',
+                                 -- 'tradeoff_predicted', 'terminology_used'
+  related_learning_id TEXT,
+  related_decision_id TEXT,
+  context TEXT,
+  created_at INTEGER
+);
+
+-- terminology_evolution: 용어 변화 추적
+CREATE TABLE terminology_evolution (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  before_term TEXT NOT NULL,     -- '미니멀하게'
+  after_term TEXT NOT NULL,      -- 'Japandi 스타일로'
+  learning_id TEXT,
+  detected_at INTEGER
+);
 ```
 
 ---
 
-## 6. 유즈케이스: 민수의 첫 복셀아트
+## 6. 유즈케이스: 지은의 복층 인테리어
 
-CAD 경험이 없는 민수가 Crossy Road 스타일 닭을 만드는 여정.
+> **"만들고 싶은 것을 만들면서, 만드는 법을 배운다"**
 
-### Day 1: 시작
+CAD 경험이 없는 지은이 미니멀 복층 원룸 인테리어를 만들며 **디자인 감각을 키워가는** 여정.
+
+### Day 1: 스타일 탐색 — "미니멀이 뭔가요?"
 
 ```
-민수: "Crossy Road 스타일로 닭을 만들고 싶어"
+지은: "이 이미지처럼 미니멀한 복층 원룸 인테리어를 만들고 싶어"
+      [이소메트릭 복층 인테리어 레퍼런스 공유]
 
-AI: "Crossy Road 스타일이요! 복셀 아트의 특징을 먼저 정리해볼게요.
-     - 블록 단위 (정육면체 조합)
-     - 로우폴리 느낌
-     - 밝고 단순한 색상
+AI: "미니멀 인테리어요! 그런데 '미니멀'에도 여러 갈래가 있어요.
+     잠깐 같이 살펴볼까요?
 
-     닭의 기본 구조부터 시작할까요?"
+     🏠 Japandi (일본+스칸디나비아)
+        → 따뜻한 나무톤, 자연 소재, 격자 패턴
+        → 이 레퍼런스가 딱 이 스타일이에요
 
-민수: "응"
+     🏠 Bauhaus
+        → 기하학적, 원색 포인트, 기능 중심
+        → 더 차갑고 모던한 느낌
+
+     🏠 Muji Style
+        → 극도로 절제된, 거의 무채색
+        → 물건이 거의 안 보이는 느낌
+
+     레퍼런스 이미지는 Japandi에 가까워요.
+     이 방향으로 갈까요, 아니면 다른 스타일도 탐색해볼까요?"
+
+지은: "Japandi가 뭔지 몰랐는데, 그게 내 취향이었구나. 그걸로 할게!"
 
 AI: (mama_save 호출)
-    topic: "voxel:chicken:style"
-    decision: "Crossy Road 스타일 복셀아트"
+    topic: "interior:style"
+    decision: "Japandi (일본+스칸디나비아)"
+    reasoning: "사용자가 '미니멀'로 표현했지만, 스타일 비교 후 Japandi 선택.
+                교육적 효과: 사용자가 자신의 취향에 이름을 붙일 수 있게 됨"
 ```
 
-### Day 3: 색상 결정
+**💡 Human CoT**: AI가 바로 만들지 않고, 스타일의 갈래를 보여줌으로써 지은은 "내 취향이 Japandi였구나"를 깨닫는다.
+
+### Day 3: 색상 이론 — "왜 이 색들이 어울리나요?"
 
 ```
-민수: "닭 색깔은 노란색으로 하자"
+지은: "색감은 따뜻하게 가고 싶어"
 
-AI: "노란색 닭이요! 🐔
-     몸통은 밝은 노란색, 부리는 주황색이 잘 어울려요.
+AI: "따뜻한 톤이요! 잠깐, 색상 조합의 원리를 알려드릴게요.
 
-     💡 Crossy Road 원작도 비슷한 조합이에요."
+     📚 60-30-10 법칙
+        - 60%: 주조색 (벽, 바닥) - 가장 넓은 면적
+        - 30%: 보조색 (가구) - 시선을 잡는 면적
+        - 10%: 강조색 (소품) - 포인트
+
+     레퍼런스를 이 법칙으로 분석하면:
+        - 60%: #F5F0E8 웜화이트 (벽)
+        - 30%: #C4A77D~#D4A574 우드톤 (바닥, 가구)
+        - 10%: #8B7355 다크우드 (악센트)
+
+     같은 '따뜻함'이라도 비율이 달라지면 느낌이 완전히 달라져요.
+     우드톤을 40%로 올리면 더 아늑하지만 좁아 보일 수 있어요.
+
+     레퍼런스 비율로 갈까요?"
+
+지은: "아, 60-30-10! 그래서 이 방이 넓어 보이면서도 따뜻한 거구나."
 
 AI: (mama_save 호출)
-    topic: "voxel:chicken:color"
-    decision: "몸통=노란색, 부리=주황색"
-    reasoning: "Crossy Road 원작 참고, 사용자 선호"
+    topic: "interior:color_theory"
+    decision: "60-30-10 법칙 적용 (웜화이트 60%, 우드 30%, 다크우드 10%)"
+    reasoning: "색상 이론 교육 후 사용자 이해 확인.
+                사용자 성장: '따뜻하게' → '60-30-10 비율' 개념 습득"
 ```
 
-### Day 14: 세션 재개 ⭐ MAMA 효과
+**💡 Human CoT**: 단순히 색을 정해주는 게 아니라, "왜 이 색들이 조화로운지" 원리를 설명. 지은은 다음 프로젝트에서 이 법칙을 직접 적용할 수 있다.
+
+### Day 7: 공간 설계 — "동선이 뭐예요?"
+
+```
+지은: "소파랑 TV 위치는 어떻게 하면 좋을까?"
+
+AI: "가구 배치 전에 '동선'이라는 개념을 알려드릴게요.
+
+     📚 동선 (動線)
+        사람이 공간에서 이동하는 경로예요.
+        좋은 동선 = 막힘 없이 자연스럽게 흐르는 이동
+
+     이 복층에서 동선을 그려보면:
+        현관 → 거실 → 계단 → 침실
+
+     ❌ 나쁜 배치: 소파가 계단 앞을 막음
+        → 매번 소파를 돌아가야 함
+
+     ✅ 좋은 배치: 소파가 창가 쪽, 계단 동선 확보
+        → 자연스러운 흐름
+
+     레퍼런스는 동선을 잘 살린 배치예요. 따라갈까요?"
+
+지은: "동선! 이래서 우리집 거실이 불편했구나... 소파가 길을 막고 있었네."
+
+AI: (mama_save 호출)
+    topic: "interior:spatial:circulation"
+    decision: "주동선 확보 우선 배치"
+    reasoning: "동선 개념 학습 후 적용. 사용자가 실제 공간에 연결해서 이해함.
+                성장 신호: 배운 개념을 자신의 경험에 적용"
+```
+
+**💡 Human CoT**: "동선"이라는 전문 용어와 개념을 배우고, 이를 자신의 실제 공간에 연결해서 이해.
+
+### Day 14: 세션 재개 — "지난번 배운 거 기억나요?"
 
 ```
 [2주 후 새 세션]
 
 AI: (onSessionInit - 자동 로드)
-    "안녕하세요! Crossy Road 스타일 닭 프로젝트네요.
+    "안녕하세요! Japandi 스타일 복층 프로젝트네요.
 
-     📍 지금까지:
-     - 스타일: Crossy Road 복셀아트 ✅
-     - 색상: 노란색 몸통, 주황색 부리 ✅
-     - 기본 형태: 완성 ✅
+     📍 지금까지 함께 배운 것들:
+     - 스타일: Japandi (일본+스칸디나비아) ✅
+     - 색상: 60-30-10 법칙 적용 ✅
+     - 공간: 동선 우선 배치 ✅
 
-     다음은 뭘 할까요? 날개? 다리?"
+     📍 다음 작업:
+     - 침실 로프트
+     - 욕실 파티션
 
-민수: "날개 추가해줘"
+     오늘은 뭘 해볼까요?"
 
-AI: (preToolList - 힌트 주입)
-    💡 기존 스타일: 노란색 복셀, Crossy Road
+지은: "침실! 근데 침대 위치는 내가 정해볼게.
+       동선 생각하면 계단에서 바로 보이지 않는 곳이 좋겠지?"
 
-    "기존 색상 팔레트를 유지할게요.
-     날개는 몸통보다 살짝 어두운 노란색으로 할까요?"
-```
-
-**이것이 MAMA의 핵심 가치**: 2주 후에도 맥락이 유지된다.
-
-### Day 30: AI의 반론 (Anti-Echo Chamber)
-
-```
-민수: "닭 머리를 3배로 키우고 싶어"
-
-AI: "🤔 머리를 3배로요?
-
-     Crossy Road 스타일은 비율이 중요한데,
-     3배면 캐릭터 느낌이 많이 달라질 수 있어요.
-
-     - 1.5배: 귀여운 느낌 강조
-     - 2배: 캐리커처 느낌
-     - 3배: 완전 다른 캐릭터
-
-     그래도 3배로 하시겠어요?"
+AI: "오, 정확해요! 👏
+     프라이버시 + 동선을 같이 고려하셨네요.
+     계단 오른쪽 안쪽에 배치하면 딱이에요."
 
 AI: (mama_save 호출)
-    topic: "voxel:chicken:head_size"
-    decision: "1.5배 선택"
-    reasoning: "debates: 3배 고려했으나 스타일 일관성 위해 1.5배"
+    topic: "interior:bedroom:layout"
+    decision: "침대=계단에서 직접 안 보이는 안쪽 배치"
+    reasoning: "사용자가 스스로 동선+프라이버시 고려해서 결정.
+                성장 지표: AI 제안 없이 원리 적용"
+```
+
+**🎯 성장의 증거**: 지은이 AI의 제안 없이 직접 "동선"을 고려해서 결정했다.
+
+### Day 21: 스스로 트레이드오프 판단
+
+```
+지은: "유리 난간 대신 나무 난간으로 바꾸고 싶어.
+       근데... 개방감이 줄어들 수 있겠지?"
+
+AI: "오, 트레이드오프를 먼저 생각하셨네요!
+
+     맞아요. 정리하면:
+     - 나무 난간: 따뜻함 ↑, 개방감 ↓, 빛 투과 ↓
+     - 유리 난간: 개방감 ↑, 미니멀 ↑, 따뜻함 ↓
+
+     Japandi 스타일은 '따뜻함'과 '개방감' 둘 다 중요해서
+     보통 나무 프레임 + 유리 패널로 절충해요.
+
+     어떻게 하시겠어요?"
+
+지은: "절충안으로! 그게 Japandi답네."
+
+AI: (mama_save 호출)
+    topic: "interior:loft:railing"
+    decision: "나무 프레임 + 유리 패널 절충"
+    reasoning: "사용자가 트레이드오프를 먼저 인식하고 질문.
+                AI는 확인만 해줌. 성장: 스스로 스타일 일관성 판단"
+```
+
+**🎯 성장의 증거**: "개방감이 줄어들 수 있겠지?"라고 스스로 트레이드오프를 예측했다.
+
+### Day 30: 졸업 — "다음 프로젝트는 혼자 시작해볼게요"
+
+```
+지은: "이번에 정말 많이 배웠어. 다음엔 카페 인테리어 해보고 싶은데,
+       60-30-10 법칙이랑 동선 먼저 생각하고 시작해볼게!"
+
+AI: "멋져요! 지은님만의 디자인 언어가 생긴 것 같아요.
+
+     📊 30일간의 성장:
+     ├── Day 1: '미니멀' → Japandi라는 이름을 알게 됨
+     ├── Day 3: '따뜻하게' → 60-30-10 법칙 이해
+     ├── Day 7: '소파 위치' → 동선 개념 습득
+     ├── Day 14: 스스로 동선 고려해서 배치 결정
+     └── Day 21: 트레이드오프 먼저 예측
+
+     카페 프로젝트 할 때 불러주세요.
+     이번엔 제가 배울 차례일지도요!"
 ```
 
 ### 30일 후: 축적된 것들
 
 ```
-[민수의 MAMA]
+[지은의 MAMA - Reasoning Graph]
 
-📊 Reasoning Graph:
-├── voxel:chicken:style = "Crossy Road"
-├── voxel:chicken:color = "노란색/주황색"
-│   └── builds_on: style 결정
-├── voxel:chicken:head_size = "1.5배"
-│   └── debates: 3배 고려 후 변경
-└── ...
+📚 배운 개념들:
+├── design:style:japandi = "일본+스칸디나비아 미니멀"
+├── design:color:60-30-10 = "주조색 60%, 보조색 30%, 강조색 10%"
+├── design:spatial:circulation = "동선 = 사람의 이동 경로"
+└── design:decision:tradeoff = "선택에는 항상 장단점이 있다"
 
-📈 성장 지표:
-├── 질문 빈도: 5회/세션 → 2회/세션
-├── 자체 결정: 30% → 70%
-└── 용어 이해: "복셀", "z-order" 자연스럽게 사용
+🏠 프로젝트 결정들:
+├── interior:style = "Japandi"
+│   └── learning: 스타일 비교 후 자기 취향 발견
+├── interior:color = "웜톤 60-30-10"
+│   └── learning: 색상 이론 적용
+├── interior:living:layout = "동선 우선 배치"
+│   └── learning: 동선 개념 습득
+└── interior:loft:railing = "나무+유리 절충"
+    └── learning: 트레이드오프 스스로 판단
+
+📈 성장 곡선:
+├── Day 1-7: AI가 개념 설명, 사용자 수용
+├── Day 7-14: 사용자가 개념 적용 시도
+├── Day 14-21: 사용자가 스스로 판단 후 확인 요청
+└── Day 21-30: 사용자가 다음 프로젝트 독립 계획
+
+💬 언어의 변화:
+├── "미니멀하게" → "Japandi 스타일로"
+├── "따뜻하게" → "우드톤 30% 정도로"
+├── "소파 어디?" → "동선 고려하면..."
+└── "이거 괜찮아요?" → "트레이드오프가 있지만 Japandi답게..."
 ```
+
+**이것이 MAMA의 진짜 가치**:
+단순히 작업을 기억하는 게 아니라, **사용자의 성장 여정을 기록**한다.
+다음 프로젝트에서 AI는 "지은님은 Japandi를 좋아하고, 동선과 트레이드오프를 이해하는 분"으로 시작할 수 있다.
 
 ---
 
 ## 7. 로드맵과 산출물
 
-### Epic 11 Stories (14개)
+### Epic 11 Stories (18개)
 
 #### Phase 11.1: Core (FR67-70)
 
@@ -452,14 +690,25 @@ AI: (mama_save 호출)
 
 **품질 게이트**: none/hint/full 모드 동작, 90일 이상 결정 경고
 
-#### Phase 11.4: Platform (FR79-80)
+#### Phase 11.4: Learning Track (FR81-84) ⭐ 신규
 
 | Story | 제목 | FR |
 |-------|------|-----|
-| 11-13 | LLM Adapter Pattern | FR79 |
-| 11-14 | Module Library Recommendation | FR80 |
+| 11-13 | Learning Progress Storage | FR81 |
+| 11-14 | User Growth Metrics | FR82 |
+| 11-15 | DesignHints System | FR83 |
+| 11-16 | Terminology Evolution | FR84 |
 
-**품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작, 모듈 추천 검증
+**품질 게이트**: 개념 학습 기록, 성장 지표 추적, Human CoT 유도 동작
+
+#### Phase 11.5: Platform (FR85-87)
+
+| Story | 제목 | FR |
+|-------|------|-----|
+| 11-17 | MCP 내부 통합 | FR85 |
+| 11-18 | LLM Adapter Pattern | FR87 |
+
+**품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작
 
 ### 성공 기준
 
@@ -468,6 +717,9 @@ AI: (mama_save 호출)
 | **파트너십 형성** | 30일 후 "이 AI는 나를 안다" 체감 |
 | **세션 연속성** | 이전 결정을 자동으로 기억 |
 | **건강한 관계** | debates >= 10%, 외부 증거 포함 |
+| **사용자 성장** | 30일 후 독립 결정 비율 70%+ |
+| **개념 적용** | 배운 개념 재적용률 50%+ |
+| **언어 발전** | 전문 용어 사용 3개+ 증가 |
 | **검색 응답** | < 100ms (로컬 DB) |
 | **Hook 실행** | < 10ms (동기화 작업) |
 

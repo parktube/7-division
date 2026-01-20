@@ -252,12 +252,38 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 | FR77 | Adaptive Mentoring | [ADR-0020](./adr/0020-adaptive-mentoring.md) | 숙련도별 힌트 수준 조절. 초보자 상세, 숙련자 간략 |
 | FR78 | Module Recommendation | [ADR-0024](./adr/0024-module-library-recommendation.md) | MAMA 임베딩으로 "의자 만들어줘" → chair 모듈 추천 |
 
-#### Phase 11.4: Platform
+#### Phase 11.4: Learning Track (신규)
+
+> "만들고 싶은 것을 만들면서, 만드는 법을 배운다" - 사용자 성장 추적 시스템
 
 | ID | 요구사항 | ADR | 수용 기준 |
 |----|---------|-----|----------|
-| FR79 | MCP 내부 통합 | - | npm install 시 MAMA 포함. 별도 설정 불필요 |
-| FR80 | 도메인 폴더 구조 | - | domains/ 폴더에 voxel/, furniture/, interior/ 기본 제공 |
+| FR81 | Learning Progress Storage | ADR-0025 | 배운 개념 저장 (60-30-10, 동선 등). type='learning' 지원 |
+| FR82 | User Growth Metrics | ADR-0025 | 독립 결정 횟수, 개념 적용 횟수, 질문 품질 추적 |
+| FR83 | DesignHints System | ADR-0025 | Human CoT 유도. 바로 만들지 않고 옵션 제시 |
+| FR84 | Terminology Evolution | ADR-0025 | 사용자 언어 변화 추적 ("미니멀" → "Japandi") |
+
+**Learning Track 핵심 철학:**
+
+| AI 행동 | 잘못된 예 | 올바른 예 |
+|---------|----------|----------|
+| 스타일 질문 | "알겠습니다, 미니멀로 만들게요" | "미니멀에도 Japandi/Bauhaus/Muji가 있어요. 어떤 스타일인가요?" |
+| 색상 결정 | "따뜻한 색으로 할게요" | "60-30-10 법칙을 알려드릴게요. 이 비율로 하면 넓어 보이면서 따뜻해요" |
+| 배치 결정 | "여기에 소파 놓을게요" | "동선이란 개념이 있어요. 계단 앞을 막지 않는 배치가 좋아요" |
+
+**Human CoT 유도 원칙:**
+1. 바로 만들지 않고, 1-2개 옵션 제시
+2. "왜" 그런지 원리 설명
+3. 선택하게 하고, 선택 이유 기록
+4. 다음에 적용했는지 추적
+
+#### Phase 11.5: Platform
+
+| ID | 요구사항 | ADR | 수용 기준 |
+|----|---------|-----|----------|
+| FR85 | MCP 내부 통합 | - | npm install 시 MAMA 포함. 별도 설정 불필요 |
+| FR86 | 도메인 폴더 구조 | - | domains/ 폴더에 voxel/, furniture/, interior/ 기본 제공 |
+| FR87 | LLM Adapter Pattern | ADR-0023 | Claude, OpenAI, Ollama 교체 가능 |
 
 #### Hook 시스템 상세 (ADR-0015 + ADR-0018)
 
@@ -327,6 +353,42 @@ CREATE TABLE hints (
   priority INTEGER DEFAULT 5,
   tags TEXT,                     -- JSON: ["wall", "room", "extend"]
   source TEXT                    -- 'user', 'system', 'learned'
+);
+
+-- learnings: 배운 개념 저장 (FR81, ADR-0025)
+CREATE TABLE learnings (
+  id TEXT PRIMARY KEY,
+  concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
+  domain TEXT,                   -- 'color_theory', 'spatial', 'style'
+  understanding_level INTEGER,   -- 1: 소개됨, 2: 이해함, 3: 적용함, 4: 숙달
+  first_introduced INTEGER,      -- timestamp
+  last_applied INTEGER,          -- timestamp
+  applied_count INTEGER DEFAULT 0,
+  user_explanation TEXT,         -- 사용자가 이 개념을 설명한 기록
+  created_at INTEGER
+);
+
+-- growth_metrics: 성장 지표 (FR82, ADR-0025)
+CREATE TABLE growth_metrics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  metric_type TEXT NOT NULL,     -- 'independent_decision', 'concept_applied',
+                                 -- 'tradeoff_predicted', 'terminology_used'
+  related_learning_id TEXT,      -- learnings 테이블 참조
+  related_decision_id TEXT,      -- decisions 테이블 참조
+  context TEXT,                  -- 어떤 상황에서 발생했는지
+  created_at INTEGER,
+  FOREIGN KEY (related_learning_id) REFERENCES learnings(id),
+  FOREIGN KEY (related_decision_id) REFERENCES decisions(id)
+);
+
+-- terminology_evolution: 용어 변화 추적 (FR84)
+CREATE TABLE terminology_evolution (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  before_term TEXT NOT NULL,     -- '미니멀하게'
+  after_term TEXT NOT NULL,      -- 'Japandi 스타일로'
+  learning_id TEXT,              -- 관련 학습
+  detected_at INTEGER,
+  FOREIGN KEY (learning_id) REFERENCES learnings(id)
 );
 ```
 
