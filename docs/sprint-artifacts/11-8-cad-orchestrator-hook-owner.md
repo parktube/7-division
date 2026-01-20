@@ -15,10 +15,11 @@ So that **모든 LLM에서 동일하게 동작한다** (FR74).
 **When** Hook이 실행되면
 **Then** 동일한 방식으로 컨텍스트가 주입된다
 
-### AC2: Ollama와 동일 동작
-**Given** Ollama로 CAD를 사용할 때
+### AC2: LLM 독립적 동작 검증
+**Given** 임의의 MCP 클라이언트(Ollama 등)로 CAD를 사용할 때
 **When** Hook이 실행되면
 **Then** Claude와 동일한 방식으로 컨텍스트가 주입된다
+> **Note**: 실제 Ollama 통합은 Story 11.13에서 구현. 여기서는 LLM 독립성 검증에 집중.
 
 ### AC3: MCP 요청 라우팅
 **Given** MCP 요청을 처리할 때
@@ -60,7 +61,7 @@ So that **모든 LLM에서 동일하게 동작한다** (FR74).
 
 - [ ] Task 3: LLM 독립성 검증 (AC: #1, #2, #5)
   - [ ] 3.1 Claude Code 테스트 시나리오 작성
-  - [ ] 3.2 Ollama 테스트 시나리오 작성 (모킹)
+  - [ ] 3.2 범용 MCP 클라이언트 테스트 시나리오 작성 (stub 클라이언트 또는 Ollama 모킹)
   - [ ] 3.3 동일 출력 검증 테스트
 
 - [ ] Task 4: 에러 처리 (AC: #6)

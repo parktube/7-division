@@ -340,4 +340,4 @@ MAMA 검색 결과를 WebSocket으로 뷰어에 전송하여 LibraryPanel에 실
 ## 13. 관련 문서
 
 - [ADR 0023: LLM-Agnostic Agent Architecture](./0023-llm-agnostic-agent-architecture.md)
-- [Story 9.2.8: Module Learning & Suggestion](../sprint-artifacts/9.2.8-module-learning.md)
+- [Story 11.3.5: Module Library Recommendation](../sprint-artifacts/11-3-5-module-library.md)

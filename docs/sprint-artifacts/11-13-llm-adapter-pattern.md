@@ -18,7 +18,7 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
 ### AC2: ClaudeAdapter 구현
 **Given** ClaudeAdapter를 구현했을 때
 **When** Claude API로 연결하면
-**Then** chat, toolCalling이 정상 동작한다
+**Then** chat, supportsToolCalling이 정상 동작한다
 
 ### AC3: OllamaAdapter 구현
 **Given** OllamaAdapter를 구현했을 때

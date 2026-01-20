@@ -211,7 +211,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 상세: [epics.md](./epics.md), [ADR-007](./adr/007-web-architecture.md), [ADR-008](./adr/008-tool-pattern-alignment.md) 참조
 
-### 계획 중: Epic 11 - MAMA Integration (FR67~FR80)
+### 계획 중: Epic 11 - MAMA Integration (FR67~FR87)
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 

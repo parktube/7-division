@@ -37,6 +37,12 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 **When** independent_decision 비율이 70% 이상이면
 **Then** 힌트 수준이 자동으로 '숙련자'로 조절된다
 
+### AC6: 전문 용어 사용 기록
+**Given** 사용자가 전문 용어를 사용할 때
+**When** "브러시 스트로크의 가중치를 줄일게"라고 말하면
+**Then** growth_metrics에 type='terminology_used' 기록
+> **Note**: Story 11.16 (Terminology Evolution)과 연동하여 용어 변화 추적에도 활용됨
+
 ## Tasks / Subtasks
 
 - [ ] Task 1: growth_metrics 테이블 생성 (AC: #1, #2, #3)
@@ -68,10 +74,16 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
   - [ ] 5.2 Story 11.10과 연동
   - [ ] 5.3 힌트 수준 자동 조절
 
-- [ ] Task 6: 테스트 작성
-  - [ ] 6.1 각 metric_type 감지 테스트
-  - [ ] 6.2 성장 리포트 생성 테스트
-  - [ ] 6.3 Adaptive Mentoring 연동 테스트
+- [ ] Task 6: 전문 용어 사용 감지 (AC: #6)
+  - [ ] 6.1 도메인 용어 사전 매칭 (Story 11.16 term-mapping 활용)
+  - [ ] 6.2 growth_metrics에 type='terminology_used' 자동 기록
+  - [ ] 6.3 Story 11.16과 연동 (terminology_evolution 테이블 참조)
+
+- [ ] Task 7: 테스트 작성
+  - [ ] 7.1 각 metric_type 감지 테스트
+  - [ ] 7.2 성장 리포트 생성 테스트
+  - [ ] 7.3 Adaptive Mentoring 연동 테스트
+  - [ ] 7.4 terminology_used 감지 테스트
 
 ## Dev Notes
 

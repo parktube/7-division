@@ -14,7 +14,7 @@ So that **이전 작업을 이어서 할 수 있다** (FR71).
 **Given** MCP 연결이 시작될 때
 **When** `onSessionInit` Hook이 실행되면
 **Then** 마지막 체크포인트가 자동 로드된다
-**And** 최근 결정 5개가 요약되어 제공된다
+**And** 최근 결정 5개가 요약되어 제공된다 (created_at DESC 정렬, 결과 없으면 빈 배열)
 
 ### AC2: Full 모드 컨텍스트 주입
 **Given** `contextInjection` 설정이 `full`일 때

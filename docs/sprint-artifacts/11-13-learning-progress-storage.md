@@ -79,6 +79,7 @@ So that **성장 여정을 추적할 수 있다** (FR81).
 ```sql
 CREATE TABLE learnings (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,         -- 사용자 식별자 (다중 사용자 지원)
   concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
   domain TEXT,                   -- 'color_theory', 'spatial', 'style'
   understanding_level INTEGER DEFAULT 1 CHECK(understanding_level BETWEEN 1 AND 4),
@@ -90,8 +91,11 @@ CREATE TABLE learnings (
 );
 
 -- 빈번한 검색 최적화를 위한 인덱스
+CREATE INDEX idx_learnings_user ON learnings(user_id);
 CREATE INDEX idx_learnings_concept ON learnings(concept);
 CREATE INDEX idx_learnings_domain ON learnings(domain);
+-- 사용자별 개념 유일성 (동일 사용자가 같은 개념 중복 학습 방지)
+CREATE UNIQUE INDEX idx_learnings_user_concept ON learnings(user_id, concept);
 ```
 
 **mama_save 확장 예시:**
@@ -99,10 +103,12 @@ CREATE INDEX idx_learnings_domain ON learnings(domain);
 // type='learning' 저장 (mama_save 도구 확장)
 mama_save({
   type: 'learning',
+  // user_id: 세션에서 자동 추출 (MCP 요청의 클라이언트 ID 또는 설정값)
   concept: '60-30-10 법칙',
   domain: 'color_theory',
   // 아래 필드는 자동 생성됨:
   // - id: 'learning_' + nanoid()
+  // - user_id: 세션 컨텍스트에서 자동 주입
   // - understanding_level: 스키마 DEFAULT 1 (CHECK 1~4 범위 강제)
   // - first_introduced: Date.now()
   // - applied_count: 0

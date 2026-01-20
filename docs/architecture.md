@@ -882,15 +882,16 @@ async function runAgentLoop(
 |------|-------------------------|------------------------|
 | 사용자 대화 | ✅ | ❌ |
 | 복잡한 추론 | ✅ | ❌ |
-| **ActionHints 생성** | ✅ | ❌ |
+| **ActionHints 사전 생성** | ❌ | ✅ (MAMA 통해) |
+| **ActionHints 해석/활용** | ✅ | ❌ |
 | **임베딩 생성** | ❌ | ✅ (multilingual-e5) |
 | **검색 결과 랭킹** | ❌ | ✅ |
 | 최종 코드 결정 | ✅ | ❌ |
 
 **핵심**:
-- 로컬 LLM은 추론 불가 → 임베딩 + 랭킹만 담당
-- ActionHints는 MAMA Hook이 생성하고 메인 LLM이 해석 (ADR-0014)
-- 로컬 LLM이 ActionHints를 생성하지 않음
+- 로컬 LLM → 임베딩 + 랭킹 + ActionHints 사전 생성 담당
+- ActionHints는 로컬 LLM이 MAMA를 통해 사전 생성하고, 메인 LLM이 컨텍스트로 활용하여 해석 (ADR-0023)
+- 메인 LLM은 복잡한 추론과 최종 결정에 집중
 
 #### 4.7.4 PoC 검증 결과 (ADR-0023)
 
