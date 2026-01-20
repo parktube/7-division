@@ -81,13 +81,17 @@ CREATE TABLE learnings (
   id TEXT PRIMARY KEY,
   concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
   domain TEXT,                   -- 'color_theory', 'spatial', 'style'
-  understanding_level INTEGER,   -- 1: 소개됨, 2: 이해함, 3: 적용함, 4: 숙달
+  understanding_level INTEGER DEFAULT 1 CHECK(understanding_level BETWEEN 1 AND 4),
   first_introduced INTEGER,
   last_applied INTEGER,
   applied_count INTEGER DEFAULT 0,
   user_explanation TEXT,         -- 사용자가 개념을 설명한 기록
   created_at INTEGER
 );
+
+-- 빈번한 검색 최적화를 위한 인덱스
+CREATE INDEX idx_learnings_concept ON learnings(concept);
+CREATE INDEX idx_learnings_domain ON learnings(domain);
 ```
 
 **mama_save 확장 예시:**
@@ -99,7 +103,7 @@ mama_save({
   domain: 'color_theory',
   // 아래 필드는 자동 생성됨:
   // - id: 'learning_' + nanoid()
-  // - understanding_level: 1 (기본값)
+  // - understanding_level: 스키마 DEFAULT 1 (CHECK 1~4 범위 강제)
   // - first_introduced: Date.now()
   // - applied_count: 0
   // - created_at: Date.now()
