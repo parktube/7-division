@@ -49,6 +49,9 @@ jobs:
     name: Publish to npm
     runs-on: ubuntu-latest
     needs: build-wasm
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +86,6 @@ jobs:
 
       - name: Publish MCP package
         working-directory: apps/cad-mcp
-        run: pnpm publish --no-git-checks --access public --ignore-scripts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks --access public --ignore-scripts --provenance
         continue-on-error: true  # May already be published
+
