@@ -321,8 +321,13 @@ Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함�
 | Intelligence | FR76 | 11.3.2 | Adaptive Mentoring |
 | Intelligence | FR77 | 11.3.3 | Graph Health Metrics |
 | Intelligence | FR78 | 11.3.4 | Anti-Echo Chamber |
-| Platform | FR79 | 11.4.1 | LLM Adapter Pattern |
-| Platform | FR80 | 11.4.2 | Module Library Recommendation |
+| Learning Track | FR81 | 11.4.1 | Learning Progress Storage |
+| Learning Track | FR82 | 11.4.2 | User Growth Metrics |
+| Learning Track | FR83 | 11.4.3 | DesignHints System |
+| Learning Track | FR84 | 11.4.4 | Terminology Evolution |
+| Platform | FR85 | 11.5.1 | MCP 내부 통합 |
+| Platform | FR86 | 11.5.2 | 도메인 폴더 구조 |
+| Platform | FR87 | 11.5.3 | LLM Adapter Pattern |
 
 ### Implementation Phases
 
@@ -756,32 +761,6 @@ So that **다양한 관점을 유지한다** (FR78).
 **Technical Notes:**
 - Level 2 (Warning) 상호작용 원칙
 - ADR-0021 참조
-
----
-
-### Story 11.4.1: LLM Adapter Pattern
-
-As a **개발자**,
-I want **LLMAdapter 인터페이스로 LLM을 교체할 수 있기를**,
-So that **Claude 외 LLM도 사용할 수 있다** (FR79).
-
-**Acceptance Criteria:**
-
-**Given** LLMAdapter 인터페이스가 정의되었을 때
-**When** ClaudeAdapter를 구현하면
-**Then** Claude API로 chat, toolCalling이 동작한다
-
-**Given** OllamaAdapter를 구현했을 때
-**When** 로컬 Ollama 서버에 연결하면
-**Then** 로컬 LLM으로 CAD 작업이 가능하다
-
-**Given** OpenAIAdapter를 구현했을 때
-**When** OpenAI API로 연결하면
-**Then** GPT 모델로 CAD 작업이 가능하다
-
-**Technical Notes:**
-- LLMAdapter 인터페이스: chat(), supportsStreaming(), supportsToolCalling()
-- ADR-0023 참조 (PoC 검증 완료)
 
 ---
 

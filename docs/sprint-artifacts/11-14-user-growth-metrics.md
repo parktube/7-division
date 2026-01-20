@@ -14,6 +14,8 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 **Given** 사용자가 AI 제안 없이 결정을 내릴 때
 **When** "침대는 계단에서 안 보이는 곳에 놓을게 (동선 때문에)"라고 말하면
 **Then** growth_metrics에 type='independent_decision', related_learning_id=동선 기록
+- **매핑 기준**: 사용자 메시지에서 learnings 테이블의 concept과 일치하는 키워드 검색
+- **예시**: "동선"이 learnings에 있으면 해당 learning.id를 related_learning_id로 연결
 
 ### AC2: 개념 적용 기록
 **Given** 사용자가 배운 개념을 적용할 때
@@ -53,9 +55,10 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
   - [ ] 3.3 growth_metrics 자동 기록
 
 - [ ] Task 4: 성장 리포트 생성 (AC: #4)
-  - [ ] 4.1 기간별 지표 집계 쿼리
+  - [ ] 4.1 기간별 지표 집계 쿼리 (기본 30일, first_activity 이후 전체도 지원)
   - [ ] 4.2 리포트 포맷 (독립 결정 비율, 개념 적용 횟수 등)
   - [ ] 4.3 체크포인트 저장 시 자동 포함
+  - [ ] 4.4 30일 기준: 사용자 첫 활동일로부터 30일 경과 시 리포트 자동 생성 알림
 
 - [ ] Task 5: Adaptive Mentoring 연동 (AC: #5)
   - [ ] 5.1 성장 기반 숙련도 계산

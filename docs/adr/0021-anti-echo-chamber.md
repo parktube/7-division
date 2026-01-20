@@ -48,6 +48,21 @@ WebSearch로 외부 증거 수집
 증거 기반 반론 제시
 ```
 
+**debates 비율 측정 방법:**
+```sql
+-- 최근 30일 기준 debates 비율 계산
+SELECT
+  COUNT(CASE WHEN reasoning LIKE '%debates:%' THEN 1 END) * 100.0 /
+  NULLIF(COUNT(*), 0) AS debates_ratio
+FROM decisions
+WHERE created_at > (strftime('%s', 'now') - 30 * 24 * 60 * 60) * 1000;
+```
+
+- **분자**: reasoning 필드에 `debates: decision_xxx` 패턴이 있는 결정 수
+- **분모**: 전체 결정 수 (최근 30일)
+- **임계값**: 10% 미만 시 Level 2 경고 발생
+- **예외**: 첫 10개 결정은 평가에서 제외 (초기 데이터 부족)
+
 ## Consequences
 
 ### Positive

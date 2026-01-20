@@ -92,14 +92,24 @@ CREATE TABLE learnings (
 
 **mama_save 확장 예시:**
 ```typescript
-// type='learning' 저장
+// type='learning' 저장 (mama_save 도구 확장)
 mama_save({
   type: 'learning',
   concept: '60-30-10 법칙',
   domain: 'color_theory',
-  // understanding_level은 자동으로 1
+  // 아래 필드는 자동 생성됨:
+  // - id: 'learning_' + nanoid()
+  // - understanding_level: 1 (기본값)
+  // - first_introduced: Date.now()
+  // - applied_count: 0
+  // - created_at: Date.now()
 })
+
+// understanding_level 업데이트는 별도 내부 로직 (mama_update 아님)
+// → 사용자 메시지 분석 후 자동 업데이트
 ```
+
+**참고:** 기존 `mama_save`는 `type: 'decision' | 'checkpoint'`만 지원하며, `type: 'learning'` 추가 시 내부적으로 learnings 테이블에 저장됨.
 
 ### References
 

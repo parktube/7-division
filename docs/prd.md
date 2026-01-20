@@ -449,17 +449,19 @@ CREATE TABLE terminology_evolution (
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
-| Phase | 핵심 기능 | FR |
-|-------|----------|-----|
-| **11.1 Core** | 4 Core Tools, Reasoning Graph, 단일 DB | FR67~FR70 |
-| **11.2 Hook System** | SessionStart, Dynamic Hint, ActionHints, LLM-Agnostic | FR71~FR74 |
-| **11.3 Intelligence** | Graph Health, Anti-Echo, Adaptive Mentoring, Module Rec | FR75~FR78 |
-| **11.4 Platform** | MCP 통합, 도메인 폴더 | FR79~FR80 |
+| Phase | 핵심 기능 | FR | Stories |
+|-------|----------|-----|---------|
+| **11.1 Core** | 4 Core Tools, Reasoning Graph, 단일 DB | FR67~FR70 | 4개 |
+| **11.2 Hook System** | SessionStart, Dynamic Hint, ActionHints, LLM-Agnostic | FR71~FR74 | 4개 |
+| **11.3 Intelligence** | Graph Health, Anti-Echo, Adaptive Mentoring, Module Rec | FR75~FR78 | 4개 |
+| **11.4 Learning Track** | Learning Progress, Growth Metrics, DesignHints, Terminology | FR81~FR84 | 4개 |
+| **11.5 Platform** | MCP 통합, 도메인 폴더, LLM Adapter | FR85~FR87 | 3개 |
 
 **성공 기준:**
 - 30일 후 맥락 기억, "이 AI는 나를 안다" 체감
 - debates >= 10% 유지 (Anti-Echo Chamber)
 - 검색 응답 < 100ms
+- 독립 결정 비율 30% → 70% 성장 (Learning Track)
 
 ### Post-MVP
 

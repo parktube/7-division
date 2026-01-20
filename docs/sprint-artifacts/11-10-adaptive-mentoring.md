@@ -68,11 +68,17 @@ So that **점진적으로 학습할 수 있다** (FR76).
 ```sql
 CREATE TABLE user_profile (
   id INTEGER PRIMARY KEY,
-  skill_level TEXT DEFAULT 'intermediate',
-  action_counts TEXT,  -- JSON: {"draw_rect": 45, "create_group": 12}
+  global_skill_level TEXT DEFAULT 'intermediate',  -- 전체 기본 수준
+  domain_skill_levels TEXT,  -- JSON: {"primitives": "expert", "groups": "beginner"}
+  action_counts TEXT,        -- JSON: {"draw_rect": 45, "create_group": 12}
   updated_at INTEGER
 );
 ```
+
+**영역별 숙련도 자동 계산:**
+- 영역 분류: primitives, transforms, groups, boolean, query
+- 자동 승격 기준: 해당 영역 action_count >= 20 → intermediate, >= 50 → expert
+- `domain_skill_levels`가 없으면 `global_skill_level` 사용
 
 ### References
 

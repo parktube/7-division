@@ -46,9 +46,9 @@ Layer 1: 인간 ↔ Claude
 
 | Level | 명칭 | 원칙 | 적용 상황 |
 |-------|------|------|----------|
-| **1** | 설득 (Persuasion) | Tool Description으로 넛징 | 워크플로우 제안 |
-| **2** | 경고 (Warning) | 능동적 개입 | 에코챔버 위험, 90일 이상 된 결정 |
-| **3** | 강제 (Enforcement) | Hook으로 강제 | 안전, 법 준수, 치명적 오류 |
+| **1** | 설득 (Persuasion) | Tool Description으로 넛징 | 워크플로우 제안, 모듈 추천 |
+| **2** | 경고 (Warning) | 능동적 개입 | debates < 10%, 90일 이상 된 결정, 외부 증거 없음 |
+| **3** | 강제 (Enforcement) | Hook으로 강제 | 데이터 손실 위험, 보안 정책 위반, 시스템 충돌 위험 |
 
 ## Consequences
 
@@ -80,6 +80,6 @@ Layer 1: 인간 ↔ Claude
 
 ## References
 
-- [mama-integration-prd.md](../mama-integration-prd.md) - 상세 요구사항
+- [prd.md](../prd.md) - 상세 요구사항 (Epic 11 MAMA Integration)
 - [architecture.md](../architecture.md) - ADR 요약
 - [ADR-0021: Anti-Echo Chamber](0021-anti-echo-chamber.md) - 관련 결정

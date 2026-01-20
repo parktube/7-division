@@ -51,6 +51,12 @@ Tool Description 스타일:
 - Claude가 힌트를 무시할 수 있음
 - 일관성 보장이 어려움
 
+### Mitigation Strategies
+- **모니터링**: Tool 사용 패턴 추적으로 설득 효과 측정
+- **상향 조정**: 반복 무시되는 권장사항은 ADR-0010의 Level 2/3로 상향
+- **피드백 루프**: 무시된 힌트 분석 → Tool Description 개선
+- **중요 워크플로우 보호**: 데이터 손실 위험 등은 처음부터 Level 3 (Enforcement)
+
 ## Alternatives Considered
 
 ### Option A: 명령 기반 ("반드시 X를 호출하세요")
