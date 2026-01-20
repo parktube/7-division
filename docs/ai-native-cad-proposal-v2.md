@@ -706,7 +706,8 @@ AI: "멋져요! 지은님만의 디자인 언어가 생긴 것 같아요.
 | Story | 제목 | FR |
 |-------|------|-----|
 | 11-17 | MCP 내부 통합 | FR85 |
-| 11-18 | LLM Adapter Pattern | FR87 |
+| 11-18 | 도메인 폴더 구조 | FR86 |
+| 11-19 | LLM Adapter Pattern | FR87 |
 
 **품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작
 

@@ -30,10 +30,20 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
 **When** OpenAI API로 연결하면
 **Then** GPT 모델로 CAD 작업이 가능하다
 
-### AC5: Adapter 교체 가능
+### AC5: Adapter 런타임 교체
 **Given** 런타임에 Adapter를 교체할 때
-**When** 설정을 변경하면
+**When** `swapAdapter('ollama')` API를 호출하면
 **Then** 재시작 없이 다른 LLM으로 전환 가능하다
+
+**트리거 방법:**
+- MCP 도구: `mcp__ai-native-cad__swap_adapter({ adapter: 'ollama' })`
+- 또는 config.json 변경 후 SIGHUP 시그널
+
+**검증 방법:**
+1. 기존 Claude로 요청 → 응답 확인
+2. `swapAdapter('ollama')` 호출
+3. 새 요청 → Ollama 응답 확인 (응답의 `adapter` 필드로 구분)
+4. 프로세스 재시작 없음 확인 (PID 동일)
 
 ## Tasks / Subtasks
 

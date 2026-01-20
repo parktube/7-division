@@ -110,19 +110,21 @@ So that **설계 결정을 저장하고 검색할 수 있다** (FR67).
 **MCP Tool Interface (architecture.md 4.3):**
 
 ```typescript
-// MCP Tool: mcp__ai-native-cad__mama_save
-interface MamaSaveInput {
-  type: 'decision' | 'checkpoint';
-  // decision
-  topic?: string;           // 예: 'voxel:chicken_design'
-  decision?: string;
-  reasoning?: string;
-  confidence?: number;      // 0.0~1.0
-  // checkpoint
-  summary?: string;
-  next_steps?: string[];
-  open_files?: string[];
-}
+// MCP Tool: mcp__ai-native-cad__mama_save (Discriminated Union)
+type MamaSaveInput =
+  | {
+      type: 'decision';
+      topic: string;           // 필수, 예: 'voxel:chicken_design'
+      decision: string;        // 필수
+      reasoning?: string;
+      confidence?: number;     // 0.0~1.0
+    }
+  | {
+      type: 'checkpoint';
+      summary: string;         // 필수
+      next_steps?: string[];
+      open_files?: string[];
+    };
 
 // MCP Tool: mcp__ai-native-cad__mama_search
 interface MamaSearchInput {

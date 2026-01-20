@@ -101,6 +101,11 @@ const termMapping = {
 };
 ```
 
+**확장성 고려:**
+- 매핑은 DB 또는 JSON 파일로 분리 가능 (`domains/interior/term-mapping.json`)
+- 도메인별 확장: `voxel/`, `furniture/`, `interior/` 각각 별도 매핑
+- 폴백: 매핑에 없는 용어는 MAMA 임베딩으로 의미적 유사도 감지
+
 **성장 리포트 언어 변화 섹션:**
 ```
 💬 언어의 변화:

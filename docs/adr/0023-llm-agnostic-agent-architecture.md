@@ -2,7 +2,7 @@
 
 **Status:** Accepted (PoC Validated)
 **Date:** 2026-01-10
-**Context:** Epic 9 MAMA Integration
+**Context:** Epic 11 MAMA Integration
 
 ---
 

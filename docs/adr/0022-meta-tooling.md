@@ -139,26 +139,14 @@ run_cad_code(`
 
 LLM이 에너지를 분석하고 코드를 수정하여 재시도 가능.
 
-### 4. 샌드박스 설정
+### 4. 샌드박스 정책
 
-```typescript
-const SANDBOX_LIMITS = {
-  timeout_ms: 10000, // 10초
-  memory_bytes: 33554432, // 32MB
-  max_entities: 10000, // 최대 엔티티 수
-};
+**보안 원칙:**
+- 타임아웃 및 메모리 제한 적용
+- 파일/네트워크 접근 차단
+- Node.js 내장 모듈 사용 불가
 
-const BLOCKED_GLOBALS = [
-  "require",
-  "import",
-  "fetch",
-  "XMLHttpRequest",
-  "fs",
-  "path",
-  "process",
-  "child_process",
-];
-```
+> 구체적인 제한값과 차단 목록은 구현 스펙(`apps/cad-mcp/src/sandbox/config.ts`)에서 정의됨
 
 ### 5. MAMA Action Hints 흐름
 

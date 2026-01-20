@@ -887,7 +887,10 @@ async function runAgentLoop(
 | **검색 결과 랭킹** | ❌ | ✅ |
 | 최종 코드 결정 | ✅ | ❌ |
 
-**핵심**: 로컬 LLM은 추론 불가 → 임베딩 + 랭킹만 담당
+**핵심**:
+- 로컬 LLM은 추론 불가 → 임베딩 + 랭킹만 담당
+- ActionHints는 MAMA Hook이 생성하고 메인 LLM이 해석 (ADR-0014)
+- 로컬 LLM이 ActionHints를 생성하지 않음
 
 #### 4.7.4 PoC 검증 결과 (ADR-0023)
 

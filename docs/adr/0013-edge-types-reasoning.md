@@ -23,6 +23,8 @@ Decision 간의 관계(edge)를 어떻게 표현할지 결정해야 한다. 별�
 | `debates` | ❌ | `debates: decision_xxx` |
 | `synthesizes` | ❌ | `synthesizes: [id1, id2]` |
 
+> **참고**: `decision_xxx`는 플레이스홀더입니다. 실제 사용 시 `decision_abc123` 또는 `decision_topic_abc123` 형식의 실제 ID를 사용합니다.
+
 **예시:**
 ```typescript
 save({

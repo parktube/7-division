@@ -2,7 +2,7 @@
 
 **Status:** Proposed
 **Date:** 2026-01-10
-**Context:** Epic 9 MAMA Integration - Story 9.2.8 Module Learning
+**Context:** Epic 11 MAMA Integration - Module Learning
 
 ---
 
