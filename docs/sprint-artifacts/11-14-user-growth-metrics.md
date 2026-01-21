@@ -131,8 +131,21 @@ CREATE INDEX idx_growth_metrics_user_type ON growth_metrics(user_id, metric_type
 ```
 
 **진행률 계산 방식:**
-- 전체 기간을 전반부/후반부로 나누어 비교 (예: 30일 기준 → 0~15일 vs 16~30일)
-- 데이터 부족 시 (< 14일): 진행률 표시 생략, 절대값만 표시
+- **비교 기준**: 전체 기간을 전반부/후반부로 나누어 비교 (예: 30일 기준 → 0~15일 vs 16~30일)
+- **계산 예시**: "독립 결정 비율: 32% → 71%"
+  - 32% = 전반부(0~15일)의 독립 결정 비율
+  - 71% = 후반부(16~30일)의 독립 결정 비율
+- **쿼리 예시**:
+  ```sql
+  -- 전반부 독립 결정 비율
+  SELECT COUNT(*) * 100.0 / total FROM growth_metrics
+  WHERE created_at BETWEEN start AND midpoint AND metric_type = 'independent_decision';
+  -- 후반부 독립 결정 비율
+  SELECT COUNT(*) * 100.0 / total FROM growth_metrics
+  WHERE created_at BETWEEN midpoint AND end AND metric_type = 'independent_decision';
+  ```
+- **데이터 부족 시 (< 14일)**: 진행률(before → after) 표시 생략, 절대값만 표시
+  - 예: "독립 결정 비율: 45%" (비교 없이 현재 값만)
 
 ### References
 

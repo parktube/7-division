@@ -95,7 +95,8 @@ interface LLMAdapter {
 interface LLMResponse {
   content: string;
   toolCalls?: ToolCall[];
-  done: boolean;  // 스트리밍 완료 표시 (향후 스트리밍 구현 시 사용, 현재 스토리에서는 항상 true)
+  done: boolean;  // 현재 스토리 범위: 항상 true (비스트리밍)
+                  // 향후 스트리밍 스토리에서 false→true 전환 검증 예정
 }
 ```
 
@@ -103,12 +104,18 @@ interface LLMResponse {
 ```json
 {
   "llmAdapter": "claude",
-  "ollamaModel": "qwen2.5-coder:7b"
+  "claudeApiKey": "sk-...",
+  "ollamaModel": "qwen2.5-coder:7b",
+  "ollamaBaseUrl": "http://localhost:11434",
+  "openaiApiKey": "sk-..."
 }
 ```
 
-> `llmAdapter`: `"claude"` | `"ollama"` | `"openai"`
-> **참고**: 비활성 어댑터의 설정도 유지 가능하며, `llmAdapter` 값에 따라 해당 어댑터 설정만 사용됩니다.
+> **설정 설명**:
+> - `llmAdapter`: 활성 어댑터 선택 (`"claude"` | `"ollama"` | `"openai"`)
+> - 각 어댑터별 설정(API 키, 모델명 등)은 모두 유지 가능
+> - `llmAdapter` 값에 해당하는 어댑터 설정만 실제 사용됨
+> - 예: `"llmAdapter": "claude"`면 `ollamaModel`은 무시됨 (런타임 교체 시 사용 가능)
 
 ### References
 
