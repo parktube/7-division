@@ -19,12 +19,14 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
 **Given** ClaudeAdapter를 구현했을 때
 **When** Claude API로 연결하면
 **Then** chat, supportsToolCalling이 정상 동작한다
+**And** `supportsStreaming(): true`를 반환한다
 
 ### AC3: OllamaAdapter 구현
 **Given** OllamaAdapter를 구현했을 때
 **When** 로컬 Ollama 서버에 연결하면
 **Then** 기본 CAD 명령(`glob`, `read`, `write`)이 수행된다
 **And** 응답에 `adapter: 'ollama'` 식별자가 포함된다
+**And** `supportsStreaming(): true`를 반환한다
 
 > **최소 성공 시나리오**: `glob()` 호출 → 파일 목록 반환 확인
 
@@ -33,6 +35,7 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
 **When** OpenAI API로 연결하면
 **Then** 기본 CAD 명령(`glob`, `read`, `write`)이 수행된다
 **And** 응답에 `adapter: 'openai'` 식별자가 포함된다
+**And** `supportsStreaming(): true`를 반환한다
 
 > **최소 성공 시나리오**: `glob()` 호출 → 파일 목록 반환 확인
 

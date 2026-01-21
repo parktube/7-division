@@ -108,6 +108,8 @@ CREATE TABLE growth_metrics (
 -- 사용자별 성장 지표 조회 최적화
 CREATE INDEX idx_growth_metrics_user ON growth_metrics(user_id);
 CREATE INDEX idx_growth_metrics_type ON growth_metrics(metric_type);
+-- 사용자별 지표 유형 조회 최적화 (복합 인덱스)
+CREATE INDEX idx_growth_metrics_user_type ON growth_metrics(user_id, metric_type);
 ```
 
 **성장 지표 정의:**
@@ -127,6 +129,10 @@ CREATE INDEX idx_growth_metrics_type ON growth_metrics(metric_type);
 ├── 트레이드오프 예측: 8회
 └── 새로 배운 개념: 5개
 ```
+
+**진행률 계산 방식:**
+- 전체 기간을 전반부/후반부로 나누어 비교 (예: 30일 기준 → 0~15일 vs 16~30일)
+- 데이터 부족 시 (< 14일): 진행률 표시 생략, 절대값만 표시
 
 ### References
 

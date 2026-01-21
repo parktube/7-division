@@ -93,7 +93,7 @@ interface CADToolResult {
   data: unknown;
   error?: string;
   actionHints?: {
-    nextSteps?: NextStep[];      // camelCase로 통일
+    nextSteps?: NextStep[];
     moduleHints?: string[];
     saveSuggestion?: SaveSuggestion;
   };

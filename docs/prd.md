@@ -361,7 +361,7 @@ CREATE TABLE learnings (
   user_id TEXT NOT NULL,
   concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
   domain TEXT,                   -- 'color_theory', 'spatial', 'style'
-  understanding_level INTEGER,   -- 1: 소개됨, 2: 이해함, 3: 적용함, 4: 숙달
+  understanding_level INTEGER DEFAULT 1 CHECK(understanding_level BETWEEN 1 AND 4),  -- 1: 소개됨, 2: 이해함, 3: 적용함, 4: 숙달
   first_introduced INTEGER,      -- Unix timestamp (seconds)
   last_applied INTEGER,          -- Unix timestamp (seconds)
   applied_count INTEGER DEFAULT 0,
@@ -661,8 +661,8 @@ LLM이 가이드, MAMA가 맥락 기억, 인간이 의사결정
 
 | LLM | 역할 | 비고 |
 |-----|------|------|
-| 메인 LLM (Claude/Ollama) | 설계 추론, ActionHints 생성 | 교체 가능 |
-| 로컬 LLM (exaone 2.4B) | 번역, 검색 랭킹 | 현재 MAMA 수준 |
+| 메인 LLM (Claude/Ollama) | 설계 추론, ActionHints 해석/활용 | 교체 가능 |
+| 로컬 LLM (exaone 2.4B) | ActionHints 사전 생성, 번역, 검색 랭킹 | ADR-0023 |
 
 ---
 

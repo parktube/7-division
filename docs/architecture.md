@@ -237,6 +237,9 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 │                                         │  - decision_edges               │ │
 │                                         │  - sessions                     │ │
 │                                         │  - hints                        │ │
+│                                         │  - learnings                    │ │
+│                                         │  - growth_metrics               │ │
+│                                         │  - terminology_evolution        │ │
 │                                         └─────────────────────────────────┘ │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -505,9 +508,9 @@ Hook 시스템은 Claude Code의 Hook 패턴을 **CAD 내부에서 미러링**�
 │       │                                                                      │
 │       ▼                                                                      │
 │  ┌─────────────────────────────────────────────────────────────┐            │
-│  │ 3. preExecute (Optional: Lock Guard)                        │            │
-│  │    - 잠긴 엔티티 수정 시도 차단                                  │            │
-│  │    - 동적 제약 조건 체크                                        │            │
+│  │ 3. preExecute (Optional: Constraint Validation)             │            │
+│  │    - 보호된 엔티티 수정 시도 차단                                │            │
+│  │    - 동적 제약 조건 검증                                        │            │
 │  │                                                               │            │
 │  │    Note: Level 3 (Enforcement) 상황에서만 사용                  │            │
 │  └─────────────────────────────────────────────────────────────┘            │

@@ -36,13 +36,13 @@ So that **성장을 가시화할 수 있다** (FR84).
 **Then** 자동으로 terminology_evolution에 기록된다
 
 > **감지 기준** (우선순위):
-> 1. **매핑 사전 매치**: `term_mappings` 테이블의 before→after 매핑
+> 1. **매핑 사전 매치**: 도메인별 용어 매핑 사전 (DB 또는 JSON, 예: `domains/interior/term-mapping.json`)
 > 2. **임베딩 유사도**: cosine similarity ≥ 0.85 + 전문성 점수 증가
 
 ## Tasks / Subtasks
 
 - [ ] Task 1: terminology_evolution 테이블 생성 (AC: #1, #2)
-  - [ ] 1.1 스키마 정의 (before_term, after_term, learning_id)
+  - [ ] 1.1 스키마 정의 (user_id, before_term, after_term, learning_id, detected_at, idx_terminology_user 인덱스)
   - [ ] 1.2 SQLite 마이그레이션
   - [ ] 1.3 TypeScript 타입 정의
 
