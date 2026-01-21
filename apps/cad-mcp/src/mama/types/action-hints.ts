@@ -2,8 +2,10 @@
  * ActionHints Types
  *
  * Story 11.7: ActionHints (postExecute)
+ * Story 11.15: DesignHints System
  *
  * Types for post-execution action hints and workflow suggestions.
+ * Includes DesignHints for guiding Human Chain of Thought (CoT).
  */
 
 // ============================================================
@@ -33,16 +35,56 @@ export interface SaveSuggestion {
 }
 
 // ============================================================
+// DesignHints - Human CoT guidance (Story 11.15)
+// ============================================================
+
+export interface NextConcept {
+  /** Concept name (e.g., '60-30-10 법칙') */
+  concept: string
+  /** Why learn this now */
+  relevance: string
+}
+
+export interface ThinkingQuestion {
+  /** Question to ask the user */
+  question: string
+  /** Purpose of this question for Human CoT */
+  purpose: string
+}
+
+export interface DesignOption {
+  /** Option label (e.g., 'Japandi') */
+  label: string
+  /** Pros of this option */
+  pros: string[]
+  /** Cons of this option */
+  cons: string[]
+}
+
+export interface DesignHints {
+  /** Concepts to learn next */
+  next_concepts: NextConcept[]
+  /** Questions to stimulate thinking */
+  questions: ThinkingQuestion[]
+  /** Choices with tradeoffs */
+  options: DesignOption[]
+  /** Relevant design principle */
+  principle?: string
+}
+
+// ============================================================
 // ActionHints - All hints from postExecute
 // ============================================================
 
 export interface ActionHints {
-  /** Suggested next steps */
+  /** Suggested next steps (AX - AI guidance) */
   nextSteps?: NextStep[]
   /** Related module hints */
   moduleHints?: string[]
   /** Suggestion to save a decision */
   saveSuggestion?: SaveSuggestion
+  /** Design hints for Human CoT (UX - Human guidance) */
+  designHints?: DesignHints
 }
 
 // ============================================================

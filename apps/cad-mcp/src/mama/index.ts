@@ -823,3 +823,17 @@ export {
   type RecordGrowthParams,
   type GrowthSummary,
 } from './growth-tracker.js'
+
+// Re-export design hints (Story 11.15)
+export {
+  generateDesignHints,
+  formatDesignHints,
+  detectDomain,
+  recordStyleChoice,
+  shouldGenerateDesignHints,
+  type DesignHints,
+  type DesignContext,
+  type NextConcept,
+  type ThinkingQuestion,
+  type DesignOption,
+} from './design-hints.js'

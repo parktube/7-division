@@ -2109,3 +2109,103 @@ describe('User Growth Metrics', () => {
     expect(counts.terminology_used).toBeGreaterThanOrEqual(0)
   })
 })
+
+// ============================================================
+// DesignHints System (Story 11.15)
+// ============================================================
+
+describe('DesignHints System', () => {
+  it('should detect color domain', async () => {
+    const { detectDomain } = await import('../src/mama/design-hints.js')
+
+    expect(detectDomain('색상 팔레트를 정해주세요')).toBe('color')
+    expect(detectDomain('I want a warm color tone')).toBe('color')
+  })
+
+  it('should detect style domain', async () => {
+    const { detectDomain } = await import('../src/mama/design-hints.js')
+
+    expect(detectDomain('미니멀하게 해줘')).toBe('style')
+    expect(detectDomain('Make it modern')).toBe('style')
+    expect(detectDomain('Japandi 스타일로')).toBe('style')
+  })
+
+  it('should detect layout domain', async () => {
+    const { detectDomain } = await import('../src/mama/design-hints.js')
+
+    expect(detectDomain('가구 배치를 도와주세요')).toBe('layout')
+    expect(detectDomain('공간 활용')).toBe('layout')
+  })
+
+  it('should detect material domain', async () => {
+    const { detectDomain } = await import('../src/mama/design-hints.js')
+
+    expect(detectDomain('나무 소재로 할게요')).toBe('material')
+    expect(detectDomain('Wood or metal?')).toBe('material')
+  })
+
+  it('should generate DesignHints for style context', async () => {
+    const { generateDesignHints } = await import('../src/mama/design-hints.js')
+
+    const hints = generateDesignHints({
+      domain: 'style',
+      userIntent: '미니멀하게 해줘',
+    })
+
+    expect(hints).not.toBeNull()
+    expect(hints!.options.length).toBeGreaterThan(0)
+    expect(hints!.questions.length).toBeGreaterThan(0)
+    expect(hints!.next_concepts.length).toBeGreaterThan(0)
+  })
+
+  it('should generate DesignHints with principle for color domain', async () => {
+    const { generateDesignHints } = await import('../src/mama/design-hints.js')
+
+    const hints = generateDesignHints({
+      domain: 'color',
+      userIntent: '색상 조합',
+    })
+
+    expect(hints).not.toBeNull()
+    expect(hints!.principle).toBeDefined()
+    expect(hints!.principle).toContain('60-30-10')
+  })
+
+  it('should format DesignHints correctly', async () => {
+    const { formatDesignHints } = await import('../src/mama/design-hints.js')
+
+    const formatted = formatDesignHints({
+      next_concepts: [{ concept: '60-30-10', relevance: 'Basic color rule' }],
+      questions: [{ question: '어떤 기분을 원하세요?', purpose: 'Emotion mapping' }],
+      options: [{
+        label: 'Japandi',
+        pros: ['따뜻함', '자연스러움'],
+        cons: ['관리 필요'],
+      }],
+      principle: '60-30-10 법칙',
+    })
+
+    expect(formatted).toContain('원리')
+    expect(formatted).toContain('생각해볼 질문')
+    expect(formatted).toContain('선택지')
+    expect(formatted).toContain('다음에 배울 개념')
+  })
+
+  it('should return null when domain is not detected', async () => {
+    const { generateDesignHints } = await import('../src/mama/design-hints.js')
+
+    const hints = generateDesignHints({
+      userIntent: 'hello world',
+    })
+
+    expect(hints).toBeNull()
+  })
+
+  it('should check if DesignHints should be generated', async () => {
+    const { shouldGenerateDesignHints } = await import('../src/mama/design-hints.js')
+
+    expect(shouldGenerateDesignHints('미니멀 스타일로 해줘')).toBe(true)
+    expect(shouldGenerateDesignHints('색상 팔레트 추천')).toBe(true)
+    expect(shouldGenerateDesignHints('hello world')).toBe(false)
+  })
+})
