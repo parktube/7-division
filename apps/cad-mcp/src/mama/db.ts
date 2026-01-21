@@ -64,6 +64,23 @@ export interface LearningRow {
   created_at: number
 }
 
+// Growth metric types
+export type GrowthMetricType =
+  | 'independent_decision'
+  | 'concept_applied'
+  | 'tradeoff_predicted'
+  | 'terminology_used'
+
+export interface GrowthMetricRow {
+  id: number
+  user_id: string
+  metric_type: GrowthMetricType
+  related_learning_id: string | null
+  related_decision_id: string | null
+  context: string | null
+  created_at: number
+}
+
 export interface UserProfileRow {
   id: number
   global_skill_level: SkillLevel
@@ -812,5 +829,191 @@ export function getLearningsSummary(userId: string): {
     total: learnings.length,
     byLevel,
     recentlyApplied,
+  }
+}
+
+// ============================================================
+// Growth Metrics Operations (User Growth Metrics)
+// ============================================================
+
+/**
+ * Record a growth metric
+ *
+ * @param metric - Metric data
+ * @returns Created metric ID
+ */
+export function recordGrowthMetric(metric: {
+  user_id: string
+  metric_type: GrowthMetricType
+  related_learning_id?: string
+  related_decision_id?: string
+  context?: string
+}): number {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  const result = db!.prepare(`
+    INSERT INTO growth_metrics (user_id, metric_type, related_learning_id, related_decision_id, context, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    metric.user_id,
+    metric.metric_type,
+    metric.related_learning_id || null,
+    metric.related_decision_id || null,
+    metric.context || null,
+    now
+  )
+
+  logger.info(`Growth metric recorded: ${metric.metric_type} for user ${metric.user_id}`)
+
+  return result.lastInsertRowid as number
+}
+
+/**
+ * Get growth metrics for a user
+ *
+ * @param userId - User ID
+ * @param periodDays - Period in days (default: 30)
+ * @param metricType - Optional metric type filter
+ */
+export function getGrowthMetrics(
+  userId: string,
+  periodDays = 30,
+  metricType?: GrowthMetricType
+): GrowthMetricRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
+
+  if (metricType) {
+    return db!.prepare(`
+      SELECT * FROM growth_metrics
+      WHERE user_id = ? AND metric_type = ? AND created_at > ?
+      ORDER BY created_at DESC
+    `).all(userId, metricType, cutoff) as GrowthMetricRow[]
+  }
+
+  return db!.prepare(`
+    SELECT * FROM growth_metrics
+    WHERE user_id = ? AND created_at > ?
+    ORDER BY created_at DESC
+  `).all(userId, cutoff) as GrowthMetricRow[]
+}
+
+/**
+ * Count growth metrics by type for a user
+ *
+ * @param userId - User ID
+ * @param periodDays - Period in days (default: 30)
+ */
+export function countGrowthMetricsByType(
+  userId: string,
+  periodDays = 30
+): Record<GrowthMetricType, number> {
+  if (!db) {
+    initDatabase()
+  }
+
+  const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
+
+  const rows = db!.prepare(`
+    SELECT metric_type, COUNT(*) as count
+    FROM growth_metrics
+    WHERE user_id = ? AND created_at > ?
+    GROUP BY metric_type
+  `).all(userId, cutoff) as Array<{ metric_type: GrowthMetricType; count: number }>
+
+  const counts: Record<GrowthMetricType, number> = {
+    independent_decision: 0,
+    concept_applied: 0,
+    tradeoff_predicted: 0,
+    terminology_used: 0,
+  }
+
+  for (const row of rows) {
+    counts[row.metric_type] = row.count
+  }
+
+  return counts
+}
+
+/**
+ * Get first activity timestamp for a user
+ */
+export function getFirstActivityTimestamp(userId: string): number | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  const result = db!.prepare(`
+    SELECT MIN(created_at) as first_activity
+    FROM growth_metrics
+    WHERE user_id = ?
+  `).get(userId) as { first_activity: number | null } | undefined
+
+  return result?.first_activity || null
+}
+
+/**
+ * Calculate independent decision ratio
+ * Compares first half vs second half of the period
+ *
+ * @param userId - User ID
+ * @param periodDays - Period in days
+ * @returns { firstHalf: number, secondHalf: number } percentages
+ */
+export function calculateIndependentRatio(
+  userId: string,
+  periodDays = 30
+): { firstHalf: number; secondHalf: number; hasEnoughData: boolean } {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  const midpoint = now - (periodDays / 2) * 24 * 60 * 60 * 1000
+  const start = now - periodDays * 24 * 60 * 60 * 1000
+
+  // Get totals and independent counts for each half
+  const firstHalfTotal = db!.prepare(`
+    SELECT COUNT(*) as count FROM growth_metrics
+    WHERE user_id = ? AND created_at BETWEEN ? AND ?
+  `).get(userId, start, midpoint) as { count: number }
+
+  const firstHalfIndependent = db!.prepare(`
+    SELECT COUNT(*) as count FROM growth_metrics
+    WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at BETWEEN ? AND ?
+  `).get(userId, start, midpoint) as { count: number }
+
+  const secondHalfTotal = db!.prepare(`
+    SELECT COUNT(*) as count FROM growth_metrics
+    WHERE user_id = ? AND created_at BETWEEN ? AND ?
+  `).get(userId, midpoint, now) as { count: number }
+
+  const secondHalfIndependent = db!.prepare(`
+    SELECT COUNT(*) as count FROM growth_metrics
+    WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at BETWEEN ? AND ?
+  `).get(userId, midpoint, now) as { count: number }
+
+  const firstHalfRatio = firstHalfTotal.count > 0
+    ? Math.round((firstHalfIndependent.count / firstHalfTotal.count) * 100)
+    : 0
+
+  const secondHalfRatio = secondHalfTotal.count > 0
+    ? Math.round((secondHalfIndependent.count / secondHalfTotal.count) * 100)
+    : 0
+
+  // Need at least 5 metrics in each half for meaningful comparison
+  const hasEnoughData = firstHalfTotal.count >= 5 && secondHalfTotal.count >= 5
+
+  return {
+    firstHalf: firstHalfRatio,
+    secondHalf: secondHalfRatio,
+    hasEnoughData,
   }
 }

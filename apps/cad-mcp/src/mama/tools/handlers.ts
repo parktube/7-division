@@ -32,6 +32,7 @@ import { loadConfig, updateConfig } from '../config.js'
 import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
 import { analyzeDecisionBeforeSave, getStaleWarning, type AntiEchoWarning } from '../anti-echo.js'
 import { saveLearning, type SaveLearningResult } from '../learning-tracker.js'
+import { getGrowthSummary, formatGrowthReport, type GrowthSummary } from '../growth-tracker.js'
 
 // ============================================================
 // Response Types
@@ -733,4 +734,46 @@ export async function handleMamaHealth(args: HealthArgs): Promise<ToolResponse> 
 function getSummary(health: GraphHealth): string {
   const scoreEmoji = health.healthScore >= 80 ? '🟢' : health.healthScore >= 50 ? '🟡' : '🔴'
   return `${scoreEmoji} Health: ${health.healthScore}/100 | ${health.totalDecisions} decisions | ${health.totalEdges} edges | ${health.warnings.length} warnings`
+}
+
+// ============================================================
+// mama_growth_report Handler
+// ============================================================
+
+export interface GrowthReportArgs {
+  period_days?: number
+}
+
+/**
+ * Handle mama_growth_report tool call
+ *
+ * Story 11.14: User Growth Metrics
+ */
+export async function handleMamaGrowthReport(args: GrowthReportArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    const periodDays = args.period_days || 30
+    const summary: GrowthSummary = getGrowthSummary(periodDays, 'manual')
+    const report = formatGrowthReport(summary)
+
+    logger.info(`mama_growth_report: ${periodDays} days, independent ratio=${summary.independentRatio.secondHalf}%`)
+
+    return {
+      success: true,
+      data: {
+        period_days: periodDays,
+        report,
+        metrics: summary.metrics,
+        independentRatio: summary.independentRatio,
+        newConceptsLearned: summary.newConceptsLearned,
+        shouldUpgradeSkillLevel: summary.shouldUpgradeSkillLevel,
+        daysActive: summary.daysActive,
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_growth_report failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
 }

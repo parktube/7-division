@@ -304,6 +304,36 @@ Can set global level or per-domain level (primitives, transforms, groups, boolea
     },
   },
 
+  // === mama_growth_report: User growth metrics report ===
+  mama_growth_report: {
+    name: 'mama_growth_report',
+    description: `📈 Generate user growth metrics report.
+
+**Metrics Tracked:**
+• Independent decisions (AI 제안 없이 결정)
+• Concept applications (배운 개념 적용)
+• Tradeoff predictions (트레이드오프 예측)
+• Terminology usage (전문 용어 사용)
+
+**Report Includes:**
+• Independent decision ratio with trend (improving/stable/declining)
+• Counts per metric type
+• New concepts learned in period
+• Skill level upgrade recommendation
+
+Use this to track user growth and adjust mentoring level.`,
+    parameters: {
+      type: 'object',
+      properties: {
+        period_days: {
+          type: 'number',
+          description: 'Period in days for the report. Default: 30',
+        },
+      },
+      required: [],
+    },
+  },
+
   // === mama_health: Graph health metrics ===
   mama_health: {
     name: 'mama_health',

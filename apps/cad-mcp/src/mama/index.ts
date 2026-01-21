@@ -807,3 +807,19 @@ export {
   type SaveLearningResult,
   type LearningHint,
 } from './learning-tracker.js'
+
+// Re-export growth tracker (Story 11.14)
+export {
+  recordGrowth,
+  recordIndependentDecision,
+  recordConceptApplied,
+  recordTradeoffPredicted,
+  recordTerminologyUsed,
+  getGrowthSummary,
+  formatGrowthReport,
+  checkSkillLevelUpgrade,
+  shouldTrigger30DayReport,
+  findRelatedLearning,
+  type RecordGrowthParams,
+  type GrowthSummary,
+} from './growth-tracker.js'

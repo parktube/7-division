@@ -1865,13 +1865,15 @@ describe('Learning Progress Storage', () => {
   it('should save a new learning', async () => {
     const { saveLearning } = await import('../src/mama/learning-tracker.js')
 
+    // Use unique concept name
+    const uniqueConcept = `test:learning_60-30-10_${Date.now()}`
     const result = saveLearning({
-      concept: 'test:learning_60-30-10',
+      concept: uniqueConcept,
       domain: 'color_theory',
     })
 
     expect(result.id).toMatch(/^learning_/)
-    expect(result.concept).toBe('test:learning_60-30-10')
+    expect(result.concept).toBe(uniqueConcept)
     expect(result.domain).toBe('color_theory')
     expect(result.understanding_level).toBe(1)
     expect(result.applied_count).toBe(0)
@@ -1916,16 +1918,17 @@ describe('Learning Progress Storage', () => {
   it('should record application and upgrade level', async () => {
     const { saveLearning, recordApplication, getLearningByConcept } = await import('../src/mama/learning-tracker.js')
 
-    // Create new learning
+    // Create new learning with unique name
+    const uniqueConcept = `test:learning_apply_${Date.now()}`
     saveLearning({
-      concept: 'test:learning_apply',
+      concept: uniqueConcept,
     })
 
     // Record application
-    const count = recordApplication('test:learning_apply')
+    const count = recordApplication(uniqueConcept)
     expect(count).toBe(1)
 
-    const learning = getLearningByConcept('test:learning_apply')
+    const learning = getLearningByConcept(uniqueConcept)
     expect(learning).not.toBeNull()
     expect(learning!.understanding_level).toBe(3) // Upgraded to 'applied'
     expect(learning!.applied_count).toBe(1)
@@ -1934,17 +1937,18 @@ describe('Learning Progress Storage', () => {
   it('should auto-upgrade to mastery after 3 applications', async () => {
     const { saveLearning, recordApplication, getLearningByConcept } = await import('../src/mama/learning-tracker.js')
 
-    // Create new learning
+    // Create new learning with unique name
+    const uniqueConcept = `test:learning_mastery_${Date.now()}`
     saveLearning({
-      concept: 'test:learning_mastery',
+      concept: uniqueConcept,
     })
 
     // Apply 3 times
-    recordApplication('test:learning_mastery')
-    recordApplication('test:learning_mastery')
-    recordApplication('test:learning_mastery')
+    recordApplication(uniqueConcept)
+    recordApplication(uniqueConcept)
+    recordApplication(uniqueConcept)
 
-    const learning = getLearningByConcept('test:learning_mastery')
+    const learning = getLearningByConcept(uniqueConcept)
     expect(learning).not.toBeNull()
     expect(learning!.understanding_level).toBe(4) // Mastery
     expect(learning!.applied_count).toBe(3)
@@ -1953,9 +1957,11 @@ describe('Learning Progress Storage', () => {
   it('should handle mama_save type=learning', async () => {
     const { handleMamaSave } = await import('../src/mama/tools/handlers.js')
 
+    // Use unique concept name
+    const uniqueConcept = `test:mama_save_learning_${Date.now()}`
     const result = await handleMamaSave({
       type: 'learning',
-      concept: 'test:mama_save_learning',
+      concept: uniqueConcept,
       domain: 'spatial',
     })
 
@@ -1969,7 +1975,7 @@ describe('Learning Progress Storage', () => {
       is_new: boolean
     }
     expect(data.type).toBe('learning')
-    expect(data.concept).toBe('test:mama_save_learning')
+    expect(data.concept).toBe(uniqueConcept)
     expect(data.domain).toBe('spatial')
     expect(data.understanding_level).toBe(1)
     expect(data.is_new).toBe(true)
@@ -2011,5 +2017,95 @@ describe('Learning Progress Storage', () => {
 
     const formatted = formatLearningHints([])
     expect(formatted).toBeNull()
+  })
+})
+
+// ============================================================
+// User Growth Metrics (Story 11.14)
+// ============================================================
+
+describe('User Growth Metrics', () => {
+  it('should record independent decision', async () => {
+    const { recordIndependentDecision } = await import('../src/mama/growth-tracker.js')
+
+    const metricId = recordIndependentDecision(undefined, 'Test context')
+    expect(metricId).toBeGreaterThan(0)
+  })
+
+  it('should record concept applied', async () => {
+    const { recordConceptApplied, saveLearning } = await import('../src/mama/growth-tracker.js')
+    const { saveLearning: saveL } = await import('../src/mama/learning-tracker.js')
+
+    // Create a learning first
+    const learning = saveL({ concept: `test:growth_concept_${Date.now()}` })
+    const metricId = recordConceptApplied(learning.id, 'Applied 60-30-10 rule')
+
+    expect(metricId).toBeGreaterThan(0)
+  })
+
+  it('should record tradeoff predicted', async () => {
+    const { recordTradeoffPredicted } = await import('../src/mama/growth-tracker.js')
+
+    const metricId = recordTradeoffPredicted(undefined, 'Predicted wood vs metal tradeoff')
+    expect(metricId).toBeGreaterThan(0)
+  })
+
+  it('should record terminology used', async () => {
+    const { recordTerminologyUsed } = await import('../src/mama/growth-tracker.js')
+
+    const metricId = recordTerminologyUsed(undefined, 'Used term: brush stroke weight')
+    expect(metricId).toBeGreaterThan(0)
+  })
+
+  it('should get growth summary', async () => {
+    const { getGrowthSummary } = await import('../src/mama/growth-tracker.js')
+
+    const summary = getGrowthSummary(30, 'manual')
+
+    expect(summary.period_days).toBe(30)
+    expect(summary.metrics).toBeDefined()
+    expect(summary.independentRatio).toBeDefined()
+    expect(typeof summary.newConceptsLearned).toBe('number')
+    expect(typeof summary.shouldUpgradeSkillLevel).toBe('boolean')
+  })
+
+  it('should format growth report', async () => {
+    const { getGrowthSummary, formatGrowthReport } = await import('../src/mama/growth-tracker.js')
+
+    const summary = getGrowthSummary(30, 'manual')
+    const report = formatGrowthReport(summary)
+
+    expect(report).toContain('30일간의 성장')
+    expect(report).toContain('독립 결정 비율')
+    expect(report).toContain('개념 적용 횟수')
+    expect(report).toContain('트레이드오프 예측')
+    expect(report).toContain('새로 배운 개념')
+  })
+
+  it('should handle mama_growth_report tool call', async () => {
+    const { handleMamaGrowthReport } = await import('../src/mama/tools/handlers.js')
+
+    const result = await handleMamaGrowthReport({ period_days: 30 })
+
+    expect(result.success).toBe(true)
+    const data = result.data as {
+      period_days: number
+      report: string
+      metrics: Record<string, number>
+    }
+    expect(data.period_days).toBe(30)
+    expect(data.report).toContain('30일간의 성장')
+    expect(data.metrics).toBeDefined()
+  })
+
+  it('should count growth metrics by type', async () => {
+    const { countGrowthMetricsByType } = await import('../src/mama/db.js')
+
+    const counts = countGrowthMetricsByType('default', 30)
+
+    expect(counts.independent_decision).toBeGreaterThanOrEqual(0)
+    expect(counts.concept_applied).toBeGreaterThanOrEqual(0)
+    expect(counts.tradeoff_predicted).toBeGreaterThanOrEqual(0)
+    expect(counts.terminology_used).toBeGreaterThanOrEqual(0)
   })
 })

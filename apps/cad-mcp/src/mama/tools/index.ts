@@ -19,6 +19,7 @@ export {
   handleMamaEditHint,
   handleMamaSetSkillLevel,
   handleMamaHealth,
+  handleMamaGrowthReport,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
@@ -26,5 +27,6 @@ export {
   type EditHintArgs,
   type SetSkillLevelArgs,
   type HealthArgs,
+  type GrowthReportArgs,
   type ToolResponse,
 } from './handlers.js'

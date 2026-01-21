@@ -30,6 +30,7 @@ import {
   handleMamaEditHint,
   handleMamaSetSkillLevel,
   handleMamaHealth,
+  handleMamaGrowthReport,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
@@ -37,6 +38,7 @@ import {
   type EditHintArgs,
   type SetSkillLevelArgs,
   type HealthArgs,
+  type GrowthReportArgs,
 } from './mama/tools/index.js'
 import { shutdownMAMA } from './mama/index.js'
 import { orchestrator } from './orchestrator.js'
@@ -737,11 +739,21 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === mama_growth_report: User growth metrics (Story 11.14) ===
+        case 'mama_growth_report': {
+          const growthArgs = args as unknown as GrowthReportArgs
+          const result = await handleMamaGrowthReport(growthArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report`,
             }],
             isError: true,
           }
