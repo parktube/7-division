@@ -762,4 +762,15 @@ export {
   type AddHintParams,
   type UpdateHintParams,
   type HintRow,
+  // Post-execute (Story 11.7)
+  formatActionHints,
+  type ExecutionContext,
+  type CADToolResult,
+  type ActionHints,
 } from './hooks/registry.js'
+
+// Re-export action hints types
+export type {
+  NextStep,
+  SaveSuggestion,
+} from './types/action-hints.js'

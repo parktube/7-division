@@ -1040,3 +1040,299 @@ describe('Dynamic Hint Injection', () => {
     expect(typeof hookRegistry.preToolList).toBe('function')
   })
 })
+
+// ============================================================
+// Story 11.7: ActionHints (postExecute) Tests
+// ============================================================
+
+describe('ActionHints - Entity Detection', () => {
+  it('should detect entity types from names', async () => {
+    const { detectEntityTypes } = await import('../src/mama/rules/next-steps.js')
+
+    const entities = ['chicken_body', 'pig_head', 'car_wheel']
+    const types = detectEntityTypes(entities)
+
+    expect(types).toContain('character')
+    expect(types).toContain('vehicle')
+  })
+
+  it('should detect room entity type', async () => {
+    const { detectEntityTypes } = await import('../src/mama/rules/next-steps.js')
+
+    const entities = ['living_room', 'bedroom_floor']
+    const types = detectEntityTypes(entities)
+
+    expect(types).toContain('room')
+  })
+
+  it('should handle empty entity list', async () => {
+    const { detectEntityTypes } = await import('../src/mama/rules/next-steps.js')
+
+    const types = detectEntityTypes([])
+    expect(types).toHaveLength(0)
+  })
+
+  it('should deduplicate detected types', async () => {
+    const { detectEntityTypes } = await import('../src/mama/rules/next-steps.js')
+
+    const entities = ['chicken_body', 'chicken_head', 'chicken_wing']
+    const types = detectEntityTypes(entities)
+
+    expect(types.filter((t) => t === 'character')).toHaveLength(1)
+  })
+})
+
+describe('ActionHints - Entity Name Extraction', () => {
+  it('should extract named entities from code', async () => {
+    const { extractEntityNames } = await import('../src/mama/hooks/post-execute.js')
+
+    const code = `
+      drawBox({ name: 'chicken_body', size: [4, 6, 3] })
+      drawCylinder({ name: "pig_head", radius: 2 })
+    `
+
+    const names = extractEntityNames(code)
+
+    expect(names).toContain('chicken_body')
+    expect(names).toContain('pig_head')
+  })
+
+  it('should extract group names', async () => {
+    const { extractEntityNames } = await import('../src/mama/hooks/post-execute.js')
+
+    const code = `
+      group('vehicle_parts', () => {
+        drawBox({ name: 'wheel', size: [1, 1, 1] })
+      })
+    `
+
+    const names = extractEntityNames(code)
+
+    expect(names).toContain('vehicle_parts')
+    expect(names).toContain('wheel')
+  })
+
+  it('should handle empty code', async () => {
+    const { extractEntityNames } = await import('../src/mama/hooks/post-execute.js')
+
+    const names = extractEntityNames('')
+    expect(names).toHaveLength(0)
+  })
+})
+
+describe('ActionHints - Next Step Rules', () => {
+  it('should suggest door/window for room creation', async () => {
+    const { evaluateNextSteps } = await import('../src/mama/rules/next-steps.js')
+
+    const context = {
+      entityTypes: ['room'],
+      entitiesCreated: ['living_room'],
+      toolName: 'write',
+    }
+
+    const steps = evaluateNextSteps(context)
+
+    expect(steps.some((s) => s.action === 'add_door')).toBe(true)
+    expect(steps.some((s) => s.action === 'add_window')).toBe(true)
+  })
+
+  it('should suggest accessories for character creation', async () => {
+    const { evaluateNextSteps } = await import('../src/mama/rules/next-steps.js')
+
+    const context = {
+      entityTypes: ['character'],
+      entitiesCreated: ['chicken'],
+      toolName: 'write',
+    }
+
+    const steps = evaluateNextSteps(context)
+
+    expect(steps.some((s) => s.action === 'add_accessories')).toBe(true)
+  })
+
+  it('should suggest roof for building creation', async () => {
+    const { evaluateNextSteps } = await import('../src/mama/rules/next-steps.js')
+
+    const context = {
+      entityTypes: ['building'],
+      entitiesCreated: ['house'],
+      toolName: 'write',
+    }
+
+    const steps = evaluateNextSteps(context)
+
+    expect(steps.some((s) => s.action === 'add_roof')).toBe(true)
+    expect(steps.some((s) => s.action === 'add_door')).toBe(true)
+  })
+
+  it('should deduplicate next steps', async () => {
+    const { evaluateNextSteps } = await import('../src/mama/rules/next-steps.js')
+
+    const context = {
+      entityTypes: ['room', 'wall'], // Both may suggest add_door
+      entitiesCreated: ['bedroom', 'wall_north'],
+      toolName: 'write',
+    }
+
+    const steps = evaluateNextSteps(context)
+    const doorSteps = steps.filter((s) => s.action === 'add_door')
+
+    expect(doorSteps).toHaveLength(1) // Should be deduplicated
+  })
+})
+
+describe('ActionHints - Save Suggestions', () => {
+  it('should suggest saving pattern for multiple same-type entities', async () => {
+    const { evaluateSaveSuggestion } = await import('../src/mama/rules/next-steps.js')
+
+    const context = {
+      entityTypes: ['tree'],
+      entitiesCreated: ['tree1', 'tree2', 'tree3'],
+      toolName: 'write',
+    }
+
+    const suggestion = evaluateSaveSuggestion(context)
+
+    expect(suggestion).toBeDefined()
+    expect(suggestion!.topic).toContain('pattern')
+  })
+
+  it('should suggest saving new character design', async () => {
+    const { evaluateSaveSuggestion } = await import('../src/mama/rules/next-steps.js')
+
+    const context = {
+      entityTypes: ['character'],
+      entitiesCreated: ['new_chicken'],
+      toolName: 'write',
+    }
+
+    const suggestion = evaluateSaveSuggestion(context)
+
+    expect(suggestion).toBeDefined()
+    expect(suggestion!.topic).toContain('character')
+  })
+})
+
+describe('ActionHints - Post Execute Hook', () => {
+  it('should generate hints for write tool', async () => {
+    const { executePostExecute } = await import('../src/mama/hooks/post-execute.js')
+
+    const context = {
+      toolName: 'write',
+      code: "drawBox({ name: 'chicken_body', size: [4, 6, 3] })",
+    }
+
+    const result = {
+      success: true,
+      data: { entities: ['chicken_body'] },
+    }
+
+    const enhanced = executePostExecute(context, result)
+
+    expect(enhanced.success).toBe(true)
+    expect(enhanced.actionHints).toBeDefined()
+    expect(enhanced.actionHints?.nextSteps).toBeDefined()
+  })
+
+  it('should skip hints for read tool', async () => {
+    const { executePostExecute, shouldGenerateHints } = await import('../src/mama/hooks/post-execute.js')
+
+    expect(shouldGenerateHints('read')).toBe(false)
+    expect(shouldGenerateHints('mcp__ai-native-cad__read')).toBe(false)
+
+    const context = { toolName: 'read' }
+    const result = { success: true, data: { content: 'file content' } }
+
+    const enhanced = executePostExecute(context, result)
+
+    expect(enhanced.actionHints).toBeUndefined()
+  })
+
+  it('should skip hints for failed execution', async () => {
+    const { executePostExecute } = await import('../src/mama/hooks/post-execute.js')
+
+    const context = {
+      toolName: 'write',
+      code: "drawBox({ name: 'test' })",
+    }
+
+    const result = {
+      success: false,
+      data: null,
+      error: 'Execution failed',
+    }
+
+    const enhanced = executePostExecute(context, result)
+
+    expect(enhanced.actionHints).toBeUndefined()
+    expect(enhanced.error).toBe('Execution failed')
+  })
+
+  it('should not fail if hint generation fails', async () => {
+    const { executePostExecute } = await import('../src/mama/hooks/post-execute.js')
+
+    // Invalid context that might cause issues
+    const context = {
+      toolName: 'write',
+      code: null as unknown as string,
+    }
+
+    const result = {
+      success: true,
+      data: {},
+    }
+
+    // Should not throw
+    const enhanced = executePostExecute(context, result)
+    expect(enhanced.success).toBe(true)
+  })
+})
+
+describe('ActionHints - Format Hints', () => {
+  it('should format next steps correctly', async () => {
+    const { formatActionHints } = await import('../src/mama/hooks/post-execute.js')
+
+    const hints = {
+      nextSteps: [
+        {
+          action: 'add_door',
+          description: '문 배치하기',
+          relevance: '방이 생성되었으니 출입구가 필요합니다',
+          optional: false,
+        },
+      ],
+      moduleHints: ['primitives (drawBox)'],
+    }
+
+    const formatted = formatActionHints(hints)
+
+    expect(formatted).toContain('📋 Suggested Next Steps')
+    expect(formatted).toContain('문 배치하기')
+    expect(formatted).toContain('🔧 Related Modules')
+    expect(formatted).toContain('primitives')
+  })
+
+  it('should include save suggestion in format', async () => {
+    const { formatActionHints } = await import('../src/mama/hooks/post-execute.js')
+
+    const hints = {
+      nextSteps: [],
+      moduleHints: [],
+      saveSuggestion: {
+        topic: 'voxel:pattern:layout',
+        reason: '반복 패턴이 발견되었습니다',
+      },
+    }
+
+    const formatted = formatActionHints(hints)
+
+    expect(formatted).toContain('💾 Save Suggestion')
+    expect(formatted).toContain('voxel:pattern:layout')
+    expect(formatted).toContain('반복 패턴')
+  })
+
+  it('should export postExecute hook from registry', async () => {
+    const { hookRegistry } = await import('../src/mama/index.js')
+    expect(typeof hookRegistry.postExecute).toBe('function')
+  })
+})

@@ -3,6 +3,7 @@
  *
  * Story 11.5: SessionStart Hook (onSessionInit)
  * Story 11.6: Dynamic Hint Injection (preToolList)
+ * Story 11.7: ActionHints (postExecute)
  *
  * Hook system for LLM-agnostic event handling.
  * Reference: docs/adr/0018-llm-agnostic-hooks.md
@@ -11,6 +12,15 @@
 import { logger } from '../../logger.js'
 import { executeSessionInit, type SessionInitResult } from './session-init.js'
 import { executePreToolList, type ToolDefinition } from './pre-tool-list.js'
+import {
+  executePostExecute,
+  formatActionHints,
+} from './post-execute.js'
+import type {
+  ExecutionContext,
+  CADToolResult,
+  ActionHints,
+} from '../types/action-hints.js'
 
 // ============================================================
 // Types
@@ -19,8 +29,7 @@ import { executePreToolList, type ToolDefinition } from './pre-tool-list.js'
 export interface HookRegistry {
   onSessionInit: () => Promise<SessionInitResult>
   preToolList: (tools: ToolDefinition[]) => ToolDefinition[]
-  // Future hooks:
-  // postExecute: (result: ExecutionResult) => Promise<void>
+  postExecute: (context: ExecutionContext, result: CADToolResult) => CADToolResult
 }
 
 // ============================================================
@@ -84,6 +93,22 @@ class MAMAHookRegistry implements HookRegistry {
       return tools
     }
   }
+
+  /**
+   * Execute postExecute hook
+   *
+   * Called after a CAD tool execution completes.
+   * Analyzes results and generates contextual action hints.
+   */
+  postExecute(context: ExecutionContext, result: CADToolResult): CADToolResult {
+    try {
+      return executePostExecute(context, result)
+    } catch (error) {
+      logger.error(`postExecute failed: ${error}`)
+      // Return original result on error
+      return result
+    }
+  }
 }
 
 // ============================================================
@@ -104,3 +129,7 @@ export {
   type UpdateHintParams,
   type HintRow,
 } from './pre-tool-list.js'
+
+// Post-execute exports
+export { formatActionHints }
+export type { ExecutionContext, CADToolResult, ActionHints }
