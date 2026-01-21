@@ -34,7 +34,8 @@ import {
   type ConfigureArgs,
   type EditHintArgs,
 } from './mama/tools/index.js'
-import { initMAMA, shutdownMAMA, hookRegistry } from './mama/index.js'
+import { shutdownMAMA } from './mama/index.js'
+import { orchestrator } from './orchestrator.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
@@ -285,22 +286,23 @@ async function executeRunCadCode(
  * Create and start the MCP server
  */
 export async function createMCPServer(): Promise<Server> {
-  // Initialize MAMA (Epic 11)
+  // Initialize CADOrchestrator and MAMA (Epic 11, Story 11.8)
   let sessionContext = ''
   try {
-    const mamaStatus = await initMAMA()
-    logger.info(`MAMA initialized: DB=${mamaStatus.dbReady}, Embedding=${mamaStatus.embeddingReady}, Vector=${mamaStatus.vectorSearchEnabled}`)
+    // Use orchestrator for LLM-agnostic hook management
+    const hookResult = await orchestrator.handleInitialize()
 
-    // Execute onSessionInit hook (Story 11.5)
-    const hookResult = await hookRegistry.onSessionInit()
-    sessionContext = hookResult.formattedContext
+    if (hookResult) {
+      sessionContext = hookResult.formattedContext
+      logger.info(`MAMA initialized via orchestrator: mode=${hookResult.contextMode}, decisions=${hookResult.recentDecisions.length}`)
 
-    if (sessionContext) {
-      // Output session context for Claude to see
-      logger.info(`SessionStart context (${hookResult.contextMode} mode):\n${sessionContext}`)
+      if (sessionContext) {
+        // Output session context for Claude to see
+        logger.info(`SessionStart context (${hookResult.contextMode} mode):\n${sessionContext}`)
+      }
     }
   } catch (err) {
-    logger.warn(`MAMA initialization failed (non-fatal): ${err}`)
+    logger.warn(`Orchestrator initialization failed (non-fatal): ${err}`)
   }
 
   // Initialize executor
@@ -359,12 +361,12 @@ export async function createMCPServer(): Promise<Server> {
     }
   )
 
-  // Handle list tools request with dynamic hint injection
+  // Handle list tools request with dynamic hint injection (Story 11.8)
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     const tools = getAllMCPTools()
 
-    // Apply preToolList hook to inject hints
-    const enhancedTools = hookRegistry.preToolList(
+    // Apply preToolList hook via orchestrator (LLM-agnostic)
+    const enhancedTools = orchestrator.handleToolsList(
       tools.map((t) => ({
         name: t.name,
         description: t.description,
@@ -466,15 +468,24 @@ export async function createMCPServer(): Promise<Server> {
           ]
 
           if (execResult.success) {
+            // Apply postExecute hook via orchestrator (Story 11.8)
+            const entities = getSceneEntities(exec)
+            const cadResult = orchestrator.handleToolCall(
+              'edit',
+              { success: true, data: { file, entities } },
+              { toolName: 'edit', file, entitiesCreated: entities, code: newCode }
+            )
+
             const response = {
               success: true,
               data: {
                 file,
                 replaced: true,
-                entities: getSceneEntities(exec),
+                entities,
               },
               logs: execResult.logs,
               warnings: allWarnings.length > 0 ? allWarnings : undefined,
+              actionHints: orchestrator.formatHints(cadResult),
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
@@ -531,16 +542,25 @@ export async function createMCPServer(): Promise<Server> {
           const execResult = await executeRunCadCode(mainCode)
 
           if (execResult.success) {
+            // Apply postExecute hook via orchestrator (Story 11.8)
+            const entities = getSceneEntities(exec)
+            const cadResult = orchestrator.handleToolCall(
+              'write',
+              { success: true, data: { file, entities } },
+              { toolName: 'write', file, entitiesCreated: entities, code }
+            )
+
             const combinedWarnings = [...(writeResult.warnings || []), ...(execResult.warnings || [])]
             const response = {
               success: true,
               data: {
                 file,
                 created: writeResult.data.created,
-                entities: getSceneEntities(exec),
+                entities,
               },
               logs: execResult.logs,
               warnings: combinedWarnings.length > 0 ? combinedWarnings : undefined,
+              actionHints: orchestrator.formatHints(cadResult),
             }
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
