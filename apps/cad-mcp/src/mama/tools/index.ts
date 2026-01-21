@@ -17,10 +17,12 @@ export {
   handleMamaLoadCheckpoint,
   handleMamaConfigure,
   handleMamaEditHint,
+  handleMamaSetSkillLevel,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
   type ConfigureArgs,
   type EditHintArgs,
+  type SetSkillLevelArgs,
   type ToolResponse,
 } from './handlers.js'

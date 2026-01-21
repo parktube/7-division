@@ -265,6 +265,35 @@ Actions:
       required: ['action'],
     },
   },
+
+  // === mama_set_skill_level: Set skill level for adaptive mentoring ===
+  mama_set_skill_level: {
+    name: 'mama_set_skill_level',
+    description: `🎓 Set skill level for adaptive mentoring.
+
+Controls the detail level of ActionHints based on user expertise.
+
+Levels:
+- beginner: Detailed explanations with examples and tips
+- intermediate: Brief descriptions (default)
+- expert: Minimal keywords only
+
+Can set global level or per-domain level (primitives, transforms, groups, boolean, query).`,
+    parameters: {
+      type: 'object',
+      properties: {
+        level: {
+          type: 'string',
+          description: "Skill level: 'beginner', 'intermediate', or 'expert'",
+        },
+        domain: {
+          type: 'string',
+          description: "Optional: Domain to set level for (e.g., 'primitives', 'transforms'). If omitted, sets global level.",
+        },
+      },
+      required: ['level'],
+    },
+  },
 }
 
 /**

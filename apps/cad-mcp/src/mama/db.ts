@@ -46,6 +46,17 @@ export interface CheckpointRow {
   status: string
 }
 
+export type SkillLevel = 'beginner' | 'intermediate' | 'expert'
+
+export interface UserProfileRow {
+  id: number
+  global_skill_level: SkillLevel
+  domain_skill_levels: string  // JSON
+  action_counts: string  // JSON
+  created_at: number
+  updated_at: number
+}
+
 // ============================================================
 // Database Singleton
 // ============================================================
@@ -410,5 +421,146 @@ export function getEdgeSummary(decisionId: string): {
     builds_on: outgoing.filter((e) => e.relationship === 'builds_on').map((e) => e.to_id),
     debates: outgoing.filter((e) => e.relationship === 'debates').map((e) => e.to_id),
     synthesizes: outgoing.filter((e) => e.relationship === 'synthesizes').map((e) => e.to_id),
+  }
+}
+
+// ============================================================
+// User Profile Operations (Adaptive Mentoring)
+// ============================================================
+
+/**
+ * Get user profile
+ */
+export function getUserProfile(): UserProfileRow {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = db!.prepare('SELECT * FROM user_profile WHERE id = 1').get() as UserProfileRow | undefined
+
+  if (!row) {
+    // Create default profile
+    const now = Date.now()
+    db!.prepare(`
+      INSERT OR IGNORE INTO user_profile (id, global_skill_level, domain_skill_levels, action_counts, created_at, updated_at)
+      VALUES (1, 'intermediate', '{}', '{}', ?, ?)
+    `).run(now, now)
+
+    return {
+      id: 1,
+      global_skill_level: 'intermediate',
+      domain_skill_levels: '{}',
+      action_counts: '{}',
+      created_at: now,
+      updated_at: now,
+    }
+  }
+
+  return row
+}
+
+/**
+ * Update global skill level
+ */
+export function setGlobalSkillLevel(level: SkillLevel): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  db!.prepare(`
+    UPDATE user_profile SET global_skill_level = ?, updated_at = ? WHERE id = 1
+  `).run(level, now)
+
+  logger.info(`Global skill level set to: ${level}`)
+}
+
+/**
+ * Get domain skill level
+ */
+export function getDomainSkillLevel(domain: string): SkillLevel {
+  const profile = getUserProfile()
+  try {
+    const levels = JSON.parse(profile.domain_skill_levels) as Record<string, SkillLevel>
+    return levels[domain] || profile.global_skill_level
+  } catch {
+    return profile.global_skill_level
+  }
+}
+
+/**
+ * Update domain skill level
+ */
+export function setDomainSkillLevel(domain: string, level: SkillLevel): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const profile = getUserProfile()
+  let levels: Record<string, SkillLevel>
+  try {
+    levels = JSON.parse(profile.domain_skill_levels)
+  } catch {
+    levels = {}
+  }
+
+  levels[domain] = level
+
+  const now = Date.now()
+  db!.prepare(`
+    UPDATE user_profile SET domain_skill_levels = ?, updated_at = ? WHERE id = 1
+  `).run(JSON.stringify(levels), now)
+
+  logger.info(`Domain ${domain} skill level set to: ${level}`)
+}
+
+/**
+ * Increment action count for adaptive mentoring
+ */
+export function incrementActionCount(action: string): number {
+  if (!db) {
+    initDatabase()
+  }
+
+  const profile = getUserProfile()
+  let counts: Record<string, number>
+  try {
+    counts = JSON.parse(profile.action_counts)
+  } catch {
+    counts = {}
+  }
+
+  counts[action] = (counts[action] || 0) + 1
+
+  const now = Date.now()
+  db!.prepare(`
+    UPDATE user_profile SET action_counts = ?, updated_at = ? WHERE id = 1
+  `).run(JSON.stringify(counts), now)
+
+  return counts[action]
+}
+
+/**
+ * Get action count
+ */
+export function getActionCount(action: string): number {
+  const profile = getUserProfile()
+  try {
+    const counts = JSON.parse(profile.action_counts) as Record<string, number>
+    return counts[action] || 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Get all action counts
+ */
+export function getAllActionCounts(): Record<string, number> {
+  const profile = getUserProfile()
+  try {
+    return JSON.parse(profile.action_counts) as Record<string, number>
+  } catch {
+    return {}
   }
 }

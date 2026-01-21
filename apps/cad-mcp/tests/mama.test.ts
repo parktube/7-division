@@ -1450,3 +1450,140 @@ describe('Configurable Context', () => {
     })
   })
 })
+
+// ============================================================
+// Story 11.10: Adaptive Mentoring Tests
+// ============================================================
+
+describe('Adaptive Mentoring', () => {
+  it('should get user skill profile', async () => {
+    const { getSkillProfile } = await import('../src/mama/mentoring.js')
+
+    const profile = getSkillProfile()
+
+    expect(profile.globalLevel).toBeDefined()
+    expect(['beginner', 'intermediate', 'expert']).toContain(profile.globalLevel)
+    expect(typeof profile.domainLevels).toBe('object')
+    expect(typeof profile.actionCounts).toBe('object')
+  })
+
+  it('should set global skill level', async () => {
+    const { setSkillLevel, getSkillProfile } = await import('../src/mama/mentoring.js')
+
+    // Save original level
+    const original = getSkillProfile().globalLevel
+
+    // Set to beginner
+    const result = setSkillLevel('beginner')
+    expect(result.success).toBe(true)
+
+    const profile = getSkillProfile()
+    expect(profile.globalLevel).toBe('beginner')
+
+    // Restore original
+    setSkillLevel(original)
+  })
+
+  it('should set domain skill level', async () => {
+    const { setSkillLevel, getSkillProfile } = await import('../src/mama/mentoring.js')
+
+    // Set primitives domain to expert
+    const result = setSkillLevel('expert', 'primitives')
+    expect(result.success).toBe(true)
+
+    const profile = getSkillProfile()
+    expect(profile.domainLevels.primitives).toBe('expert')
+  })
+
+  it('should track action and increment count', async () => {
+    const { trackAction, getSkillProfile } = await import('../src/mama/mentoring.js')
+
+    const initialProfile = getSkillProfile()
+    const initialCount = initialProfile.actionCounts.drawBox || 0
+
+    // Track drawBox action
+    const result = trackAction('drawBox')
+
+    expect(result.newCount).toBe(initialCount + 1)
+    expect(result.domain).toBe('primitives')
+  })
+
+  it('should calculate skill level based on action counts', async () => {
+    const { calculateDomainSkillLevel } = await import('../src/mama/mentoring.js')
+
+    // Less than 20 actions = beginner
+    expect(calculateDomainSkillLevel({ drawBox: 5 })).toBe('beginner')
+
+    // 20+ actions = intermediate
+    expect(calculateDomainSkillLevel({ drawBox: 25 })).toBe('intermediate')
+
+    // 50+ actions = expert
+    expect(calculateDomainSkillLevel({ drawBox: 55 })).toBe('expert')
+  })
+
+  it('should format hints based on skill level', async () => {
+    const { formatNextStep } = await import('../src/mama/mentoring.js')
+
+    const step = {
+      action: 'add_door',
+      description: '문 배치하기',
+      relevance: '방이 생성되었으니 출입구가 필요합니다. 벽에 문을 추가하세요.',
+      optional: false,
+    }
+
+    // Expert: minimal
+    const expertHint = formatNextStep(step, 'expert')
+    expect(expertHint.description).toBe('add_door')
+    expect(expertHint.relevance).toBe('')
+
+    // Intermediate: brief
+    const intermediateHint = formatNextStep(step, 'intermediate')
+    expect(intermediateHint.description).toBe('문 배치하기')
+    expect(intermediateHint.relevance.length).toBeLessThan(step.relevance.length)
+
+    // Beginner: detailed with tips
+    const beginnerHint = formatNextStep(step, 'beginner')
+    expect(beginnerHint.relevance).toContain('💡')
+  })
+
+  it('should map actions to domains', async () => {
+    const { getActionDomain } = await import('../src/mama/mentoring.js')
+
+    expect(getActionDomain('drawBox')).toBe('primitives')
+    expect(getActionDomain('translate')).toBe('transforms')
+    expect(getActionDomain('group')).toBe('groups')
+    expect(getActionDomain('union')).toBe('boolean')
+    expect(getActionDomain('select')).toBe('query')
+    expect(getActionDomain('unknownAction')).toBe('general')
+  })
+
+  it('should handle mama_set_skill_level tool', async () => {
+    const { handleMamaSetSkillLevel } = await import('../src/mama/tools/handlers.js')
+
+    // Set to beginner
+    const result = await handleMamaSetSkillLevel({ level: 'beginner' })
+
+    expect(result.success).toBe(true)
+    expect((result.data as { profile: { globalLevel: string } }).profile.globalLevel).toBe('beginner')
+
+    // Set domain level
+    const domainResult = await handleMamaSetSkillLevel({
+      level: 'expert',
+      domain: 'transforms',
+    })
+
+    expect(domainResult.success).toBe(true)
+    expect(
+      (domainResult.data as { profile: { domainLevels: Record<string, string> } }).profile.domainLevels.transforms
+    ).toBe('expert')
+  })
+
+  it('should reject invalid skill levels', async () => {
+    const { handleMamaSetSkillLevel } = await import('../src/mama/tools/handlers.js')
+
+    const result = await handleMamaSetSkillLevel({ level: 'invalid' })
+
+    expect(result.success).toBe(false)
+    expect(result.error).toContain('beginner')
+  })
+})

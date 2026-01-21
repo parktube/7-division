@@ -28,11 +28,13 @@ import {
   handleMamaLoadCheckpoint,
   handleMamaConfigure,
   handleMamaEditHint,
+  handleMamaSetSkillLevel,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
   type ConfigureArgs,
   type EditHintArgs,
+  type SetSkillLevelArgs,
 } from './mama/tools/index.js'
 import { shutdownMAMA } from './mama/index.js'
 import { orchestrator } from './orchestrator.js'
@@ -713,11 +715,21 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === mama_set_skill_level: Set skill level for adaptive mentoring ===
+        case 'mama_set_skill_level': {
+          const skillArgs = args as unknown as SetSkillLevelArgs
+          const result = await handleMamaSetSkillLevel(skillArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level`,
             }],
             isError: true,
           }

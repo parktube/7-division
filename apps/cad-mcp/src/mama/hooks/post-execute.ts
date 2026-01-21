@@ -14,6 +14,7 @@ import type {
   CADToolResult,
 } from '../types/action-hints.js'
 import { detectEntityTypes, generateActionHints } from '../rules/index.js'
+import { getAdaptiveHints, trackAction, getActionDomain } from '../mentoring.js'
 
 // ============================================================
 // Entity Name Extraction
@@ -184,6 +185,16 @@ export function executePostExecute(
       return result
     }
 
+    // Track action for adaptive mentoring
+    const primaryDomain = entityTypes.length > 0
+      ? getActionDomain(entityTypes[0])
+      : 'general'
+
+    // Track each entity type as an action
+    for (const entityType of entityTypes) {
+      trackAction(entityType)
+    }
+
     // Generate action hints
     const hints = generateActionHints({
       entityTypes,
@@ -204,7 +215,8 @@ export function executePostExecute(
     const actionHints: ActionHints = {}
 
     if (hints.nextSteps.length > 0) {
-      actionHints.nextSteps = hints.nextSteps
+      // Apply adaptive hints based on skill level
+      actionHints.nextSteps = getAdaptiveHints(hints.nextSteps, primaryDomain)
     }
 
     if (hints.moduleHints.length > 0) {

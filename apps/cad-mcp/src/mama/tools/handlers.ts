@@ -27,6 +27,7 @@ import {
   listHints,
   type DecisionResult,
 } from '../index.js'
+import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js'
 import { loadConfig, updateConfig } from '../config.js'
 
 // ============================================================
@@ -437,6 +438,60 @@ export interface EditHintArgs {
 /**
  * Handle mama_edit_hint tool call
  */
+// ============================================================
+// mama_set_skill_level Handler
+// ============================================================
+
+export interface SetSkillLevelArgs {
+  level: string
+  domain?: string
+}
+
+/**
+ * Handle mama_set_skill_level tool call
+ */
+export async function handleMamaSetSkillLevel(args: SetSkillLevelArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    // Validate level
+    const validLevels: SkillLevel[] = ['beginner', 'intermediate', 'expert']
+    if (!args.level || !validLevels.includes(args.level as SkillLevel)) {
+      return {
+        success: false,
+        error: `level must be one of: ${validLevels.join(', ')}`,
+      }
+    }
+
+    const level = args.level as SkillLevel
+    const result = setSkillLevel(level, args.domain)
+
+    if (!result.success) {
+      return { success: false, error: result.message }
+    }
+
+    // Get updated profile
+    const profile = getSkillProfile()
+
+    logger.info(`mama_set_skill_level: ${result.message}`)
+
+    return {
+      success: true,
+      data: {
+        message: result.message,
+        profile: {
+          globalLevel: profile.globalLevel,
+          domainLevels: profile.domainLevels,
+        },
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_set_skill_level failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
 export async function handleMamaEditHint(args: EditHintArgs): Promise<ToolResponse> {
   try {
     await initMAMA()
