@@ -105,3 +105,7 @@ CREATE TABLE user_profile (
 - `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - handleMamaSetSkillLevel)
 - `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - mama_set_skill_level 스키마)
 - `apps/cad-mcp/tests/mama.test.ts` - adaptive mentoring 테스트
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] AC5 도구명 불일치 - 명세: `set_skill_level`, 실제: `mama_set_skill_level` (기능 동일)

@@ -185,3 +185,7 @@ apps/cad-mcp/src/
 - `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - mama_edit_hint)
 - `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - mama_edit_hint 스키마)
 - `apps/cad-mcp/tests/mama.test.ts` - hint 테스트
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] AC5 도구명 불일치 - 명세: `edit_hint`, 실제: `mama_edit_hint` (기능 동일, 네이밍만 다름)

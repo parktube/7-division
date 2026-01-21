@@ -183,3 +183,7 @@ packages/shared/src/schemas/
 - `apps/cad-mcp/src/mama/hooks/registry.ts` (수정 - postExecute 등록)
 - `apps/cad-mcp/src/orchestrator.ts` (수정 - handleToolCall에서 postExecute 호출)
 - `apps/cad-mcp/tests/orchestrator.test.ts` - postExecute Hook 테스트
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] context-analyzer.ts 미구현 - next-steps.ts에 통합됨 (구조 문서화 불일치)

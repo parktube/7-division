@@ -103,3 +103,8 @@ interface SetContextModeInput {
 - `apps/cad-mcp/src/mama/tools/schema.ts` - mama_configure 스키마
 - `apps/cad-mcp/src/mama/hooks/session-init.ts` - 모드별 출력 (executeSessionInit)
 - `apps/cad-mcp/tests/mama.test.ts` - session init 모드별 테스트
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] AC4 도구명 불일치 - 명세: `set_context_mode`, 실제: `mama_configure`로 통합 (기능 동일)
+- [ ] [AI-Review][LOW] 설정 파일 경로 불일치 - 명세: `config.json`, 실제: `mama-config.json`

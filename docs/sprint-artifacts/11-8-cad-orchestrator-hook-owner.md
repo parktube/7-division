@@ -202,3 +202,7 @@ apps/cad-mcp/src/
 - `apps/cad-mcp/src/mama/index.ts` (수정 - hooks 통합)
 - `apps/cad-mcp/src/mama/hooks/registry.ts` - HookRegistry 타입 정의
 - `apps/cad-mcp/tests/orchestrator.test.ts` - 21개 테스트 케이스
+
+### Review Follow-ups (AI)
+
+- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)
