@@ -95,7 +95,7 @@ interface LLMAdapter {
 interface LLMResponse {
   content: string;
   toolCalls?: ToolCall[];
-  done: boolean;
+  done: boolean;  // 스트리밍 완료 표시 (향후 스트리밍 구현 시 사용, 현재 스토리에서는 항상 true)
 }
 ```
 

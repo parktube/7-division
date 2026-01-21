@@ -35,9 +35,9 @@ So that **성장을 가시화할 수 있다** (FR84).
 **When** 같은 의미의 더 전문적인 용어를 사용하면
 **Then** 자동으로 terminology_evolution에 기록된다
 
-> **감지 기준** (우선순위):
-> 1. **매핑 사전 매치**: 도메인별 용어 매핑 사전 (DB 또는 JSON, 예: `domains/interior/term-mapping.json`)
-> 2. **임베딩 유사도**: cosine similarity ≥ 0.85 + 전문성 점수 증가
+> **감지 기준** (우선순위, 순차 적용):
+> 1. **1차: 매핑 사전 매치** - 도메인별 용어 매핑 사전에서 정확 매칭 시도 (예: `domains/interior/term-mapping.json`)
+> 2. **2차: 임베딩 폴백** - 매핑 실패 시 cosine similarity ≥ 0.85 + 전문성 점수 증가로 유사 용어 감지
 
 ## Tasks / Subtasks
 
