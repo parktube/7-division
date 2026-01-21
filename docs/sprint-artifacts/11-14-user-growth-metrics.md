@@ -47,7 +47,8 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 ## Tasks / Subtasks
 
 - [ ] Task 1: growth_metrics 테이블 생성 (AC: #1, #2, #3)
-  - [ ] 1.1 스키마 정의 (metric_type, related_learning_id, context)
+  - [ ] 1.1 스키마 정의 (user_id, metric_type, related_learning_id, related_decision_id, context, created_at)
+    - **인덱스**: `idx_growth_metrics_user`, `idx_growth_metrics_type`, `idx_growth_metrics_user_type` (복합)
   - [ ] 1.2 SQLite 마이그레이션
   - [ ] 1.3 TypeScript 타입 정의
 
@@ -64,8 +65,8 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 - [ ] Task 4: 성장 리포트 생성 (AC: #4)
   - [ ] 4.1 기간별 지표 집계 쿼리
     - **기간 파라미터**: `period_days` (기본값: 30)
-    - **기준 시점**: `growth_metrics.created_at` 타임스탬프
-    - **계산 방식**: `WHERE created_at > (now - period_days * 24h)`
+    - **기준 시점**: `growth_metrics.created_at` (Unix timestamp, seconds)
+    - **계산 방식**: `WHERE created_at > (now_seconds - period_days * 86400)`
   - [ ] 4.2 리포트 포맷 (독립 결정 비율, 개념 적용 횟수 등)
   - [ ] 4.3 체크포인트 저장 시 자동 포함
   - [ ] 4.4 30일 트리거: 사용자 첫 활동일(min(created_at))로부터 30일 경과 시 리포트 자동 생성 알림
