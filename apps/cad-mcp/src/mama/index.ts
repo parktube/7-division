@@ -784,3 +784,13 @@ export {
   type GraphHealth,
   type EdgeTypeCounts,
 } from './health.js'
+
+// Re-export anti-echo chamber (Story 11.12)
+export {
+  analyzeDecisionBeforeSave,
+  analyzeSearchResults,
+  getStaleWarning,
+  type AntiEchoWarning,
+  type SaveWarnings,
+  type SearchWarning,
+} from './anti-echo.js'

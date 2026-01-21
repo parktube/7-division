@@ -30,6 +30,7 @@ import {
 import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js'
 import { loadConfig, updateConfig } from '../config.js'
 import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
+import { analyzeDecisionBeforeSave, getStaleWarning, type AntiEchoWarning } from '../anti-echo.js'
 
 // ============================================================
 // Response Types
@@ -77,6 +78,9 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
         return { success: false, error: 'reasoning is required for decision' }
       }
 
+      // Anti-echo chamber analysis (Story 11.12)
+      const antiEcho = analyzeDecisionBeforeSave(args.topic, args.decision, args.reasoning)
+
       const decisionId = await saveDecision({
         topic: args.topic,
         decision: args.decision,
@@ -86,14 +90,22 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
 
       logger.info(`mama_save: Decision saved - ${decisionId}`)
 
+      // Include anti-echo warnings in response
+      const responseData: Record<string, unknown> = {
+        type: 'decision',
+        id: decisionId,
+        topic: args.topic,
+        message: `Decision saved. ID: ${decisionId}`,
+      }
+
+      if (antiEcho.warnings.length > 0) {
+        responseData.warnings = antiEcho.warnings.map((w: AntiEchoWarning) => w.message)
+        logger.info(`mama_save: ${antiEcho.warnings.length} anti-echo warnings generated`)
+      }
+
       return {
         success: true,
-        data: {
-          type: 'decision',
-          id: decisionId,
-          topic: args.topic,
-          message: `Decision saved. ID: ${decisionId}`,
-        },
+        data: responseData,
       }
     } else if (args.type === 'checkpoint') {
       // Validate checkpoint fields
@@ -198,6 +210,12 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
         if (r.outcome_reason) {
           result.outcome_reason = r.outcome_reason
         }
+      }
+
+      // Add stale warning (Story 11.12 - AC2)
+      const staleWarning = getStaleWarning(r.created_at)
+      if (staleWarning) {
+        result.stale_warning = staleWarning
       }
 
       return result

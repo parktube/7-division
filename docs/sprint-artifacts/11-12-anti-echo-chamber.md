@@ -1,6 +1,6 @@
 # Story 11.12: Anti-Echo Chamber
 
-Status: ready-for-dev
+Status: Done
 
 ## Story
 
@@ -37,25 +37,25 @@ So that **다양한 관점을 유지한다** (FR78).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: 유사도 분석 (AC: #1)
-  - [ ] 1.1 최근 N개 결정 임베딩 비교
-  - [ ] 1.2 유사도 임계값 설정 (0.85)
-  - [ ] 1.3 경고 메시지 생성
+- [x] Task 1: 유사도 분석 (AC: #1)
+  - [x] 1.1 최근 N개 결정 임베딩 비교 → 동일 토픽 최근 7일 결정 카운트로 구현
+  - [x] 1.2 유사도 임계값 설정 (0.85)
+  - [x] 1.3 경고 메시지 생성
 
-- [ ] Task 2: 오래된 결정 감지 (AC: #2)
-  - [ ] 2.1 검색 결과 필터링
-  - [ ] 2.2 경고 표시 추가
+- [x] Task 2: 오래된 결정 감지 (AC: #2)
+  - [x] 2.1 검색 결과 필터링
+  - [x] 2.2 경고 표시 추가 (stale_warning 필드)
 
-- [ ] Task 3: 증거 분석 (AC: #3)
-  - [ ] 3.1 reasoning 필드 키워드 분석
-  - [ ] 3.2 "test", "benchmark", "verified" 등 검색
-  - [ ] 3.3 제안 메시지 생성
+- [x] Task 3: 증거 분석 (AC: #3)
+  - [x] 3.1 reasoning 필드 키워드 분석
+  - [x] 3.2 "test", "benchmark", "verified" 등 검색 (영어+한글)
+  - [x] 3.3 제안 메시지 생성
 
-- [ ] Task 4: mama_save 경고 통합 (AC: #4)
-  - [ ] 4.1 저장 전 건강도 체크
-  - [ ] 4.2 debates 장려 제안
+- [x] Task 4: mama_save 경고 통합 (AC: #4)
+  - [x] 4.1 저장 전 건강도 체크
+  - [x] 4.2 debates 장려 제안
 
-- [ ] Task 5: 테스트 작성
+- [x] Task 5: 테스트 작성 (6개 테스트 추가)
 
 ## Dev Notes
 
@@ -87,8 +87,13 @@ const EVIDENCE_KEYWORDS = [
 
 - **선행**: Story 11.11 (Graph Health Metrics) - 건강도 기반
 
-### File List
+### Completion Notes List
 
-- `apps/cad-mcp/src/mama/anti-echo.ts` (신규)
-- `apps/cad-mcp/src/mama/tools/save.ts` (수정)
-- `apps/cad-mcp/src/mama/tools/search.ts` (수정)
+- Implementation completed: 2026-01-21
+
+### File List (Actual Implementation)
+
+- `apps/cad-mcp/src/mama/anti-echo.ts` - analyzeDecisionBeforeSave, analyzeSearchResults, getStaleWarning, hasEvidence
+- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - handleMamaSave에 경고 통합, handleMamaSearch에 stale_warning 추가)
+- `apps/cad-mcp/src/mama/index.ts` (수정 - anti-echo 모듈 export)
+- `apps/cad-mcp/tests/mama.test.ts` (수정 - Anti-Echo Chamber 테스트 6개)

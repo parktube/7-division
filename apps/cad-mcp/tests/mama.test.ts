@@ -1767,3 +1767,92 @@ describe('Graph Health Metrics', () => {
     expect(data.metrics).toHaveProperty('totalEdges')
   })
 })
+
+// ============================================================
+// Story 11.12: Anti-Echo Chamber
+// ============================================================
+
+describe('Anti-Echo Chamber', () => {
+  it('should detect missing evidence in reasoning', async () => {
+    const { analyzeDecisionBeforeSave } = await import('../src/mama/anti-echo.js')
+
+    // Reasoning without evidence keywords
+    const result = analyzeDecisionBeforeSave(
+      'test:no_evidence',
+      'Use approach A',
+      'I think this is a good approach because it seems right.'
+    )
+
+    expect(result.canProceed).toBe(true) // Warnings are advisory
+    expect(result.warnings.length).toBeGreaterThan(0)
+    expect(result.warnings.some((w) => w.type === 'no_evidence')).toBe(true)
+  })
+
+  it('should not warn when evidence keywords present', async () => {
+    const { analyzeDecisionBeforeSave } = await import('../src/mama/anti-echo.js')
+
+    // Reasoning with evidence keywords
+    const result = analyzeDecisionBeforeSave(
+      'test:with_evidence',
+      'Use approach B',
+      'This approach was tested and verified with benchmark results showing 50% improvement.'
+    )
+
+    expect(result.canProceed).toBe(true)
+    expect(result.warnings.some((w) => w.type === 'no_evidence')).toBe(false)
+  })
+
+  it('should detect stale decisions', async () => {
+    const { getStaleWarning } = await import('../src/mama/anti-echo.js')
+
+    // Decision from 100 days ago
+    const oldTimestamp = Date.now() - (100 * 24 * 60 * 60 * 1000)
+    const warning = getStaleWarning(oldTimestamp)
+
+    expect(warning).not.toBeNull()
+    expect(warning).toContain('오래된 결정')
+    expect(warning).toContain('100')
+  })
+
+  it('should not warn for recent decisions', async () => {
+    const { getStaleWarning } = await import('../src/mama/anti-echo.js')
+
+    // Decision from 30 days ago
+    const recentTimestamp = Date.now() - (30 * 24 * 60 * 60 * 1000)
+    const warning = getStaleWarning(recentTimestamp)
+
+    expect(warning).toBeNull()
+  })
+
+  it('should include warnings in mama_save response', { timeout: 30000 }, async () => {
+    const { handleMamaSave } = await import('../src/mama/tools/handlers.js')
+
+    const result = await handleMamaSave({
+      type: 'decision',
+      topic: 'test:anti_echo_save',
+      decision: 'Test decision without evidence',
+      reasoning: 'Just because it feels right.',
+    })
+
+    expect(result.success).toBe(true)
+    const data = result.data as { warnings?: string[] }
+    expect(data.warnings).toBeDefined()
+    expect(data.warnings!.length).toBeGreaterThan(0)
+    expect(data.warnings!.some((w) => w.includes('증거'))).toBe(true)
+  })
+
+  it('should include stale warning in search results', async () => {
+    const { analyzeSearchResults } = await import('../src/mama/anti-echo.js')
+
+    const results = [
+      { id: 'decision_1', created_at: Date.now() - (100 * 24 * 60 * 60 * 1000) }, // 100 days old
+      { id: 'decision_2', created_at: Date.now() - (10 * 24 * 60 * 60 * 1000) },  // 10 days old
+    ]
+
+    const warnings = analyzeSearchResults(results)
+
+    expect(warnings.length).toBe(1)
+    expect(warnings[0].decisionId).toBe('decision_1')
+    expect(warnings[0].warning.type).toBe('stale_decision')
+  })
+})
