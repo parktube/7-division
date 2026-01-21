@@ -81,24 +81,30 @@ development_status:
   10-10-hmr-execution: done  # HMR 스타일 코드 실행
   epic-10-retrospective: optional
 
-  # Epic 11: MAMA Integration (Generated 2026-01-20)
-  epic-11: in-progress
+  # Epic 11: MAMA Integration (Updated 2026-01-21)
+  epic-11: done
   # Phase 11.1: Core (FR67-70)
-  11-1-mama-core-tools-mcp: ready-for-dev  # FR67: 4 Core Tools MCP 통합
-  11-2-reasoning-graph: ready-for-dev  # FR68: 결정 저장 + Reasoning Graph
-  11-3-single-db-topic-prefix: ready-for-dev  # FR69: 단일 DB + topic prefix
-  11-4-outcome-tracking: ready-for-dev  # FR70: Outcome Tracking
-  # Phase 11.2: Hook System (FR71-74) ⭐ 핵심
-  11-5-sessionstart-hook: ready-for-dev  # FR71: SessionStart Hook
-  11-6-dynamic-hint-injection: ready-for-dev  # FR72: Dynamic Hint Injection
-  11-7-actionhints: ready-for-dev  # FR73: ActionHints (next_steps)
-  11-8-cad-orchestrator-hook-owner: ready-for-dev  # FR74: CADOrchestrator Hook Owner
+  11-1-mama-core-tools-mcp: done  # FR67: 4 Core Tools MCP 통합
+  11-2-reasoning-graph: done  # FR68: 결정 저장 + Reasoning Graph
+  11-3-single-db-topic-prefix: done  # FR69: 단일 DB + topic prefix
+  11-4-outcome-tracking: done  # FR70: Outcome Tracking
+  # Phase 11.2: Hook System (FR71-74)
+  11-5-sessionstart-hook: done  # FR71: SessionStart Hook
+  11-6-dynamic-hint-injection: done  # FR72: Dynamic Hint Injection
+  11-7-actionhints: done  # FR73: ActionHints (next_steps)
+  11-8-cad-orchestrator-hook-owner: done  # FR74: CADOrchestrator Hook Owner
   # Phase 11.3: Intelligence (FR75-78)
-  11-9-configurable-context: ready-for-dev  # FR75: Configurable Context
-  11-10-adaptive-mentoring: ready-for-dev  # FR76: Adaptive Mentoring
-  11-11-graph-health-metrics: ready-for-dev  # FR77: Graph Health Metrics
-  11-12-anti-echo-chamber: ready-for-dev  # FR78: Anti-Echo Chamber
-  # Phase 11.4: Platform (FR79-80)
-  11-13-llm-adapter-pattern: ready-for-dev  # FR79: LLM Adapter Pattern
-  11-14-module-library-recommendation: ready-for-dev  # FR80: Module Library Recommendation
+  11-9-configurable-context: done  # FR75: Configurable Context
+  11-10-adaptive-mentoring: done  # FR76: Adaptive Mentoring
+  11-11-graph-health-metrics: done  # FR77: Graph Health Metrics
+  11-12-anti-echo-chamber: done  # FR78: Anti-Echo Chamber
+  # Phase 11.4: Learning (FR81-84)
+  11-13-learning-progress-storage: done  # FR81: Learning Progress Storage
+  11-14-user-growth-metrics: done  # FR82: User Growth Metrics
+  11-15-designhints-system: done  # FR83: DesignHints System
+  11-16-terminology-evolution: done  # FR84: Terminology Evolution
+  11-17-learning-llm-integration: done  # Learning 기능 LLM 연동
+  # Phase 11.5: Platform (FR80)
+  11-18-llm-adapter-pattern: deprecated  # FR87: 제외 (MCP가 LLM-agnostic 제공)
+  11-19-module-library-recommendation: done  # FR80: Module Library Recommendation
   epic-11-retrospective: optional

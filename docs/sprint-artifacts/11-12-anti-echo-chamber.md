@@ -97,3 +97,7 @@ const EVIDENCE_KEYWORDS = [
 - `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - handleMamaSave에 경고 통합, handleMamaSearch에 stale_warning 추가)
 - `apps/cad-mcp/src/mama/index.ts` (수정 - anti-echo 모듈 export)
 - `apps/cad-mcp/tests/mama.test.ts` (수정 - Anti-Echo Chamber 테스트 6개)
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] `SIMILARITY_THRESHOLD = 0.85` 상수가 선언만 되고 미사용 - AC1 임베딩 비교 대신 토픽 카운트로 단순화됨 (Task 1.1에 명시)

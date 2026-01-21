@@ -3,7 +3,7 @@
 ## Overview
 
 **Epic**: 11 - MAMA Integration
-**Status**: Draft
+**Status**: Done
 **Priority**: High
 
 Learning Track 기능(11.13-11.16)이 존재하지만, LLM이 적극적으로 활용할 수 있는 연결고리가 누락되어 있음.

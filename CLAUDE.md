@@ -9,7 +9,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 **7-division (도화지)**: AI-Native CAD 프로젝트
 
 - **비전**: "AI가 만들고, AI가 사용한다" - LLM이 도구를 조작하고, 인간은 의도/검증
-- **현재 단계**: Epic 1~10 완료 (MVP + 웹 아키텍처 + AX 개선)
+- **현재 단계**: Epic 1~11 완료 (MVP + 웹 아키텍처 + AX 개선 + MAMA Integration)
 - **아키텍처**: Web + Local MCP (GitHub Pages 뷰어 + 로컬 MCP 서버)
 - **구조**: pnpm workspace 모노레포
   - `apps/viewer` - React 뷰어 (GitHub Pages)

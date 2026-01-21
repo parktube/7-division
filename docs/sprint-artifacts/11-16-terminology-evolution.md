@@ -153,3 +153,7 @@ const termMapping = {
 - `apps/cad-mcp/src/mama/growth-tracker.ts` (수정 - GrowthSummary에 terminologyEvolutions 추가)
 - `apps/cad-mcp/src/mama/index.ts` (수정 - terminology-tracker export)
 - `apps/cad-mcp/tests/mama.test.ts` (수정 - Terminology Evolution 테스트 11개)
+
+### Review Follow-ups (AI)
+
+- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)

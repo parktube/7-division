@@ -75,7 +75,7 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 - [x] Task 6: 전문 용어 사용 감지 (AC: #6)
   - [x] 6.1 recordTerminologyUsed() 함수
   - [x] 6.2 growth_metrics에 type='terminology_used' 기록
-  - [ ] 6.3 Story 11.16과 연동 (추후)
+  - [x] 6.3 Story 11.16과 연동 (getGrowthSummary에서 terminologyEvolutions 통합)
 
 - [x] Task 7: 테스트 작성 (8개 테스트 추가)
   - [x] 7.1 각 metric_type 기록 테스트 (4개)
@@ -171,3 +171,7 @@ CREATE INDEX idx_growth_metrics_user_type ON growth_metrics(user_id, metric_type
 - `apps/cad-mcp/src/mama/index.ts` (수정 - growth-tracker 모듈 export)
 - `apps/cad-mcp/src/mcp-server.ts` (수정 - mama_growth_report 도구 등록)
 - `apps/cad-mcp/tests/mama.test.ts` (수정 - User Growth Metrics 테스트 8개)
+
+### Review Follow-ups (AI)
+
+- (이슈 없음 - 모든 AC 및 Tasks 검증 완료, Task 6.3 연동 확인됨)

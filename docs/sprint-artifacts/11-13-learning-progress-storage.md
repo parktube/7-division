@@ -148,3 +148,7 @@ mama_save({
 - `apps/cad-mcp/src/mama/hooks/registry.ts` (수정 - learningHints 필드)
 - `apps/cad-mcp/src/mama/index.ts` (수정 - learning-tracker 모듈 export)
 - `apps/cad-mcp/tests/mama.test.ts` (수정 - Learning Progress Storage 테스트 9개)
+
+### Review Follow-ups (AI)
+
+- [ ] [AI-Review][LOW] 타임스탬프 단위 문서 불일치 - 명세: `Unix timestamp (seconds)`, 마이그레이션 주석: `(ms)` (실제 동작은 ms로 일관됨)

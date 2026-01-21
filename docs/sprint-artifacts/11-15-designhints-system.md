@@ -145,3 +145,7 @@ DesignHints (UX): 인간의 다음 생각 유도
 - `apps/cad-mcp/src/mama/types/action-hints.ts` (수정 - DesignHints 타입 추가)
 - `apps/cad-mcp/src/mama/index.ts` (수정 - design-hints export 추가)
 - `apps/cad-mcp/tests/mama.test.ts` (수정 - DesignHints 테스트 9개)
+
+### Review Follow-ups (AI)
+
+- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)

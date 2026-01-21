@@ -116,3 +116,7 @@ interface GraphHealth {
 - `apps/cad-mcp/src/mama/hooks/registry.ts` (수정 - healthWarning 필드)
 - `apps/cad-mcp/src/mcp-server.ts` (수정 - mama_health 도구 등록)
 - `apps/cad-mcp/tests/mama.test.ts` (수정 - Graph Health Metrics 테스트 5개)
+
+### Review Follow-ups (AI)
+
+- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)
