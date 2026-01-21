@@ -19,7 +19,7 @@ export const MAMA_TOOLS: Record<string, ToolSchema> = {
   // === mama_save: Save decision or checkpoint ===
   mama_save: {
     name: 'mama_save',
-    description: `🤝 Save a decision or checkpoint to MAMA's reasoning graph.
+    description: `🤝 Save a decision, checkpoint, or learning to MAMA's reasoning graph.
 
 ⚡ TRIGGERS - Call this when:
 • User says: "기억해줘", "remember", "decided", "결정했어"
@@ -36,15 +36,19 @@ export const MAMA_TOOLS: Record<string, ToolSchema> = {
 • [Decision] reasoning: End with 'builds_on: <id>' or 'debates: <id>' or 'synthesizes: [id1, id2]'
 • [Checkpoint] summary: Include 'Related decisions: decision_xxx, decision_yyy'
 
+📚 LEARNING TYPES (Story 11.17):
+• type='learning': AI가 사용자에게 새 개념을 설명할 때 호출
+• type='understood': 사용자가 이해를 표현할 때 호출 (예: "아 이해됐어", "알겠어")
+• type='applied': 사용자가 배운 개념을 실제로 사용할 때 호출
+
 type='decision': choices & lessons (same topic = evolution chain)
-type='checkpoint': session state for resumption (ALSO requires search first!)
-type='learning': track user learning progress for concepts (FR81)`,
+type='checkpoint': session state for resumption (ALSO requires search first!)`,
     parameters: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          description: "What to save: 'decision', 'checkpoint', or 'learning'",
+          description: "What to save: 'decision', 'checkpoint', 'learning', 'understood', or 'applied'",
         },
         topic: {
           type: 'string',
@@ -77,11 +81,15 @@ type='learning': track user learning progress for concepts (FR81)`,
         },
         concept: {
           type: 'string',
-          description: "[Learning] Concept name (e.g., '60-30-10 rule', 'Japandi style'). Required for type='learning'.",
+          description: "[Learning] Concept name (e.g., '60-30-10 rule', 'Japandi style'). Required for type='learning', 'understood', 'applied'.",
         },
         domain: {
           type: 'string',
           description: "[Learning] Domain category (e.g., 'color_theory', 'spatial', 'style'). Optional.",
+        },
+        user_explanation: {
+          type: 'string',
+          description: "[understood] 사용자가 이해한 내용을 자신의 말로 설명한 것. Optional.",
         },
       },
       required: ['type'],

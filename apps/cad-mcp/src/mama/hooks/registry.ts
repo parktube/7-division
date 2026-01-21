@@ -127,6 +127,7 @@ export {
   deleteHint,
   listHints,
   invalidateHintCache,
+  getHintsForTool,
   type AddHintParams,
   type UpdateHintParams,
   type HintRow,

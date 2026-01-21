@@ -31,7 +31,13 @@ import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js
 import { loadConfig, updateConfig } from '../config.js'
 import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
 import { analyzeDecisionBeforeSave, getStaleWarning, type AntiEchoWarning } from '../anti-echo.js'
-import { saveLearning, type SaveLearningResult } from '../learning-tracker.js'
+import {
+  saveLearning,
+  markUnderstood,
+  recordApplication,
+  getLearningByConcept,
+  type SaveLearningResult,
+} from '../learning-tracker.js'
 import { getGrowthSummary, formatGrowthReport, type GrowthSummary } from '../growth-tracker.js'
 
 // ============================================================
@@ -49,7 +55,7 @@ export interface ToolResponse {
 // ============================================================
 
 export interface SaveArgs {
-  type: 'decision' | 'checkpoint' | 'learning'
+  type: 'decision' | 'checkpoint' | 'learning' | 'understood' | 'applied'
   // Decision fields
   topic?: string
   decision?: string
@@ -59,9 +65,10 @@ export interface SaveArgs {
   summary?: string
   open_files?: string[]
   next_steps?: string
-  // Learning fields (Story 11.13)
+  // Learning fields (Story 11.13, 11.17)
   concept?: string
   domain?: string
+  user_explanation?: string  // Story 11.17: 사용자의 이해 설명
 }
 
 /**
@@ -163,8 +170,70 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
             : `Learning already exists. Concept: ${result.concept} (level: ${result.understanding_level})`,
         },
       }
+    } else if (args.type === 'understood') {
+      // Story 11.17: Mark concept as understood
+      if (!args.concept) {
+        return { success: false, error: 'concept is required for type=understood' }
+      }
+
+      // Check if concept exists
+      const existing = getLearningByConcept(args.concept)
+      if (!existing) {
+        return {
+          success: false,
+          error: `Concept not found: "${args.concept}". Use type='learning' to introduce new concepts first.`,
+        }
+      }
+
+      markUnderstood(args.concept, args.user_explanation)
+
+      logger.info(`mama_save: Concept "${args.concept}" marked as understood`)
+
+      return {
+        success: true,
+        data: {
+          type: 'understood',
+          concept: args.concept,
+          previous_level: existing.understanding_level,
+          new_level: Math.max(existing.understanding_level, 2),
+          message: `Concept "${args.concept}" marked as understood (level: 2)`,
+        },
+      }
+    } else if (args.type === 'applied') {
+      // Story 11.17: Record concept application
+      if (!args.concept) {
+        return { success: false, error: 'concept is required for type=applied' }
+      }
+
+      // Check if concept exists
+      const existing = getLearningByConcept(args.concept)
+      if (!existing) {
+        return {
+          success: false,
+          error: `Concept not found: "${args.concept}". Use type='learning' to introduce new concepts first.`,
+        }
+      }
+
+      const newCount = recordApplication(args.concept)
+      const updated = getLearningByConcept(args.concept)
+
+      logger.info(`mama_save: Concept "${args.concept}" applied (count: ${newCount})`)
+
+      return {
+        success: true,
+        data: {
+          type: 'applied',
+          concept: args.concept,
+          applied_count: newCount,
+          understanding_level: updated?.understanding_level || existing.understanding_level,
+          mastered: (updated?.understanding_level || 0) >= 4,
+          message: newCount >= 3 && (updated?.understanding_level || 0) >= 4
+            ? `Concept "${args.concept}" applied ${newCount} times - MASTERED! 🎉`
+            : `Concept "${args.concept}" applied (count: ${newCount})`,
+        },
+      }
     } else {
-      return { success: false, error: "type must be 'decision', 'checkpoint', or 'learning'" }
+      return { success: false, error: "type must be 'decision', 'checkpoint', 'learning', 'understood', or 'applied'" }
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
@@ -376,7 +445,7 @@ export async function handleMamaLoadCheckpoint(): Promise<ToolResponse> {
 // ============================================================
 
 export interface ConfigureArgs {
-  action?: 'get' | 'set'
+  action?: 'get' | 'set' | 'debug'
   contextInjection?: 'none' | 'hint' | 'full'
 }
 
@@ -386,6 +455,44 @@ export interface ConfigureArgs {
 export async function handleMamaConfigure(args: ConfigureArgs): Promise<ToolResponse> {
   try {
     const action = args.action || 'get'
+
+    // Debug: Show current tool descriptions with injected hints
+    if (action === 'debug') {
+      const { executePreToolList } = await import('../hooks/pre-tool-list.js')
+
+      // Mock tools to test hint injection
+      const testTools = [
+        { name: 'glob', description: 'CAD 파일 목록 조회.', inputSchema: {} },
+        { name: 'read', description: '파일 읽기.', inputSchema: {} },
+        { name: 'edit', description: '파일 부분 수정.', inputSchema: {} },
+        { name: 'write', description: '파일 전체 작성.', inputSchema: {} },
+        { name: 'lsp', description: '코드 탐색.', inputSchema: {} },
+        { name: 'bash', description: '명령 실행.', inputSchema: {} },
+      ]
+
+      const enhanced = executePreToolList(testTools)
+      const results: Record<string, { original: string; enhanced: string; hints: string[] }> = {}
+
+      for (let i = 0; i < testTools.length; i++) {
+        const orig = testTools[i]
+        const enh = enhanced[i]
+        const hints = (enh.description.match(/💡 .+/g) || [])
+        results[orig.name] = {
+          original: orig.description,
+          enhanced: enh.description,
+          hints,
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          action: 'debug',
+          hint_injection_test: results,
+          tools_with_hints: Object.entries(results).filter(([, v]) => v.hints.length > 0).map(([k]) => k),
+        },
+      }
+    }
 
     if (action === 'set') {
       const updates: Record<string, unknown> = {}

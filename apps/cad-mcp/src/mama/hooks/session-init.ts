@@ -145,6 +145,15 @@ function formatFullContext(
     lines.push(learningHintsStr)
   }
 
+  // Learning guide section (Story 11.17)
+  if (learningHints.length > 0) {
+    lines.push('')
+    lines.push('💡 **Learning 활용 가이드**:')
+    lines.push('   • 새 개념 설명 후 → mama_save(type="learning", concept="개념명")')
+    lines.push('   • 사용자 "이해됐어" → mama_save(type="understood", concept="개념명")')
+    lines.push('   • 사용자가 개념 적용 시 → mama_save(type="applied", concept="개념명")')
+  }
+
   return lines.join('\n')
 }
 
