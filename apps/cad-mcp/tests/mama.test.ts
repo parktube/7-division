@@ -1856,3 +1856,160 @@ describe('Anti-Echo Chamber', () => {
     expect(warnings[0].warning.type).toBe('stale_decision')
   })
 })
+
+// ============================================================
+// Learning Progress Storage (Story 11.13)
+// ============================================================
+
+describe('Learning Progress Storage', () => {
+  it('should save a new learning', async () => {
+    const { saveLearning } = await import('../src/mama/learning-tracker.js')
+
+    const result = saveLearning({
+      concept: 'test:learning_60-30-10',
+      domain: 'color_theory',
+    })
+
+    expect(result.id).toMatch(/^learning_/)
+    expect(result.concept).toBe('test:learning_60-30-10')
+    expect(result.domain).toBe('color_theory')
+    expect(result.understanding_level).toBe(1)
+    expect(result.applied_count).toBe(0)
+    expect(result.is_new).toBe(true)
+  })
+
+  it('should not duplicate existing learning', async () => {
+    const { saveLearning } = await import('../src/mama/learning-tracker.js')
+
+    // First save
+    const first = saveLearning({
+      concept: 'test:learning_japandi',
+      domain: 'style',
+    })
+
+    // Second save with same concept
+    const second = saveLearning({
+      concept: 'test:learning_japandi',
+      domain: 'style',
+    })
+
+    expect(second.is_new).toBe(false)
+    expect(second.id).toBe(first.id)
+  })
+
+  it('should mark learning as understood', async () => {
+    const { saveLearning, markUnderstood, getLearningByConcept } = await import('../src/mama/learning-tracker.js')
+
+    // Create new learning
+    saveLearning({
+      concept: 'test:learning_understand',
+    })
+
+    // Mark as understood
+    markUnderstood('test:learning_understand')
+
+    const learning = getLearningByConcept('test:learning_understand')
+    expect(learning).not.toBeNull()
+    expect(learning!.understanding_level).toBe(2)
+  })
+
+  it('should record application and upgrade level', async () => {
+    const { saveLearning, recordApplication, getLearningByConcept } = await import('../src/mama/learning-tracker.js')
+
+    // Create new learning
+    saveLearning({
+      concept: 'test:learning_apply',
+    })
+
+    // Record application
+    const count = recordApplication('test:learning_apply')
+    expect(count).toBe(1)
+
+    const learning = getLearningByConcept('test:learning_apply')
+    expect(learning).not.toBeNull()
+    expect(learning!.understanding_level).toBe(3) // Upgraded to 'applied'
+    expect(learning!.applied_count).toBe(1)
+  })
+
+  it('should auto-upgrade to mastery after 3 applications', async () => {
+    const { saveLearning, recordApplication, getLearningByConcept } = await import('../src/mama/learning-tracker.js')
+
+    // Create new learning
+    saveLearning({
+      concept: 'test:learning_mastery',
+    })
+
+    // Apply 3 times
+    recordApplication('test:learning_mastery')
+    recordApplication('test:learning_mastery')
+    recordApplication('test:learning_mastery')
+
+    const learning = getLearningByConcept('test:learning_mastery')
+    expect(learning).not.toBeNull()
+    expect(learning!.understanding_level).toBe(4) // Mastery
+    expect(learning!.applied_count).toBe(3)
+  })
+
+  it('should handle mama_save type=learning', async () => {
+    const { handleMamaSave } = await import('../src/mama/tools/handlers.js')
+
+    const result = await handleMamaSave({
+      type: 'learning',
+      concept: 'test:mama_save_learning',
+      domain: 'spatial',
+    })
+
+    expect(result.success).toBe(true)
+    const data = result.data as {
+      type: string
+      id: string
+      concept: string
+      domain: string
+      understanding_level: number
+      is_new: boolean
+    }
+    expect(data.type).toBe('learning')
+    expect(data.concept).toBe('test:mama_save_learning')
+    expect(data.domain).toBe('spatial')
+    expect(data.understanding_level).toBe(1)
+    expect(data.is_new).toBe(true)
+  })
+
+  it('should get session learning hints', async () => {
+    const { saveLearning, recordApplication, getSessionLearningHints } = await import('../src/mama/learning-tracker.js')
+
+    // Create learnings
+    saveLearning({ concept: 'test:hint_concept_1' })
+    saveLearning({ concept: 'test:hint_concept_2' })
+    recordApplication('test:hint_concept_2')
+
+    const hints = getSessionLearningHints()
+
+    // Hints should include recently applied learnings
+    expect(Array.isArray(hints)).toBe(true)
+  })
+
+  it('should format learning hints for session context', async () => {
+    const { formatLearningHints } = await import('../src/mama/learning-tracker.js')
+
+    const hints = [
+      { concept: '60-30-10 법칙', level: 3 as const, applied_count: 2, levelName: '적용함' },
+      { concept: 'Japandi', level: 4 as const, applied_count: 5, levelName: '숙달' },
+    ]
+
+    const formatted = formatLearningHints(hints)
+
+    expect(formatted).not.toBeNull()
+    expect(formatted).toContain('학습 현황')
+    expect(formatted).toContain('60-30-10 법칙')
+    expect(formatted).toContain('적용함')
+    expect(formatted).toContain('2번 적용')
+  })
+
+  it('should return null for empty learning hints', async () => {
+    const { formatLearningHints } = await import('../src/mama/learning-tracker.js')
+
+    const formatted = formatLearningHints([])
+    expect(formatted).toBeNull()
+  })
+})

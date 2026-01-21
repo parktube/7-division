@@ -794,3 +794,16 @@ export {
   type SaveWarnings,
   type SearchWarning,
 } from './anti-echo.js'
+
+// Re-export learning tracker (Story 11.13)
+export {
+  saveLearning,
+  markUnderstood,
+  recordApplication,
+  getSessionLearningHints,
+  formatLearningHints,
+  getAllLearnings,
+  getLearningByConcept,
+  type SaveLearningResult,
+  type LearningHint,
+} from './learning-tracker.js'

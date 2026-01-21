@@ -1,6 +1,6 @@
 # Story 11.13: Learning Progress Storage
 
-Status: ready-for-dev
+Status: Done
 
 ## Story
 
@@ -37,30 +37,30 @@ So that **성장 여정을 추적할 수 있다** (FR81).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: learnings 테이블 생성 (AC: #1)
-  - [ ] 1.1 스키마 정의 (concept, domain, understanding_level, applied_count)
-  - [ ] 1.2 SQLite 마이그레이션
-  - [ ] 1.3 TypeScript 타입 정의
+- [x] Task 1: learnings 테이블 생성 (AC: #1)
+  - [x] 1.1 스키마 정의 (concept, domain, understanding_level, applied_count)
+  - [x] 1.2 SQLite 마이그레이션 (005-learnings.sql)
+  - [x] 1.3 TypeScript 타입 정의 (LearningRow, UnderstandingLevel)
 
-- [ ] Task 2: mama_save 확장 - type='learning' (AC: #1)
-  - [ ] 2.1 save 도구에 type='learning' 옵션 추가
-  - [ ] 2.2 concept, domain 필드 처리
-  - [ ] 2.3 understanding_level 기본값 1
+- [x] Task 2: mama_save 확장 - type='learning' (AC: #1)
+  - [x] 2.1 save 도구에 type='learning' 옵션 추가
+  - [x] 2.2 concept, domain 필드 처리
+  - [x] 2.3 understanding_level 기본값 1
 
-- [ ] Task 3: understanding_level 업데이트 로직 (AC: #2, #3, #4)
-  - [ ] 3.1 이해 표현 감지 패턴 (아, 그래서, 그렇구나 등)
-  - [ ] 3.2 개념 적용 감지 로직
-  - [ ] 3.3 applied_count 증가 및 레벨 자동 승격
+- [x] Task 3: understanding_level 업데이트 로직 (AC: #2, #3, #4)
+  - [x] 3.1 markUnderstood() 함수 (level 1→2)
+  - [x] 3.2 recordApplication() 함수 (level→3, count++)
+  - [x] 3.3 applied_count >= 3 시 자동 숙달(4) 승격
 
-- [ ] Task 4: SessionStart 학습 힌트 주입 (AC: #5)
-  - [ ] 4.1 관련 learnings 검색
-  - [ ] 4.2 힌트 포맷 생성
-  - [ ] 4.3 onSessionInit Hook에 통합
+- [x] Task 4: SessionStart 학습 힌트 주입 (AC: #5)
+  - [x] 4.1 getSessionLearningHints() 함수
+  - [x] 4.2 formatLearningHints() 포맷 함수
+  - [x] 4.3 onSessionInit Hook에 통합 (learningHints 필드)
 
-- [ ] Task 5: 테스트 작성
-  - [ ] 5.1 learnings CRUD 테스트
-  - [ ] 5.2 understanding_level 업그레이드 테스트
-  - [ ] 5.3 세션 힌트 주입 테스트
+- [x] Task 5: 테스트 작성 (9개 테스트 추가)
+  - [x] 5.1 learnings CRUD 테스트
+  - [x] 5.2 understanding_level 업그레이드 테스트
+  - [x] 5.3 세션 힌트 주입 테스트
 
 ## Dev Notes
 
@@ -133,10 +133,18 @@ mama_save({
 - **선행**: Story 11.1 (MAMA Core 4 Tools) - save 도구 기반
 - **선행**: Story 11.5 (SessionStart Hook) - 힌트 주입 기반
 
-### File List
+### Completion Notes List
 
-- `apps/cad-mcp/src/mama/db.ts` (수정 - learnings 테이블)
-- `apps/cad-mcp/src/mama/schema.ts` (수정 - Learning 타입)
-- `apps/cad-mcp/src/mama/tools/save.ts` (수정 - type='learning')
-- `apps/cad-mcp/src/mama/learning-tracker.ts` (신규)
-- `apps/cad-mcp/src/mama/hooks/session-start.ts` (수정 - 학습 힌트)
+- Implementation completed: 2026-01-21
+
+### File List (Actual Implementation)
+
+- `apps/cad-mcp/src/mama/migrations/005-learnings.sql` - learnings 테이블 DDL
+- `apps/cad-mcp/src/mama/db.ts` (수정 - LearningRow 타입, CRUD 함수)
+- `apps/cad-mcp/src/mama/learning-tracker.ts` (신규 - saveLearning, markUnderstood, recordApplication)
+- `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - mama_save에 concept, domain 파라미터)
+- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - type='learning' 처리)
+- `apps/cad-mcp/src/mama/hooks/session-init.ts` (수정 - learningHints 통합)
+- `apps/cad-mcp/src/mama/hooks/registry.ts` (수정 - learningHints 필드)
+- `apps/cad-mcp/src/mama/index.ts` (수정 - learning-tracker 모듈 export)
+- `apps/cad-mcp/tests/mama.test.ts` (수정 - Learning Progress Storage 테스트 9개)

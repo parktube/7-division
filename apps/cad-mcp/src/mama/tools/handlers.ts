@@ -31,6 +31,7 @@ import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js
 import { loadConfig, updateConfig } from '../config.js'
 import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
 import { analyzeDecisionBeforeSave, getStaleWarning, type AntiEchoWarning } from '../anti-echo.js'
+import { saveLearning, type SaveLearningResult } from '../learning-tracker.js'
 
 // ============================================================
 // Response Types
@@ -47,7 +48,7 @@ export interface ToolResponse {
 // ============================================================
 
 export interface SaveArgs {
-  type: 'decision' | 'checkpoint'
+  type: 'decision' | 'checkpoint' | 'learning'
   // Decision fields
   topic?: string
   decision?: string
@@ -57,6 +58,9 @@ export interface SaveArgs {
   summary?: string
   open_files?: string[]
   next_steps?: string
+  // Learning fields (Story 11.13)
+  concept?: string
+  domain?: string
 }
 
 /**
@@ -129,8 +133,37 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
           message: `Checkpoint saved. ID: ${checkpointId}`,
         },
       }
+    } else if (args.type === 'learning') {
+      // Story 11.13: Learning Progress Storage
+      // Validate learning fields
+      if (!args.concept) {
+        return { success: false, error: 'concept is required for learning' }
+      }
+
+      const result: SaveLearningResult = saveLearning({
+        concept: args.concept,
+        domain: args.domain,
+      })
+
+      logger.info(`mama_save: Learning ${result.is_new ? 'created' : 'found'} - ${result.id}`)
+
+      return {
+        success: true,
+        data: {
+          type: 'learning',
+          id: result.id,
+          concept: result.concept,
+          domain: result.domain,
+          understanding_level: result.understanding_level,
+          applied_count: result.applied_count,
+          is_new: result.is_new,
+          message: result.is_new
+            ? `Learning saved. Concept: ${result.concept} (level: 1 - introduced)`
+            : `Learning already exists. Concept: ${result.concept} (level: ${result.understanding_level})`,
+        },
+      }
     } else {
-      return { success: false, error: "type must be 'decision' or 'checkpoint'" }
+      return { success: false, error: "type must be 'decision', 'checkpoint', or 'learning'" }
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)

@@ -12,6 +12,7 @@
 import { getContextInjection } from '../config.js'
 import { loadCheckpoint, searchDecisions, type CheckpointResult, type DecisionResult } from '../index.js'
 import { calculateGraphHealth, getHealthSummary } from '../health.js'
+import { getSessionLearningHints, formatLearningHints, type LearningHint } from '../learning-tracker.js'
 
 // ============================================================
 // Types
@@ -23,6 +24,7 @@ export interface SessionInitResult {
   contextMode: 'none' | 'hint' | 'full'
   formattedContext: string
   healthWarning: string | null  // Story 11.11
+  learningHints: LearningHint[]  // Story 11.13
 }
 
 // ============================================================
@@ -48,6 +50,7 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
       contextMode: 'none',
       formattedContext: '',
       healthWarning: null,
+      learningHints: [],
     }
   }
 
@@ -63,20 +66,29 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
     // Ignore health check errors - non-critical
   }
 
+  // Get learning hints (Story 11.13)
+  let learningHints: LearningHint[] = []
+  try {
+    learningHints = getSessionLearningHints()
+  } catch {
+    // Ignore learning hints errors - non-critical
+  }
+
   const result: SessionInitResult = {
     checkpoint,
     recentDecisions: decisions,
     contextMode,
     formattedContext: '',
     healthWarning,
+    learningHints,
   }
 
   // Format based on mode
   if (contextMode === 'full') {
-    result.formattedContext = formatFullContext(checkpoint, decisions, healthWarning)
+    result.formattedContext = formatFullContext(checkpoint, decisions, healthWarning, learningHints)
   } else {
     // hint mode
-    result.formattedContext = formatHintContext(checkpoint, decisions, healthWarning)
+    result.formattedContext = formatHintContext(checkpoint, decisions, healthWarning, learningHints)
   }
 
   return result
@@ -88,7 +100,8 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
 function formatFullContext(
   checkpoint: CheckpointResult | null,
   decisions: DecisionResult[],
-  healthWarning: string | null = null
+  healthWarning: string | null = null,
+  learningHints: LearningHint[] = []
 ): string {
   const lines: string[] = []
 
@@ -123,6 +136,13 @@ function formatFullContext(
       const summary = truncate(d.decision, 60)
       lines.push(`   ${i + 1}. ${outcomeIcon} ${d.topic}: ${summary} (${age})`)
     }
+    lines.push('')
+  }
+
+  // Learning hints section (Story 11.13)
+  const learningHintsStr = formatLearningHints(learningHints)
+  if (learningHintsStr) {
+    lines.push(learningHintsStr)
   }
 
   return lines.join('\n')
@@ -134,7 +154,8 @@ function formatFullContext(
 function formatHintContext(
   checkpoint: CheckpointResult | null,
   decisions: DecisionResult[],
-  healthWarning: string | null = null
+  healthWarning: string | null = null,
+  learningHints: LearningHint[] = []
 ): string {
   const parts: string[] = []
 
@@ -144,6 +165,10 @@ function formatHintContext(
 
   if (decisions.length > 0) {
     parts.push(`${decisions.length} related decisions available`)
+  }
+
+  if (learningHints.length > 0) {
+    parts.push(`${learningHints.length} concept(s) learned`)
   }
 
   if (parts.length === 0 && !healthWarning) {

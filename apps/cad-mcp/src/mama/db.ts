@@ -48,6 +48,22 @@ export interface CheckpointRow {
 
 export type SkillLevel = 'beginner' | 'intermediate' | 'expert'
 
+// Understanding levels: 1=introduced, 2=understood, 3=applied, 4=mastered
+export type UnderstandingLevel = 1 | 2 | 3 | 4
+
+export interface LearningRow {
+  id: string
+  user_id: string
+  concept: string
+  domain: string | null
+  understanding_level: UnderstandingLevel
+  first_introduced: number
+  last_applied: number | null
+  applied_count: number
+  user_explanation: string | null
+  created_at: number
+}
+
 export interface UserProfileRow {
   id: number
   global_skill_level: SkillLevel
@@ -562,5 +578,239 @@ export function getAllActionCounts(): Record<string, number> {
     return JSON.parse(profile.action_counts) as Record<string, number>
   } catch {
     return {}
+  }
+}
+
+// ============================================================
+// Learning Operations (Learning Track)
+// ============================================================
+
+/**
+ * Create or update a learning record
+ *
+ * @param learning - Learning data
+ * @returns Created or updated learning
+ */
+export function upsertLearning(learning: {
+  id: string
+  user_id: string
+  concept: string
+  domain?: string
+  understanding_level?: UnderstandingLevel
+  user_explanation?: string
+}): LearningRow {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  // Check if learning already exists for this user/concept
+  const existing = db!.prepare(`
+    SELECT * FROM learnings WHERE user_id = ? AND concept = ?
+  `).get(learning.user_id, learning.concept) as LearningRow | undefined
+
+  if (existing) {
+    // Update existing
+    db!.prepare(`
+      UPDATE learnings
+      SET understanding_level = COALESCE(?, understanding_level),
+          user_explanation = COALESCE(?, user_explanation),
+          domain = COALESCE(?, domain)
+      WHERE user_id = ? AND concept = ?
+    `).run(
+      learning.understanding_level,
+      learning.user_explanation,
+      learning.domain,
+      learning.user_id,
+      learning.concept
+    )
+
+    return getLearning(learning.user_id, learning.concept)!
+  }
+
+  // Insert new
+  db!.prepare(`
+    INSERT INTO learnings (id, user_id, concept, domain, understanding_level, first_introduced, applied_count, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+  `).run(
+    learning.id,
+    learning.user_id,
+    learning.concept,
+    learning.domain || null,
+    learning.understanding_level || 1,
+    now,
+    now
+  )
+
+  logger.info(`Learning created: ${learning.concept} for user ${learning.user_id}`)
+
+  return getLearning(learning.user_id, learning.concept)!
+}
+
+/**
+ * Get a specific learning by user and concept
+ */
+export function getLearning(userId: string, concept: string): LearningRow | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = db!.prepare(`
+    SELECT * FROM learnings WHERE user_id = ? AND concept = ?
+  `).get(userId, concept) as LearningRow | undefined
+
+  return row || null
+}
+
+/**
+ * Get learning by ID
+ */
+export function getLearningById(id: string): LearningRow | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = db!.prepare(`
+    SELECT * FROM learnings WHERE id = ?
+  `).get(id) as LearningRow | undefined
+
+  return row || null
+}
+
+/**
+ * Update understanding level
+ *
+ * @param userId - User ID
+ * @param concept - Concept name
+ * @param level - New understanding level
+ */
+export function updateUnderstandingLevel(
+  userId: string,
+  concept: string,
+  level: UnderstandingLevel
+): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  db!.prepare(`
+    UPDATE learnings
+    SET understanding_level = ?
+    WHERE user_id = ? AND concept = ?
+  `).run(level, userId, concept)
+
+  logger.info(`Learning level updated: ${concept} -> level ${level}`)
+}
+
+/**
+ * Increment applied count and auto-upgrade to mastery if needed
+ *
+ * @param userId - User ID
+ * @param concept - Concept name
+ * @returns New applied count
+ */
+export function incrementAppliedCount(userId: string, concept: string): number {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  // Increment count and update last_applied
+  db!.prepare(`
+    UPDATE learnings
+    SET applied_count = applied_count + 1,
+        last_applied = ?,
+        understanding_level = CASE
+          WHEN understanding_level < 3 THEN 3
+          WHEN applied_count + 1 >= 3 THEN 4
+          ELSE understanding_level
+        END
+    WHERE user_id = ? AND concept = ?
+  `).run(now, userId, concept)
+
+  const learning = getLearning(userId, concept)
+  logger.info(`Learning applied: ${concept} (count: ${learning?.applied_count})`)
+
+  return learning?.applied_count || 0
+}
+
+/**
+ * Get all learnings for a user
+ *
+ * @param userId - User ID
+ * @param domain - Optional domain filter
+ */
+export function getUserLearnings(
+  userId: string,
+  domain?: string
+): LearningRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  if (domain) {
+    return db!.prepare(`
+      SELECT * FROM learnings
+      WHERE user_id = ? AND domain = ?
+      ORDER BY last_applied DESC NULLS LAST, first_introduced DESC
+    `).all(userId, domain) as LearningRow[]
+  }
+
+  return db!.prepare(`
+    SELECT * FROM learnings
+    WHERE user_id = ?
+    ORDER BY last_applied DESC NULLS LAST, first_introduced DESC
+  `).all(userId) as LearningRow[]
+}
+
+/**
+ * Get learnings by minimum understanding level
+ */
+export function getLearningsByLevel(
+  userId: string,
+  minLevel: UnderstandingLevel
+): LearningRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  return db!.prepare(`
+    SELECT * FROM learnings
+    WHERE user_id = ? AND understanding_level >= ?
+    ORDER BY understanding_level DESC, applied_count DESC
+  `).all(userId, minLevel) as LearningRow[]
+}
+
+/**
+ * Get learnings summary for session hint
+ */
+export function getLearningsSummary(userId: string): {
+  total: number
+  byLevel: Record<UnderstandingLevel, number>
+  recentlyApplied: LearningRow[]
+} {
+  if (!db) {
+    initDatabase()
+  }
+
+  const learnings = getUserLearnings(userId)
+
+  const byLevel: Record<UnderstandingLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0 }
+  for (const l of learnings) {
+    byLevel[l.understanding_level]++
+  }
+
+  // Recently applied (last 7 days, max 5)
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const recentlyApplied = learnings
+    .filter((l) => l.last_applied && l.last_applied > sevenDaysAgo)
+    .slice(0, 5)
+
+  return {
+    total: learnings.length,
+    byLevel,
+    recentlyApplied,
   }
 }

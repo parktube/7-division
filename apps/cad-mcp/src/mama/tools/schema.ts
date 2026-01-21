@@ -37,13 +37,14 @@ export const MAMA_TOOLS: Record<string, ToolSchema> = {
 • [Checkpoint] summary: Include 'Related decisions: decision_xxx, decision_yyy'
 
 type='decision': choices & lessons (same topic = evolution chain)
-type='checkpoint': session state for resumption (ALSO requires search first!)`,
+type='checkpoint': session state for resumption (ALSO requires search first!)
+type='learning': track user learning progress for concepts (FR81)`,
     parameters: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          description: "What to save: 'decision' or 'checkpoint'",
+          description: "What to save: 'decision', 'checkpoint', or 'learning'",
         },
         topic: {
           type: 'string',
@@ -73,6 +74,14 @@ type='checkpoint': session state for resumption (ALSO requires search first!)`,
         next_steps: {
           type: 'string',
           description: '[Checkpoint] Instructions for next session: DoD, quick verification commands, constraints/cautions.',
+        },
+        concept: {
+          type: 'string',
+          description: "[Learning] Concept name (e.g., '60-30-10 rule', 'Japandi style'). Required for type='learning'.",
+        },
+        domain: {
+          type: 'string',
+          description: "[Learning] Domain category (e.g., 'color_theory', 'spatial', 'style'). Optional.",
         },
       },
       required: ['type'],
