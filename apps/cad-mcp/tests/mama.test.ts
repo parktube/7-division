@@ -2209,3 +2209,136 @@ describe('DesignHints System', () => {
     expect(shouldGenerateDesignHints('hello world')).toBe(false)
   })
 })
+
+// ============================================================
+// Terminology Evolution (Story 11.16)
+// ============================================================
+
+describe('Terminology Evolution', () => {
+  it('should detect term domain from vague terms', async () => {
+    const { detectTermDomain } = await import('../src/mama/terminology-tracker.js')
+
+    expect(detectTermDomain('미니멀하게 해줘')).toBe('style')
+    expect(detectTermDomain('색상 어떻게')).toBe('color')
+    expect(detectTermDomain('공간 배치')).toBe('spatial')
+  })
+
+  it('should identify vague terms', async () => {
+    const { isVagueTerm } = await import('../src/mama/terminology-tracker.js')
+
+    expect(isVagueTerm('미니멀하게')).toBe(true)
+    expect(isVagueTerm('깔끔하게')).toBe(true)
+    expect(isVagueTerm('Japandi')).toBe(false)
+  })
+
+  it('should identify specific terms', async () => {
+    const { isSpecificTerm } = await import('../src/mama/terminology-tracker.js')
+
+    expect(isSpecificTerm('Japandi')).toBe(true)
+    expect(isSpecificTerm('60-30-10 비율')).toBe(true)
+    expect(isSpecificTerm('미니멀하게')).toBe(false)
+  })
+
+  it('should extract specific terms from text', async () => {
+    const { extractSpecificTerms } = await import('../src/mama/terminology-tracker.js')
+
+    const terms = extractSpecificTerms('Japandi 스타일로 60-30-10 비율 맞춰서')
+
+    expect(terms.length).toBe(2)
+    expect(terms.some(t => t.term === 'Japandi')).toBe(true)
+    expect(terms.some(t => t.term === '60-30-10 비율')).toBe(true)
+  })
+
+  it('should record terminology evolution', async () => {
+    const { recordEvolution, getEvolutionsForReport } = await import('../src/mama/terminology-tracker.js')
+
+    const uniqueAfter = `Japandi_${Date.now()}`
+    const id = recordEvolution({
+      beforeTerm: '미니멀하게',
+      afterTerm: uniqueAfter,
+      domain: 'style',
+    })
+
+    expect(id).toBeGreaterThan(0)
+
+    const evolutions = getEvolutionsForReport('default', 1)
+    expect(evolutions.some(e => e.afterTerm === uniqueAfter)).toBe(true)
+  })
+
+  it('should detect evolution from messages', async () => {
+    const { detectEvolution } = await import('../src/mama/terminology-tracker.js')
+
+    const result = detectEvolution(
+      '깔끔하게 만들어줘',  // vague term
+      'Bauhaus 스타일로 해볼게'  // specific term
+    )
+
+    expect(result).not.toBeNull()
+    expect(result!.beforeTerm).toBe('깔끔하게')
+    expect(result!.afterTerm).toBe('Bauhaus')
+    expect(result!.domain).toBe('style')
+  })
+
+  it('should calculate question quality score', async () => {
+    const { calculateQuestionQuality } = await import('../src/mama/terminology-tracker.js')
+
+    // Vague question
+    const vagueScore = calculateQuestionQuality('색감 어떻게?')
+
+    // Specific question with professional terms
+    const specificScore = calculateQuestionQuality('60-30-10 비율 맞춰서 웜톤 팔레트로 구성해주세요')
+
+    expect(specificScore.total).toBeGreaterThan(vagueScore.total)
+    expect(specificScore.professionalism).toBeGreaterThan(0)
+  })
+
+  it('should check question quality improvement', async () => {
+    const { hasQuestionQualityImproved } = await import('../src/mama/terminology-tracker.js')
+
+    // Current score much higher than recent average
+    expect(hasQuestionQualityImproved(80, [30, 35, 40])).toBe(true)
+
+    // Current score similar to recent average
+    expect(hasQuestionQualityImproved(35, [30, 35, 40])).toBe(false)
+  })
+
+  it('should format terminology section for report', async () => {
+    const { formatTerminologySection } = await import('../src/mama/terminology-tracker.js')
+
+    const formatted = formatTerminologySection([
+      { id: 1, beforeTerm: '미니멀하게', afterTerm: 'Japandi', domain: 'style', learningId: null, detectedAt: Date.now() },
+      { id: 2, beforeTerm: '따뜻하게', afterTerm: '웜톤 팔레트', domain: 'color', learningId: 'learning_123', detectedAt: Date.now() },
+    ])
+
+    expect(formatted).toContain('💬 언어의 변화')
+    expect(formatted).toContain('미니멀하게')
+    expect(formatted).toContain('Japandi')
+    expect(formatted).toContain('관련 학습 후')
+  })
+
+  it('should return null for empty evolutions', async () => {
+    const { formatTerminologySection } = await import('../src/mama/terminology-tracker.js')
+
+    const formatted = formatTerminologySection([])
+    expect(formatted).toBeNull()
+  })
+
+  it('should integrate with growth report', async () => {
+    const { recordEvolution } = await import('../src/mama/terminology-tracker.js')
+    const { getGrowthSummary, formatGrowthReport } = await import('../src/mama/growth-tracker.js')
+
+    // Record an evolution
+    const uniqueAfter = `Scandinavian_${Date.now()}`
+    recordEvolution({
+      beforeTerm: '심플하게',
+      afterTerm: uniqueAfter,
+      domain: 'style',
+    })
+
+    const summary = getGrowthSummary(30)
+    expect(summary.terminologyEvolutions.length).toBeGreaterThanOrEqual(1)
+
+    const report = formatGrowthReport(summary)
+    expect(report).toContain('💬 언어의 변화')
+  })
+})

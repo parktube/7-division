@@ -90,6 +90,17 @@ export interface UserProfileRow {
   updated_at: number
 }
 
+// Terminology evolution (vague → specific term)
+export interface TerminologyEvolutionRow {
+  id: number
+  user_id: string
+  before_term: string           // Vague term (e.g., '미니멀하게')
+  after_term: string            // Specific term (e.g., 'Japandi 스타일로')
+  domain: string | null         // Domain (style, color, spatial, etc.)
+  learning_id: string | null    // Related learning
+  detected_at: number           // Unix timestamp (seconds)
+}
+
 // ============================================================
 // Database Singleton
 // ============================================================
@@ -1016,4 +1027,142 @@ export function calculateIndependentRatio(
     secondHalf: secondHalfRatio,
     hasEnoughData,
   }
+}
+
+// ============================================================
+// Terminology Evolution Operations (Terminology Tracker)
+// ============================================================
+
+/**
+ * Record a terminology evolution
+ *
+ * @param evolution - Evolution data
+ * @returns Created evolution ID
+ */
+export function recordTerminologyEvolution(evolution: {
+  user_id: string
+  before_term: string
+  after_term: string
+  domain?: string
+  learning_id?: string
+}): number {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  const result = db!.prepare(`
+    INSERT INTO terminology_evolution (user_id, before_term, after_term, domain, learning_id, detected_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(
+    evolution.user_id,
+    evolution.before_term,
+    evolution.after_term,
+    evolution.domain || null,
+    evolution.learning_id || null,
+    now
+  )
+
+  logger.info(`Terminology evolution recorded: ${evolution.before_term} → ${evolution.after_term}`)
+
+  return result.lastInsertRowid as number
+}
+
+/**
+ * Get terminology evolutions for a user
+ *
+ * @param userId - User ID
+ * @param periodDays - Period in days (default: 30)
+ * @param domain - Optional domain filter
+ */
+export function getTerminologyEvolutions(
+  userId: string,
+  periodDays = 30,
+  domain?: string
+): TerminologyEvolutionRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
+
+  if (domain) {
+    return db!.prepare(`
+      SELECT * FROM terminology_evolution
+      WHERE user_id = ? AND domain = ? AND detected_at > ?
+      ORDER BY detected_at DESC
+    `).all(userId, domain, cutoff) as TerminologyEvolutionRow[]
+  }
+
+  return db!.prepare(`
+    SELECT * FROM terminology_evolution
+    WHERE user_id = ? AND detected_at > ?
+    ORDER BY detected_at DESC
+  `).all(userId, cutoff) as TerminologyEvolutionRow[]
+}
+
+/**
+ * Get user's last used terms for each domain
+ * Used for tracking terminology progress
+ *
+ * @param userId - User ID
+ */
+export function getUserLastTerms(userId: string): Record<string, string[]> {
+  if (!db) {
+    initDatabase()
+  }
+
+  const evolutions = db!.prepare(`
+    SELECT DISTINCT after_term, domain
+    FROM terminology_evolution
+    WHERE user_id = ?
+    ORDER BY detected_at DESC
+  `).all(userId) as Array<{ after_term: string; domain: string | null }>
+
+  const termsByDomain: Record<string, string[]> = {}
+
+  for (const row of evolutions) {
+    const domain = row.domain || 'general'
+    if (!termsByDomain[domain]) {
+      termsByDomain[domain] = []
+    }
+    if (!termsByDomain[domain].includes(row.after_term)) {
+      termsByDomain[domain].push(row.after_term)
+    }
+  }
+
+  return termsByDomain
+}
+
+/**
+ * Count terminology evolutions by domain
+ *
+ * @param userId - User ID
+ * @param periodDays - Period in days (default: 30)
+ */
+export function countTerminologyByDomain(
+  userId: string,
+  periodDays = 30
+): Record<string, number> {
+  if (!db) {
+    initDatabase()
+  }
+
+  const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
+
+  const rows = db!.prepare(`
+    SELECT domain, COUNT(*) as count
+    FROM terminology_evolution
+    WHERE user_id = ? AND detected_at > ?
+    GROUP BY domain
+  `).all(userId, cutoff) as Array<{ domain: string | null; count: number }>
+
+  const counts: Record<string, number> = {}
+
+  for (const row of rows) {
+    counts[row.domain || 'general'] = row.count
+  }
+
+  return counts
 }

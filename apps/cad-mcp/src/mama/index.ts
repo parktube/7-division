@@ -837,3 +837,23 @@ export {
   type ThinkingQuestion,
   type DesignOption,
 } from './design-hints.js'
+
+// Re-export terminology tracker (Story 11.16)
+export {
+  detectTermDomain,
+  isVagueTerm,
+  isSpecificTerm,
+  extractSpecificTerms,
+  recordEvolution,
+  detectEvolution,
+  calculateQuestionQuality,
+  hasQuestionQualityImproved,
+  recordQuestionQualityImprovement,
+  getEvolutionsForReport,
+  formatTerminologySection,
+  getTerminologyStats,
+  TERM_MAPPING,
+  DOMAIN_KEYWORDS,
+  type TerminologyEvolution,
+  type QuestionQualityScore,
+} from './terminology-tracker.js'

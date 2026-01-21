@@ -19,6 +19,7 @@ import {
   type GrowthMetricRow,
   getUserLearnings,
   type LearningRow,
+  getTerminologyEvolutions,
 } from './db.js'
 import { setGlobalSkillLevel } from './db.js'
 import { logger } from '../logger.js'
@@ -34,6 +35,13 @@ export interface RecordGrowthParams {
   context?: string
 }
 
+export interface TerminologyEvolution {
+  beforeTerm: string
+  afterTerm: string
+  domain: string | null
+  learningId: string | null
+}
+
 export interface GrowthSummary {
   period_days: number
   metrics: Record<GrowthMetricType, number>
@@ -47,6 +55,7 @@ export interface GrowthSummary {
   shouldUpgradeSkillLevel: boolean
   daysActive: number | null
   reportTrigger: 'checkpoint' | '30_days' | 'manual' | null
+  terminologyEvolutions: TerminologyEvolution[]
 }
 
 // ============================================================
@@ -188,6 +197,15 @@ export function getGrowthSummary(
     ? Math.floor((Date.now() - firstActivity) / (24 * 60 * 60 * 1000))
     : null
 
+  // Get terminology evolutions for the period (AC4: Story 11.16 integration)
+  const evolutions = getTerminologyEvolutions(DEFAULT_USER_ID, periodDays)
+  const terminologyEvolutions: TerminologyEvolution[] = evolutions.map((e) => ({
+    beforeTerm: e.before_term,
+    afterTerm: e.after_term,
+    domain: e.domain,
+    learningId: e.learning_id,
+  }))
+
   return {
     period_days: periodDays,
     metrics,
@@ -199,6 +217,7 @@ export function getGrowthSummary(
     shouldUpgradeSkillLevel,
     daysActive,
     reportTrigger: trigger,
+    terminologyEvolutions,
   }
 }
 
@@ -230,6 +249,18 @@ export function formatGrowthReport(summary: GrowthSummary): string {
   lines.push(`├── 트레이드오프 예측: ${summary.metrics.tradeoff_predicted}회`)
   lines.push(`├── 전문 용어 사용: ${summary.metrics.terminology_used}회`)
   lines.push(`└── 새로 배운 개념: ${summary.newConceptsLearned}개`)
+
+  // Terminology evolutions (AC4: "💬 언어의 변화" section)
+  if (summary.terminologyEvolutions.length > 0) {
+    lines.push('')
+    lines.push('💬 언어의 변화:')
+    for (let i = 0; i < summary.terminologyEvolutions.length; i++) {
+      const e = summary.terminologyEvolutions[i]
+      const prefix = i === summary.terminologyEvolutions.length - 1 ? '└──' : '├──'
+      const suffix = e.learningId ? ' (관련 학습 후)' : ''
+      lines.push(`${prefix} "${e.beforeTerm}" → "${e.afterTerm}"${suffix}`)
+    }
+  }
 
   // Skill level upgrade notice
   if (summary.shouldUpgradeSkillLevel) {
