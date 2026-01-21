@@ -1587,3 +1587,183 @@ describe('Adaptive Mentoring', () => {
     expect(result.error).toContain('beginner')
   })
 })
+
+// ============================================================
+// Story 11.11: Graph Health Metrics
+// ============================================================
+
+describe('Graph Health Metrics', () => {
+  it('should calculate health for empty graph', async () => {
+    // Use a fresh database for this test
+    const Database = (await import('better-sqlite3')).default
+    const { tmpdir } = await import('os')
+    const { join } = await import('path')
+    const { mkdirSync } = await import('fs')
+
+    const testDir = join(tmpdir(), 'mama-health-test-' + Date.now())
+    mkdirSync(testDir, { recursive: true })
+    const testDbPath = join(testDir, 'health-test.db')
+    const db = new Database(testDbPath)
+
+    // Create minimal schema
+    db.exec(`
+      CREATE TABLE decisions (
+        id TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reasoning TEXT,
+        outcome TEXT,
+        superseded_by TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE decision_edges (
+        from_id TEXT NOT NULL,
+        to_id TEXT NOT NULL,
+        relationship TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    `)
+
+    // Empty graph health check
+    const edgeTypeCounts = db.prepare(`
+      SELECT relationship, COUNT(*) as count
+      FROM decision_edges GROUP BY relationship
+    `).all() as Array<{ relationship: string; count: number }>
+
+    const totalDecisions = db.prepare('SELECT COUNT(*) as count FROM decisions').get() as { count: number }
+
+    expect(totalDecisions.count).toBe(0)
+    expect(edgeTypeCounts.length).toBe(0)
+
+    db.close()
+  })
+
+  it('should detect orphan decisions', async () => {
+    const Database = (await import('better-sqlite3')).default
+    const { tmpdir } = await import('os')
+    const { join } = await import('path')
+    const { mkdirSync } = await import('fs')
+
+    const testDir = join(tmpdir(), 'mama-orphan-test-' + Date.now())
+    mkdirSync(testDir, { recursive: true })
+    const testDbPath = join(testDir, 'orphan-test.db')
+    const db = new Database(testDbPath)
+
+    db.exec(`
+      CREATE TABLE decisions (
+        id TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reasoning TEXT,
+        outcome TEXT,
+        superseded_by TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE decision_edges (
+        from_id TEXT NOT NULL,
+        to_id TEXT NOT NULL,
+        relationship TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    `)
+
+    // Insert orphan decisions (no edges)
+    const now = Date.now()
+    db.prepare(`INSERT INTO decisions VALUES ('d1', 'test:a', 'decision 1', NULL, NULL, NULL, ?)`).run(now)
+    db.prepare(`INSERT INTO decisions VALUES ('d2', 'test:b', 'decision 2', NULL, NULL, NULL, ?)`).run(now)
+
+    // Count orphan decisions
+    const orphanResult = db.prepare(`
+      SELECT COUNT(*) as count FROM decisions d
+      WHERE NOT EXISTS (
+        SELECT 1 FROM decision_edges e
+        WHERE e.from_id = d.id OR e.to_id = d.id
+      )
+    `).get() as { count: number }
+
+    expect(orphanResult.count).toBe(2)
+
+    db.close()
+  })
+
+  it('should count edge types correctly', async () => {
+    const Database = (await import('better-sqlite3')).default
+    const { tmpdir } = await import('os')
+    const { join } = await import('path')
+    const { mkdirSync } = await import('fs')
+
+    const testDir = join(tmpdir(), 'mama-edge-test-' + Date.now())
+    mkdirSync(testDir, { recursive: true })
+    const testDbPath = join(testDir, 'edge-test.db')
+    const db = new Database(testDbPath)
+
+    db.exec(`
+      CREATE TABLE decisions (
+        id TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE decision_edges (
+        from_id TEXT NOT NULL,
+        to_id TEXT NOT NULL,
+        relationship TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+    `)
+
+    const now = Date.now()
+    db.prepare(`INSERT INTO decisions VALUES ('d1', 'test:a', 'decision 1', ?)`).run(now)
+    db.prepare(`INSERT INTO decisions VALUES ('d2', 'test:a', 'decision 2', ?)`).run(now)
+    db.prepare(`INSERT INTO decisions VALUES ('d3', 'test:b', 'decision 3', ?)`).run(now)
+
+    // Insert edges
+    db.prepare(`INSERT INTO decision_edges VALUES ('d2', 'd1', 'supersedes', ?)`).run(now)
+    db.prepare(`INSERT INTO decision_edges VALUES ('d3', 'd1', 'builds_on', ?)`).run(now)
+    db.prepare(`INSERT INTO decision_edges VALUES ('d3', 'd2', 'debates', ?)`).run(now)
+
+    // Count edge types
+    const edgeCounts = db.prepare(`
+      SELECT relationship, COUNT(*) as count
+      FROM decision_edges
+      GROUP BY relationship
+    `).all() as Array<{ relationship: string; count: number }>
+
+    const counts: Record<string, number> = {}
+    for (const row of edgeCounts) {
+      counts[row.relationship] = row.count
+    }
+
+    expect(counts['supersedes']).toBe(1)
+    expect(counts['builds_on']).toBe(1)
+    expect(counts['debates']).toBe(1)
+
+    db.close()
+  })
+
+  it('should handle mama_health tool call', async () => {
+    const { handleMamaHealth } = await import('../src/mama/tools/handlers.js')
+
+    const result = await handleMamaHealth({})
+
+    expect(result.success).toBe(true)
+    expect(result.data).toHaveProperty('healthScore')
+    expect(result.data).toHaveProperty('summary')
+    expect(result.data).toHaveProperty('warningCount')
+    expect((result.data as { healthScore: number }).healthScore).toBeGreaterThanOrEqual(0)
+    expect((result.data as { healthScore: number }).healthScore).toBeLessThanOrEqual(100)
+  })
+
+  it('should return verbose report when requested', async () => {
+    const { handleMamaHealth } = await import('../src/mama/tools/handlers.js')
+
+    const result = await handleMamaHealth({ verbose: true })
+
+    expect(result.success).toBe(true)
+    expect(result.data).toHaveProperty('report')
+    expect(result.data).toHaveProperty('metrics')
+    const data = result.data as { metrics: { totalDecisions: number; totalEdges: number } }
+    expect(data.metrics).toHaveProperty('totalDecisions')
+    expect(data.metrics).toHaveProperty('totalEdges')
+  })
+})

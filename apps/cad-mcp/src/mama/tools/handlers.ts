@@ -29,6 +29,7 @@ import {
 } from '../index.js'
 import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js'
 import { loadConfig, updateConfig } from '../config.js'
+import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
 
 // ============================================================
 // Response Types
@@ -608,4 +609,77 @@ export async function handleMamaEditHint(args: EditHintArgs): Promise<ToolRespon
     logger.error(`mama_edit_hint failed: ${errorMsg}`)
     return { success: false, error: errorMsg }
   }
+}
+
+// ============================================================
+// mama_health Handler
+// ============================================================
+
+export interface HealthArgs {
+  verbose?: boolean
+}
+
+/**
+ * Handle mama_health tool call
+ *
+ * Story 11.11: Graph Health Metrics
+ */
+export async function handleMamaHealth(args: HealthArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    const health = calculateGraphHealth()
+
+    if (args.verbose) {
+      // Verbose mode: return full formatted report
+      const report = formatHealthReport(health)
+
+      logger.info(`mama_health: Score=${health.healthScore}, ${health.warnings.length} warnings`)
+
+      return {
+        success: true,
+        data: {
+          healthScore: health.healthScore,
+          report,
+          metrics: {
+            totalDecisions: health.totalDecisions,
+            totalEdges: health.totalEdges,
+            orphanCount: health.orphanCount,
+            orphanRatio: health.orphanRatio,
+            edgeTypeCounts: health.edgeTypeCounts,
+            edgeTypeRatios: health.edgeTypeRatios,
+            staleDecisions: health.staleDecisions,
+          },
+          warnings: health.warnings,
+        },
+      }
+    }
+
+    // Compact mode: return summary
+    const summary = getSummary(health)
+
+    logger.info(`mama_health: Score=${health.healthScore}`)
+
+    return {
+      success: true,
+      data: {
+        healthScore: health.healthScore,
+        summary,
+        warningCount: health.warnings.length,
+        warnings: health.warnings,
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_health failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+/**
+ * Get compact health summary
+ */
+function getSummary(health: GraphHealth): string {
+  const scoreEmoji = health.healthScore >= 80 ? '🟢' : health.healthScore >= 50 ? '🟡' : '🔴'
+  return `${scoreEmoji} Health: ${health.healthScore}/100 | ${health.totalDecisions} decisions | ${health.totalEdges} edges | ${health.warnings.length} warnings`
 }

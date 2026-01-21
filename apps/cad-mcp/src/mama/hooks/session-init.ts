@@ -2,13 +2,16 @@
  * SessionInit Hook Implementation
  *
  * Story 11.5: SessionStart Hook (onSessionInit)
+ * Story 11.11: Graph Health Metrics (health check at session start)
  *
  * Loads checkpoint and recent decisions at session start.
  * Formats output based on contextInjection mode (none/hint/full).
+ * Includes graph health warnings when applicable.
  */
 
 import { getContextInjection } from '../config.js'
 import { loadCheckpoint, searchDecisions, type CheckpointResult, type DecisionResult } from '../index.js'
+import { calculateGraphHealth, getHealthSummary } from '../health.js'
 
 // ============================================================
 // Types
@@ -19,6 +22,7 @@ export interface SessionInitResult {
   recentDecisions: DecisionResult[]
   contextMode: 'none' | 'hint' | 'full'
   formattedContext: string
+  healthWarning: string | null  // Story 11.11
 }
 
 // ============================================================
@@ -30,7 +34,8 @@ export interface SessionInitResult {
  *
  * 1. Load latest checkpoint
  * 2. Load recent decisions (5)
- * 3. Format based on contextInjection mode
+ * 3. Check graph health (Story 11.11)
+ * 4. Format based on contextInjection mode
  */
 export async function executeSessionInit(): Promise<SessionInitResult> {
   const contextMode = getContextInjection()
@@ -42,25 +47,36 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
       recentDecisions: [],
       contextMode: 'none',
       formattedContext: '',
+      healthWarning: null,
     }
   }
 
   // Load checkpoint and recent decisions
   const [checkpoint, decisions] = await Promise.all([loadCheckpoint(), searchDecisions({ limit: 5 })])
 
+  // Check graph health (Story 11.11)
+  let healthWarning: string | null = null
+  try {
+    const health = calculateGraphHealth()
+    healthWarning = getHealthSummary(health)
+  } catch {
+    // Ignore health check errors - non-critical
+  }
+
   const result: SessionInitResult = {
     checkpoint,
     recentDecisions: decisions,
     contextMode,
     formattedContext: '',
+    healthWarning,
   }
 
   // Format based on mode
   if (contextMode === 'full') {
-    result.formattedContext = formatFullContext(checkpoint, decisions)
+    result.formattedContext = formatFullContext(checkpoint, decisions, healthWarning)
   } else {
     // hint mode
-    result.formattedContext = formatHintContext(checkpoint, decisions)
+    result.formattedContext = formatHintContext(checkpoint, decisions, healthWarning)
   }
 
   return result
@@ -69,8 +85,19 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
 /**
  * Format full context with all details
  */
-function formatFullContext(checkpoint: CheckpointResult | null, decisions: DecisionResult[]): string {
+function formatFullContext(
+  checkpoint: CheckpointResult | null,
+  decisions: DecisionResult[],
+  healthWarning: string | null = null
+): string {
   const lines: string[] = []
+
+  // Health warning section (Story 11.11)
+  if (healthWarning) {
+    lines.push(`📊 **Graph Health:**`)
+    lines.push(`   ${healthWarning}`)
+    lines.push('')
+  }
 
   // Checkpoint section
   if (checkpoint) {
@@ -104,7 +131,11 @@ function formatFullContext(checkpoint: CheckpointResult | null, decisions: Decis
 /**
  * Format hint context with summary only
  */
-function formatHintContext(checkpoint: CheckpointResult | null, decisions: DecisionResult[]): string {
+function formatHintContext(
+  checkpoint: CheckpointResult | null,
+  decisions: DecisionResult[],
+  healthWarning: string | null = null
+): string {
   const parts: string[] = []
 
   if (checkpoint) {
@@ -115,11 +146,21 @@ function formatHintContext(checkpoint: CheckpointResult | null, decisions: Decis
     parts.push(`${decisions.length} related decisions available`)
   }
 
-  if (parts.length === 0) {
+  if (parts.length === 0 && !healthWarning) {
     return ''
   }
 
-  return `🔍 ${parts.join(', ')}\n💡 Use mama_checkpoint() and mama_search() for details`
+  let result = ''
+  if (parts.length > 0) {
+    result = `🔍 ${parts.join(', ')}\n💡 Use mama_checkpoint() and mama_search() for details`
+  }
+
+  // Add health warning in hint mode (Story 11.11)
+  if (healthWarning) {
+    result = result ? `${result}\n${healthWarning}` : healthWarning
+  }
+
+  return result
 }
 
 // ============================================================

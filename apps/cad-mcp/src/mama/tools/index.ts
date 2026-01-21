@@ -18,11 +18,13 @@ export {
   handleMamaConfigure,
   handleMamaEditHint,
   handleMamaSetSkillLevel,
+  handleMamaHealth,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
   type ConfigureArgs,
   type EditHintArgs,
   type SetSkillLevelArgs,
+  type HealthArgs,
   type ToolResponse,
 } from './handlers.js'

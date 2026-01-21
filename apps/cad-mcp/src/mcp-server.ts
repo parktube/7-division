@@ -29,12 +29,14 @@ import {
   handleMamaConfigure,
   handleMamaEditHint,
   handleMamaSetSkillLevel,
+  handleMamaHealth,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
   type ConfigureArgs,
   type EditHintArgs,
   type SetSkillLevelArgs,
+  type HealthArgs,
 } from './mama/tools/index.js'
 import { shutdownMAMA } from './mama/index.js'
 import { orchestrator } from './orchestrator.js'
@@ -725,11 +727,21 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === mama_health: Graph health metrics (Story 11.11) ===
+        case 'mama_health': {
+          const healthArgs = args as unknown as HealthArgs
+          const result = await handleMamaHealth(healthArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health`,
             }],
             isError: true,
           }

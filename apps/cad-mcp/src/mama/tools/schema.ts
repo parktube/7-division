@@ -259,7 +259,7 @@ Actions:
         tags: {
           type: 'array',
           description: '[add/update] Tags for categorization',
-          items: { type: 'string' },
+          items: { type: 'string', description: 'Tag string' },
         },
       },
       required: ['action'],
@@ -292,6 +292,36 @@ Can set global level or per-domain level (primitives, transforms, groups, boolea
         },
       },
       required: ['level'],
+    },
+  },
+
+  // === mama_health: Graph health metrics ===
+  mama_health: {
+    name: 'mama_health',
+    description: `📊 Check the health of the Reasoning Graph.
+
+**Metrics Calculated:**
+• Total decisions and edge distribution
+• Edge type ratios (supersedes, builds_on, debates, synthesizes)
+• Orphan decisions (no relationships)
+• Stale decisions (90+ days old)
+• Overall health score (0-100)
+
+**Warnings Generated:**
+• ⚠️ Echo chamber risk: debates < 10%
+• ⚠️ High orphan ratio: > 30% unconnected
+• ⚠️ Stale decisions needing review
+
+Use this to monitor knowledge quality and identify areas for improvement.`,
+    parameters: {
+      type: 'object',
+      properties: {
+        verbose: {
+          type: 'boolean',
+          description: 'If true, include detailed edge distribution and stale decision list. Default: false',
+        },
+      },
+      required: [],
     },
   },
 }

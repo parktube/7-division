@@ -713,6 +713,7 @@ export async function getDecisionsByTopic(
     decision: row.decision,
     reasoning: row.reasoning,
     outcome: row.outcome,
+    outcome_reason: row.outcome_reason,
     confidence: row.confidence,
     created_at: row.created_at,
   }))
@@ -774,3 +775,12 @@ export type {
   NextStep,
   SaveSuggestion,
 } from './types/action-hints.js'
+
+// Re-export health metrics (Story 11.11)
+export {
+  calculateGraphHealth,
+  formatHealthReport,
+  getHealthSummary,
+  type GraphHealth,
+  type EdgeTypeCounts,
+} from './health.js'
