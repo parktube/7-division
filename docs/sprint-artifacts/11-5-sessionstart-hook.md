@@ -112,12 +112,12 @@ interface HookRegistry {
 }
 
 interface SessionInitResult {
-  checkpoint?: {
+  checkpoint: {
     summary: string;
     next_steps: string[];
     open_files: string[];
     created_at: string;
-  };
+  } | null;  // 체크포인트가 없으면 null
   recentDecisions: Decision[];
   contextMode: 'none' | 'hint' | 'full';
   formattedContext: string;  // LLM에게 전달할 최종 문자열

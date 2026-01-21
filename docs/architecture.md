@@ -601,14 +601,14 @@ interface CADToolResult {
   data: unknown;
   error?: string;
   actionHints?: {
-    next_steps?: {
+    nextSteps?: {            // camelCase 통일
       action: string;        // "add_door"
       description: string;   // "문 배치하기"
       relevance: string;     // "방이 생성되었으니 출입구 필요"
       optional: boolean;
     }[];
-    module_hints?: string[];
-    save_suggestion?: {
+    moduleHints?: string[];
+    saveSuggestion?: {
       topic: string;
       reason: string;
     };
@@ -809,7 +809,7 @@ CREATE TABLE terminology_evolution (
   before_term TEXT NOT NULL,       -- '미니멀하게'
   after_term TEXT NOT NULL,        -- 'Japandi 스타일로'
   learning_id TEXT,                -- 관련 학습 ID
-  created_at INTEGER,
+  detected_at INTEGER,             -- Unix timestamp (seconds)
   FOREIGN KEY (learning_id) REFERENCES learnings(id)
 );
 

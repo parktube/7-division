@@ -358,38 +358,48 @@ CREATE TABLE hints (
 -- learnings: 배운 개념 저장 (FR81, ADR-0025)
 CREATE TABLE learnings (
   id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
   concept TEXT NOT NULL,         -- '60-30-10 법칙', '동선', 'Japandi'
   domain TEXT,                   -- 'color_theory', 'spatial', 'style'
   understanding_level INTEGER,   -- 1: 소개됨, 2: 이해함, 3: 적용함, 4: 숙달
-  first_introduced INTEGER,      -- timestamp
-  last_applied INTEGER,          -- timestamp
+  first_introduced INTEGER,      -- Unix timestamp (seconds)
+  last_applied INTEGER,          -- Unix timestamp (seconds)
   applied_count INTEGER DEFAULT 0,
   user_explanation TEXT,         -- 사용자가 이 개념을 설명한 기록
-  created_at INTEGER
+  created_at INTEGER             -- Unix timestamp (seconds)
 );
+
+CREATE INDEX idx_learnings_user ON learnings(user_id);
+CREATE UNIQUE INDEX idx_learnings_user_concept ON learnings(user_id, concept);
 
 -- growth_metrics: 성장 지표 (FR82, ADR-0025)
 CREATE TABLE growth_metrics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
   metric_type TEXT NOT NULL,     -- 'independent_decision', 'concept_applied',
                                  -- 'tradeoff_predicted', 'terminology_used'
   related_learning_id TEXT,      -- learnings 테이블 참조
   related_decision_id TEXT,      -- decisions 테이블 참조
   context TEXT,                  -- 어떤 상황에서 발생했는지
-  created_at INTEGER,
+  created_at INTEGER,            -- Unix timestamp (seconds)
   FOREIGN KEY (related_learning_id) REFERENCES learnings(id),
   FOREIGN KEY (related_decision_id) REFERENCES decisions(id)
 );
 
+CREATE INDEX idx_growth_metrics_user ON growth_metrics(user_id);
+
 -- terminology_evolution: 용어 변화 추적 (FR84)
 CREATE TABLE terminology_evolution (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
   before_term TEXT NOT NULL,     -- '미니멀하게'
   after_term TEXT NOT NULL,      -- 'Japandi 스타일로'
   learning_id TEXT,              -- 관련 학습
-  detected_at INTEGER,
+  detected_at INTEGER,           -- Unix timestamp (seconds)
   FOREIGN KEY (learning_id) REFERENCES learnings(id)
 );
+
+CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 ```
 
 #### 관련 ADR 목록

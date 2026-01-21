@@ -112,9 +112,9 @@ mama_save({
   // - id: 'learning_' + nanoid()
   // - user_id: 세션 컨텍스트에서 자동 주입
   // - understanding_level: 스키마 DEFAULT 1 (CHECK 1~4 범위 강제)
-  // - first_introduced: Date.now()
+  // - first_introduced: Math.floor(Date.now() / 1000)  // Unix seconds
   // - applied_count: 0
-  // - created_at: Date.now()
+  // - created_at: Math.floor(Date.now() / 1000)  // Unix seconds
 })
 
 // understanding_level 업데이트는 별도 내부 로직 (mama_update 아님)

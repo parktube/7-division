@@ -79,12 +79,15 @@ So that **성장을 가시화할 수 있다** (FR84).
 ```sql
 CREATE TABLE terminology_evolution (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
   before_term TEXT NOT NULL,     -- '미니멀하게'
   after_term TEXT NOT NULL,      -- 'Japandi 스타일로'
   learning_id TEXT,              -- 관련 학습
-  detected_at INTEGER,
+  detected_at INTEGER,           -- Unix timestamp (seconds)
   FOREIGN KEY (learning_id) REFERENCES learnings(id)
 );
+
+CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 ```
 
 **용어 매핑 예시:**

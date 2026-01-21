@@ -73,6 +73,8 @@ So that **Claude 외 LLM도 사용할 수 있다** (FR79).
   - [ ] 4.2 AdapterFactory 구현
   - [ ] 4.3 런타임 교체 지원
 
+> **참고**: AC4(OpenAIAdapter)는 선택 사항으로 이번 스프린트에서 구현하지 않습니다.
+
 - [ ] Task 5: 테스트 작성
 
 ## Dev Notes
@@ -103,6 +105,7 @@ interface LLMResponse {
 ```
 
 > `llmAdapter`: `"claude"` | `"ollama"` | `"openai"`
+> **참고**: 비활성 어댑터의 설정도 유지 가능하며, `llmAdapter` 값에 따라 해당 어댑터 설정만 사용됩니다.
 
 ### References
 

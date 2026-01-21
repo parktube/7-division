@@ -28,9 +28,10 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 **Then** growth_metrics에 type='tradeoff_predicted' 기록
 
 ### AC4: 성장 리포트 생성
-**Given** 30일 후 성장 리포트를 생성할 때
-**When** 체크포인트를 저장하면
+**Given** 성장 리포트 생성 트리거가 발생할 때
+**When** 체크포인트 저장 시 또는 첫 활동 후 30일 경과 시
 **Then** 독립 결정 비율, 개념 적용 횟수가 요약된다
+> **트리거 조건**: (1) 체크포인트 저장 시 자동 포함, (2) 첫 활동일로부터 30일 경과 시 알림
 
 ### AC5: Adaptive Mentoring 연동
 **Given** 성장 지표가 일정 수준에 도달했을 때
@@ -111,12 +112,12 @@ CREATE INDEX idx_growth_metrics_type ON growth_metrics(metric_type);
 
 **성장 지표 정의:**
 
-| 지표 | 감지 조건 | 의미 |
-|------|----------|------|
-| independent_decision | AI 제안 없이 결정 + 학습된 개념 언급 | 능동적 적용 |
-| concept_applied | 학습된 개념을 직접 사용 | 지식 활용 |
-| tradeoff_predicted | 장단점을 먼저 언급 | 비판적 사고 |
-| terminology_used | 전문 용어 사용 | 언어 발전 |
+| 지표 | 감지 조건 | 의미 | FK 사용 |
+|------|----------|------|---------|
+| independent_decision | AI 제안 없이 결정 + 학습된 개념 언급 | 능동적 적용 | `related_learning_id` |
+| concept_applied | 학습된 개념을 직접 사용 | 지식 활용 | `related_learning_id` |
+| tradeoff_predicted | 장단점을 먼저 언급 | 비판적 사고 | `related_decision_id` |
+| terminology_used | 전문 용어 사용 | 언어 발전 | `related_learning_id` (용어 → 학습 개념 매핑) |
 
 **성장 리포트 예시:**
 ```
@@ -136,6 +137,7 @@ CREATE INDEX idx_growth_metrics_type ON growth_metrics(metric_type);
 
 - **선행**: Story 11.13 (Learning Progress Storage) - learnings 테이블 참조
 - **선행**: Story 11.10 (Adaptive Mentoring) - 연동
+- **병행/후행**: Story 11.16 (Terminology Evolution) - terminology_evolution 테이블 및 도메인 용어 사전 참조
 
 ### File List
 

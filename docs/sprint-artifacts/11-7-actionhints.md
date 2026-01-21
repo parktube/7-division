@@ -34,7 +34,7 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
 **Then** moduleHints에 추천 모듈이 포함된다
 
 ### AC5: optional 플래그
-**Given** next_steps가 반환될 때
+**Given** nextSteps가 반환될 때
 **When** 필수가 아닌 제안이면
 **Then** `optional: true` 플래그가 포함된다
 
@@ -129,7 +129,7 @@ async function postExecute(
 }
 ```
 
-**도메인별 next_steps 규칙 예시:**
+**도메인별 nextSteps 규칙 예시:**
 ```typescript
 const NEXT_STEP_RULES = {
   'room': [
