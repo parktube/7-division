@@ -96,6 +96,11 @@ type='checkpoint': session state for resumption (ALSO requires search first!)`,
 • Find decisions to link (builds_on, debates, synthesizes)
 • Understand decision evolution (time-ordered results)
 
+🏷️ DOMAIN FILTERING:
+• Use domain parameter to filter by topic prefix (e.g., 'voxel', 'cad')
+• Topic format: {domain}:{entity}:{aspect}
+• Use list_domains=true to see available domains
+
 Cross-lingual: Works in Korean and English.
 ⚠️ High similarity (>0.8) = MUST link with builds_on/debates/synthesizes.`,
     parameters: {
@@ -112,6 +117,18 @@ Cross-lingual: Works in Korean and English.
         type: {
           type: 'string',
           description: "Filter by type: 'decision' for architectural choices, 'checkpoint' for session states, 'all' for both. Default: 'all'",
+        },
+        domain: {
+          type: 'string',
+          description: "Filter by domain prefix (e.g., 'voxel', 'cad', 'furniture'). Only returns topics starting with this domain.",
+        },
+        group_by_topic: {
+          type: 'boolean',
+          description: 'If true, returns only the latest decision per topic (respects supersedes chain). Default: false',
+        },
+        list_domains: {
+          type: 'boolean',
+          description: 'If true, returns list of unique domains instead of decisions. Default: false',
         },
       },
       required: [],

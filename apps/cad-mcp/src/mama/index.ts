@@ -58,6 +58,8 @@ export interface SearchParams {
   query?: string
   limit?: number
   type?: 'all' | 'decision' | 'checkpoint'
+  domain?: string
+  group_by_topic?: boolean
 }
 
 export interface UpdateParams {
@@ -372,7 +374,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     await initMAMA()
   }
 
-  const { query, limit = 10 } = params
+  const { query, limit = 10, domain, group_by_topic } = params
   const db = getDatabase()
 
   // Helper function to add edges to result
@@ -388,16 +390,42 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     edges: getEdgeSummary(row.id),
   })
 
+  // Build domain filter condition
+  const domainCondition = domain ? `AND topic LIKE '${domain.toLowerCase()}:%'` : ''
+
+  // Build group_by_topic filter (only latest per topic)
+  const groupByTopicSelect = group_by_topic
+    ? `
+      SELECT d.* FROM decisions d
+      INNER JOIN (
+        SELECT topic, MAX(created_at) as max_created
+        FROM decisions
+        WHERE superseded_by IS NULL ${domainCondition}
+        GROUP BY topic
+      ) latest ON d.topic = latest.topic AND d.created_at = latest.max_created
+      WHERE d.superseded_by IS NULL ${domainCondition}
+    `
+    : ''
+
   // If no query, return recent items
   if (!query || query.trim().length === 0) {
-    const stmt = db.prepare(`
-      SELECT * FROM decisions
-      WHERE superseded_by IS NULL
-      ORDER BY created_at DESC
-      LIMIT ?
-    `)
+    let rows: DecisionRow[]
 
-    const rows = stmt.all(limit) as DecisionRow[]
+    if (group_by_topic) {
+      rows = db.prepare(`${groupByTopicSelect} ORDER BY d.created_at DESC LIMIT ?`).all(limit) as DecisionRow[]
+    } else {
+      rows = db
+        .prepare(
+          `
+          SELECT * FROM decisions
+          WHERE superseded_by IS NULL ${domainCondition}
+          ORDER BY created_at DESC
+          LIMIT ?
+        `
+        )
+        .all(limit) as DecisionRow[]
+    }
+
     return rows.map((row) => addEdgesToResult(row))
   }
 
@@ -419,7 +447,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
               `
               SELECT *, rowid FROM decisions
               WHERE rowid IN (${placeholders})
-              AND superseded_by IS NULL
+              AND superseded_by IS NULL ${domainCondition}
             `
             )
             .all(...rowids) as (DecisionRow & { rowid: number })[]
@@ -428,7 +456,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
           const distanceMap = new Map(vectorResults.map((r) => [r.rowid, r.distance]))
 
           // Convert distance to similarity (cosine distance: 0 = identical)
-          const results = rows
+          let results = rows
             .map((row) => {
               const distance = distanceMap.get(row.rowid) || 1
               const similarity = 1 - distance // Convert distance to similarity
@@ -436,10 +464,21 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
             })
             .filter((r) => (r.similarity || 0) >= 0.6) // Threshold
             .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
-            .slice(0, limit)
+
+          // Apply group_by_topic filter
+          if (group_by_topic) {
+            const seen = new Set<string>()
+            results = results.filter((r) => {
+              if (seen.has(r.topic)) return false
+              seen.add(r.topic)
+              return true
+            })
+          }
+
+          results = results.slice(0, limit)
 
           if (results.length > 0) {
-            logger.info(`Vector search: ${results.length} results for "${query}"`)
+            logger.info(`Vector search: ${results.length} results for "${query}"${domain ? ` in domain "${domain}"` : ''}`)
             return results
           }
         }
@@ -462,21 +501,77 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
   const likeConditions = keywords.map(() => '(topic LIKE ? OR decision LIKE ? OR reasoning LIKE ?)').join(' OR ')
   const likeParams = keywords.flatMap((k) => [`%${k}%`, `%${k}%`, `%${k}%`])
 
+  let rows: DecisionRow[]
+
+  if (group_by_topic) {
+    // For group_by_topic with keyword search, we need to filter after
+    rows = db
+      .prepare(
+        `
+        SELECT * FROM decisions
+        WHERE (${likeConditions})
+        AND superseded_by IS NULL ${domainCondition}
+        ORDER BY created_at DESC
+      `
+      )
+      .all(...likeParams) as DecisionRow[]
+
+    // Apply group_by_topic filter
+    const seen = new Set<string>()
+    rows = rows.filter((r) => {
+      if (seen.has(r.topic)) return false
+      seen.add(r.topic)
+      return true
+    })
+    rows = rows.slice(0, limit)
+  } else {
+    rows = db
+      .prepare(
+        `
+        SELECT * FROM decisions
+        WHERE (${likeConditions})
+        AND superseded_by IS NULL ${domainCondition}
+        ORDER BY created_at DESC
+        LIMIT ?
+      `
+      )
+      .all(...likeParams, limit) as DecisionRow[]
+  }
+
+  logger.info(`Keyword search: ${rows.length} results for "${query}"${domain ? ` in domain "${domain}"` : ''}`)
+
+  return rows.map((row) => addEdgesToResult(row, 0.75)) // Default similarity for keyword matches
+}
+
+/**
+ * List all unique domains from decisions
+ *
+ * @returns Array of unique domain names
+ */
+export async function listDomains(): Promise<string[]> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const db = getDatabase()
+
+  // Extract domain (first part before colon) from topics
   const rows = db
     .prepare(
       `
-      SELECT * FROM decisions
-      WHERE (${likeConditions})
-      AND superseded_by IS NULL
-      ORDER BY created_at DESC
-      LIMIT ?
+      SELECT DISTINCT
+        CASE
+          WHEN topic LIKE '%:%' THEN SUBSTR(topic, 1, INSTR(topic, ':') - 1)
+          ELSE topic
+        END as domain
+      FROM decisions
+      WHERE superseded_by IS NULL
+      ORDER BY domain
     `
     )
-    .all(...likeParams, limit) as DecisionRow[]
+    .all() as Array<{ domain: string }>
 
-  logger.info(`Keyword search: ${rows.length} results for "${query}"`)
-
-  return rows.map((row) => addEdgesToResult(row, 0.75)) // Default similarity for keyword matches
+  return rows.map((r) => r.domain).filter((d) => d && d.length > 0)
 }
 
 // ============================================================

@@ -20,6 +20,7 @@ import {
   updateOutcome,
   loadCheckpoint,
   getStatus,
+  listDomains,
   type DecisionResult,
 } from '../index.js'
 import { loadConfig, updateConfig } from '../config.js'
@@ -128,6 +129,9 @@ export interface SearchArgs {
   query?: string
   limit?: number
   type?: 'all' | 'decision' | 'checkpoint'
+  domain?: string
+  group_by_topic?: boolean
+  list_domains?: boolean
 }
 
 /**
@@ -137,10 +141,27 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
   try {
     await initMAMA()
 
+    // Handle list_domains special case
+    if (args.list_domains) {
+      const domains = await listDomains()
+      logger.info(`mama_search: Listed ${domains.length} domains`)
+
+      return {
+        success: true,
+        data: {
+          list_domains: true,
+          count: domains.length,
+          domains,
+        },
+      }
+    }
+
     const results = await searchDecisions({
       query: args.query,
       limit: args.limit || 10,
       type: args.type || 'all',
+      domain: args.domain,
+      group_by_topic: args.group_by_topic,
     })
 
     // Format results for LLM consumption
@@ -154,14 +175,17 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
       similarity: r.similarity,
       created_at: r.created_at,
       age: formatAge(r.created_at),
+      edges: r.edges,
     }))
 
-    logger.info(`mama_search: Found ${results.length} results for "${args.query || '(recent)'}"`)
+    logger.info(`mama_search: Found ${results.length} results for "${args.query || '(recent)'}"${args.domain ? ` in domain "${args.domain}"` : ''}`)
 
     return {
       success: true,
       data: {
         query: args.query || null,
+        domain: args.domain || null,
+        group_by_topic: args.group_by_topic || false,
         count: results.length,
         results: formattedResults,
       },
