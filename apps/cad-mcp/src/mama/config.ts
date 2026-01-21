@@ -28,6 +28,9 @@ export const DB_PATH = join(MAMA_DATA_DIR, 'mama.db')
 /** Config file path */
 export const CONFIG_PATH = join(CAD_DATA_DIR, 'mama-config.json')
 
+/** Default user ID for single-user mode */
+export const DEFAULT_USER_ID = 'default'
+
 // ============================================================
 // Default Configuration
 // ============================================================

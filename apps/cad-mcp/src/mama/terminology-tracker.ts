@@ -18,12 +18,11 @@ import {
   recordGrowthMetric,
 } from './db.js'
 import { logger } from '../logger.js'
+import { DEFAULT_USER_ID } from './config.js'
 
 // ============================================================
 // Constants
 // ============================================================
-
-const DEFAULT_USER_ID = 'default'
 
 // Term mapping: vague terms → specific terms by domain
 // AC5: 자동 감지 로직 - 1차: 매핑 사전 매치

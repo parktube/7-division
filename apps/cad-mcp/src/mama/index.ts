@@ -104,6 +104,11 @@ export interface CheckpointResult {
 // ============================================================
 
 let initialized = false
+let initPromise: Promise<{
+  dbReady: boolean
+  embeddingReady: boolean
+  vectorSearchEnabled: boolean
+}> | null = null
 
 // ============================================================
 // Initialization
@@ -116,6 +121,8 @@ let initialized = false
  * - Runs migrations
  * - Preloads embedding model (async)
  *
+ * Uses promise-based mutex to prevent race conditions on concurrent calls.
+ *
  * @returns Initialization result
  */
 export async function initMAMA(): Promise<{
@@ -123,6 +130,7 @@ export async function initMAMA(): Promise<{
   embeddingReady: boolean
   vectorSearchEnabled: boolean
 }> {
+  // Already initialized
   if (initialized) {
     return {
       dbReady: true,
@@ -131,38 +139,50 @@ export async function initMAMA(): Promise<{
     }
   }
 
-  const startTime = Date.now()
-
-  try {
-    // Initialize database
-    initDatabase()
-    logger.info('MAMA database initialized')
-
-    // Preload embedding model (background)
-    preloadModel()
-      .then((ready) => {
-        if (ready) {
-          logger.info('MAMA embedding model preloaded')
-        }
-      })
-      .catch((err) => {
-        logger.warn(`MAMA embedding model preload failed: ${err}`)
-      })
-
-    initialized = true
-
-    const initTime = Date.now() - startTime
-    logger.info(`MAMA initialized in ${initTime}ms`)
-
-    return {
-      dbReady: true,
-      embeddingReady: isEmbeddingReady(),
-      vectorSearchEnabled: isVectorSearchEnabled(),
-    }
-  } catch (error) {
-    logger.error(`MAMA initialization failed: ${error}`)
-    throw error
+  // Initialization in progress - wait for it
+  if (initPromise) {
+    return initPromise
   }
+
+  // Start initialization
+  initPromise = (async () => {
+    const startTime = Date.now()
+
+    try {
+      // Initialize database
+      initDatabase()
+      logger.info('MAMA database initialized')
+
+      // Preload embedding model (background)
+      preloadModel()
+        .then((ready) => {
+          if (ready) {
+            logger.info('MAMA embedding model preloaded')
+          }
+        })
+        .catch((err) => {
+          logger.warn(`MAMA embedding model preload failed: ${err}`)
+        })
+
+      initialized = true
+
+      const initTime = Date.now() - startTime
+      logger.info(`MAMA initialized in ${initTime}ms`)
+
+      return {
+        dbReady: true,
+        embeddingReady: isEmbeddingReady(),
+        vectorSearchEnabled: isVectorSearchEnabled(),
+      }
+    } catch (error) {
+      // Reset promise so next call can retry
+      initPromise = null
+      logger.error(`MAMA initialization failed: ${error}`)
+      throw error
+    }
+  })()
+
+  return initPromise
 }
 
 /**
@@ -412,31 +432,31 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     edges: getEdgeSummary(row.id),
   })
 
-  // Build domain filter condition
-  const domainCondition = domain ? `AND topic LIKE '${domain.toLowerCase()}:%'` : ''
+  // Build parameterized filter conditions (SQL injection prevention)
+  const filterConditions: string[] = []
+  const filterParams: unknown[] = []
 
-  // Build outcome filter condition
-  let outcomeCondition = ''
+  if (domain) {
+    filterConditions.push('topic LIKE ?')
+    filterParams.push(`${domain.toLowerCase()}:%`)
+  }
+
   if (outcome_filter) {
+    // Validate outcome_filter against allowed values
+    const validOutcomes = ['success', 'failed', 'partial', 'pending']
+    if (!validOutcomes.includes(outcome_filter)) {
+      throw new Error(`Invalid outcome_filter: ${outcome_filter}`)
+    }
     if (outcome_filter === 'pending') {
-      outcomeCondition = 'AND outcome IS NULL'
+      filterConditions.push('outcome IS NULL')
     } else {
-      outcomeCondition = `AND outcome = '${outcome_filter.toUpperCase()}'`
+      filterConditions.push('outcome = ?')
+      filterParams.push(outcome_filter.toUpperCase())
     }
   }
 
-  // Build group_by_topic filter (only latest per topic)
-  const groupByTopicSelect = group_by_topic
-    ? `
-      SELECT d.* FROM decisions d
-      INNER JOIN (
-        SELECT topic, MAX(created_at) as max_created
-        FROM decisions
-        WHERE superseded_by IS NULL ${domainCondition} ${outcomeCondition}
-        GROUP BY topic
-      ) latest ON d.topic = latest.topic AND d.created_at = latest.max_created
-      WHERE d.superseded_by IS NULL ${domainCondition} ${outcomeCondition}
-    `
+  const filterClause = filterConditions.length > 0
+    ? 'AND ' + filterConditions.join(' AND ')
     : ''
 
   // If no query, return recent items
@@ -444,18 +464,34 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     let rows: DecisionRow[]
 
     if (group_by_topic) {
-      rows = db.prepare(`${groupByTopicSelect} ORDER BY d.created_at DESC LIMIT ?`).all(limit) as DecisionRow[]
+      // Group by topic: get latest decision per topic
+      rows = db
+        .prepare(
+          `
+          SELECT d.* FROM decisions d
+          INNER JOIN (
+            SELECT topic, MAX(created_at) as max_created
+            FROM decisions
+            WHERE superseded_by IS NULL ${filterClause}
+            GROUP BY topic
+          ) latest ON d.topic = latest.topic AND d.created_at = latest.max_created
+          WHERE d.superseded_by IS NULL ${filterClause}
+          ORDER BY d.created_at DESC
+          LIMIT ?
+        `
+        )
+        .all(...filterParams, ...filterParams, limit) as DecisionRow[]
     } else {
       rows = db
         .prepare(
           `
           SELECT * FROM decisions
-          WHERE superseded_by IS NULL ${domainCondition} ${outcomeCondition}
+          WHERE superseded_by IS NULL ${filterClause}
           ORDER BY created_at DESC
           LIMIT ?
         `
         )
-        .all(limit) as DecisionRow[]
+        .all(...filterParams, limit) as DecisionRow[]
     }
 
     return rows.map((row) => addEdgesToResult(row))
@@ -479,10 +515,10 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
               `
               SELECT *, rowid FROM decisions
               WHERE rowid IN (${placeholders})
-              AND superseded_by IS NULL ${domainCondition} ${outcomeCondition}
+              AND superseded_by IS NULL ${filterClause}
             `
             )
-            .all(...rowids) as (DecisionRow & { rowid: number })[]
+            .all(...rowids, ...filterParams) as (DecisionRow & { rowid: number })[]
 
           // Create rowid to distance map
           const distanceMap = new Map(vectorResults.map((r) => [r.rowid, r.distance]))
@@ -542,11 +578,11 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
         `
         SELECT * FROM decisions
         WHERE (${likeConditions})
-        AND superseded_by IS NULL ${domainCondition} ${outcomeCondition}
+        AND superseded_by IS NULL ${filterClause}
         ORDER BY created_at DESC
       `
       )
-      .all(...likeParams) as DecisionRow[]
+      .all(...likeParams, ...filterParams) as DecisionRow[]
 
     // Apply group_by_topic filter
     const seen = new Set<string>()
@@ -562,12 +598,12 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
         `
         SELECT * FROM decisions
         WHERE (${likeConditions})
-        AND superseded_by IS NULL ${domainCondition} ${outcomeCondition}
+        AND superseded_by IS NULL ${filterClause}
         ORDER BY created_at DESC
         LIMIT ?
       `
       )
-      .all(...likeParams, limit) as DecisionRow[]
+      .all(...likeParams, ...filterParams, limit) as DecisionRow[]
   }
 
   logger.info(`Keyword search: ${rows.length} results for "${query}"${domain ? ` in domain "${domain}"` : ''}`)

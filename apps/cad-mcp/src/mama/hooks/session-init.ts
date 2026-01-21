@@ -13,6 +13,8 @@ import { getContextInjection } from '../config.js'
 import { loadCheckpoint, searchDecisions, type CheckpointResult, type DecisionResult } from '../index.js'
 import { calculateGraphHealth, getHealthSummary } from '../health.js'
 import { getSessionLearningHints, formatLearningHints, type LearningHint } from '../learning-tracker.js'
+import { formatAge } from '../utils.js'
+import { logger } from '../../logger.js'
 
 // ============================================================
 // Types
@@ -62,16 +64,16 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
   try {
     const health = calculateGraphHealth()
     healthWarning = getHealthSummary(health)
-  } catch {
-    // Ignore health check errors - non-critical
+  } catch (error) {
+    logger.debug(`Health check skipped: ${error}`)
   }
 
   // Get learning hints (Story 11.13)
   let learningHints: LearningHint[] = []
   try {
     learningHints = getSessionLearningHints()
-  } catch {
-    // Ignore learning hints errors - non-critical
+  } catch (error) {
+    logger.debug(`Learning hints skipped: ${error}`)
   }
 
   const result: SessionInitResult = {
@@ -217,27 +219,6 @@ function getOutcomeIcon(outcome: string | null): string {
   }
 }
 
-/**
- * Format timestamp as human-readable age
- */
-function formatAge(timestamp: number): string {
-  const now = Date.now()
-  const diffMs = now - timestamp
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-  const diffHour = Math.floor(diffMin / 60)
-  const diffDay = Math.floor(diffHour / 24)
-
-  if (diffDay > 0) {
-    return `${diffDay}d ago`
-  } else if (diffHour > 0) {
-    return `${diffHour}h ago`
-  } else if (diffMin > 0) {
-    return `${diffMin}m ago`
-  } else {
-    return 'just now'
-  }
-}
 
 /**
  * Truncate string with ellipsis

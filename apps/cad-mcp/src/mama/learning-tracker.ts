@@ -21,6 +21,7 @@ import {
   type UnderstandingLevel,
 } from './db.js'
 import { logger } from '../logger.js'
+import { DEFAULT_USER_ID } from './config.js'
 
 // ============================================================
 // Types
@@ -58,8 +59,6 @@ const LEVEL_NAMES: Record<UnderstandingLevel, string> = {
   3: '적용함',
   4: '숙달',
 }
-
-const DEFAULT_USER_ID = 'default'
 
 // ============================================================
 // Core Functions

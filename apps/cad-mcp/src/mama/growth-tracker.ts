@@ -23,6 +23,7 @@ import {
 } from './db.js'
 import { setGlobalSkillLevel } from './db.js'
 import { logger } from '../logger.js'
+import { DEFAULT_USER_ID } from './config.js'
 
 // ============================================================
 // Types
@@ -62,7 +63,6 @@ export interface GrowthSummary {
 // Constants
 // ============================================================
 
-const DEFAULT_USER_ID = 'default'
 const EXPERT_THRESHOLD = 70 // 70% independent decision ratio for expert level
 const REPORT_TRIGGER_DAYS = 30
 
