@@ -2,6 +2,7 @@
  * MAMA Hook Registry
  *
  * Story 11.5: SessionStart Hook (onSessionInit)
+ * Story 11.6: Dynamic Hint Injection (preToolList)
  *
  * Hook system for LLM-agnostic event handling.
  * Reference: docs/adr/0018-llm-agnostic-hooks.md
@@ -9,6 +10,7 @@
 
 import { logger } from '../../logger.js'
 import { executeSessionInit, type SessionInitResult } from './session-init.js'
+import { executePreToolList, type ToolDefinition } from './pre-tool-list.js'
 
 // ============================================================
 // Types
@@ -16,8 +18,8 @@ import { executeSessionInit, type SessionInitResult } from './session-init.js'
 
 export interface HookRegistry {
   onSessionInit: () => Promise<SessionInitResult>
+  preToolList: (tools: ToolDefinition[]) => ToolDefinition[]
   // Future hooks:
-  // preToolList: () => Promise<PreToolListResult>
   // postExecute: (result: ExecutionResult) => Promise<void>
 }
 
@@ -66,6 +68,22 @@ class MAMAHookRegistry implements HookRegistry {
       }
     }
   }
+
+  /**
+   * Execute preToolList hook
+   *
+   * Called when tools/list is requested.
+   * Injects hints from DB into tool descriptions.
+   */
+  preToolList(tools: ToolDefinition[]): ToolDefinition[] {
+    try {
+      return executePreToolList(tools)
+    } catch (error) {
+      logger.error(`preToolList failed: ${error}`)
+      // Return original tools on error
+      return tools
+    }
+  }
 }
 
 // ============================================================
@@ -75,3 +93,14 @@ class MAMAHookRegistry implements HookRegistry {
 export const hookRegistry = new MAMAHookRegistry()
 
 export { type SessionInitResult }
+export { type ToolDefinition }
+export {
+  addHint,
+  updateHint,
+  deleteHint,
+  listHints,
+  invalidateHintCache,
+  type AddHintParams,
+  type UpdateHintParams,
+  type HintRow,
+} from './pre-tool-list.js'

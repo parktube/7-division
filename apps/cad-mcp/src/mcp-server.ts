@@ -27,10 +27,12 @@ import {
   handleMamaUpdate,
   handleMamaLoadCheckpoint,
   handleMamaConfigure,
+  handleMamaEditHint,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
   type ConfigureArgs,
+  type EditHintArgs,
 } from './mama/tools/index.js'
 import { initMAMA, shutdownMAMA, hookRegistry } from './mama/index.js'
 import { handleRead } from './tools/read.js'
@@ -357,10 +359,26 @@ export async function createMCPServer(): Promise<Server> {
     }
   )
 
-  // Handle list tools request
+  // Handle list tools request with dynamic hint injection
   server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const tools = getAllMCPTools()
+
+    // Apply preToolList hook to inject hints
+    const enhancedTools = hookRegistry.preToolList(
+      tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        parameters: t.inputSchema,
+      }))
+    )
+
+    // Convert back to MCP format
     return {
-      tools: getAllMCPTools(),
+      tools: enhancedTools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        inputSchema: t.parameters,
+      })),
     }
   })
 
@@ -665,11 +683,21 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === mama_edit_hint: Manage dynamic hints ===
+        case 'mama_edit_hint': {
+          const editHintArgs = args as unknown as EditHintArgs
+          const result = await handleMamaEditHint(editHintArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint`,
             }],
             isError: true,
           }

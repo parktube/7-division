@@ -219,6 +219,52 @@ Returns: summary (4-section), next_steps (DoD + commands), open_files
       required: [],
     },
   },
+
+  // === mama_edit_hint: Manage dynamic hints ===
+  mama_edit_hint: {
+    name: 'mama_edit_hint',
+    description: `Manage dynamic hints that are injected into tool descriptions.
+
+Use this to add, update, or delete hints for specific tools.
+Hints appear in tool descriptions with 💡 prefix.
+
+Actions:
+- add: Create a new hint for a tool
+- update: Modify an existing hint
+- delete: Remove a hint
+- list: View hints for a tool (or all hints)`,
+    parameters: {
+      type: 'object',
+      properties: {
+        action: {
+          type: 'string',
+          description: "Action: 'add', 'update', 'delete', or 'list'",
+        },
+        tool_name: {
+          type: 'string',
+          description: "Target tool name (e.g., 'edit', 'write', 'lsp'). Required for add/list.",
+        },
+        hint_text: {
+          type: 'string',
+          description: '[add/update] The hint text to display',
+        },
+        hint_id: {
+          type: 'number',
+          description: '[update/delete] ID of the hint to modify',
+        },
+        priority: {
+          type: 'number',
+          description: '[add/update] Priority 1-10 (higher = shown first). Default: 5',
+        },
+        tags: {
+          type: 'array',
+          description: '[add/update] Tags for categorization',
+          items: { type: 'string' },
+        },
+      },
+      required: ['action'],
+    },
+  },
 }
 
 /**

@@ -16,9 +16,11 @@ export {
   handleMamaUpdate,
   handleMamaLoadCheckpoint,
   handleMamaConfigure,
+  handleMamaEditHint,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
   type ConfigureArgs,
+  type EditHintArgs,
   type ToolResponse,
 } from './handlers.js'

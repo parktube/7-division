@@ -21,6 +21,10 @@ import {
   loadCheckpoint,
   getStatus,
   listDomains,
+  addHint,
+  updateHint,
+  deleteHint,
+  listHints,
   type DecisionResult,
 } from '../index.js'
 import { loadConfig, updateConfig } from '../config.js'
@@ -414,5 +418,139 @@ function getTierDescription(status: ReturnType<typeof getStatus>): string {
     return 'Tier 2 (Limited): Embeddings only, no sqlite-vec'
   } else {
     return 'Tier 3 (Basic): Keyword search only'
+  }
+}
+
+// ============================================================
+// mama_edit_hint Handler
+// ============================================================
+
+export interface EditHintArgs {
+  action: 'add' | 'update' | 'delete' | 'list'
+  tool_name?: string
+  hint_text?: string
+  hint_id?: number
+  priority?: number
+  tags?: string[]
+}
+
+/**
+ * Handle mama_edit_hint tool call
+ */
+export async function handleMamaEditHint(args: EditHintArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    switch (args.action) {
+      case 'add': {
+        if (!args.tool_name) {
+          return { success: false, error: 'tool_name is required for add' }
+        }
+        if (!args.hint_text) {
+          return { success: false, error: 'hint_text is required for add' }
+        }
+
+        const hintId = addHint({
+          tool_name: args.tool_name,
+          hint_text: args.hint_text,
+          priority: args.priority,
+          tags: args.tags,
+        })
+
+        logger.info(`mama_edit_hint: Added hint ${hintId} for ${args.tool_name}`)
+
+        return {
+          success: true,
+          data: {
+            action: 'add',
+            hint_id: hintId,
+            tool_name: args.tool_name,
+            message: `Hint added. ID: ${hintId}`,
+          },
+        }
+      }
+
+      case 'update': {
+        if (!args.hint_id) {
+          return { success: false, error: 'hint_id is required for update' }
+        }
+
+        const updated = updateHint({
+          hint_id: args.hint_id,
+          hint_text: args.hint_text,
+          priority: args.priority,
+          tags: args.tags,
+        })
+
+        if (!updated) {
+          return { success: false, error: `Hint not found: ${args.hint_id}` }
+        }
+
+        logger.info(`mama_edit_hint: Updated hint ${args.hint_id}`)
+
+        return {
+          success: true,
+          data: {
+            action: 'update',
+            hint_id: args.hint_id,
+            message: `Hint ${args.hint_id} updated`,
+          },
+        }
+      }
+
+      case 'delete': {
+        if (!args.hint_id) {
+          return { success: false, error: 'hint_id is required for delete' }
+        }
+
+        const deleted = deleteHint(args.hint_id)
+
+        if (!deleted) {
+          return { success: false, error: `Hint not found: ${args.hint_id}` }
+        }
+
+        logger.info(`mama_edit_hint: Deleted hint ${args.hint_id}`)
+
+        return {
+          success: true,
+          data: {
+            action: 'delete',
+            hint_id: args.hint_id,
+            message: `Hint ${args.hint_id} deleted`,
+          },
+        }
+      }
+
+      case 'list': {
+        const hints = listHints(args.tool_name)
+
+        return {
+          success: true,
+          data: {
+            action: 'list',
+            tool_name: args.tool_name || 'all',
+            count: hints.length,
+            hints: hints.map((h) => ({
+              id: h.id,
+              tool_name: h.tool_name,
+              hint_text: h.hint_text,
+              priority: h.priority,
+              tags: h.tags ? JSON.parse(h.tags) : [],
+              source: h.source,
+            })),
+          },
+        }
+      }
+
+      default:
+        return {
+          success: false,
+          error: `Invalid action: ${args.action}. Use 'add', 'update', 'delete', or 'list'`,
+        }
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_edit_hint failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
   }
 }

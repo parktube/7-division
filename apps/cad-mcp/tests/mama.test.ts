@@ -898,3 +898,145 @@ describe('SessionStart Hook', () => {
     }
   })
 })
+
+// ============================================================
+// Story 11.6: Dynamic Hint Injection Tests
+// ============================================================
+
+describe('Dynamic Hint Injection', () => {
+  let db: Database.Database
+  let testDbPath: string
+
+  beforeAll(() => {
+    const testDir = join(tmpdir(), 'mama-hints-test-' + Date.now())
+    mkdirSync(testDir, { recursive: true })
+    testDbPath = join(testDir, 'test-hints.db')
+
+    db = new Database(testDbPath)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS hints (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tool_name TEXT NOT NULL,
+        hint_text TEXT NOT NULL,
+        priority INTEGER DEFAULT 5,
+        tags TEXT,
+        source TEXT DEFAULT 'system',
+        created_at INTEGER NOT NULL,
+        CHECK (priority >= 1 AND priority <= 10),
+        CHECK (source IN ('user', 'system', 'learned'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_hints_tool ON hints(tool_name);
+    `)
+
+    // Insert test hints
+    const now = Date.now()
+    db.prepare(`
+      INSERT INTO hints (tool_name, hint_text, priority, source, created_at)
+      VALUES
+        ('edit', 'Hint 1 for edit (high priority)', 9, 'system', ?),
+        ('edit', 'Hint 2 for edit (medium priority)', 5, 'system', ?),
+        ('edit', 'Hint 3 for edit (low priority)', 2, 'system', ?),
+        ('edit', 'Hint 4 for edit (should be excluded)', 1, 'system', ?),
+        ('write', 'Hint for write', 7, 'system', ?)
+    `).run(now, now, now, now, now)
+  })
+
+  afterAll(() => {
+    if (db) db.close()
+    if (testDbPath && existsSync(testDbPath)) {
+      rmSync(testDbPath, { force: true })
+    }
+  })
+
+  it('should store hints in DB', () => {
+    const hints = db.prepare('SELECT * FROM hints').all() as Record<string, unknown>[]
+    expect(hints.length).toBe(5)
+  })
+
+  it('should order hints by priority DESC', () => {
+    const hints = db.prepare(`
+      SELECT hint_text, priority FROM hints
+      WHERE tool_name = 'edit'
+      ORDER BY priority DESC
+    `).all() as Array<{ hint_text: string; priority: number }>
+
+    expect(hints[0].priority).toBe(9)
+    expect(hints[1].priority).toBe(5)
+    expect(hints[2].priority).toBe(2)
+  })
+
+  it('should limit to 3 hints per tool', () => {
+    const hints = db.prepare(`
+      SELECT hint_text FROM hints
+      WHERE tool_name = 'edit'
+      ORDER BY priority DESC
+      LIMIT 3
+    `).all() as Array<{ hint_text: string }>
+
+    expect(hints.length).toBe(3)
+    expect(hints[0].hint_text).toBe('Hint 1 for edit (high priority)')
+    expect(hints[2].hint_text).toBe('Hint 3 for edit (low priority)')
+  })
+
+  it('should return no hints for tool without hints', () => {
+    const hints = db.prepare(`
+      SELECT hint_text FROM hints
+      WHERE tool_name = 'lsp'
+      ORDER BY priority DESC
+    `).all() as Array<{ hint_text: string }>
+
+    expect(hints.length).toBe(0)
+  })
+
+  it('should add new user hint', () => {
+    const now = Date.now()
+    const result = db.prepare(`
+      INSERT INTO hints (tool_name, hint_text, priority, source, created_at)
+      VALUES ('bash', 'User added hint', 8, 'user', ?)
+    `).run(now)
+
+    expect(result.lastInsertRowid).toBeGreaterThan(0)
+
+    const hint = db.prepare('SELECT * FROM hints WHERE id = ?').get(result.lastInsertRowid) as Record<string, unknown>
+    expect(hint.source).toBe('user')
+    expect(hint.priority).toBe(8)
+  })
+
+  it('should update hint priority', () => {
+    const result = db.prepare(`
+      UPDATE hints SET priority = 10 WHERE tool_name = 'edit' AND priority = 9
+    `).run()
+
+    expect(result.changes).toBe(1)
+
+    const hints = db.prepare(`
+      SELECT priority FROM hints
+      WHERE tool_name = 'edit'
+      ORDER BY priority DESC
+      LIMIT 1
+    `).get() as { priority: number }
+
+    expect(hints.priority).toBe(10)
+  })
+
+  it('should delete hint', () => {
+    // Get the hint with lowest priority
+    const lowest = db.prepare(`
+      SELECT id FROM hints WHERE tool_name = 'edit' ORDER BY priority ASC LIMIT 1
+    `).get() as { id: number }
+
+    const result = db.prepare('DELETE FROM hints WHERE id = ?').run(lowest.id)
+    expect(result.changes).toBe(1)
+
+    const remaining = db.prepare(`
+      SELECT COUNT(*) as count FROM hints WHERE tool_name = 'edit'
+    `).get() as { count: number }
+
+    expect(remaining.count).toBe(3) // 4 - 1 = 3
+  })
+
+  it('should export preToolList hook from registry', async () => {
+    const { hookRegistry } = await import('../src/mama/index.js')
+    expect(typeof hookRegistry.preToolList).toBe('function')
+  })
+})

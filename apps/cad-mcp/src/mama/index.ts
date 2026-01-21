@@ -750,4 +750,16 @@ export {
 }
 
 // Re-export hooks
-export { hookRegistry, type SessionInitResult } from './hooks/registry.js'
+export {
+  hookRegistry,
+  type SessionInitResult,
+  type ToolDefinition,
+  addHint,
+  updateHint,
+  deleteHint,
+  listHints,
+  invalidateHintCache,
+  type AddHintParams,
+  type UpdateHintParams,
+  type HintRow,
+} from './hooks/registry.js'
