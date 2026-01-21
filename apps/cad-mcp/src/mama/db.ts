@@ -300,3 +300,115 @@ export function getLastInsertRowid(): number {
   const result = db.prepare('SELECT last_insert_rowid() as rowid').get() as { rowid: number }
   return result.rowid
 }
+
+// ============================================================
+// Edge Operations (Reasoning Graph)
+// ============================================================
+
+export interface EdgeRow {
+  from_id: string
+  to_id: string
+  relationship: string
+  created_at: number
+}
+
+/**
+ * Insert an edge into decision_edges table
+ *
+ * @param fromId - Source decision ID
+ * @param toId - Target decision ID
+ * @param relationship - Edge type: 'supersedes', 'builds_on', 'debates', 'synthesizes'
+ */
+export function insertEdge(
+  fromId: string,
+  toId: string,
+  relationship: 'supersedes' | 'builds_on' | 'debates' | 'synthesizes'
+): void {
+  if (!db) {
+    throw new Error('Database not initialized')
+  }
+
+  const now = Date.now()
+
+  try {
+    db.prepare(`
+      INSERT OR IGNORE INTO decision_edges (from_id, to_id, relationship, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run(fromId, toId, relationship, now)
+
+    logger.info(`Edge created: ${fromId} -[${relationship}]-> ${toId}`)
+  } catch (error) {
+    logger.error(`Failed to insert edge: ${error}`)
+    throw error
+  }
+}
+
+/**
+ * Get edges for a decision
+ *
+ * @param decisionId - Decision ID
+ * @returns Edges where this decision is the source
+ */
+export function getEdgesFrom(decisionId: string): EdgeRow[] {
+  if (!db) {
+    return []
+  }
+
+  return db.prepare(`
+    SELECT * FROM decision_edges WHERE from_id = ?
+  `).all(decisionId) as EdgeRow[]
+}
+
+/**
+ * Get edges pointing to a decision
+ *
+ * @param decisionId - Decision ID
+ * @returns Edges where this decision is the target
+ */
+export function getEdgesTo(decisionId: string): EdgeRow[] {
+  if (!db) {
+    return []
+  }
+
+  return db.prepare(`
+    SELECT * FROM decision_edges WHERE to_id = ?
+  `).all(decisionId) as EdgeRow[]
+}
+
+/**
+ * Get edge summary for a decision
+ *
+ * @param decisionId - Decision ID
+ * @returns Edge counts and lists
+ */
+export function getEdgeSummary(decisionId: string): {
+  supersedes_count: number
+  superseded_by: string | null
+  builds_on: string[]
+  debates: string[]
+  synthesizes: string[]
+} {
+  if (!db) {
+    return {
+      supersedes_count: 0,
+      superseded_by: null,
+      builds_on: [],
+      debates: [],
+      synthesizes: [],
+    }
+  }
+
+  const outgoing = getEdgesFrom(decisionId)
+  const incoming = getEdgesTo(decisionId)
+
+  // Find superseded_by (incoming supersedes edge)
+  const supersededByEdge = incoming.find((e) => e.relationship === 'supersedes')
+
+  return {
+    supersedes_count: outgoing.filter((e) => e.relationship === 'supersedes').length,
+    superseded_by: supersededByEdge?.from_id || null,
+    builds_on: outgoing.filter((e) => e.relationship === 'builds_on').map((e) => e.to_id),
+    debates: outgoing.filter((e) => e.relationship === 'debates').map((e) => e.to_id),
+    synthesizes: outgoing.filter((e) => e.relationship === 'synthesizes').map((e) => e.to_id),
+  }
+}

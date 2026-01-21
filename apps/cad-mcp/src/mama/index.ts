@@ -22,9 +22,12 @@ import {
   insertEmbedding,
   searchEmbeddings,
   getLastInsertRowid,
+  insertEdge,
+  getEdgeSummary,
   type DecisionRow,
   type CheckpointRow,
 } from './db.js'
+import { parseReasoning, validateDecisionId } from './reasoning-parser.js'
 import {
   generateEmbedding,
   generateEnhancedEmbedding,
@@ -63,6 +66,14 @@ export interface UpdateParams {
   reason?: string
 }
 
+export interface EdgeInfo {
+  supersedes_count: number
+  superseded_by: string | null
+  builds_on: string[]
+  debates: string[]
+  synthesizes: string[]
+}
+
 export interface DecisionResult {
   id: string
   topic: string
@@ -72,6 +83,7 @@ export interface DecisionResult {
   confidence: number
   created_at: number
   similarity?: number
+  edges?: EdgeInfo
 }
 
 export interface CheckpointResult {
@@ -238,7 +250,7 @@ export async function saveDecision(params: SaveDecisionParams): Promise<string> 
   // Get rowid for embedding
   const rowid = getLastInsertRowid()
 
-  // Update previous decision's superseded_by
+  // Update previous decision's superseded_by and create supersedes edge
   if (previous) {
     db.prepare(
       `
@@ -248,7 +260,35 @@ export async function saveDecision(params: SaveDecisionParams): Promise<string> 
     `
     ).run(decisionId, now, previous.id)
 
+    // Create supersedes edge in decision_edges table
+    try {
+      insertEdge(decisionId, previous.id, 'supersedes')
+    } catch (err) {
+      logger.warn(`Failed to create supersedes edge: ${err}`)
+    }
+
     logger.info(`Decision ${previous.id} superseded by ${decisionId}`)
+  }
+
+  // Parse reasoning for relationship patterns (builds_on, debates, synthesizes)
+  const parseResult = parseReasoning(reasoning)
+
+  for (const edge of parseResult.edges) {
+    // Validate that target decision exists
+    if (validateDecisionId(db, edge.targetId)) {
+      try {
+        insertEdge(decisionId, edge.targetId, edge.type)
+      } catch (err) {
+        logger.warn(`Failed to create ${edge.type} edge to ${edge.targetId}: ${err}`)
+      }
+    } else {
+      logger.warn(`Target decision not found for ${edge.type}: ${edge.targetId}`)
+    }
+  }
+
+  // Log any parsing warnings
+  for (const warning of parseResult.warnings) {
+    logger.warn(`Reasoning parse warning: ${warning}`)
   }
 
   // Generate and store embedding
@@ -335,6 +375,19 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
   const { query, limit = 10 } = params
   const db = getDatabase()
 
+  // Helper function to add edges to result
+  const addEdgesToResult = (row: DecisionRow, similarity?: number): DecisionResult => ({
+    id: row.id,
+    topic: row.topic,
+    decision: row.decision,
+    reasoning: row.reasoning,
+    outcome: row.outcome,
+    confidence: row.confidence,
+    created_at: row.created_at,
+    similarity,
+    edges: getEdgeSummary(row.id),
+  })
+
   // If no query, return recent items
   if (!query || query.trim().length === 0) {
     const stmt = db.prepare(`
@@ -345,15 +398,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     `)
 
     const rows = stmt.all(limit) as DecisionRow[]
-    return rows.map((row) => ({
-      id: row.id,
-      topic: row.topic,
-      decision: row.decision,
-      reasoning: row.reasoning,
-      outcome: row.outcome,
-      confidence: row.confidence,
-      created_at: row.created_at,
-    }))
+    return rows.map((row) => addEdgesToResult(row))
   }
 
   // Try vector search first
@@ -387,19 +432,9 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
             .map((row) => {
               const distance = distanceMap.get(row.rowid) || 1
               const similarity = 1 - distance // Convert distance to similarity
-
-              return {
-                id: row.id,
-                topic: row.topic,
-                decision: row.decision,
-                reasoning: row.reasoning,
-                outcome: row.outcome,
-                confidence: row.confidence,
-                created_at: row.created_at,
-                similarity,
-              }
+              return addEdgesToResult(row, similarity)
             })
-            .filter((r) => r.similarity >= 0.6) // Threshold
+            .filter((r) => (r.similarity || 0) >= 0.6) // Threshold
             .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
             .slice(0, limit)
 
@@ -441,16 +476,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
 
   logger.info(`Keyword search: ${rows.length} results for "${query}"`)
 
-  return rows.map((row) => ({
-    id: row.id,
-    topic: row.topic,
-    decision: row.decision,
-    reasoning: row.reasoning,
-    outcome: row.outcome,
-    confidence: row.confidence,
-    created_at: row.created_at,
-    similarity: 0.75, // Default similarity for keyword matches
-  }))
+  return rows.map((row) => addEdgesToResult(row, 0.75)) // Default similarity for keyword matches
 }
 
 // ============================================================

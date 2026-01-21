@@ -242,3 +242,183 @@ describe('MAMA Tool Schemas', () => {
     expect(tool.parameters.properties.type).toBeDefined()
   })
 })
+
+describe('Reasoning Parser', () => {
+  it('should parse builds_on pattern', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    const result = parseReasoning('This builds_on: decision_auth_123_abc previous work.')
+
+    expect(result.edges).toHaveLength(1)
+    expect(result.edges[0].type).toBe('builds_on')
+    expect(result.edges[0].targetId).toBe('decision_auth_123_abc')
+    expect(result.warnings).toHaveLength(0)
+  })
+
+  it('should parse debates pattern', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    const result = parseReasoning('debates: decision_old_approach_456_def')
+
+    expect(result.edges).toHaveLength(1)
+    expect(result.edges[0].type).toBe('debates')
+    expect(result.edges[0].targetId).toBe('decision_old_approach_456_def')
+  })
+
+  it('should parse synthesizes pattern with multiple IDs', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    const result = parseReasoning('synthesizes: [decision_a_1, decision_b_2, decision_c_3]')
+
+    expect(result.edges).toHaveLength(3)
+    expect(result.edges.every(e => e.type === 'synthesizes')).toBe(true)
+    expect(result.edges.map(e => e.targetId)).toEqual([
+      'decision_a_1',
+      'decision_b_2',
+      'decision_c_3',
+    ])
+  })
+
+  it('should parse multiple relationship types', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    const reasoning = `
+      This builds_on: decision_base_123.
+      It also debates: decision_alt_456.
+      Finally synthesizes: [decision_x_1, decision_y_2].
+    `
+
+    const result = parseReasoning(reasoning)
+
+    expect(result.edges).toHaveLength(4)
+    expect(result.edges.filter(e => e.type === 'builds_on')).toHaveLength(1)
+    expect(result.edges.filter(e => e.type === 'debates')).toHaveLength(1)
+    expect(result.edges.filter(e => e.type === 'synthesizes')).toHaveLength(2)
+  })
+
+  it('should ignore malformed patterns', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    const result = parseReasoning('builds_on: invalid_id_format')
+
+    expect(result.edges).toHaveLength(0)
+    expect(result.warnings.length).toBeGreaterThan(0)
+  })
+
+  it('should handle null/undefined reasoning', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    expect(parseReasoning(null).edges).toHaveLength(0)
+    expect(parseReasoning(undefined).edges).toHaveLength(0)
+    expect(parseReasoning('').edges).toHaveLength(0)
+  })
+
+  it('should deduplicate IDs', async () => {
+    const { parseReasoning } = await import('../src/mama/reasoning-parser.js')
+
+    const result = parseReasoning(`
+      builds_on: decision_same_123
+      builds_on: decision_same_123
+    `)
+
+    expect(result.edges).toHaveLength(1)
+  })
+})
+
+describe('Decision Edges', () => {
+  let db: Database.Database
+  let testDbPath: string
+
+  beforeAll(() => {
+    const testDir = join(tmpdir(), 'mama-edges-test-' + Date.now())
+    mkdirSync(testDir, { recursive: true })
+    testDbPath = join(testDir, 'test-edges.db')
+
+    db = new Database(testDbPath)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS decisions (
+        id TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reasoning TEXT,
+        outcome TEXT,
+        confidence REAL DEFAULT 0.5,
+        supersedes TEXT,
+        superseded_by TEXT,
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS decision_edges (
+        from_id TEXT NOT NULL,
+        to_id TEXT NOT NULL,
+        relationship TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (from_id, to_id, relationship)
+      );
+    `)
+  })
+
+  afterAll(() => {
+    if (db) db.close()
+    if (testDbPath && existsSync(testDbPath)) {
+      rmSync(testDbPath, { force: true })
+    }
+  })
+
+  it('should create supersedes edge', () => {
+    const now = Date.now()
+
+    // Insert two decisions
+    db.prepare(`
+      INSERT INTO decisions (id, topic, decision, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run('decision_old_1', 'topic_a', 'Old decision', now)
+
+    db.prepare(`
+      INSERT INTO decisions (id, topic, decision, supersedes, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).run('decision_new_1', 'topic_a', 'New decision', 'decision_old_1', now + 1)
+
+    // Insert edge
+    db.prepare(`
+      INSERT INTO decision_edges (from_id, to_id, relationship, created_at)
+      VALUES (?, ?, 'supersedes', ?)
+    `).run('decision_new_1', 'decision_old_1', now + 1)
+
+    const edges = db.prepare(`
+      SELECT * FROM decision_edges WHERE from_id = ?
+    `).all('decision_new_1') as Array<{ relationship: string; to_id: string }>
+
+    expect(edges).toHaveLength(1)
+    expect(edges[0].relationship).toBe('supersedes')
+    expect(edges[0].to_id).toBe('decision_old_1')
+  })
+
+  it('should create builds_on edge', () => {
+    const now = Date.now()
+
+    db.prepare(`
+      INSERT INTO decisions (id, topic, decision, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run('decision_base_2', 'topic_b', 'Base decision', now)
+
+    db.prepare(`
+      INSERT INTO decision_edges (from_id, to_id, relationship, created_at)
+      VALUES (?, ?, 'builds_on', ?)
+    `).run('decision_derived_2', 'decision_base_2', now)
+
+    const edges = db.prepare(`
+      SELECT * FROM decision_edges WHERE relationship = 'builds_on'
+    `).all() as Array<{ from_id: string; to_id: string }>
+
+    expect(edges.some(e => e.from_id === 'decision_derived_2' && e.to_id === 'decision_base_2')).toBe(true)
+  })
+
+  it('should query edges by relationship type', () => {
+    const edgeCount = db.prepare(`
+      SELECT COUNT(*) as count FROM decision_edges WHERE relationship = 'supersedes'
+    `).get() as { count: number }
+
+    expect(edgeCount.count).toBeGreaterThanOrEqual(1)
+  })
+})
