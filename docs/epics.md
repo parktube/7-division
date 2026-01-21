@@ -32,7 +32,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 8 | Manifold 기하 엔진 + 텍스트 렌더링 | ✅ 완료 |
 | 9 | 웹 아키텍처 전환 | ✅ 완료 |
 | 10 | AX 개선 - MCP 도구 재설계 | ✅ 완료 |
-| 11 | MAMA Integration | 📋 계획됨 |
+| 11 | MAMA Integration | 🚧 구현 중 (Story 11.1~11.17 완료) |
 
 ---
 
@@ -305,29 +305,31 @@ Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함�
 5. 기존 테스트 100% 통과
 6. 검색 응답 < 100ms (1000개 결정 기준)
 
-### FR Coverage Map
+### FR Coverage Map (실제 구현 매핑)
 
-| Phase | FR | Story | 설명 |
-|-------|-----|-------|------|
-| Core | FR67 | 11.1.1 | 4 Core Tools MCP 통합 |
-| Core | FR68 | 11.1.2 | 결정 저장 + Reasoning Graph |
-| Core | FR69 | 11.1.3 | 단일 DB + topic prefix |
-| Core | FR70 | 11.1.4 | Outcome Tracking |
-| Hook | FR71 | 11.2.1 | SessionStart Hook |
-| Hook | FR72 | 11.2.2 | Dynamic Hint Injection |
-| Hook | FR73 | 11.2.3 | ActionHints (next_steps) |
-| Hook | FR74 | 11.2.4 | LLM-Agnostic Hook Owner |
-| Intelligence | FR75 | 11.3.1 | Configurable Context |
-| Intelligence | FR76 | 11.3.2 | Adaptive Mentoring |
-| Intelligence | FR77 | 11.3.3 | Graph Health Metrics |
-| Intelligence | FR78 | 11.3.4 | Anti-Echo Chamber |
-| Learning Track | FR81 | 11.4.1 | Learning Progress Storage |
-| Learning Track | FR82 | 11.4.2 | User Growth Metrics |
-| Learning Track | FR83 | 11.4.3 | DesignHints System |
-| Learning Track | FR84 | 11.4.4 | Terminology Evolution |
-| Platform | FR85 | 11.5.1 | MCP 내부 통합 |
-| Platform | FR86 | 11.5.2 | 도메인 폴더 구조 |
-| Platform | FR87 | 11.5.3 | LLM Adapter Pattern |
+| Phase | FR | Story | 설명 | 상태 |
+|-------|-----|-------|------|------|
+| Core | FR67 | 11.1 | 4 Core Tools MCP 통합 | ✅ |
+| Core | FR68 | 11.2 | 결정 저장 + Reasoning Graph | ✅ |
+| Core | FR69 | 11.3 | 단일 DB + topic prefix | ✅ |
+| Core | FR70 | 11.4 | Outcome Tracking | ✅ |
+| Hook | FR71 | 11.5 | SessionStart Hook | ✅ |
+| Hook | FR72 | 11.6 | Dynamic Hint Injection | ✅ |
+| Hook | FR73 | 11.7 | ActionHints (next_steps) | ✅ |
+| Hook | FR74 | 11.8 | CADOrchestrator Hook Owner | ✅ |
+| Intelligence | FR75 | 11.9 | Configurable Context | ✅ |
+| Intelligence | FR76 | 11.10 | Adaptive Mentoring | ✅ |
+| Intelligence | FR77 | 11.11 | Graph Health Metrics | ✅ |
+| Intelligence | FR78 | 11.12 | Anti-Echo Chamber | ✅ |
+| Learning | FR81 | 11.13 | Learning Progress Storage | ✅ |
+| Learning | FR82 | 11.14 | User Growth Metrics | ✅ |
+| Learning | FR83 | 11.15 | DesignHints System | ✅ |
+| Learning | FR84 | 11.16 | Terminology Evolution | ✅ |
+| Learning | - | 11.17 | Learning LLM Integration | ✅ |
+| Platform | FR87 | 11.18 | LLM Adapter Pattern | 📋 대기 |
+| Platform | - | 11.19 | Module Library Recommendation | 📋 대기 |
+
+> Note: FR85 (MCP 내부 통합)은 Story 11.1에서 이미 구현됨. FR86 (도메인 폴더 구조)은 미구현.
 
 ### Implementation Phases
 
@@ -341,27 +343,27 @@ Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함�
 | mama_update | `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 |
 | mama_checkpoint | `mcp__ai-native-cad__mama_checkpoint` | 체크포인트 로드 |
 
-#### Phase 11.1: Core (FR67-70)
+#### Phase 11.1: Core (FR67-70) ✅ 완료
 
-| Story | 제목 | FR | ADR |
-|-------|------|-----|-----|
-| 11.1.1 | MAMA Core 4 Tools MCP 통합 | FR67 | ADR-0011 |
-| 11.1.2 | 결정 저장 + Reasoning Graph | FR68 | ADR-0013 |
-| 11.1.3 | 단일 DB + topic prefix 구조 | FR69 | ADR-0016 |
-| 11.1.4 | Outcome Tracking | FR70 | ADR-0011 |
+| Story | 제목 | FR | ADR | 상태 |
+|-------|------|-----|-----|------|
+| 11.1 | MAMA Core 4 Tools MCP 통합 | FR67 | ADR-0011 | ✅ |
+| 11.2 | 결정 저장 + Reasoning Graph | FR68 | ADR-0013 | ✅ |
+| 11.3 | 단일 DB + topic prefix 구조 | FR69 | ADR-0016 | ✅ |
+| 11.4 | Outcome Tracking | FR70 | ADR-0011 | ✅ |
 
-**품질 게이트**: mama_save/mama_search/mama_update/mama_checkpoint MCP 도구 동작, DB 스키마 완성
+**품질 게이트**: ✅ mama_save/mama_search/mama_update/mama_load_checkpoint MCP 도구 동작, DB 스키마 완성
 
-#### Phase 11.2: Hook System (FR71-74) ⭐ 핵심
+#### Phase 11.2: Hook System (FR71-74) ✅ 완료
 
-| Story | 제목 | FR | ADR |
-|-------|------|-----|-----|
-| 11.2.1 | SessionStart Hook (onSessionInit) | FR71 | ADR-0017 |
-| 11.2.2 | Dynamic Hint Injection (preToolList) | FR72 | ADR-0015 |
-| 11.2.3 | ActionHints (postExecute) | FR73 | ADR-0014 |
-| 11.2.4 | CADOrchestrator Hook Owner | FR74 | ADR-0018 |
+| Story | 제목 | FR | ADR | 상태 |
+|-------|------|-----|-----|------|
+| 11.5 | SessionStart Hook (onSessionInit) | FR71 | ADR-0017 | ✅ |
+| 11.6 | Dynamic Hint Injection (preToolList) | FR72 | ADR-0015 | ✅ |
+| 11.7 | ActionHints (postExecute) | FR73 | ADR-0014 | ✅ |
+| 11.8 | CADOrchestrator Hook Owner | FR74 | ADR-0018 | ✅ |
 
-**품질 게이트**: Hook System 동작, 모든 LLM에서 동일하게 작동
+**품질 게이트**: ✅ Hook System 동작, MCP instructions 필드로 컨텍스트 자동 주입
 
 ```
 Hook Flow:
@@ -372,39 +374,41 @@ Hook Flow:
            최근 결정 요약       DB 힌트 주입              module_hints 반환
 ```
 
-#### Phase 11.3: Intelligence (FR75-78)
+#### Phase 11.3: Intelligence (FR75-78) ✅ 완료
 
-| Story | 제목 | FR | ADR |
-|-------|------|-----|-----|
-| 11.3.1 | Configurable Context | FR75 | ADR-0017 |
-| 11.3.2 | Adaptive Mentoring | FR76 | ADR-0020 |
-| 11.3.3 | Graph Health Metrics | FR77 | ADR-0019 |
-| 11.3.4 | Anti-Echo Chamber | FR78 | ADR-0021 |
+| Story | 제목 | FR | ADR | 상태 |
+|-------|------|-----|-----|------|
+| 11.9 | Configurable Context | FR75 | ADR-0017 | ✅ |
+| 11.10 | Adaptive Mentoring | FR76 | ADR-0020 | ✅ |
+| 11.11 | Graph Health Metrics | FR77 | ADR-0019 | ✅ |
+| 11.12 | Anti-Echo Chamber | FR78 | ADR-0021 | ✅ |
 
-**품질 게이트**: none/hint/full 모드 동작, 90일 이상 결정 경고
+**품질 게이트**: ✅ none/hint/full 모드 동작, 90일 이상 결정 경고, debates < 10% 에코챔버 경고
 
-#### Phase 11.4: Learning Track (FR81-84) ⭐ 신규
+#### Phase 11.4: Learning Track (FR81-84) ✅ 완료
 
 > "만들고 싶은 것을 만들면서, 만드는 법을 배운다"
 
-| Story | 제목 | FR | ADR |
-|-------|------|-----|-----|
-| 11.4.1 | Learning Progress Storage | FR81 | ADR-0025 |
-| 11.4.2 | User Growth Metrics | FR82 | ADR-0025 |
-| 11.4.3 | DesignHints System | FR83 | ADR-0025 |
-| 11.4.4 | Terminology Evolution | FR84 | ADR-0025 |
+| Story | 제목 | FR | ADR | 상태 |
+|-------|------|-----|-----|------|
+| 11.13 | Learning Progress Storage | FR81 | ADR-0025 | ✅ |
+| 11.14 | User Growth Metrics | FR82 | ADR-0025 | ✅ |
+| 11.15 | DesignHints System | FR83 | ADR-0025 | ✅ |
+| 11.16 | Terminology Evolution | FR84 | ADR-0025 | ✅ |
+| 11.17 | Learning LLM Integration | - | ADR-0025 | ✅ |
 
-**품질 게이트**: 개념 학습 기록, 성장 지표 추적, Human CoT 유도 동작
+**품질 게이트**: ✅ 개념 학습 기록, 성장 지표 추적, Human CoT 유도 동작, type='understood'/'applied' 지원
 
-#### Phase 11.5: Platform (FR85-87)
+#### Phase 11.5: Platform (FR85-87) 📋 대기
 
-| Story | 제목 | FR | ADR |
-|-------|------|-----|-----|
-| 11.5.1 | MCP 내부 통합 | FR85 | - |
-| 11.5.2 | 도메인 폴더 구조 | FR86 | - |
-| 11.5.3 | LLM Adapter Pattern | FR87 | ADR-0023 |
+| Story | 제목 | FR | ADR | 상태 |
+|-------|------|-----|-----|------|
+| (11.1) | MCP 내부 통합 | FR85 | - | ✅ (Phase 11.1에서 완료) |
+| - | 도메인 폴더 구조 | FR86 | - | 📋 대기 |
+| 11.18 | LLM Adapter Pattern | FR87 | ADR-0023 | 📋 대기 |
+| 11.19 | Module Library Recommendation | - | ADR-0024 | 📋 대기 |
 
-**품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작, 모듈 추천 검증
+**품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작, 모듈 추천 검증 (미완료)
 
 ### 성공 기준
 

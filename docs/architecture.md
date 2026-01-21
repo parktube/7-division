@@ -13,8 +13,8 @@ date: '2026-01-14'
 
 # Architecture Document - AI-Native CAD
 
-**Last Updated:** 2026-01-16
-**Status:** Epic 1~10 완료, Epic 11 (MAMA Integration) 계획 중
+**Last Updated:** 2026-01-21
+**Status:** Epic 1~10 완료, Epic 11 (MAMA Integration) 구현 중 (Story 11.1~11.17 완료)
 
 _이 문서는 BMAD Architecture Workflow로 작성되었습니다._
 

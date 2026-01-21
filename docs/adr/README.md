@@ -17,27 +17,27 @@ AI-Native CAD 프로젝트의 아키텍처 결정 기록.
 | [ADR-007](007-web-architecture.md) | Web Architecture | Accepted |
 | [ADR-008](008-tool-pattern-alignment.md) | Tool Pattern Alignment | Accepted |
 
-### Epic 11: MAMA Integration (계획 중)
+### Epic 11: MAMA Integration (구현 중)
 
-| ADR | 제목 | 상태 | Phase |
-|-----|------|------|-------|
-| [ADR-0010](0010-partnership-philosophy.md) | Partnership Philosophy | Proposed | Core |
-| [ADR-0011](0011-mama-core-reuse.md) | MAMA Core 4 Tools Reuse | Proposed | Core |
-| [ADR-0012](0012-persuader-pattern.md) | Persuader Pattern | Proposed | Core |
-| [ADR-0013](0013-edge-types-reasoning.md) | Edge Types via Reasoning | Proposed | Core |
-| [ADR-0014](0014-progressive-workflow.md) | Progressive Workflow | Proposed | Hook |
-| [ADR-0015](0015-dynamic-hint-injection.md) | Dynamic Hint Injection | Proposed | Hook |
-| [ADR-0016](0016-project-specific-db.md) | Single DB + Topic Prefix | Accepted | Core |
-| [ADR-0017](0017-configurable-context.md) | Configurable Context | Proposed | Hook |
-| [ADR-0018](0018-llm-agnostic-hooks.md) | LLM-Agnostic Hooks | Proposed | Hook |
-| [ADR-0019](0019-graph-health-metrics.md) | Graph Health Metrics | Proposed | Intelligence |
-| [ADR-0020](0020-adaptive-mentoring.md) | Adaptive Mentoring | Proposed | Intelligence |
-| [ADR-0021](0021-anti-echo-chamber.md) | Anti-Echo Chamber | Proposed | Intelligence |
-| [ADR-0022](0022-meta-tooling.md) | run_cad_code (JS Execution) | Revised | - |
-| [ADR-0023](0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent Architecture | Proposed | Platform |
-| [ADR-0024](0024-module-library-recommendation.md) | Module Library Recommendation | Proposed | Intelligence |
-| [ADR-0025](0025-learning-track.md) | Learning Track | Proposed | Learning |
-| [ADR-0026](0026-semantic-search-infra.md) | Semantic Search Infrastructure | Proposed | Core |
+| ADR | 제목 | 상태 | Phase | Story |
+|-----|------|------|-------|-------|
+| [ADR-0010](0010-partnership-philosophy.md) | Partnership Philosophy | Accepted | Core | - |
+| [ADR-0011](0011-mama-core-reuse.md) | MAMA Core 4 Tools Reuse | Accepted | Core | 11.1 |
+| [ADR-0012](0012-persuader-pattern.md) | Persuader Pattern | Accepted | Core | - |
+| [ADR-0013](0013-edge-types-reasoning.md) | Edge Types via Reasoning | Accepted | Core | 11.2 |
+| [ADR-0014](0014-progressive-workflow.md) | Progressive Workflow | Accepted | Hook | 11.7 |
+| [ADR-0015](0015-dynamic-hint-injection.md) | Dynamic Hint Injection | Accepted | Hook | 11.6, 11.15 |
+| [ADR-0016](0016-project-specific-db.md) | Single DB + Topic Prefix | Accepted | Core | 11.3 |
+| [ADR-0017](0017-configurable-context.md) | Configurable Context | Accepted | Hook | 11.5, 11.9 |
+| [ADR-0018](0018-llm-agnostic-hooks.md) | LLM-Agnostic Hooks | Accepted | Hook | 11.8 |
+| [ADR-0019](0019-graph-health-metrics.md) | Graph Health Metrics | Accepted | Intelligence | 11.11 |
+| [ADR-0020](0020-adaptive-mentoring.md) | Adaptive Mentoring | Accepted | Intelligence | 11.10 |
+| [ADR-0021](0021-anti-echo-chamber.md) | Anti-Echo Chamber | Accepted | Intelligence | 11.12 |
+| [ADR-0022](0022-meta-tooling.md) | run_cad_code (JS Execution) | Revised | - | - |
+| [ADR-0023](0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent Architecture | Proposed | Platform | 11.18 (대기) |
+| [ADR-0024](0024-module-library-recommendation.md) | Module Library Recommendation | Proposed | Platform | 11.19 (대기) |
+| [ADR-0025](0025-learning-track.md) | Learning Track | Accepted | Learning | 11.13~11.17 |
+| [ADR-0026](0026-semantic-search-infra.md) | Semantic Search Infrastructure | Accepted | Core | 11.1 |
 
 ## ADR 템플릿
 
