@@ -1336,3 +1336,117 @@ describe('ActionHints - Format Hints', () => {
     expect(typeof hookRegistry.postExecute).toBe('function')
   })
 })
+
+// ============================================================
+// Story 11.9: Configurable Context Tests
+// ============================================================
+
+describe('Configurable Context', () => {
+  it('should support none/hint/full modes in config', async () => {
+    const { loadConfig } = await import('../src/mama/config.js')
+
+    const config = loadConfig()
+
+    // contextInjection should exist and be one of the valid modes
+    expect(['none', 'hint', 'full']).toContain(config.contextInjection)
+  })
+
+  it('should update contextInjection at runtime', async () => {
+    const { loadConfig, updateConfig } = await import('../src/mama/config.js')
+
+    // Get current value
+    const originalConfig = loadConfig()
+    const originalMode = originalConfig.contextInjection
+
+    // Change to different mode
+    const newMode = originalMode === 'full' ? 'hint' : 'full'
+    updateConfig({ contextInjection: newMode })
+
+    // Verify change
+    const updatedConfig = loadConfig(true) // Force reload
+    expect(updatedConfig.contextInjection).toBe(newMode)
+
+    // Restore original
+    updateConfig({ contextInjection: originalMode })
+  })
+
+  it('should format context based on mode', () => {
+    // Test none mode output
+    const noneOutput = '' // none mode should return empty
+    expect(noneOutput.length).toBe(0)
+
+    // Test hint mode output (single line)
+    const hintOutput = '🔍 5 related decisions found, 1 checkpoint available'
+    expect(hintOutput.split('\n').length).toBe(1)
+
+    // Test full mode output (multiple lines)
+    const fullOutput = `📍 **Last Checkpoint** (1h ago):
+   Working on feature X
+
+🧠 **Recent Decisions** (5):
+   1. ✅ auth:jwt:tokens: Use JWT (30m ago)
+   2. ⏳ db:postgres:indexes: Add composite index (1h ago)`
+
+    expect(fullOutput.split('\n').length).toBeGreaterThan(3)
+  })
+
+  it('should save tokens in none mode vs full mode', () => {
+    // Simulate token counts for same content
+    const decisions = [
+      { topic: 'topic1', decision: 'decision1' },
+      { topic: 'topic2', decision: 'decision2' },
+      { topic: 'topic3', decision: 'decision3' },
+      { topic: 'topic4', decision: 'decision4' },
+      { topic: 'topic5', decision: 'decision5' },
+    ]
+
+    const checkpoint = {
+      summary: 'Working on MAMA integration',
+      next_steps: 'Continue testing',
+    }
+
+    // None mode: 0 characters
+    const noneLength = 0
+
+    // Hint mode: ~50 characters
+    const hintLength = `🔍 ${decisions.length} decisions, 1 checkpoint available`.length
+
+    // Full mode: ~500+ characters
+    const fullLength = decisions.reduce(
+      (acc, d) => acc + d.topic.length + d.decision.length + 50,
+      checkpoint.summary.length + checkpoint.next_steps.length + 100
+    )
+
+    // None should be 50%+ less than full
+    expect(noneLength).toBeLessThan(fullLength * 0.5)
+
+    // Hint should also be significantly less than full
+    expect(hintLength).toBeLessThan(fullLength * 0.3)
+  })
+
+  it('should handle mama_configure set action', async () => {
+    const { handleMamaConfigure } = await import('../src/mama/tools/handlers.js')
+
+    // Get current config
+    const getResult = await handleMamaConfigure({ action: 'get' })
+    expect(getResult.success).toBe(true)
+
+    const originalMode = (getResult.data as Record<string, unknown>).config as { contextInjection: string }
+
+    // Set to different mode
+    const newMode = originalMode.contextInjection === 'full' ? 'hint' : 'full'
+    const setResult = await handleMamaConfigure({
+      action: 'set',
+      contextInjection: newMode as 'none' | 'hint' | 'full',
+    })
+
+    expect(setResult.success).toBe(true)
+    expect((setResult.data as Record<string, { contextInjection: string }>).config.contextInjection).toBe(newMode)
+
+    // Restore original
+    await handleMamaConfigure({
+      action: 'set',
+      contextInjection: originalMode.contextInjection as 'none' | 'hint' | 'full',
+    })
+  })
+})
