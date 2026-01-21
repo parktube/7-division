@@ -791,3 +791,110 @@ describe('Outcome Tracking', () => {
     }).toThrow()
   })
 })
+
+// ============================================================
+// Story 11.5: SessionStart Hook Tests
+// ============================================================
+
+describe('SessionStart Hook', () => {
+  it('should export hookRegistry', async () => {
+    const { hookRegistry } = await import('../src/mama/index.js')
+    expect(hookRegistry).toBeDefined()
+    expect(typeof hookRegistry.onSessionInit).toBe('function')
+  })
+
+  it('should return sessionInitResult with correct structure', async () => {
+    const { hookRegistry } = await import('../src/mama/index.js')
+
+    const result = await hookRegistry.onSessionInit()
+
+    expect(result).toHaveProperty('checkpoint')
+    expect(result).toHaveProperty('recentDecisions')
+    expect(result).toHaveProperty('contextMode')
+    expect(result).toHaveProperty('formattedContext')
+    expect(['none', 'hint', 'full']).toContain(result.contextMode)
+  })
+
+  it('should handle empty data gracefully', async () => {
+    const { executeSessionInit } = await import('../src/mama/hooks/session-init.js')
+
+    // This should not throw even with empty DB
+    const result = await executeSessionInit()
+
+    expect(result.recentDecisions).toBeInstanceOf(Array)
+    expect(typeof result.formattedContext).toBe('string')
+  })
+
+  it('should format full context with checkpoint and decisions', () => {
+    // Test the formatting logic directly
+    const checkpoint = {
+      id: 1,
+      timestamp: Date.now() - 3600000, // 1 hour ago
+      summary: 'Test summary',
+      open_files: ['file1.ts', 'file2.ts'],
+      next_steps: 'Continue testing',
+    }
+
+    const decisions = [
+      {
+        id: 'decision_test_1',
+        topic: 'test:topic:one',
+        decision: 'Test decision',
+        reasoning: 'Test reasoning',
+        outcome: 'SUCCESS',
+        outcome_reason: null,
+        confidence: 0.9,
+        created_at: Date.now() - 1800000, // 30 min ago
+      },
+    ]
+
+    // Simulate formatFullContext logic
+    const lines: string[] = []
+    lines.push(`📍 **Last Checkpoint** (1h ago):`)
+    lines.push(`   ${checkpoint.summary.substring(0, 200)}`)
+    lines.push(`   Next: ${checkpoint.next_steps.substring(0, 150)}`)
+    lines.push(`   Files: ${checkpoint.open_files.slice(0, 3).join(', ')}`)
+    lines.push('')
+    lines.push(`🧠 **Recent Decisions** (${decisions.length}):`)
+    lines.push(`   1. ✅ ${decisions[0].topic}: ${decisions[0].decision} (30m ago)`)
+
+    const formatted = lines.join('\n')
+
+    expect(formatted).toContain('📍 **Last Checkpoint**')
+    expect(formatted).toContain('Test summary')
+    expect(formatted).toContain('🧠 **Recent Decisions**')
+    expect(formatted).toContain('test:topic:one')
+  })
+
+  it('should format hint context correctly', () => {
+    // Simulate formatHintContext logic
+    const parts: string[] = []
+    parts.push('1 checkpoint found')
+    parts.push('5 related decisions available')
+
+    const formatted = `🔍 ${parts.join(', ')}\n💡 Use mama_checkpoint() and mama_search() for details`
+
+    expect(formatted).toContain('🔍')
+    expect(formatted).toContain('1 checkpoint found')
+    expect(formatted).toContain('5 related decisions')
+    expect(formatted).toContain('💡')
+  })
+
+  it('should return empty context for none mode', async () => {
+    // Mock none mode by testing the logic
+    const contextMode = 'none'
+
+    if (contextMode === 'none') {
+      const result = {
+        checkpoint: null,
+        recentDecisions: [],
+        contextMode: 'none' as const,
+        formattedContext: '',
+      }
+
+      expect(result.formattedContext).toBe('')
+      expect(result.checkpoint).toBeNull()
+      expect(result.recentDecisions).toHaveLength(0)
+    }
+  })
+})

@@ -748,3 +748,6 @@ export {
   isVectorSearchEnabled,
   isEmbeddingReady,
 }
+
+// Re-export hooks
+export { hookRegistry, type SessionInitResult } from './hooks/registry.js'

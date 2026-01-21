@@ -32,7 +32,7 @@ import {
   type UpdateArgs,
   type ConfigureArgs,
 } from './mama/tools/index.js'
-import { initMAMA, shutdownMAMA } from './mama/index.js'
+import { initMAMA, shutdownMAMA, hookRegistry } from './mama/index.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
@@ -284,9 +284,19 @@ async function executeRunCadCode(
  */
 export async function createMCPServer(): Promise<Server> {
   // Initialize MAMA (Epic 11)
+  let sessionContext = ''
   try {
     const mamaStatus = await initMAMA()
     logger.info(`MAMA initialized: DB=${mamaStatus.dbReady}, Embedding=${mamaStatus.embeddingReady}, Vector=${mamaStatus.vectorSearchEnabled}`)
+
+    // Execute onSessionInit hook (Story 11.5)
+    const hookResult = await hookRegistry.onSessionInit()
+    sessionContext = hookResult.formattedContext
+
+    if (sessionContext) {
+      // Output session context for Claude to see
+      logger.info(`SessionStart context (${hookResult.contextMode} mode):\n${sessionContext}`)
+    }
   } catch (err) {
     logger.warn(`MAMA initialization failed (non-fatal): ${err}`)
   }
