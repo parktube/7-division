@@ -20,7 +20,7 @@ const ENTITY_PATTERNS: Record<string, RegExp[]> = {
   door: [/door/i, /문/i, /entrance/i, /exit/i],
   window: [/window/i, /창/i, /창문/i],
   furniture: [/table/i, /chair/i, /desk/i, /bed/i, /sofa/i, /가구/i],
-  character: [/chicken/i, /pig/i, /cow/i, /person/i, /캐릭터/i],
+  character: [/chicken/i, /pig/i, /cow/i, /duck/i, /person/i, /캐릭터/i],
   vehicle: [/car/i, /truck/i, /bus/i, /차/i, /vehicle/i],
   tree: [/tree/i, /나무/i, /plant/i, /bush/i],
   building: [/building/i, /house/i, /건물/i, /집/i],

@@ -47,7 +47,7 @@ export const TERM_MAPPING: Record<string, { vague: string[]; specific: string[] 
 }
 
 // Domain keywords for detection
-const DOMAIN_KEYWORDS: Record<string, string[]> = {
+export const DOMAIN_KEYWORDS: Record<string, string[]> = {
   style: ['스타일', 'style', '인테리어', 'interior', '디자인', 'design'],
   color: ['색', 'color', '컬러', '팔레트', 'palette', '톤', 'tone'],
   spatial: ['공간', 'space', '위치', 'position', '배치', 'layout', '동선'],

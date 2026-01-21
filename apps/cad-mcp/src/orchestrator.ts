@@ -18,6 +18,7 @@ import {
   type SessionInitResult,
   type ExecutionContext,
   type CADToolResult,
+  type ToolDefinition,
 } from './mama/index.js'
 
 // ============================================================
@@ -38,17 +39,6 @@ export type MCPMethod =
 export interface MCPRequest {
   method: MCPMethod
   params?: Record<string, unknown>
-}
-
-/** Tool definition structure */
-export interface ToolDefinition {
-  name: string
-  description: string
-  inputSchema: {
-    type: string
-    properties?: Record<string, unknown>
-    required?: string[]
-  }
 }
 
 /** Tool call result */

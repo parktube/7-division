@@ -3,9 +3,9 @@
  *
  * Story 11.2: 결정 저장 + Reasoning Graph
  * Parses reasoning field for relationship patterns:
- * - builds_on: decision_xxx
- * - debates: decision_xxx
- * - synthesizes: [id1, id2]
+ * - builds_on: decision_xxx (ID) 또는 builds_on: topic_name (토픽)
+ * - debates: decision_xxx 또는 debates: topic_name
+ * - synthesizes: [id1, id2] 또는 [topic1, topic2]
  */
 
 import { logger } from '../logger.js'
@@ -18,7 +18,8 @@ export type EdgeType = 'supersedes' | 'builds_on' | 'debates' | 'synthesizes'
 
 export interface ParsedEdge {
   type: EdgeType
-  targetId: string
+  targetId?: string      // decision_xxx 형식
+  targetTopic?: string   // topic:name 형식 (새로 추가)
 }
 
 export interface ParseResult {
@@ -30,94 +31,121 @@ export interface ParseResult {
 // Patterns
 // ============================================================
 
-// builds_on: decision_xxx 또는 builds_on: decision_xxx_abc123
-const BUILDS_ON_PATTERN = /builds_on:\s*(decision_[\w]+)/gi
-
-// debates: decision_xxx
-const DEBATES_PATTERN = /debates:\s*(decision_[\w]+)/gi
-
-// synthesizes: [id1, id2] 또는 synthesizes: [id1, id2, id3]
-const SYNTHESIZES_PATTERN = /synthesizes:\s*\[([\w,\s_]+)\]/gi
-
-// Decision ID validation pattern
+// Decision ID pattern: decision_xxx
 const DECISION_ID_PATTERN = /^decision_[\w]+$/
+
+// Topic pattern: domain:name (예: cad:mama_comparison_test)
+const TOPIC_PATTERN = /^[\w]+:[\w:_-]+$/
+
+// builds_on: decision_xxx 또는 builds_on: topic:name
+const BUILDS_ON_ID_PATTERN = /builds_on:\s*(decision_[\w]+)/gi
+const BUILDS_ON_TOPIC_PATTERN = /builds_on:\s*([\w]+:[\w:_-]+)/gi
+
+// debates: decision_xxx 또는 debates: topic:name
+const DEBATES_ID_PATTERN = /debates:\s*(decision_[\w]+)/gi
+const DEBATES_TOPIC_PATTERN = /debates:\s*([\w]+:[\w:_-]+)/gi
+
+// synthesizes: [id1, id2] 또는 synthesizes: [topic1, topic2]
+const SYNTHESIZES_PATTERN = /synthesizes:\s*\[([^\]]+)\]/gi
 
 // ============================================================
 // Parser Functions
 // ============================================================
 
+interface ParsedRef {
+  ids: string[]      // decision_xxx 형식
+  topics: string[]   // topic:name 형식
+}
+
 /**
  * Parse builds_on patterns from reasoning text
  *
  * @param reasoning - Reasoning text to parse
- * @returns Array of target decision IDs
+ * @returns Object with decision IDs and topics
  */
-function parseBuildsOn(reasoning: string): string[] {
-  const ids: string[] = []
+function parseBuildsOn(reasoning: string): ParsedRef {
+  const result: ParsedRef = { ids: [], topics: [] }
   let match
 
-  // Reset lastIndex for global regex
-  BUILDS_ON_PATTERN.lastIndex = 0
-
-  while ((match = BUILDS_ON_PATTERN.exec(reasoning)) !== null) {
+  // Parse decision IDs
+  BUILDS_ON_ID_PATTERN.lastIndex = 0
+  while ((match = BUILDS_ON_ID_PATTERN.exec(reasoning)) !== null) {
     const id = match[1].trim()
     if (id && DECISION_ID_PATTERN.test(id)) {
-      ids.push(id)
+      result.ids.push(id)
     }
   }
 
-  return [...new Set(ids)] // Deduplicate
+  // Parse topics
+  BUILDS_ON_TOPIC_PATTERN.lastIndex = 0
+  while ((match = BUILDS_ON_TOPIC_PATTERN.exec(reasoning)) !== null) {
+    const topic = match[1].trim()
+    // Skip if it's actually a decision ID (starts with decision_)
+    if (topic && TOPIC_PATTERN.test(topic) && !topic.startsWith('decision_')) {
+      result.topics.push(topic)
+    }
+  }
+
+  return { ids: [...new Set(result.ids)], topics: [...new Set(result.topics)] }
 }
 
 /**
  * Parse debates patterns from reasoning text
  *
  * @param reasoning - Reasoning text to parse
- * @returns Array of target decision IDs
+ * @returns Object with decision IDs and topics
  */
-function parseDebates(reasoning: string): string[] {
-  const ids: string[] = []
+function parseDebates(reasoning: string): ParsedRef {
+  const result: ParsedRef = { ids: [], topics: [] }
   let match
 
-  // Reset lastIndex for global regex
-  DEBATES_PATTERN.lastIndex = 0
-
-  while ((match = DEBATES_PATTERN.exec(reasoning)) !== null) {
+  // Parse decision IDs
+  DEBATES_ID_PATTERN.lastIndex = 0
+  while ((match = DEBATES_ID_PATTERN.exec(reasoning)) !== null) {
     const id = match[1].trim()
     if (id && DECISION_ID_PATTERN.test(id)) {
-      ids.push(id)
+      result.ids.push(id)
     }
   }
 
-  return [...new Set(ids)] // Deduplicate
+  // Parse topics
+  DEBATES_TOPIC_PATTERN.lastIndex = 0
+  while ((match = DEBATES_TOPIC_PATTERN.exec(reasoning)) !== null) {
+    const topic = match[1].trim()
+    if (topic && TOPIC_PATTERN.test(topic) && !topic.startsWith('decision_')) {
+      result.topics.push(topic)
+    }
+  }
+
+  return { ids: [...new Set(result.ids)], topics: [...new Set(result.topics)] }
 }
 
 /**
  * Parse synthesizes patterns from reasoning text
  *
  * @param reasoning - Reasoning text to parse
- * @returns Array of target decision IDs
+ * @returns Object with decision IDs and topics
  */
-function parseSynthesizes(reasoning: string): string[] {
-  const ids: string[] = []
+function parseSynthesizes(reasoning: string): ParsedRef {
+  const result: ParsedRef = { ids: [], topics: [] }
   let match
 
-  // Reset lastIndex for global regex
   SYNTHESIZES_PATTERN.lastIndex = 0
-
   while ((match = SYNTHESIZES_PATTERN.exec(reasoning)) !== null) {
-    const idList = match[1].trim()
+    const itemList = match[1].trim()
     // Split by comma and clean up
-    const splitIds = idList.split(',').map((id) => id.trim())
+    const items = itemList.split(',').map((item) => item.trim())
 
-    for (const id of splitIds) {
-      if (id && DECISION_ID_PATTERN.test(id)) {
-        ids.push(id)
+    for (const item of items) {
+      if (DECISION_ID_PATTERN.test(item)) {
+        result.ids.push(item)
+      } else if (TOPIC_PATTERN.test(item)) {
+        result.topics.push(item)
       }
     }
   }
 
-  return [...new Set(ids)] // Deduplicate
+  return { ids: [...new Set(result.ids)], topics: [...new Set(result.topics)] }
 }
 
 /**
@@ -137,57 +165,36 @@ export function parseReasoning(reasoning: string | null | undefined): ParseResul
   }
 
   try {
-    // Parse builds_on
-    const buildsOnIds = parseBuildsOn(reasoning)
-    for (const targetId of buildsOnIds) {
+    // Parse builds_on (IDs and topics)
+    const buildsOnRefs = parseBuildsOn(reasoning)
+    for (const targetId of buildsOnRefs.ids) {
       result.edges.push({ type: 'builds_on', targetId })
     }
+    for (const targetTopic of buildsOnRefs.topics) {
+      result.edges.push({ type: 'builds_on', targetTopic })
+    }
 
-    // Parse debates
-    const debatesIds = parseDebates(reasoning)
-    for (const targetId of debatesIds) {
+    // Parse debates (IDs and topics)
+    const debatesRefs = parseDebates(reasoning)
+    for (const targetId of debatesRefs.ids) {
       result.edges.push({ type: 'debates', targetId })
     }
+    for (const targetTopic of debatesRefs.topics) {
+      result.edges.push({ type: 'debates', targetTopic })
+    }
 
-    // Parse synthesizes
-    const synthesizesIds = parseSynthesizes(reasoning)
-    for (const targetId of synthesizesIds) {
+    // Parse synthesizes (IDs and topics)
+    const synthesizesRefs = parseSynthesizes(reasoning)
+    for (const targetId of synthesizesRefs.ids) {
       result.edges.push({ type: 'synthesizes', targetId })
     }
-
-    // Check for malformed patterns and warn
-    // Only warn if there's a pattern that looks like it should be a relationship but doesn't match
-    const potentialBuildsOn = reasoning.match(/builds_on:\s*([^\s,\n]+)/gi)
-    if (potentialBuildsOn) {
-      for (const match of potentialBuildsOn) {
-        const idMatch = match.match(/builds_on:\s*(decision_[\w]+)/i)
-        if (!idMatch) {
-          result.warnings.push(`Malformed builds_on pattern found: ${match}`)
-          logger.warn(`Malformed builds_on pattern: ${match}`)
-        }
-      }
+    for (const targetTopic of synthesizesRefs.topics) {
+      result.edges.push({ type: 'synthesizes', targetTopic })
     }
 
-    const potentialDebates = reasoning.match(/debates:\s*([^\s,\n]+)/gi)
-    if (potentialDebates) {
-      for (const match of potentialDebates) {
-        const idMatch = match.match(/debates:\s*(decision_[\w]+)/i)
-        if (!idMatch) {
-          result.warnings.push(`Malformed debates pattern found: ${match}`)
-          logger.warn(`Malformed debates pattern: ${match}`)
-        }
-      }
-    }
-
-    const potentialSynthesizes = reasoning.match(/synthesizes:\s*([^\n]+)/gi)
-    if (potentialSynthesizes) {
-      for (const match of potentialSynthesizes) {
-        const arrayMatch = match.match(/synthesizes:\s*\[([\w,\s_]+)\]/i)
-        if (!arrayMatch) {
-          result.warnings.push(`Malformed synthesizes pattern found: ${match}`)
-          logger.warn(`Malformed synthesizes pattern: ${match}`)
-        }
-      }
+    // Log parsed edges
+    if (result.edges.length > 0) {
+      logger.info(`Parsed ${result.edges.length} edge(s) from reasoning`)
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)

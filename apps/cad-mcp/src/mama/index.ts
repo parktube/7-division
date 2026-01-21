@@ -24,6 +24,7 @@ import {
   getLastInsertRowid,
   insertEdge,
   getEdgeSummary,
+  getDecisionIdByTopic,
   type DecisionRow,
   type CheckpointRow,
 } from './db.js'
@@ -278,15 +279,33 @@ export async function saveDecision(params: SaveDecisionParams): Promise<string> 
   const parseResult = parseReasoning(reasoning)
 
   for (const edge of parseResult.edges) {
-    // Validate that target decision exists
-    if (validateDecisionId(db, edge.targetId)) {
-      try {
-        insertEdge(decisionId, edge.targetId, edge.type)
-      } catch (err) {
-        logger.warn(`Failed to create ${edge.type} edge to ${edge.targetId}: ${err}`)
+    let targetId: string | null = null
+
+    // Resolve target: either direct ID or topic-based lookup
+    if (edge.targetId) {
+      // Direct decision ID reference
+      if (validateDecisionId(db, edge.targetId)) {
+        targetId = edge.targetId
+      } else {
+        logger.warn(`Target decision not found for ${edge.type}: ${edge.targetId}`)
       }
-    } else {
-      logger.warn(`Target decision not found for ${edge.type}: ${edge.targetId}`)
+    } else if (edge.targetTopic) {
+      // Topic-based reference - resolve to latest decision ID
+      targetId = getDecisionIdByTopic(edge.targetTopic)
+      if (!targetId) {
+        logger.warn(`No decision found for topic ${edge.type}: ${edge.targetTopic}`)
+      } else {
+        logger.info(`Resolved topic '${edge.targetTopic}' to decision '${targetId}'`)
+      }
+    }
+
+    // Create edge if target was resolved
+    if (targetId) {
+      try {
+        insertEdge(decisionId, targetId, edge.type)
+      } catch (err) {
+        logger.warn(`Failed to create ${edge.type} edge to ${targetId}: ${err}`)
+      }
     }
   }
 
@@ -475,7 +494,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
               const similarity = 1 - distance // Convert distance to similarity
               return addEdgesToResult(row, similarity)
             })
-            .filter((r) => (r.similarity || 0) >= 0.6) // Threshold
+            .filter((r) => (r.similarity || 0) >= 0.3) // Threshold (lowered for multilingual model)
             .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
 
           // Apply group_by_topic filter
@@ -760,6 +779,7 @@ export {
   deleteHint,
   listHints,
   invalidateHintCache,
+  getHintsForTool,
   type AddHintParams,
   type UpdateHintParams,
   type HintRow,

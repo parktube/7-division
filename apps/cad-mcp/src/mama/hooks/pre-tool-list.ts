@@ -16,7 +16,7 @@ import { getDatabase } from '../db.js'
 export interface ToolDefinition {
   name: string
   description: string
-  parameters: unknown
+  inputSchema: unknown
 }
 
 export interface HintRow {
@@ -57,7 +57,7 @@ export function invalidateHintCache(): void {
  * @param toolName - Tool name
  * @returns Array of hint texts (max 3, ordered by priority)
  */
-function getHintsForTool(toolName: string): string[] {
+export function getHintsForTool(toolName: string): string[] {
   // Check cache
   const now = Date.now()
   if (hintCache && now - cacheTimestamp < CACHE_TTL_MS) {

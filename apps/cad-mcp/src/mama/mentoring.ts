@@ -137,18 +137,17 @@ export function trackAction(action: string): {
  */
 export function formatNextStep(step: NextStep, level: SkillLevel): NextStep {
   if (level === 'expert') {
-    // Expert: minimal hint
+    // Expert: minimal hint (action name + short relevance)
     return {
       ...step,
-      description: step.action, // Just the action name
-      relevance: '', // No explanation needed
+      description: step.action,
+      relevance: step.relevance.split('.')[0] || step.relevance, // First sentence
     }
   } else if (level === 'intermediate') {
     // Intermediate: brief description
     return {
       ...step,
-      // Keep original description but no additional detail
-      relevance: step.relevance.split('.')[0], // First sentence only
+      relevance: step.relevance.split('.')[0] || step.relevance, // First sentence only
     }
   }
 
