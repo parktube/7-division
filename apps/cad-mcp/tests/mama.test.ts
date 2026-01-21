@@ -646,3 +646,148 @@ describe('Domain Filter and Group By Topic', () => {
     expect(domains).toContain('furniture')
   })
 })
+
+// ============================================================
+// Story 11.4: Outcome Tracking Tests
+// ============================================================
+
+describe('Outcome Tracking', () => {
+  let db: Database.Database
+  let testDbPath: string
+
+  beforeAll(() => {
+    const testDir = join(tmpdir(), 'mama-outcome-test-' + Date.now())
+    mkdirSync(testDir, { recursive: true })
+    testDbPath = join(testDir, 'test-outcome.db')
+
+    db = new Database(testDbPath)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS decisions (
+        id TEXT PRIMARY KEY,
+        topic TEXT NOT NULL,
+        decision TEXT NOT NULL,
+        reasoning TEXT,
+        outcome TEXT,
+        outcome_reason TEXT,
+        confidence REAL DEFAULT 0.5,
+        supersedes TEXT,
+        superseded_by TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER,
+        CHECK (outcome IN ('SUCCESS', 'FAILED', 'PARTIAL') OR outcome IS NULL)
+      );
+    `)
+
+    // Insert test data with different outcomes
+    const now = Date.now()
+    const testData = [
+      { id: 'decision_success_1', topic: 'auth:jwt:tokens', decision: 'Use JWT', outcome: 'SUCCESS', reason: 'Works well', created_at: now },
+      { id: 'decision_failed_1', topic: 'auth:session:storage', decision: 'Use localStorage', outcome: 'FAILED', reason: 'Security issues', created_at: now + 1 },
+      { id: 'decision_partial_1', topic: 'cache:redis:config', decision: 'Use default TTL', outcome: 'PARTIAL', reason: 'Works but slow', created_at: now + 2 },
+      { id: 'decision_pending_1', topic: 'db:postgres:indexes', decision: 'Add composite index', outcome: null, reason: null, created_at: now + 3 },
+      { id: 'decision_pending_2', topic: 'api:rest:versioning', decision: 'Use URL versioning', outcome: null, reason: null, created_at: now + 4 },
+    ]
+
+    for (const data of testData) {
+      db.prepare(`
+        INSERT INTO decisions (id, topic, decision, outcome, outcome_reason, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(data.id, data.topic, data.decision, data.outcome, data.reason, data.created_at)
+    }
+  })
+
+  afterAll(() => {
+    if (db) db.close()
+    if (testDbPath && existsSync(testDbPath)) {
+      rmSync(testDbPath, { force: true })
+    }
+  })
+
+  it('should update outcome to SUCCESS', () => {
+    const now = Date.now()
+
+    db.prepare(`
+      UPDATE decisions SET outcome = 'SUCCESS', outcome_reason = ?, updated_at = ?
+      WHERE id = ?
+    `).run('Confirmed working', now, 'decision_pending_1')
+
+    const row = db.prepare('SELECT * FROM decisions WHERE id = ?').get('decision_pending_1') as Record<string, unknown>
+    expect(row.outcome).toBe('SUCCESS')
+    expect(row.outcome_reason).toBe('Confirmed working')
+    expect(row.updated_at).toBe(now)
+  })
+
+  it('should update outcome to FAILED with reason', () => {
+    const now = Date.now()
+
+    db.prepare(`
+      UPDATE decisions SET outcome = 'FAILED', outcome_reason = ?, updated_at = ?
+      WHERE id = ?
+    `).run('Performance issues under load', now, 'decision_pending_2')
+
+    const row = db.prepare('SELECT * FROM decisions WHERE id = ?').get('decision_pending_2') as Record<string, unknown>
+    expect(row.outcome).toBe('FAILED')
+    expect(row.outcome_reason).toBe('Performance issues under load')
+  })
+
+  it('should filter by outcome = SUCCESS', () => {
+    const rows = db.prepare(`
+      SELECT * FROM decisions WHERE outcome = 'SUCCESS'
+    `).all() as Record<string, unknown>[]
+
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows.every(r => r.outcome === 'SUCCESS')).toBe(true)
+  })
+
+  it('should filter by outcome = FAILED', () => {
+    const rows = db.prepare(`
+      SELECT * FROM decisions WHERE outcome = 'FAILED'
+    `).all() as Record<string, unknown>[]
+
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows.every(r => r.outcome === 'FAILED')).toBe(true)
+  })
+
+  it('should filter by outcome = PARTIAL', () => {
+    const rows = db.prepare(`
+      SELECT * FROM decisions WHERE outcome = 'PARTIAL'
+    `).all() as Record<string, unknown>[]
+
+    expect(rows.length).toBe(1)
+    expect(rows[0].outcome).toBe('PARTIAL')
+    expect(rows[0].outcome_reason).toBe('Works but slow')
+  })
+
+  it('should filter pending (NULL outcome)', () => {
+    // Reset one to NULL for this test
+    db.prepare(`UPDATE decisions SET outcome = NULL, outcome_reason = NULL WHERE id = 'decision_pending_1'`).run()
+
+    const rows = db.prepare(`
+      SELECT * FROM decisions WHERE outcome IS NULL
+    `).all() as Record<string, unknown>[]
+
+    expect(rows.length).toBeGreaterThanOrEqual(1)
+    expect(rows.every(r => r.outcome === null)).toBe(true)
+  })
+
+  it('should include outcome_reason in search results', () => {
+    const rows = db.prepare(`
+      SELECT id, topic, decision, outcome, outcome_reason
+      FROM decisions
+      WHERE outcome = 'FAILED'
+    `).all() as Record<string, unknown>[]
+
+    const failed = rows.find(r => r.id === 'decision_failed_1')
+    expect(failed).toBeDefined()
+    expect(failed!.outcome_reason).toBe('Security issues')
+  })
+
+  it('should reject invalid outcome values', () => {
+    expect(() => {
+      db.prepare(`
+        INSERT INTO decisions (id, topic, decision, outcome, created_at)
+        VALUES ('bad_outcome', 'test:topic:bad', 'Test', 'INVALID', ${Date.now()})
+      `).run()
+    }).toThrow()
+  })
+})

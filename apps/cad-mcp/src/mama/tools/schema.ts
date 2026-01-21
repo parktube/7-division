@@ -130,6 +130,10 @@ Cross-lingual: Works in Korean and English.
           type: 'boolean',
           description: 'If true, returns list of unique domains instead of decisions. Default: false',
         },
+        outcome_filter: {
+          type: 'string',
+          description: "Filter by outcome: 'success', 'failed', 'partial', or 'pending' (not yet validated). Default: all outcomes",
+        },
       },
       required: [],
     },

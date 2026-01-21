@@ -132,6 +132,7 @@ export interface SearchArgs {
   domain?: string
   group_by_topic?: boolean
   list_domains?: boolean
+  outcome_filter?: 'success' | 'failed' | 'partial' | 'pending'
 }
 
 /**
@@ -162,21 +163,39 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
       type: args.type || 'all',
       domain: args.domain,
       group_by_topic: args.group_by_topic,
+      outcome_filter: args.outcome_filter,
     })
 
     // Format results for LLM consumption
-    const formattedResults = results.map((r: DecisionResult) => ({
-      id: r.id,
-      topic: r.topic,
-      decision: r.decision,
-      reasoning: r.reasoning,
-      outcome: r.outcome,
-      confidence: r.confidence,
-      similarity: r.similarity,
-      created_at: r.created_at,
-      age: formatAge(r.created_at),
-      edges: r.edges,
-    }))
+    const formattedResults = results.map((r: DecisionResult) => {
+      const result: Record<string, unknown> = {
+        id: r.id,
+        topic: r.topic,
+        decision: r.decision,
+        reasoning: r.reasoning,
+        outcome: r.outcome,
+        confidence: r.confidence,
+        similarity: r.similarity,
+        created_at: r.created_at,
+        age: formatAge(r.created_at),
+        edges: r.edges,
+      }
+
+      // Add warning for failed decisions
+      if (r.outcome === 'FAILED') {
+        result.outcome_warning = '⚠️ This decision previously failed'
+        if (r.outcome_reason) {
+          result.outcome_reason = r.outcome_reason
+        }
+      } else if (r.outcome === 'PARTIAL') {
+        result.outcome_warning = '⚡ This decision had partial success'
+        if (r.outcome_reason) {
+          result.outcome_reason = r.outcome_reason
+        }
+      }
+
+      return result
+    })
 
     logger.info(`mama_search: Found ${results.length} results for "${args.query || '(recent)'}"${args.domain ? ` in domain "${args.domain}"` : ''}`)
 

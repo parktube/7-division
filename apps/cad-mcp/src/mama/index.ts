@@ -60,6 +60,7 @@ export interface SearchParams {
   type?: 'all' | 'decision' | 'checkpoint'
   domain?: string
   group_by_topic?: boolean
+  outcome_filter?: 'success' | 'failed' | 'partial' | 'pending'
 }
 
 export interface UpdateParams {
@@ -82,6 +83,7 @@ export interface DecisionResult {
   decision: string
   reasoning: string | null
   outcome: string | null
+  outcome_reason: string | null
   confidence: number
   created_at: number
   similarity?: number
@@ -374,7 +376,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     await initMAMA()
   }
 
-  const { query, limit = 10, domain, group_by_topic } = params
+  const { query, limit = 10, domain, group_by_topic, outcome_filter } = params
   const db = getDatabase()
 
   // Helper function to add edges to result
@@ -384,6 +386,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     decision: row.decision,
     reasoning: row.reasoning,
     outcome: row.outcome,
+    outcome_reason: row.outcome_reason,
     confidence: row.confidence,
     created_at: row.created_at,
     similarity,
@@ -393,6 +396,16 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
   // Build domain filter condition
   const domainCondition = domain ? `AND topic LIKE '${domain.toLowerCase()}:%'` : ''
 
+  // Build outcome filter condition
+  let outcomeCondition = ''
+  if (outcome_filter) {
+    if (outcome_filter === 'pending') {
+      outcomeCondition = 'AND outcome IS NULL'
+    } else {
+      outcomeCondition = `AND outcome = '${outcome_filter.toUpperCase()}'`
+    }
+  }
+
   // Build group_by_topic filter (only latest per topic)
   const groupByTopicSelect = group_by_topic
     ? `
@@ -400,10 +413,10 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
       INNER JOIN (
         SELECT topic, MAX(created_at) as max_created
         FROM decisions
-        WHERE superseded_by IS NULL ${domainCondition}
+        WHERE superseded_by IS NULL ${domainCondition} ${outcomeCondition}
         GROUP BY topic
       ) latest ON d.topic = latest.topic AND d.created_at = latest.max_created
-      WHERE d.superseded_by IS NULL ${domainCondition}
+      WHERE d.superseded_by IS NULL ${domainCondition} ${outcomeCondition}
     `
     : ''
 
@@ -418,7 +431,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
         .prepare(
           `
           SELECT * FROM decisions
-          WHERE superseded_by IS NULL ${domainCondition}
+          WHERE superseded_by IS NULL ${domainCondition} ${outcomeCondition}
           ORDER BY created_at DESC
           LIMIT ?
         `
@@ -447,7 +460,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
               `
               SELECT *, rowid FROM decisions
               WHERE rowid IN (${placeholders})
-              AND superseded_by IS NULL ${domainCondition}
+              AND superseded_by IS NULL ${domainCondition} ${outcomeCondition}
             `
             )
             .all(...rowids) as (DecisionRow & { rowid: number })[]
@@ -510,7 +523,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
         `
         SELECT * FROM decisions
         WHERE (${likeConditions})
-        AND superseded_by IS NULL ${domainCondition}
+        AND superseded_by IS NULL ${domainCondition} ${outcomeCondition}
         ORDER BY created_at DESC
       `
       )
@@ -530,7 +543,7 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
         `
         SELECT * FROM decisions
         WHERE (${likeConditions})
-        AND superseded_by IS NULL ${domainCondition}
+        AND superseded_by IS NULL ${domainCondition} ${outcomeCondition}
         ORDER BY created_at DESC
         LIMIT ?
       `
