@@ -1,6 +1,6 @@
 # Story 11.10: Adaptive Mentoring
 
-Status: ready-for-dev
+Status: Done
 
 ## Story
 
@@ -37,21 +37,25 @@ So that **점진적으로 학습할 수 있다** (FR76).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: 사용자 프로필 저장 (AC: #3, #4)
-  - [ ] 1.1 user_profile 테이블 추가 (skill_level, action_counts)
-  - [ ] 1.2 작업 완료 시 카운트 증가
-  - [ ] 1.3 숙련도 자동 계산 로직
+- [x] Task 1: 사용자 프로필 저장 (AC: #3, #4)
+  - [x] 1.1 user_profile 테이블 추가 (004-user-profile.sql)
+  - [x] 1.2 작업 완료 시 카운트 증가 (trackAction)
+  - [x] 1.3 숙련도 자동 계산 로직 (calculateDomainSkillLevel)
 
-- [ ] Task 2: 수준별 힌트 생성 (AC: #1, #2)
-  - [ ] 2.1 초보자용 상세 템플릿
-  - [ ] 2.2 숙련자용 간결 템플릿
-  - [ ] 2.3 ActionHints 생성 시 수준 반영
+- [x] Task 2: 수준별 힌트 생성 (AC: #1, #2)
+  - [x] 2.1 초보자용 상세 템플릿 (SKILL_TEMPLATES.beginner)
+  - [x] 2.2 숙련자용 간결 템플릿 (SKILL_TEMPLATES.expert)
+  - [x] 2.3 ActionHints 생성 시 수준 반영 (getAdaptiveHints)
 
-- [ ] Task 3: set_skill_level 도구 (AC: #5)
-  - [ ] 3.1 도구 구현
-  - [ ] 3.2 'beginner' | 'intermediate' | 'expert' 수준
+- [x] Task 3: set_skill_level 도구 (AC: #5)
+  - [x] 3.1 도구 구현 (mama_set_skill_level)
+  - [x] 3.2 'beginner' | 'intermediate' | 'expert' 수준
 
-- [ ] Task 4: 테스트 작성
+- [x] Task 4: 테스트 작성
+  - [x] 4.1 trackAction 테스트
+  - [x] 4.2 getAdaptiveHints 수준별 테스트
+  - [x] 4.3 setSkillLevel 테스트
+  - [x] 4.4 자동 승격 테스트
 
 ## Dev Notes
 
@@ -89,8 +93,15 @@ CREATE TABLE user_profile (
 
 - **선행**: Story 11.7 (ActionHints) - 힌트 생성 기반
 
-### File List
+### Completion Notes List
 
-- `apps/cad-mcp/src/mama/db.ts` (수정 - user_profile)
-- `apps/cad-mcp/src/mama/mentoring.ts` (신규)
-- `apps/cad-mcp/src/mama/tools/set-skill-level.ts` (신규)
+- Implementation completed: 2026-01-21
+
+### File List (Actual Implementation)
+
+- `apps/cad-mcp/src/mama/migrations/004-user-profile.sql` - user_profile 테이블
+- `apps/cad-mcp/src/mama/db.ts` (수정 - user profile CRUD)
+- `apps/cad-mcp/src/mama/mentoring.ts` - trackAction, getAdaptiveHints, setSkillLevel, calculateDomainSkillLevel
+- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - handleMamaSetSkillLevel)
+- `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - mama_set_skill_level 스키마)
+- `apps/cad-mcp/tests/mama.test.ts` - adaptive mentoring 테스트

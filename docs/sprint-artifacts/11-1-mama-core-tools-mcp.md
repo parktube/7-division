@@ -1,6 +1,6 @@
 # Story 11.1: MAMA Core 4 Tools MCP 통합
 
-Status: ready-for-dev
+Status: Done
 
 ## Story
 
@@ -53,60 +53,60 @@ So that **설계 결정을 저장하고 검색할 수 있다** (FR67).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: DB 스키마 및 초기화 구현 (AC: #8)
-  - [ ] 1.1 `apps/cad-mcp/src/mama/db.ts` 생성
-  - [ ] 1.2 decisions 테이블 생성 (id, topic, decision, reasoning, outcome, confidence, created_at, updated_at)
-  - [ ] 1.3 checkpoints 테이블 생성 (id, summary, next_steps, open_files, timestamp, status)
-  - [ ] 1.4 vss_memories 가상 테이블 생성 (sqlite-vec, float[384])
-  - [ ] 1.5 DB 디렉토리 자동 생성 (`~/.ai-native-cad/data/`)
-  - [ ] 1.6 마이그레이션 시스템 구현
+- [x] Task 1: DB 스키마 및 초기화 구현 (AC: #8)
+  - [x] 1.1 `apps/cad-mcp/src/mama/db.ts` 생성
+  - [x] 1.2 decisions 테이블 생성 (id, topic, decision, reasoning, outcome, confidence, created_at, updated_at)
+  - [x] 1.3 checkpoints 테이블 생성 (id, summary, next_steps, open_files, timestamp, status)
+  - [x] 1.4 vss_memories 가상 테이블 생성 (sqlite-vec, float[384])
+  - [x] 1.5 DB 디렉토리 자동 생성 (`~/.ai-native-cad/data/`)
+  - [x] 1.6 마이그레이션 시스템 구현
 
-- [ ] Task 2: 임베딩 시스템 구현 (AC: #4)
-  - [ ] 2.1 `apps/cad-mcp/src/mama/embeddings.ts` 생성
-  - [ ] 2.2 @huggingface/transformers 통합 (multilingual-e5-small)
-  - [ ] 2.3 임베딩 캐시 구현 (LRU)
-  - [ ] 2.4 generateEmbedding(), generateEnhancedEmbedding() 함수
-  - [ ] 2.5 better-sqlite3 + sqlite-vec 어댑터 구현
+- [x] Task 2: 임베딩 시스템 구현 (AC: #4)
+  - [x] 2.1 `apps/cad-mcp/src/mama/embeddings.ts` 생성
+  - [x] 2.2 @huggingface/transformers 통합 (multilingual-e5-small)
+  - [x] 2.3 임베딩 캐시 구현 (LRU) - embeddings.ts에 통합
+  - [x] 2.4 generateEmbedding(), generateEnhancedEmbedding() 함수
+  - [x] 2.5 better-sqlite3 + sqlite-vec 어댑터 구현 - db.ts에 통합
 
-- [ ] Task 3: MAMA 모듈 클래스 구현 (AC: #1)
-  - [ ] 3.1 `apps/cad-mcp/src/mama/index.ts` 생성
-  - [ ] 3.2 MAMAModule 클래스 구현 (싱글톤, DB 초기화, 임베딩 초기화)
-  - [ ] 3.3 MCP 서버 시작 시 MAMAModule 초기화 연동
-  - [ ] 3.4 `apps/cad-mcp/src/mama/config.ts` 설정 로더 (모델명, 임베딩 차원)
+- [x] Task 3: MAMA 모듈 클래스 구현 (AC: #1)
+  - [x] 3.1 `apps/cad-mcp/src/mama/index.ts` 생성
+  - [x] 3.2 MAMAModule 함수 기반 구현 (initMAMA, saveDecision, searchDecisions 등)
+  - [x] 3.3 MCP 서버 시작 시 MAMAModule 초기화 연동
+  - [x] 3.4 `apps/cad-mcp/src/mama/config.ts` 설정 로더 (모델명, 임베딩 차원)
 
-- [ ] Task 4: mama_save 도구 구현 (AC: #2, #3)
-  - [ ] 4.1 `apps/cad-mcp/src/mama/tools/save.ts` 생성
-  - [ ] 4.2 MamaSaveInput Zod 스키마 정의 (packages/shared)
-  - [ ] 4.3 Decision 저장 로직 구현 (type='decision') + 임베딩 생성
-  - [ ] 4.4 Checkpoint 저장 로직 구현 (type='checkpoint')
-  - [ ] 4.5 mcp-server.ts에 mama_save 핸들러 등록
+- [x] Task 4: mama_save 도구 구현 (AC: #2, #3)
+  - [x] 4.1 `apps/cad-mcp/src/mama/tools/handlers.ts`에 통합 구현
+  - [x] 4.2 TypeScript 인터페이스로 정의 (Zod 대체)
+  - [x] 4.3 Decision 저장 로직 구현 (type='decision') + 임베딩 생성
+  - [x] 4.4 Checkpoint 저장 로직 구현 (type='checkpoint')
+  - [x] 4.5 mcp-server.ts에 mama_save 핸들러 등록
 
-- [ ] Task 5: mama_search 도구 구현 (AC: #4, #5)
-  - [ ] 5.1 `apps/cad-mcp/src/mama/tools/search.ts` 생성
-  - [ ] 5.2 MamaSearchInput Zod 스키마 정의
-  - [ ] 5.3 시맨틱 검색 로직 구현 (query 있을 때 - sqlite-vec)
-  - [ ] 5.4 최근 항목 조회 로직 구현 (query 없을 때)
-  - [ ] 5.5 mcp-server.ts에 mama_search 핸들러 등록
+- [x] Task 5: mama_search 도구 구현 (AC: #4, #5)
+  - [x] 5.1 `apps/cad-mcp/src/mama/tools/handlers.ts`에 통합 구현
+  - [x] 5.2 TypeScript 인터페이스로 정의 (Zod 대체)
+  - [x] 5.3 시맨틱 검색 로직 구현 (query 있을 때 - sqlite-vec)
+  - [x] 5.4 최근 항목 조회 로직 구현 (query 없을 때)
+  - [x] 5.5 mcp-server.ts에 mama_search 핸들러 등록
 
-- [ ] Task 6: mama_update 도구 구현 (AC: #6)
-  - [ ] 6.1 `apps/cad-mcp/src/mama/tools/update.ts` 생성
-  - [ ] 6.2 MamaUpdateInput Zod 스키마 정의
-  - [ ] 6.3 outcome 업데이트 로직 구현
-  - [ ] 6.4 mcp-server.ts에 mama_update 핸들러 등록
+- [x] Task 6: mama_update 도구 구현 (AC: #6)
+  - [x] 6.1 `apps/cad-mcp/src/mama/tools/handlers.ts`에 통합 구현
+  - [x] 6.2 TypeScript 인터페이스로 정의 (Zod 대체)
+  - [x] 6.3 outcome 업데이트 로직 구현
+  - [x] 6.4 mcp-server.ts에 mama_update 핸들러 등록
 
-- [ ] Task 7: mama_checkpoint 도구 구현 (AC: #7)
-  - [ ] 7.1 `apps/cad-mcp/src/mama/tools/checkpoint.ts` 생성
-  - [ ] 7.2 MamaCheckpointOutput Zod 스키마 정의
-  - [ ] 7.3 최근 체크포인트 로드 로직 구현
-  - [ ] 7.4 mcp-server.ts에 mama_checkpoint 핸들러 등록
+- [x] Task 7: mama_checkpoint 도구 구현 (AC: #7)
+  - [x] 7.1 `apps/cad-mcp/src/mama/tools/handlers.ts`에 통합 구현
+  - [x] 7.2 TypeScript 인터페이스로 정의 (Zod 대체)
+  - [x] 7.3 최근 체크포인트 로드 로직 구현
+  - [x] 7.4 mcp-server.ts에 mama_checkpoint 핸들러 등록
 
-- [ ] Task 8: 테스트 작성
-  - [ ] 8.1 DB 초기화 + 마이그레이션 테스트
-  - [ ] 8.2 임베딩 생성 테스트
-  - [ ] 8.3 mama_save 테스트 (Decision + 임베딩, Checkpoint)
-  - [ ] 8.4 mama_search 테스트 (시맨틱 검색, 최근 항목)
-  - [ ] 8.5 mama_update 테스트
-  - [ ] 8.6 mama_checkpoint 테스트
+- [x] Task 8: 테스트 작성
+  - [x] 8.1 DB 초기화 + 마이그레이션 테스트
+  - [x] 8.2 임베딩 생성 테스트
+  - [x] 8.3 mama_save 테스트 (Decision + 임베딩, Checkpoint)
+  - [x] 8.4 mama_search 테스트 (시맨틱 검색, 최근 항목)
+  - [x] 8.5 mama_update 테스트
+  - [x] 8.6 mama_checkpoint 테스트
 
 ## Dev Notes
 
@@ -312,22 +312,18 @@ Claude Opus 4.5
 
 - Story created: 2026-01-20
 - Ultimate context engine analysis completed - comprehensive developer guide created
+- Implementation completed: 2026-01-21
+- Note: Zod schemas replaced with TypeScript interfaces in handlers.ts
+- Note: Individual tool files (save.ts, search.ts, etc.) consolidated into handlers.ts
 
-### File List
+### File List (Actual Implementation)
 
-- `apps/cad-mcp/src/mama/index.ts` (신규) - MAMAModule 싱글톤
-- `apps/cad-mcp/src/mama/db.ts` (신규) - DB 초기화 + 마이그레이션
-- `apps/cad-mcp/src/mama/db-adapter.ts` (신규) - better-sqlite3 + sqlite-vec
-- `apps/cad-mcp/src/mama/embeddings.ts` (신규) - HuggingFace 임베딩
-- `apps/cad-mcp/src/mama/embedding-cache.ts` (신규) - LRU 캐시
-- `apps/cad-mcp/src/mama/config.ts` (신규) - 설정 로더
-- `apps/cad-mcp/src/mama/migrations/001-initial.sql` (신규)
-- `apps/cad-mcp/src/mama/tools/save.ts` (신규)
-- `apps/cad-mcp/src/mama/tools/search.ts` (신규)
-- `apps/cad-mcp/src/mama/tools/update.ts` (신규)
-- `apps/cad-mcp/src/mama/tools/checkpoint.ts` (신규)
-- `apps/cad-mcp/src/schema.ts` (수정) - MAMA 도구 스키마 추가
+- `apps/cad-mcp/src/mama/index.ts` - MAMA 모듈 진입점 (함수 기반 API)
+- `apps/cad-mcp/src/mama/db.ts` - DB 초기화 + 마이그레이션 + sqlite-vec
+- `apps/cad-mcp/src/mama/embeddings.ts` - HuggingFace 임베딩 + LRU 캐시
+- `apps/cad-mcp/src/mama/config.ts` - 설정 로더
+- `apps/cad-mcp/src/mama/migrations/001-initial.sql` - 초기 스키마
+- `apps/cad-mcp/src/mama/tools/handlers.ts` - 4개 도구 핸들러 통합
+- `apps/cad-mcp/src/mama/tools/schema.ts` - MAMA MCP 도구 스키마
 - `apps/cad-mcp/src/mcp-server.ts` (수정) - MAMA 핸들러 연결
-- `apps/cad-mcp/package.json` (수정) - 의존성 추가
-- `packages/shared/src/schemas/mama.ts` (신규)
-- `apps/cad-mcp/src/mama/__tests__/` (신규)
+- `apps/cad-mcp/tests/mama.test.ts` - 테스트

@@ -1,6 +1,6 @@
 # Story 11.4: Outcome Tracking
 
-Status: ready-for-dev
+Status: Done
 
 ## Story
 
@@ -45,32 +45,32 @@ So that **실패한 접근법을 피할 수 있다** (FR70).
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: DB 스키마 확장 (AC: #1-3)
-  - [ ] 1.1 decisions 테이블에 `outcome_reason TEXT` 컬럼 추가
-  - [ ] 1.2 `updated_at` 컬럼 업데이트 로직 추가
+- [x] Task 1: DB 스키마 확장 (AC: #1-3)
+  - [x] 1.1 decisions 테이블에 `outcome_reason TEXT` 컬럼 (001-initial.sql에 포함)
+  - [x] 1.2 `updated_at` 컬럼 업데이트 로직 추가
 
-- [ ] Task 2: mama_update 도구 강화 (AC: #1-3)
-  - [ ] 2.1 outcome_reason 저장 로직 추가
-  - [ ] 2.2 업데이트 시 updated_at 갱신
-  - [ ] 2.3 존재하지 않는 ID 에러 처리
+- [x] Task 2: mama_update 도구 강화 (AC: #1-3)
+  - [x] 2.1 outcome_reason 저장 로직 추가
+  - [x] 2.2 업데이트 시 updated_at 갱신
+  - [x] 2.3 존재하지 않는 ID 에러 처리
 
-- [ ] Task 3: 검색 결과 outcome 표시 (AC: #4)
-  - [ ] 3.1 검색 결과에 outcome, outcome_reason 필드 포함
-  - [ ] 3.2 failed 결정에 `⚠️` 경고 표시 로직
-  - [ ] 3.3 MamaSearchOutput 스키마 업데이트
+- [x] Task 3: 검색 결과 outcome 표시 (AC: #4)
+  - [x] 3.1 검색 결과에 outcome, outcome_reason 필드 포함
+  - [x] 3.2 failed 결정에 `⚠️` 경고 표시 로직
+  - [x] 3.3 TypeScript 인터페이스로 정의
 
-- [ ] Task 4: Outcome 필터링 (AC: #5, #6)
-  - [ ] 4.1 MamaSearchInput에 `outcome_filter?: 'success' | 'failed' | 'partial' | 'pending'` 추가
-  - [ ] 4.2 SQL WHERE 절에 outcome 조건 추가
-  - [ ] 4.3 'pending'은 `outcome IS NULL` 조건으로 처리
+- [x] Task 4: Outcome 필터링 (AC: #5, #6)
+  - [x] 4.1 SearchArgs에 `outcome_filter` 추가
+  - [x] 4.2 SQL WHERE 절에 outcome 조건 추가
+  - [x] 4.3 'pending'은 `outcome IS NULL` 조건으로 처리
 
-- [ ] Task 5: 테스트 작성
-  - [ ] 5.1 success 업데이트 테스트
-  - [ ] 5.2 failed + reason 업데이트 테스트
-  - [ ] 5.3 partial 업데이트 테스트
-  - [ ] 5.4 검색 결과 outcome 표시 테스트
-  - [ ] 5.5 outcome 필터링 테스트
-  - [ ] 5.6 pending 필터 테스트
+- [x] Task 5: 테스트 작성
+  - [x] 5.1 success 업데이트 테스트
+  - [x] 5.2 failed + reason 업데이트 테스트
+  - [x] 5.3 partial 업데이트 테스트
+  - [x] 5.4 검색 결과 outcome 표시 테스트
+  - [x] 5.5 outcome 필터링 테스트
+  - [x] 5.6 pending 필터 테스트
 
 ## Dev Notes
 
@@ -188,11 +188,12 @@ Claude Opus 4.5
 
 - Story created: 2026-01-20
 - Phase 11.1 Core의 마지막 스토리
+- Implementation completed: 2026-01-21
+- Note: outcome_reason은 001-initial.sql에 이미 포함됨
 
-### File List
+### File List (Actual Implementation)
 
-- `apps/cad-mcp/src/mama/db.ts` (수정 - outcome_reason)
-- `apps/cad-mcp/src/mama/tools/update.ts` (수정)
-- `apps/cad-mcp/src/mama/tools/search.ts` (수정)
-- `packages/shared/src/schemas/mama.ts` (수정)
-- `apps/cad-mcp/src/mama/__tests__/outcome-tracking.test.ts` (신규)
+- `apps/cad-mcp/src/mama/migrations/001-initial.sql` - outcome, outcome_reason 컬럼
+- `apps/cad-mcp/src/mama/index.ts` (수정 - updateOutcome)
+- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - outcome 경고, 필터링)
+- `apps/cad-mcp/tests/mama.test.ts` - outcome 테스트
