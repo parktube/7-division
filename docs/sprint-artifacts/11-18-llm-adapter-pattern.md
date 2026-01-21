@@ -1,6 +1,12 @@
-# Story 11.13: LLM Adapter Pattern
+# Story 11.18: LLM Adapter Pattern
 
-Status: ready-for-dev
+> ⚠️ **DEPRECATED** - 이 Story는 MCP 기반 아키텍처 채택으로 **제외**되었습니다.
+>
+> **사유**: MCP 프로토콜이 이미 LLM-agnostic 인터페이스를 제공합니다. 클라이언트(Claude Code, Cursor 등)가 LLM 선택을 담당하므로, 서버 내 LLMAdapter 패턴은 불필요합니다.
+>
+> 관련 문서: [ADR-0023](../adr/0023-llm-agnostic-agent-architecture.md) (Deprecated)
+
+Status: ❌ deprecated
 
 ## Story
 

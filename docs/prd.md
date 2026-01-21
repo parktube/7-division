@@ -283,7 +283,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 |----|---------|-----|----------|
 | FR85 | MCP 내부 통합 | - | npm install 시 MAMA 포함. 별도 설정 불필요 |
 | FR86 | 도메인 폴더 구조 | - | domains/ 폴더에 voxel/, furniture/, interior/ 기본 제공 |
-| FR87 | LLM Adapter Pattern | ADR-0023 | Claude, OpenAI, Ollama 교체 가능 |
+| ~~FR87~~ | ~~LLM Adapter Pattern~~ | ~~ADR-0023~~ | ❌ **제외**: MCP 프로토콜이 LLM-agnostic 인터페이스 제공 |
 
 #### Hook 시스템 상세 (ADR-0015 + ADR-0018)
 
@@ -465,7 +465,7 @@ CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 | **11.2 Hook System** | SessionStart, Dynamic Hint, ActionHints, LLM-Agnostic | FR71~FR74 | 4개 |
 | **11.3 Intelligence** | Graph Health, Anti-Echo, Adaptive Mentoring, Module Rec | FR75~FR78 | 4개 |
 | **11.4 Learning Track** | Learning Progress, Growth Metrics, DesignHints, Terminology | FR81~FR84 | 4개 |
-| **11.5 Platform** | MCP 통합, 도메인 폴더, LLM Adapter | FR85~FR87 | 3개 |
+| **11.5 Platform** | MCP 통합, 도메인 폴더, Module Library (~~LLM Adapter 제외~~) | FR80, FR85~FR86 | 3개 |
 
 **성공 기준:**
 - 30일 후 맥락 기억, "이 AI는 나를 안다" 체감

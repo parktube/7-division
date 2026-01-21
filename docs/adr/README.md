@@ -34,7 +34,7 @@ AI-Native CAD 프로젝트의 아키텍처 결정 기록.
 | [ADR-0020](0020-adaptive-mentoring.md) | Adaptive Mentoring | Accepted | Intelligence | 11.10 |
 | [ADR-0021](0021-anti-echo-chamber.md) | Anti-Echo Chamber | Accepted | Intelligence | 11.12 |
 | [ADR-0022](0022-meta-tooling.md) | run_cad_code (JS Execution) | Revised | - | - |
-| [ADR-0023](0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent Architecture | Proposed | Platform | 11.18 (대기) |
+| [ADR-0023](0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent Architecture | **Deprecated** | Platform | ~~11.18~~ (MCP로 대체) |
 | [ADR-0024](0024-module-library-recommendation.md) | Module Library Recommendation | Proposed | Platform | 11.19 (대기) |
 | [ADR-0025](0025-learning-track.md) | Learning Track | Accepted | Learning | 11.13~11.17 |
 | [ADR-0026](0026-semantic-search-infra.md) | Semantic Search Infrastructure | Accepted | Core | 11.1 |

@@ -173,9 +173,10 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 | Learning | FR82 | User Growth Metrics | ADR-0025 |
 | Learning | FR83 | DesignHints System | ADR-0025 |
 | Learning | FR84 | Terminology Evolution | ADR-0025 |
+| Platform | FR80 | Module Library Recommendation | ADR-0024 |
 | Platform | FR85 | MCP 내부 통합 | - |
 | Platform | FR86 | 도메인 폴더 구조 | - |
-| Platform | FR87 | LLM Adapter Pattern | ADR-0023 |
+| ~~Platform~~ | ~~FR87~~ | ~~LLM Adapter Pattern~~ | ~~ADR-0023~~ | ❌ 제외 (MCP로 대체) |
 
 **Non-Functional Requirements:**
 - 임베딩 생성: < 50ms (multilingual-e5)
@@ -184,13 +185,13 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 
 **Scale & Complexity:**
 - Primary domain: AI/ML + Full-stack
-- Complexity level: High (LLM 통합, 임베딩, Hook 시스템)
-- Estimated architectural components: 4 (Core Tools, Hook System, DB, LLM Adapter)
+- Complexity level: High (MCP 통합, 임베딩, Hook 시스템)
+- Estimated architectural components: 3 (Core Tools, Hook System, DB)
 
 #### Technical Constraints & Dependencies
 
 1. **기존 MAMA 코드 재사용**: 검증된 패턴 활용, 재구현 최소화
-2. **LLM 종속성 탈피**: Claude, OpenAI, Ollama 등 어떤 LLM에서도 동작
+2. **MCP 기반 LLM-Agnostic**: MCP 프로토콜이 LLM 독립성 제공 (클라이언트가 LLM 선택)
 3. **MCP 서버 내부 통합**: 별도 플러그인 없이 `@ai-native-cad/mcp`에 포함
 4. **로컬 우선**: 네트워크 없이 동작 (로컬 DB, 로컬 임베딩)
 
@@ -204,21 +205,21 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         MAMA + CAD Architecture                              │
+│                         MAMA + CAD Architecture (MCP 기반)                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌─────────────────┐                    ┌─────────────────────────────────┐ │
-│  │   LLM           │                    │        CADOrchestrator          │ │
-│  │   (Any)         │                    │        (Hook Owner)             │ │
+│  │  MCP Client     │                    │        CAD MCP Server           │ │
+│  │  (LLM 선택)     │                    │        (CADOrchestrator)        │ │
 │  │                 │                    │                                 │ │
-│  │  Claude API     │                    │  ┌─────────────────────────┐   │ │
-│  │  OpenAI API     │◄───────────────────│  │   Hook Registry         │   │ │
-│  │  Ollama (Local) │    LLMAdapter      │  │   - onSessionInit       │   │ │
-│  │  Claude Code    │                    │  │   - preToolList         │   │ │
+│  │  - Claude Code  │                    │  ┌─────────────────────────┐   │ │
+│  │  - Cursor       │◄──MCP Protocol────│  │   Hook Registry         │   │ │
+│  │  - 기타 IDE     │    tools/call      │  │   - onSessionInit       │   │ │
+│  │                 │    tools/list      │  │   - preToolList         │   │ │
 │  └─────────────────┘                    │  │   - postExecute         │   │ │
 │                                         │  └─────────────────────────┘   │ │
-│                                         │              │                  │ │
-│                                         │              ▼                  │ │
+│  ※ LLM 선택은 클라이언트 레벨           │              │                  │ │
+│    (서버는 LLM에 대해 알 필요 없음)      │              ▼                  │ │
 │                                         │  ┌─────────────────────────┐   │ │
 │                                         │  │   MAMA Module           │   │ │
 │                                         │  │   - save()              │   │ │
@@ -245,7 +246,7 @@ GitHub Pages (Viewer)  ←──WebSocket──→  Local MCP Server (WASM)
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**핵심 원칙**: CADOrchestrator가 Hook Owner로서 LLM과 독립적으로 Hook을 관리
+**핵심 원칙**: MCP 프로토콜이 LLM-agnostic 인터페이스 제공. 클라이언트가 LLM 선택 담당.
 
 ### 4.3 MCP Tool Interface (LLM 호출 관점)
 
@@ -419,27 +420,27 @@ load_checkpoint()                                // 세션 복원
 **Rationale:**
 > "LLM can infer decision relationships from time-ordered search results. Fewer tools = more LLM flexibility."
 
-#### 4.3.3 LLM-Agnostic Hook Abstraction (ADR-0018)
+#### 4.3.3 LLM-Agnostic via MCP Protocol (ADR-0018)
 
-**결정**: 애플리케이션은 LLM을 모른다
+**결정**: MCP 프로토콜로 LLM 독립성 확보
 
-```typescript
-interface LLMAdapter {
-  chat(messages: Message[]): Promise<Response>;
-  getToolDefinitions(): ToolDefinition[];
-  supportsStreaming(): boolean;
-}
-
-// 구현체
-class ClaudeAdapter implements LLMAdapter { ... }
-class OpenAIAdapter implements LLMAdapter { ... }
-class OllamaAdapter implements LLMAdapter { ... }
+```
+┌─────────────────┐     MCP Protocol     ┌─────────────────┐
+│  MCP Client     │◄───────────────────►│  CAD MCP Server │
+│  (LLM 선택)     │   tools/call         │  (도구만 제공)   │
+│                 │   tools/list         │                 │
+│  - Claude Code  │                      │  - glob         │
+│  - Cursor       │                      │  - read/write   │
+│  - 기타 IDE     │                      │  - mama_*       │
+└─────────────────┘                      └─────────────────┘
 ```
 
+> ~~LLMAdapter 패턴 (ADR-0023)~~: MCP 프로토콜이 이미 LLM-agnostic 인터페이스 제공. 클라이언트 레벨에서 LLM 선택이 이루어지므로 서버 내 LLMAdapter 불필요.
+
 **Rationale:**
-- 보안/기밀 클라이언트에 로컬 LLM 제공 가능
+- MCP 표준 프로토콜로 다양한 클라이언트 지원
+- LLM 선택은 클라이언트 책임 (서버는 도구만 제공)
 - LLM 벤더 종속 탈피
-- A/B 테스트 용이
 
 #### 4.3.4 Single DB + Topic Prefix (ADR-0016)
 
@@ -841,110 +842,86 @@ reasoning 필드는 다음 5가지 층위를 포함해야 합니다:
 - interior:wall:thickness        (벽 두께 표준)
 ```
 
-### 4.7 LLM-Agnostic Architecture (ADR-0023)
+### 4.7 LLM-Agnostic Architecture
 
-#### 4.7.1 Adapter Pattern
+> ⚠️ **Note**: ADR-0023의 LLMAdapter 패턴은 **deprecated**. MCP 프로토콜이 LLM-agnostic 인터페이스 제공.
+
+#### 4.7.1 MCP 기반 LLM 독립성 (현재 아키텍처)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      MCP 기반 LLM-Agnostic Architecture                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌───────────────────┐         MCP Protocol        ┌──────────────────┐ │
+│  │   MCP Client      │                             │  CAD MCP Server  │ │
+│  │                   │  ◄───── tools/list ──────►  │                  │ │
+│  │  - Claude Code    │                             │  CAD 도구:       │ │
+│  │  - Cursor         │  ◄───── tools/call ──────►  │  - glob/read    │ │
+│  │  - Windsurf       │                             │  - write/edit   │ │
+│  │  - 기타 IDE       │                             │  - lsp/bash     │ │
+│  │                   │                             │                  │ │
+│  │  ※ 각 클라이언트가│                             │  MAMA 도구:      │ │
+│  │    자체 LLM 사용  │                             │  - mama_save    │ │
+│  │                   │                             │  - mama_search  │ │
+│  └───────────────────┘                             │  - mama_update  │ │
+│                                                    └──────────────────┘ │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**핵심 원칙:**
+- MCP 서버는 **도구만 제공** (LLM에 대해 알 필요 없음)
+- **LLM 선택은 클라이언트 책임** (Claude Code가 Claude 사용, Cursor가 GPT 사용 등)
+- MCP 프로토콜이 표준화된 인터페이스 제공
+
+#### ~~4.7.1 Adapter Pattern~~ (Deprecated)
+
+> 아래 코드는 ADR-0023에서 제안된 LLMAdapter 패턴이나, MCP 기반 아키텍처 채택으로 **구현되지 않음**.
+> 참고 자료로만 보존.
 
 ```typescript
-// apps/cad-mcp/src/llm/adapter.ts
+// ⚠️ DEPRECATED - 구현되지 않음
+// MCP 프로토콜이 LLM-agnostic 인터페이스를 대체함
+
 interface LLMAdapter {
   chat(messages: Message[], tools?: ToolDef[]): Promise<LLMResponse>;
   supportsStreaming(): boolean;
   supportsToolCalling(): boolean;
 }
 
-interface LLMResponse {
-  content: string;
-  toolCalls?: ToolCall[];
-  done: boolean;
-}
-
-// Claude Adapter
-class ClaudeAdapter implements LLMAdapter {
-  async chat(messages: Message[], tools?: ToolDef[]): Promise<LLMResponse> {
-    const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      messages,
-      tools: tools?.map(toClaudeTool),
-    });
-    return mapClaudeResponse(response);
-  }
-
-  supportsStreaming() { return true; }
-  supportsToolCalling() { return true; }
-}
-
-// Ollama Adapter (로컬 LLM)
-class OllamaAdapter implements LLMAdapter {
-  async chat(messages: Message[], tools?: ToolDef[]): Promise<LLMResponse> {
-    const response = await ollama.chat({
-      model: this.modelName, // 'exaone3.5:2.4b', 'llama3.1:8b'
-      messages,
-      tools: tools?.map(toOllamaTool),
-    });
-    return mapOllamaResponse(response);
-  }
-
-  supportsStreaming() { return true; }
-  supportsToolCalling() { return this.modelName.includes('llama'); }
-}
+// 이 코드는 실제로 존재하지 않음
+// class ClaudeAdapter implements LLMAdapter { ... }
+// class OllamaAdapter implements LLMAdapter { ... }
 ```
 
-#### 4.7.2 Agent Loop Structure
+#### ~~4.7.2 Agent Loop Structure~~ (Deprecated)
+
+> 아래 Agent Loop는 Direct API 방식용으로 설계됨. MCP 기반 아키텍처에서는 **MCP 클라이언트(Claude Code 등)가 Agent Loop를 관리**하므로 구현되지 않음.
 
 ```typescript
-// apps/cad-mcp/src/llm/agent-loop.ts
-async function runAgentLoop(
-  adapter: LLMAdapter,
-  prompt: string,
-  tools: ToolDef[]
-): Promise<string> {
-  let messages: Message[] = [{ role: 'user', content: prompt }];
+// ⚠️ DEPRECATED - 구현되지 않음
+// MCP 클라이언트가 Agent Loop 담당
 
-  while (true) {
-    // 1. LLM 호출
-    const response = await adapter.chat(messages, tools);
-
-    // 2. 완료 확인
-    if (response.done || !response.toolCalls?.length) {
-      return response.content;
-    }
-
-    // 3. 도구 실행
-    for (const call of response.toolCalls) {
-      const tool = tools.find(t => t.name === call.name);
-      if (!tool) continue;
-
-      const result = await tool.execute(call.input);
-      messages.push({
-        role: 'tool',
-        tool_call_id: call.id,
-        content: JSON.stringify(result),
-      });
-    }
-
-    // 4. LLM에게 결과 전달
-    messages.push({ role: 'assistant', content: response.content });
-  }
-}
+// async function runAgentLoop(...) { ... }
 ```
 
-#### 4.7.3 LLM 역할 분담
+#### 4.7.3 현재 아키텍처의 역할 분담
 
-| 역할 | 메인 LLM (Claude/Ollama) | 로컬 LLM (exaone 2.4B) |
-|------|-------------------------|------------------------|
+| 역할 | MCP 클라이언트 (Claude Code 등) | CAD MCP 서버 |
+|------|-------------------------------|--------------|
 | 사용자 대화 | ✅ | ❌ |
-| 복잡한 추론 | ✅ | ❌ |
-| **ActionHints 사전 생성** | ❌ | ✅ (MAMA 통해) |
-| **ActionHints 해석/활용** | ✅ | ❌ |
+| Agent Loop 관리 | ✅ | ❌ |
+| LLM 선택 | ✅ | ❌ |
+| **CAD 도구 제공** | ❌ | ✅ |
+| **MAMA 도구 제공** | ❌ | ✅ |
 | **임베딩 생성** | ❌ | ✅ (multilingual-e5) |
 | **검색 결과 랭킹** | ❌ | ✅ |
-| 최종 코드 결정 | ✅ | ❌ |
 
 **핵심**:
-- 로컬 LLM → 임베딩 + 랭킹 + ActionHints 사전 생성 담당
-- ActionHints는 로컬 LLM이 MAMA를 통해 사전 생성하고, 메인 LLM이 컨텍스트로 활용하여 해석 (ADR-0023)
-- 메인 LLM은 복잡한 추론과 최종 결정에 집중
+- MCP 클라이언트 → LLM 선택, Agent Loop, 사용자 대화 담당
+- CAD MCP 서버 → 도구만 제공 (LLM에 대해 알 필요 없음)
+- MAMA → 임베딩, 검색, 힌트 주입 담당 (MCP 도구로 제공)
 
 #### 4.7.4 PoC 검증 결과 (ADR-0023)
 
@@ -1009,15 +986,17 @@ apps/cad-mcp/
 │   │   ├── index.ts        # MAMAModule 클래스
 │   │   ├── db.ts           # SQLite 연결
 │   │   ├── tools.ts        # 4 Core Tools
-│   │   ├── hooks.ts        # Hook Registry
+│   │   ├── hooks/          # Hook Registry
+│   │   │   ├── registry.ts
+│   │   │   ├── session-init.ts
+│   │   │   ├── pre-tool-list.ts
+│   │   │   └── post-execute.ts
 │   │   ├── search.ts       # 시맨틱 검색
 │   │   └── embeddings.ts   # 임베딩 생성
-│   ├── llm/
-│   │   ├── adapter.ts      # LLMAdapter 인터페이스
-│   │   ├── claude.ts       # Claude Adapter
-│   │   └── ollama.ts       # Ollama Adapter
 │   └── ...
 └── package.json            # @ai-native-cad/mcp
+
+# ~~llm/~~ 폴더 - 제외됨 (MCP 프로토콜이 LLM-agnostic 인터페이스 제공)
 ```
 
 **저장 구조:**
@@ -1067,7 +1046,7 @@ apps/cad-mcp/
 | **Phase 2: Hook** | Hook System | onSessionInit, preToolList, postExecute | FR71-74 |
 | **Phase 3: Intelligence** | 컨텍스트 + 멘토링 | Configurable Context, Adaptive Mentoring | FR75-78 |
 | **Phase 4: Learning** | 사용자 성장 추적 | learnings, growth_metrics | FR81-84 |
-| **Phase 5: Platform** | LLM Adapter + MCP 통합 | LLMAdapter, 도메인 폴더 | FR85-87 |
+| **Phase 5: Platform** | Module Library + MCP 통합 | Module Recommendation, 도메인 폴더 | FR80, FR85-86 |
 
 #### Phase 1: Core (FR67-70)
 
@@ -1105,12 +1084,12 @@ apps/cad-mcp/
 - [ ] DesignHints 시스템 구현 (Human CoT 유도)
 - [ ] terminology_evolution 테이블 구현 (용어 변화)
 
-#### Phase 5: Platform (FR85-87)
+#### Phase 5: Platform (FR80, FR85-86)
 
-- [ ] MCP 내부 통합 (npm install 시 MAMA 포함)
+- [x] MCP 내부 통합 (npm install 시 MAMA 포함) - ✅ Phase 1에서 완료
 - [ ] 도메인 폴더 구조 (domains/)
-- [ ] LLMAdapter 인터페이스 정의
-- [ ] ClaudeAdapter, OllamaAdapter 구현
+- [ ] Module Library Recommendation 구현 (ADR-0024)
+- ~~LLMAdapter 인터페이스~~ - ❌ 제외 (MCP 프로토콜이 LLM-agnostic 인터페이스 제공)
 
 ### 4.11 Architecture Validation
 
@@ -1130,8 +1109,10 @@ apps/cad-mcp/
 | FR67-70 (Core) | MAMA Module (4 Tools) | Phase 1 |
 | FR71-74 (Hook) | Hook Registry | Phase 2 |
 | FR75-78 (Intelligence) | Configurable Context, Mentoring | Phase 3 |
+| FR80 (Module Library) | Module Recommendation | Phase 5 |
 | FR81-84 (Learning) | Learning Progress, Growth Metrics | Phase 4 |
-| FR85-87 (Platform) | LLMAdapter, MCP 통합 | Phase 5 |
+| FR85-86 (Platform) | MCP 통합, 도메인 폴더 | Phase 5 |
+| ~~FR87 (LLM Adapter)~~ | ~~LLMAdapter~~ | ❌ 제외 (MCP로 대체) |
 
 #### Technical Risk Assessment
 
@@ -1167,7 +1148,7 @@ apps/cad-mcp/
 | [ADR-0020](./adr/0020-adaptive-mentoring.md) | Adaptive Mentoring | 사용자 수준별 힌트 조절 |
 | [ADR-0021](./adr/0021-anti-echo-chamber.md) | Anti-Echo Chamber | 에코챔버 방지 경고 |
 | [ADR-0022](./adr/0022-meta-tooling.md) | run_cad_code | JS 실행으로 도구 조합 |
-| [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent | LLMAdapter 패턴 |
+| ~~[ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md)~~ | ~~LLM-Agnostic Agent~~ | ~~LLMAdapter 패턴~~ ❌ Deprecated (MCP로 대체) |
 | [ADR-0024](./adr/0024-module-library-recommendation.md) | Module Library | 시맨틱 모듈 추천 |
 | [ADR-0025](./adr/0025-learning-track.md) | Learning Track | 사용자 성장 추적 시스템 |
 | [ADR-0026](./adr/0026-semantic-search-infra.md) | Semantic Search Infra | sqlite-vec + 로컬 임베딩 |
