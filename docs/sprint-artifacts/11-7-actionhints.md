@@ -18,20 +18,20 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
   - `moduleHints`: 관련 모듈 추천
   - `saveSuggestion`: 결정 저장 제안
 
-### AC2: 컨텍스트 기반 next_steps
+### AC2: 컨텍스트 기반 nextSteps
 **Given** 방(room)을 생성한 후
 **When** 결과가 반환되면
-**Then** next_steps에 "add_door: 문 배치하기 (방이 생성되었으니 출입구 필요)" 포함
+**Then** nextSteps에 "add_door: 문 배치하기 (방이 생성되었으니 출입구 필요)" 포함
 
-### AC3: save_suggestion 제안
+### AC3: saveSuggestion 제안
 **Given** 중요한 패턴이 발견되었을 때
 **When** 결과가 반환되면
-**Then** save_suggestion에 저장 제안이 포함된다
+**Then** saveSuggestion에 저장 제안이 포함된다
 
-### AC4: module_hints 추천
+### AC4: moduleHints 추천
 **Given** 특정 도메인 작업 중일 때
 **When** 관련 모듈이 존재하면
-**Then** module_hints에 추천 모듈이 포함된다
+**Then** moduleHints에 추천 모듈이 포함된다
 
 ### AC5: optional 플래그
 **Given** next_steps가 반환될 때
@@ -53,9 +53,9 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
 - [ ] Task 2: postExecute Hook 구현 (AC: #1-6)
   - [ ] 2.1 `apps/cad-mcp/src/mama/hooks/post-execute.ts` 생성
   - [ ] 2.2 도구 실행 결과 분석 로직
-  - [ ] 2.3 next_steps 생성 로직
-  - [ ] 2.4 module_hints 생성 로직 (MAMA 검색 기반)
-  - [ ] 2.5 save_suggestion 생성 로직
+  - [ ] 2.3 nextSteps 생성 로직
+  - [ ] 2.4 moduleHints 생성 로직 (MAMA 검색 기반)
+  - [ ] 2.5 saveSuggestion 생성 로직
   - [ ] 2.6 HookRegistry에 postExecute 등록
 
 - [ ] Task 3: 컨텍스트 분석기 구현 (AC: #2)
@@ -70,9 +70,9 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
   - [ ] 4.3 빈 actionHints 처리
 
 - [ ] Task 5: 테스트 작성
-  - [ ] 5.1 next_steps 생성 테스트
-  - [ ] 5.2 module_hints 추천 테스트
-  - [ ] 5.3 save_suggestion 테스트
+  - [ ] 5.1 nextSteps 생성 테스트
+  - [ ] 5.2 moduleHints 추천 테스트
+  - [ ] 5.3 saveSuggestion 테스트
   - [ ] 5.4 optional 플래그 테스트
   - [ ] 5.5 빈 ActionHints 테스트
 

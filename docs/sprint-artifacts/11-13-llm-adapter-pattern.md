@@ -97,10 +97,12 @@ interface LLMResponse {
 **설정:**
 ```json
 {
-  "llmAdapter": "claude",  // "claude" | "ollama" | "openai"
+  "llmAdapter": "claude",
   "ollamaModel": "qwen2.5-coder:7b"
 }
 ```
+
+> `llmAdapter`: `"claude"` | `"ollama"` | `"openai"`
 
 ### References
 
