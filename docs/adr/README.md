@@ -37,6 +37,7 @@ AI-Native CAD 프로젝트의 아키텍처 결정 기록.
 | [ADR-0023](0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent Architecture | Proposed | Platform |
 | [ADR-0024](0024-module-library-recommendation.md) | Module Library Recommendation | Proposed | Intelligence |
 | [ADR-0025](0025-learning-track.md) | Learning Track | Proposed | Learning |
+| [ADR-0026](0026-semantic-search-infra.md) | Semantic Search Infrastructure | Proposed | Core |
 
 ## ADR 템플릿
 

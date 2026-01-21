@@ -19,8 +19,20 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { CADExecutor } from './executor.js'
-import { CAD_TOOLS, type ToolSchema } from './schema.js'
+import { CAD_TOOLS, MAMA_TOOLS, type ToolSchema } from './schema.js'
 import { handleGlob } from './tools/glob.js'
+import {
+  handleMamaSave,
+  handleMamaSearch,
+  handleMamaUpdate,
+  handleMamaLoadCheckpoint,
+  handleMamaConfigure,
+  type SaveArgs,
+  type SearchArgs,
+  type UpdateArgs,
+  type ConfigureArgs,
+} from './mama/tools/index.js'
+import { initMAMA, shutdownMAMA } from './mama/index.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
@@ -171,10 +183,13 @@ function toMCPToolSchema(tool: ToolSchema) {
 
 /**
  * Get all tools as MCP format
- * Epic 10: Claude Code 패턴 6개 도구만 제공
+ * Epic 10: Claude Code 패턴 6개 도구
+ * Epic 11: MAMA 5개 도구 추가
  */
 function getAllMCPTools() {
-  return Object.values(CAD_TOOLS).map(toMCPToolSchema)
+  const cadTools = Object.values(CAD_TOOLS).map(toMCPToolSchema)
+  const mamaTools = Object.values(MAMA_TOOLS).map(toMCPToolSchema)
+  return [...cadTools, ...mamaTools]
 }
 
 /**
@@ -268,6 +283,14 @@ async function executeRunCadCode(
  * Create and start the MCP server
  */
 export async function createMCPServer(): Promise<Server> {
+  // Initialize MAMA (Epic 11)
+  try {
+    const mamaStatus = await initMAMA()
+    logger.info(`MAMA initialized: DB=${mamaStatus.dbReady}, Embedding=${mamaStatus.embeddingReady}, Vector=${mamaStatus.vectorSearchEnabled}`)
+  } catch (err) {
+    logger.warn(`MAMA initialization failed (non-fatal): ${err}`)
+  }
+
   // Initialize executor
   const exec = getExecutor()
   let restored = false
@@ -579,11 +602,64 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // ============================================================
+        // MAMA 도구 (Epic 11)
+        // ============================================================
+
+        // === mama_save: Save decision or checkpoint ===
+        case 'mama_save': {
+          const saveArgs = args as unknown as SaveArgs
+          const result = await handleMamaSave(saveArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_search: Semantic search for decisions ===
+        case 'mama_search': {
+          const searchArgs = args as unknown as SearchArgs
+          const result = await handleMamaSearch(searchArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_update: Update decision outcome ===
+        case 'mama_update': {
+          const updateArgs = args as unknown as UpdateArgs
+          const result = await handleMamaUpdate(updateArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_load_checkpoint: Resume from checkpoint ===
+        case 'mama_load_checkpoint': {
+          const result = await handleMamaLoadCheckpoint()
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_configure: View/modify configuration ===
+        case 'mama_configure': {
+          const configArgs = args as unknown as ConfigureArgs
+          const result = await handleMamaConfigure(configArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure`,
             }],
             isError: true,
           }
@@ -622,6 +698,8 @@ export async function runMCPServer(): Promise<void> {
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully...`)
     try {
+      // Shutdown MAMA (Epic 11)
+      shutdownMAMA()
       await stopWSServer()
       logger.info('Cleanup complete, exiting')
       process.exit(0)

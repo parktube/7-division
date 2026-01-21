@@ -1042,6 +1042,23 @@ apps/cad-mcp/
 - 별도 설정 불필요
 - 단일 패키지로 배포
 
+**MAMA 의존성 (package.json 추가):**
+
+```json
+{
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "sqlite-vec": "^0.1.6",
+    "@huggingface/transformers": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0"
+  }
+}
+```
+
+**상세**: [ADR-0026](adr/0026-semantic-search-infra.md) - sqlite-vec + 로컬 임베딩
+
 ### 4.10 Implementation Phases
 
 | Phase | 범위 | 산출물 | FR |
@@ -1054,13 +1071,16 @@ apps/cad-mcp/
 
 #### Phase 1: Core (FR67-70)
 
-- [ ] SQLite DB 스키마 구현 (`decisions`, `decision_edges`, `sessions`, `hints`)
-- [ ] `save()` 도구 구현 (Decision + Checkpoint)
-- [ ] `search()` 도구 구현 (시맨틱 + 최근 항목)
+- [ ] SQLite DB 스키마 구현 (`decisions`, `checkpoints`, `vss_memories`)
+- [ ] better-sqlite3 + sqlite-vec 어댑터 구현
+- [ ] 임베딩 시스템 구현 (@huggingface/transformers, multilingual-e5-small)
+- [ ] 임베딩 캐시 구현 (LRU)
+- [ ] `save()` 도구 구현 (Decision + Checkpoint + 임베딩)
+- [ ] `search()` 도구 구현 (시맨틱 검색 + 최근 항목)
 - [ ] `update()` 도구 구현 (outcome tracking)
 - [ ] `load_checkpoint()` 도구 구현
+- [ ] `decision_edges` 테이블 + Reasoning Graph edge 파싱
 - [ ] Topic Prefix 규칙 적용
-- [ ] Reasoning Graph edge 파싱
 
 #### Phase 2: Hook (FR71-74)
 
@@ -1149,6 +1169,8 @@ apps/cad-mcp/
 | [ADR-0022](./adr/0022-meta-tooling.md) | run_cad_code | JS 실행으로 도구 조합 |
 | [ADR-0023](./adr/0023-llm-agnostic-agent-architecture.md) | LLM-Agnostic Agent | LLMAdapter 패턴 |
 | [ADR-0024](./adr/0024-module-library-recommendation.md) | Module Library | 시맨틱 모듈 추천 |
+| [ADR-0025](./adr/0025-learning-track.md) | Learning Track | 사용자 성장 추적 시스템 |
+| [ADR-0026](./adr/0026-semantic-search-infra.md) | Semantic Search Infra | sqlite-vec + 로컬 임베딩 |
 
 ---
 

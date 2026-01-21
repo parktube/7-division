@@ -1,0 +1,302 @@
+/**
+ * CAD MAMA Database Layer
+ *
+ * Story 11.1: MAMA Core 4 Tools MCP 통합
+ * SQLite + sqlite-vec for semantic search
+ *
+ * Reference: ~/MAMA/packages/claude-code-plugin/src/core/db-adapter/sqlite-adapter.js
+ */
+
+import Database from 'better-sqlite3'
+import { existsSync, readFileSync, readdirSync } from 'fs'
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
+import { DB_PATH, ensureDataDirs, getEmbeddingDim } from './config.js'
+import { logger } from '../logger.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// ============================================================
+// Types
+// ============================================================
+
+export interface DecisionRow {
+  id: string
+  topic: string
+  decision: string
+  reasoning: string | null
+  outcome: string | null
+  outcome_reason: string | null
+  user_involvement: string | null
+  session_id: string | null
+  supersedes: string | null
+  superseded_by: string | null
+  confidence: number
+  created_at: number
+  updated_at: number | null
+}
+
+export interface CheckpointRow {
+  id: number
+  timestamp: number
+  summary: string
+  open_files: string | null
+  next_steps: string | null
+  status: string
+}
+
+// ============================================================
+// Database Singleton
+// ============================================================
+
+let db: Database.Database | null = null
+let vectorSearchEnabled = false
+
+/**
+ * Initialize database connection
+ *
+ * @returns Database instance
+ */
+export function initDatabase(): Database.Database {
+  if (db) {
+    return db
+  }
+
+  // Ensure directories exist
+  ensureDataDirs()
+
+  // Open database
+  db = new Database(DB_PATH, { verbose: undefined })
+  logger.info(`MAMA DB opened: ${DB_PATH}`)
+
+  // Configure for production
+  db.pragma('journal_mode = WAL')
+  db.pragma('busy_timeout = 5000')
+  db.pragma('synchronous = NORMAL')
+  db.pragma('cache_size = -64000') // 64MB cache
+  db.pragma('temp_store = MEMORY')
+  db.pragma('foreign_keys = ON')
+
+  // Load sqlite-vec extension (graceful degradation)
+  try {
+    // Dynamic import for sqlite-vec
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const sqliteVec = require('sqlite-vec')
+    sqliteVec.load(db)
+    vectorSearchEnabled = true
+    logger.info('sqlite-vec extension loaded')
+  } catch (err) {
+    vectorSearchEnabled = false
+    logger.warn(`sqlite-vec unavailable (Tier 2 fallback): ${err}`)
+  }
+
+  // Run migrations
+  runMigrations(db)
+
+  // Create vector table if enabled
+  if (vectorSearchEnabled) {
+    createVectorTable(db)
+  }
+
+  return db
+}
+
+/**
+ * Get database instance
+ */
+export function getDatabase(): Database.Database {
+  if (!db) {
+    return initDatabase()
+  }
+  return db
+}
+
+/**
+ * Check if vector search is available
+ */
+export function isVectorSearchEnabled(): boolean {
+  return vectorSearchEnabled
+}
+
+/**
+ * Close database connection
+ */
+export function closeDatabase(): void {
+  if (db) {
+    db.close()
+    db = null
+    logger.info('MAMA DB closed')
+  }
+}
+
+// ============================================================
+// Migration System
+// ============================================================
+
+/**
+ * Run database migrations
+ */
+function runMigrations(database: Database.Database): void {
+  const migrationsDir = join(__dirname, 'migrations')
+
+  // Check current version
+  let currentVersion = 0
+  try {
+    const tables = database
+      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'`)
+      .all()
+
+    if (tables.length > 0) {
+      const result = database
+        .prepare('SELECT MAX(version) as version FROM schema_version')
+        .get() as { version: number | null }
+      currentVersion = result?.version || 0
+    }
+  } catch {
+    currentVersion = 0
+  }
+
+  logger.info(`MAMA DB current schema version: ${currentVersion}`)
+
+  // Get migration files
+  if (!existsSync(migrationsDir)) {
+    logger.warn(`Migrations directory not found: ${migrationsDir}`)
+    return
+  }
+
+  const migrationFiles = readdirSync(migrationsDir)
+    .filter(file => file.endsWith('.sql'))
+    .sort()
+
+  // Apply migrations
+  for (const file of migrationFiles) {
+    const versionMatch = file.match(/^(\d+)-/)
+    if (!versionMatch) continue
+
+    const version = parseInt(versionMatch[1], 10)
+    if (version <= currentVersion) continue
+
+    const migrationPath = join(migrationsDir, file)
+    const migrationSQL = readFileSync(migrationPath, 'utf8')
+
+    logger.info(`Applying migration: ${file}`)
+
+    try {
+      database.exec('BEGIN TRANSACTION')
+      database.exec(migrationSQL)
+      database.exec('COMMIT')
+
+      logger.info(`Migration ${file} applied successfully`)
+    } catch (err) {
+      database.exec('ROLLBACK')
+
+      // Handle duplicate column errors (idempotent)
+      if (err instanceof Error && err.message.includes('duplicate column')) {
+        logger.warn(`Migration ${file} skipped (duplicate column - already applied)`)
+        database
+          .prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)')
+          .run(version)
+        continue
+      }
+
+      logger.error(`Migration ${file} failed: ${err}`)
+      throw new Error(`Migration ${file} failed: ${err}`)
+    }
+  }
+}
+
+/**
+ * Create vector search virtual table
+ */
+function createVectorTable(database: Database.Database): void {
+  const embeddingDim = getEmbeddingDim()
+
+  // Check if table exists
+  const tables = database
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='vss_memories'`)
+    .all()
+
+  if (tables.length === 0) {
+    logger.info(`Creating vss_memories virtual table (${embeddingDim}-dim)`)
+    database.exec(`
+      CREATE VIRTUAL TABLE vss_memories USING vec0(
+        embedding float[${embeddingDim}]
+      )
+    `)
+  }
+}
+
+// ============================================================
+// Vector Operations
+// ============================================================
+
+/**
+ * Insert embedding into vector table
+ *
+ * @param rowid - Row ID from decisions table
+ * @param embedding - Embedding vector
+ */
+export function insertEmbedding(rowid: number, embedding: Float32Array): void {
+  if (!vectorSearchEnabled || !db) {
+    return
+  }
+
+  const embeddingJson = JSON.stringify(Array.from(embedding))
+
+  // sqlite-vec requires rowid as literal (not placeholder)
+  const safeRowid = Number(rowid)
+  if (!Number.isInteger(safeRowid) || safeRowid < 1) {
+    throw new Error(`Invalid rowid: ${rowid}`)
+  }
+
+  db.prepare(`INSERT INTO vss_memories(rowid, embedding) VALUES (${safeRowid}, ?)`).run(
+    embeddingJson
+  )
+}
+
+/**
+ * Search similar embeddings
+ *
+ * @param embedding - Query embedding
+ * @param limit - Maximum results
+ * @returns Array of { rowid, distance }
+ */
+export function searchEmbeddings(
+  embedding: Float32Array,
+  limit = 10
+): Array<{ rowid: number; distance: number }> {
+  if (!vectorSearchEnabled || !db) {
+    return []
+  }
+
+  const embeddingJson = JSON.stringify(Array.from(embedding))
+
+  const results = db
+    .prepare(
+      `
+      SELECT
+        rowid,
+        distance
+      FROM vss_memories
+      WHERE embedding MATCH ?
+      ORDER BY distance
+      LIMIT ?
+    `
+    )
+    .all(embeddingJson, limit) as Array<{ rowid: number; distance: number }>
+
+  return results
+}
+
+/**
+ * Get last inserted rowid
+ */
+export function getLastInsertRowid(): number {
+  if (!db) {
+    throw new Error('Database not initialized')
+  }
+
+  const result = db.prepare('SELECT last_insert_rowid() as rowid').get() as { rowid: number }
+  return result.rowid
+}

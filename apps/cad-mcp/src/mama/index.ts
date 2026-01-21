@@ -1,0 +1,616 @@
+/**
+ * CAD MAMA Module
+ *
+ * Story 11.1: MAMA Core 4 Tools MCP 통합
+ * Main entry point for MAMA functionality
+ *
+ * Core 4 Tools:
+ * - mama_save: Save decision or checkpoint
+ * - mama_search: Semantic search for decisions
+ * - mama_update: Update decision outcome
+ * - mama_load_checkpoint: Resume from checkpoint
+ *
+ * Reference: ~/MAMA/packages/claude-code-plugin/src/core/mama-api.js
+ */
+
+import { logger } from '../logger.js'
+import {
+  getDatabase,
+  initDatabase,
+  closeDatabase,
+  isVectorSearchEnabled,
+  insertEmbedding,
+  searchEmbeddings,
+  getLastInsertRowid,
+  type DecisionRow,
+  type CheckpointRow,
+} from './db.js'
+import {
+  generateEmbedding,
+  generateEnhancedEmbedding,
+  preloadModel,
+  isEmbeddingReady,
+  clearEmbeddingCache,
+} from './embeddings.js'
+import { loadConfig, getContextInjection, type MAMAConfig } from './config.js'
+
+// ============================================================
+// Types
+// ============================================================
+
+export interface SaveDecisionParams {
+  topic: string
+  decision: string
+  reasoning: string
+  confidence?: number
+}
+
+export interface SaveCheckpointParams {
+  summary: string
+  open_files?: string[]
+  next_steps?: string
+}
+
+export interface SearchParams {
+  query?: string
+  limit?: number
+  type?: 'all' | 'decision' | 'checkpoint'
+}
+
+export interface UpdateParams {
+  id: string
+  outcome: 'SUCCESS' | 'FAILED' | 'PARTIAL'
+  reason?: string
+}
+
+export interface DecisionResult {
+  id: string
+  topic: string
+  decision: string
+  reasoning: string | null
+  outcome: string | null
+  confidence: number
+  created_at: number
+  similarity?: number
+}
+
+export interface CheckpointResult {
+  id: number
+  timestamp: number
+  summary: string
+  open_files: string[]
+  next_steps: string | null
+}
+
+// ============================================================
+// Module State
+// ============================================================
+
+let initialized = false
+
+// ============================================================
+// Initialization
+// ============================================================
+
+/**
+ * Initialize MAMA module
+ *
+ * - Opens database connection
+ * - Runs migrations
+ * - Preloads embedding model (async)
+ *
+ * @returns Initialization result
+ */
+export async function initMAMA(): Promise<{
+  dbReady: boolean
+  embeddingReady: boolean
+  vectorSearchEnabled: boolean
+}> {
+  if (initialized) {
+    return {
+      dbReady: true,
+      embeddingReady: isEmbeddingReady(),
+      vectorSearchEnabled: isVectorSearchEnabled(),
+    }
+  }
+
+  const startTime = Date.now()
+
+  try {
+    // Initialize database
+    initDatabase()
+    logger.info('MAMA database initialized')
+
+    // Preload embedding model (background)
+    preloadModel()
+      .then((ready) => {
+        if (ready) {
+          logger.info('MAMA embedding model preloaded')
+        }
+      })
+      .catch((err) => {
+        logger.warn(`MAMA embedding model preload failed: ${err}`)
+      })
+
+    initialized = true
+
+    const initTime = Date.now() - startTime
+    logger.info(`MAMA initialized in ${initTime}ms`)
+
+    return {
+      dbReady: true,
+      embeddingReady: isEmbeddingReady(),
+      vectorSearchEnabled: isVectorSearchEnabled(),
+    }
+  } catch (error) {
+    logger.error(`MAMA initialization failed: ${error}`)
+    throw error
+  }
+}
+
+/**
+ * Shutdown MAMA module
+ */
+export function shutdownMAMA(): void {
+  closeDatabase()
+  clearEmbeddingCache()
+  initialized = false
+  logger.info('MAMA shutdown complete')
+}
+
+// ============================================================
+// Decision ID Generation
+// ============================================================
+
+/**
+ * Generate unique decision ID
+ *
+ * Format: decision_{topic}_{timestamp}_{random}
+ */
+function generateDecisionId(topic: string): string {
+  const sanitized = topic
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .substring(0, 50)
+
+  const timestamp = Date.now()
+  const random = Math.random().toString(36).substring(2, 6)
+
+  return `decision_${sanitized}_${timestamp}_${random}`
+}
+
+// ============================================================
+// Save Operations
+// ============================================================
+
+/**
+ * Save a decision to MAMA
+ *
+ * @param params - Decision parameters
+ * @returns Decision ID
+ */
+export async function saveDecision(params: SaveDecisionParams): Promise<string> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const { topic, decision, reasoning, confidence = 0.5 } = params
+
+  // Validate
+  if (!topic || typeof topic !== 'string') {
+    throw new Error('topic is required (string)')
+  }
+  if (!decision || typeof decision !== 'string') {
+    throw new Error('decision is required (string)')
+  }
+  if (!reasoning || typeof reasoning !== 'string') {
+    throw new Error('reasoning is required (string)')
+  }
+  if (typeof confidence !== 'number' || confidence < 0 || confidence > 1) {
+    throw new Error('confidence must be between 0.0 and 1.0')
+  }
+
+  const db = getDatabase()
+  const decisionId = generateDecisionId(topic)
+  const now = Date.now()
+
+  // Check for previous decision on same topic
+  const previous = db
+    .prepare(
+      `
+      SELECT id FROM decisions
+      WHERE topic = ? AND superseded_by IS NULL
+      ORDER BY created_at DESC
+      LIMIT 1
+    `
+    )
+    .get(topic) as { id: string } | undefined
+
+  // Insert new decision
+  db.prepare(
+    `
+    INSERT INTO decisions (id, topic, decision, reasoning, confidence, supersedes, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `
+  ).run(decisionId, topic, decision, reasoning, confidence, previous?.id || null, now)
+
+  // Get rowid for embedding
+  const rowid = getLastInsertRowid()
+
+  // Update previous decision's superseded_by
+  if (previous) {
+    db.prepare(
+      `
+      UPDATE decisions
+      SET superseded_by = ?, updated_at = ?
+      WHERE id = ?
+    `
+    ).run(decisionId, now, previous.id)
+
+    logger.info(`Decision ${previous.id} superseded by ${decisionId}`)
+  }
+
+  // Generate and store embedding
+  if (isVectorSearchEnabled()) {
+    try {
+      const embedding = await generateEnhancedEmbedding({
+        topic,
+        decision,
+        reasoning,
+        confidence,
+      })
+
+      if (embedding) {
+        insertEmbedding(rowid, embedding)
+        logger.info(`Embedding stored for ${decisionId}`)
+      }
+    } catch (err) {
+      logger.warn(`Failed to generate embedding for ${decisionId}: ${err}`)
+    }
+  }
+
+  logger.info(`Decision saved: ${decisionId}`)
+  return decisionId
+}
+
+/**
+ * Save a checkpoint to MAMA
+ *
+ * @param params - Checkpoint parameters
+ * @returns Checkpoint ID
+ */
+export async function saveCheckpoint(params: SaveCheckpointParams): Promise<number> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const { summary, open_files = [], next_steps = '' } = params
+
+  if (!summary || typeof summary !== 'string') {
+    throw new Error('summary is required (string)')
+  }
+
+  const db = getDatabase()
+  const now = Date.now()
+
+  // Archive previous active checkpoints
+  db.prepare(
+    `
+    UPDATE checkpoints
+    SET status = 'archived'
+    WHERE status = 'active'
+  `
+  ).run()
+
+  // Insert new checkpoint
+  db.prepare(
+    `
+    INSERT INTO checkpoints (timestamp, summary, open_files, next_steps, status)
+    VALUES (?, ?, ?, ?, 'active')
+  `
+  ).run(now, summary, JSON.stringify(open_files), next_steps)
+
+  const checkpointId = getLastInsertRowid()
+
+  logger.info(`Checkpoint saved: ${checkpointId}`)
+  return checkpointId
+}
+
+// ============================================================
+// Search Operations
+// ============================================================
+
+/**
+ * Search decisions using semantic similarity
+ *
+ * @param params - Search parameters
+ * @returns Search results
+ */
+export async function searchDecisions(params: SearchParams): Promise<DecisionResult[]> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const { query, limit = 10 } = params
+  const db = getDatabase()
+
+  // If no query, return recent items
+  if (!query || query.trim().length === 0) {
+    const stmt = db.prepare(`
+      SELECT * FROM decisions
+      WHERE superseded_by IS NULL
+      ORDER BY created_at DESC
+      LIMIT ?
+    `)
+
+    const rows = stmt.all(limit) as DecisionRow[]
+    return rows.map((row) => ({
+      id: row.id,
+      topic: row.topic,
+      decision: row.decision,
+      reasoning: row.reasoning,
+      outcome: row.outcome,
+      confidence: row.confidence,
+      created_at: row.created_at,
+    }))
+  }
+
+  // Try vector search first
+  if (isVectorSearchEnabled() && isEmbeddingReady()) {
+    try {
+      const queryEmbedding = await generateEmbedding(query)
+
+      if (queryEmbedding) {
+        const vectorResults = searchEmbeddings(queryEmbedding, limit * 2)
+
+        if (vectorResults.length > 0) {
+          // Get decision details
+          const rowids = vectorResults.map((r) => r.rowid)
+          const placeholders = rowids.map(() => '?').join(',')
+
+          const rows = db
+            .prepare(
+              `
+              SELECT *, rowid FROM decisions
+              WHERE rowid IN (${placeholders})
+              AND superseded_by IS NULL
+            `
+            )
+            .all(...rowids) as (DecisionRow & { rowid: number })[]
+
+          // Create rowid to distance map
+          const distanceMap = new Map(vectorResults.map((r) => [r.rowid, r.distance]))
+
+          // Convert distance to similarity (cosine distance: 0 = identical)
+          const results = rows
+            .map((row) => {
+              const distance = distanceMap.get(row.rowid) || 1
+              const similarity = 1 - distance // Convert distance to similarity
+
+              return {
+                id: row.id,
+                topic: row.topic,
+                decision: row.decision,
+                reasoning: row.reasoning,
+                outcome: row.outcome,
+                confidence: row.confidence,
+                created_at: row.created_at,
+                similarity,
+              }
+            })
+            .filter((r) => r.similarity >= 0.6) // Threshold
+            .sort((a, b) => (b.similarity || 0) - (a.similarity || 0))
+            .slice(0, limit)
+
+          if (results.length > 0) {
+            logger.info(`Vector search: ${results.length} results for "${query}"`)
+            return results
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn(`Vector search failed, falling back to keyword: ${err}`)
+    }
+  }
+
+  // Fallback: keyword search
+  const keywords = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+
+  if (keywords.length === 0) {
+    return []
+  }
+
+  const likeConditions = keywords.map(() => '(topic LIKE ? OR decision LIKE ? OR reasoning LIKE ?)').join(' OR ')
+  const likeParams = keywords.flatMap((k) => [`%${k}%`, `%${k}%`, `%${k}%`])
+
+  const rows = db
+    .prepare(
+      `
+      SELECT * FROM decisions
+      WHERE (${likeConditions})
+      AND superseded_by IS NULL
+      ORDER BY created_at DESC
+      LIMIT ?
+    `
+    )
+    .all(...likeParams, limit) as DecisionRow[]
+
+  logger.info(`Keyword search: ${rows.length} results for "${query}"`)
+
+  return rows.map((row) => ({
+    id: row.id,
+    topic: row.topic,
+    decision: row.decision,
+    reasoning: row.reasoning,
+    outcome: row.outcome,
+    confidence: row.confidence,
+    created_at: row.created_at,
+    similarity: 0.75, // Default similarity for keyword matches
+  }))
+}
+
+// ============================================================
+// Update Operations
+// ============================================================
+
+/**
+ * Update decision outcome
+ *
+ * @param params - Update parameters
+ */
+export async function updateOutcome(params: UpdateParams): Promise<void> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const { id, outcome, reason } = params
+
+  if (!id || typeof id !== 'string') {
+    throw new Error('id is required (string)')
+  }
+
+  const validOutcomes = ['SUCCESS', 'FAILED', 'PARTIAL']
+  if (!outcome || !validOutcomes.includes(outcome)) {
+    throw new Error(`outcome must be one of: ${validOutcomes.join(', ')}`)
+  }
+
+  const db = getDatabase()
+  const now = Date.now()
+
+  const result = db
+    .prepare(
+      `
+      UPDATE decisions
+      SET outcome = ?, outcome_reason = ?, updated_at = ?
+      WHERE id = ?
+    `
+    )
+    .run(outcome, reason || null, now, id)
+
+  if (result.changes === 0) {
+    throw new Error(`Decision not found: ${id}`)
+  }
+
+  logger.info(`Decision ${id} outcome updated: ${outcome}`)
+}
+
+// ============================================================
+// Checkpoint Operations
+// ============================================================
+
+/**
+ * Load latest active checkpoint
+ *
+ * @returns Checkpoint or null
+ */
+export async function loadCheckpoint(): Promise<CheckpointResult | null> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const db = getDatabase()
+
+  const row = db
+    .prepare(
+      `
+      SELECT * FROM checkpoints
+      WHERE status = 'active'
+      ORDER BY timestamp DESC
+      LIMIT 1
+    `
+    )
+    .get() as CheckpointRow | undefined
+
+  if (!row) {
+    return null
+  }
+
+  let openFiles: string[] = []
+  try {
+    openFiles = JSON.parse(row.open_files || '[]')
+  } catch {
+    openFiles = []
+  }
+
+  return {
+    id: row.id,
+    timestamp: row.timestamp,
+    summary: row.summary,
+    open_files: openFiles,
+    next_steps: row.next_steps,
+  }
+}
+
+// ============================================================
+// Utility Functions
+// ============================================================
+
+/**
+ * Get recent decisions for a topic
+ */
+export async function getDecisionsByTopic(
+  topic: string,
+  limit = 10
+): Promise<DecisionResult[]> {
+  if (!initialized) {
+    await initMAMA()
+  }
+
+  const db = getDatabase()
+
+  const rows = db
+    .prepare(
+      `
+      SELECT * FROM decisions
+      WHERE topic = ?
+      ORDER BY created_at DESC
+      LIMIT ?
+    `
+    )
+    .all(topic, limit) as DecisionRow[]
+
+  return rows.map((row) => ({
+    id: row.id,
+    topic: row.topic,
+    decision: row.decision,
+    reasoning: row.reasoning,
+    outcome: row.outcome,
+    confidence: row.confidence,
+    created_at: row.created_at,
+  }))
+}
+
+/**
+ * Get MAMA status
+ */
+export function getStatus(): {
+  initialized: boolean
+  dbReady: boolean
+  embeddingReady: boolean
+  vectorSearchEnabled: boolean
+  config: MAMAConfig
+} {
+  return {
+    initialized,
+    dbReady: initialized,
+    embeddingReady: isEmbeddingReady(),
+    vectorSearchEnabled: isVectorSearchEnabled(),
+    config: loadConfig(),
+  }
+}
+
+// ============================================================
+// Export
+// ============================================================
+
+export {
+  // Re-export from submodules
+  loadConfig,
+  getContextInjection,
+  isVectorSearchEnabled,
+  isEmbeddingReady,
+}

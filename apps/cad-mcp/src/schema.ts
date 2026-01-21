@@ -4,6 +4,9 @@
  *
  * Epic 10: Claude Code 패턴 일치 MCP 도구
  * 6개 도구: glob, read, edit, write, lsp, bash
+ *
+ * Epic 11: MAMA 통합 도구
+ * 5개 도구: mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure
  */
 
 export interface ParameterSchema {
@@ -368,3 +371,10 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
     example: "mirror('arm_l', 'arm_r', 'x')",
   },
 };
+
+// ============================================================
+// MAMA Tools (Epic 11)
+// ============================================================
+
+// Re-export MAMA tools from mama/tools module
+export { MAMA_TOOLS, getMAMATools } from './mama/tools/index.js';

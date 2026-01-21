@@ -1,0 +1,375 @@
+/**
+ * MAMA MCP Tool Handlers
+ *
+ * Story 11.1: MAMA Core 4 Tools MCP 통합
+ *
+ * Implements handlers for:
+ * - mama_save: Save decision or checkpoint
+ * - mama_search: Semantic search for decisions
+ * - mama_update: Update decision outcome
+ * - mama_load_checkpoint: Resume from checkpoint
+ * - mama_configure: View/modify configuration
+ */
+
+import { logger } from '../../logger.js'
+import {
+  initMAMA,
+  saveDecision,
+  saveCheckpoint,
+  searchDecisions,
+  updateOutcome,
+  loadCheckpoint,
+  getStatus,
+  type DecisionResult,
+} from '../index.js'
+import { loadConfig, updateConfig } from '../config.js'
+
+// ============================================================
+// Response Types
+// ============================================================
+
+export interface ToolResponse {
+  success: boolean
+  data?: unknown
+  error?: string
+}
+
+// ============================================================
+// mama_save Handler
+// ============================================================
+
+export interface SaveArgs {
+  type: 'decision' | 'checkpoint'
+  // Decision fields
+  topic?: string
+  decision?: string
+  reasoning?: string
+  confidence?: number
+  // Checkpoint fields
+  summary?: string
+  open_files?: string[]
+  next_steps?: string
+}
+
+/**
+ * Handle mama_save tool call
+ */
+export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    if (args.type === 'decision') {
+      // Validate decision fields
+      if (!args.topic) {
+        return { success: false, error: 'topic is required for decision' }
+      }
+      if (!args.decision) {
+        return { success: false, error: 'decision is required for decision' }
+      }
+      if (!args.reasoning) {
+        return { success: false, error: 'reasoning is required for decision' }
+      }
+
+      const decisionId = await saveDecision({
+        topic: args.topic,
+        decision: args.decision,
+        reasoning: args.reasoning,
+        confidence: args.confidence,
+      })
+
+      logger.info(`mama_save: Decision saved - ${decisionId}`)
+
+      return {
+        success: true,
+        data: {
+          type: 'decision',
+          id: decisionId,
+          topic: args.topic,
+          message: `Decision saved. ID: ${decisionId}`,
+        },
+      }
+    } else if (args.type === 'checkpoint') {
+      // Validate checkpoint fields
+      if (!args.summary) {
+        return { success: false, error: 'summary is required for checkpoint' }
+      }
+
+      const checkpointId = await saveCheckpoint({
+        summary: args.summary,
+        open_files: args.open_files,
+        next_steps: args.next_steps,
+      })
+
+      logger.info(`mama_save: Checkpoint saved - ${checkpointId}`)
+
+      return {
+        success: true,
+        data: {
+          type: 'checkpoint',
+          id: checkpointId,
+          message: `Checkpoint saved. ID: ${checkpointId}`,
+        },
+      }
+    } else {
+      return { success: false, error: "type must be 'decision' or 'checkpoint'" }
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_save failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// mama_search Handler
+// ============================================================
+
+export interface SearchArgs {
+  query?: string
+  limit?: number
+  type?: 'all' | 'decision' | 'checkpoint'
+}
+
+/**
+ * Handle mama_search tool call
+ */
+export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    const results = await searchDecisions({
+      query: args.query,
+      limit: args.limit || 10,
+      type: args.type || 'all',
+    })
+
+    // Format results for LLM consumption
+    const formattedResults = results.map((r: DecisionResult) => ({
+      id: r.id,
+      topic: r.topic,
+      decision: r.decision,
+      reasoning: r.reasoning,
+      outcome: r.outcome,
+      confidence: r.confidence,
+      similarity: r.similarity,
+      created_at: r.created_at,
+      age: formatAge(r.created_at),
+    }))
+
+    logger.info(`mama_search: Found ${results.length} results for "${args.query || '(recent)'}"`)
+
+    return {
+      success: true,
+      data: {
+        query: args.query || null,
+        count: results.length,
+        results: formattedResults,
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_search failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// mama_update Handler
+// ============================================================
+
+export interface UpdateArgs {
+  id: string
+  outcome: string
+  reason?: string
+}
+
+/**
+ * Handle mama_update tool call
+ */
+export async function handleMamaUpdate(args: UpdateArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    // Normalize outcome to uppercase
+    const normalizedOutcome = args.outcome.toUpperCase() as 'SUCCESS' | 'FAILED' | 'PARTIAL'
+
+    if (!['SUCCESS', 'FAILED', 'PARTIAL'].includes(normalizedOutcome)) {
+      return {
+        success: false,
+        error: "outcome must be 'SUCCESS', 'FAILED', or 'PARTIAL'",
+      }
+    }
+
+    await updateOutcome({
+      id: args.id,
+      outcome: normalizedOutcome,
+      reason: args.reason,
+    })
+
+    logger.info(`mama_update: Decision ${args.id} outcome updated to ${normalizedOutcome}`)
+
+    return {
+      success: true,
+      data: {
+        id: args.id,
+        outcome: normalizedOutcome,
+        reason: args.reason || null,
+        message: `Decision ${args.id} updated to ${normalizedOutcome}`,
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_update failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// mama_load_checkpoint Handler
+// ============================================================
+
+/**
+ * Handle mama_load_checkpoint tool call
+ */
+export async function handleMamaLoadCheckpoint(): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    const checkpoint = await loadCheckpoint()
+
+    if (!checkpoint) {
+      return {
+        success: true,
+        data: {
+          found: false,
+          message: 'No active checkpoint found. This appears to be a fresh session.',
+        },
+      }
+    }
+
+    logger.info(`mama_load_checkpoint: Loaded checkpoint ${checkpoint.id}`)
+
+    return {
+      success: true,
+      data: {
+        found: true,
+        checkpoint: {
+          id: checkpoint.id,
+          timestamp: checkpoint.timestamp,
+          age: formatAge(checkpoint.timestamp),
+          summary: checkpoint.summary,
+          open_files: checkpoint.open_files,
+          next_steps: checkpoint.next_steps,
+        },
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_load_checkpoint failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// mama_configure Handler
+// ============================================================
+
+export interface ConfigureArgs {
+  action?: 'get' | 'set'
+  contextInjection?: 'none' | 'hint' | 'full'
+}
+
+/**
+ * Handle mama_configure tool call
+ */
+export async function handleMamaConfigure(args: ConfigureArgs): Promise<ToolResponse> {
+  try {
+    const action = args.action || 'get'
+
+    if (action === 'set') {
+      const updates: Record<string, unknown> = {}
+
+      if (args.contextInjection) {
+        if (!['none', 'hint', 'full'].includes(args.contextInjection)) {
+          return {
+            success: false,
+            error: "contextInjection must be 'none', 'hint', or 'full'",
+          }
+        }
+        updates.contextInjection = args.contextInjection
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return { success: false, error: 'No valid settings to update' }
+      }
+
+      updateConfig(updates as Parameters<typeof updateConfig>[0])
+      logger.info(`mama_configure: Settings updated`)
+    }
+
+    // Always return current config
+    const config = loadConfig()
+    const status = getStatus()
+
+    return {
+      success: true,
+      data: {
+        config: {
+          modelName: config.modelName,
+          embeddingDim: config.embeddingDim,
+          contextInjection: config.contextInjection,
+        },
+        status: {
+          initialized: status.initialized,
+          dbReady: status.dbReady,
+          embeddingReady: status.embeddingReady,
+          vectorSearchEnabled: status.vectorSearchEnabled,
+          tier: getTierDescription(status),
+        },
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_configure failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// Utility Functions
+// ============================================================
+
+/**
+ * Format timestamp age as human-readable string
+ */
+function formatAge(timestamp: number): string {
+  const now = Date.now()
+  const diffMs = now - timestamp
+  const diffSec = Math.floor(diffMs / 1000)
+  const diffMin = Math.floor(diffSec / 60)
+  const diffHour = Math.floor(diffMin / 60)
+  const diffDay = Math.floor(diffHour / 24)
+
+  if (diffDay > 0) {
+    return `${diffDay}d ago`
+  } else if (diffHour > 0) {
+    return `${diffHour}h ago`
+  } else if (diffMin > 0) {
+    return `${diffMin}m ago`
+  } else {
+    return 'just now'
+  }
+}
+
+/**
+ * Get tier description based on status
+ */
+function getTierDescription(status: ReturnType<typeof getStatus>): string {
+  if (status.vectorSearchEnabled && status.embeddingReady) {
+    return 'Tier 1 (Full): Vector search + Embeddings'
+  } else if (status.embeddingReady) {
+    return 'Tier 2 (Limited): Embeddings only, no sqlite-vec'
+  } else {
+    return 'Tier 3 (Basic): Keyword search only'
+  }
+}
