@@ -20,6 +20,7 @@ export {
   handleMamaSetSkillLevel,
   handleMamaHealth,
   handleMamaGrowthReport,
+  handleMamaRecommendModules,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
@@ -28,5 +29,6 @@ export {
   type SetSkillLevelArgs,
   type HealthArgs,
   type GrowthReportArgs,
+  type RecommendModulesArgs,
   type ToolResponse,
 } from './handlers.js'

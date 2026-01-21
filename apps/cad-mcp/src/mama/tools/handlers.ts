@@ -39,6 +39,10 @@ import {
   type SaveLearningResult,
 } from '../learning-tracker.js'
 import { getGrowthSummary, formatGrowthReport, type GrowthSummary } from '../growth-tracker.js'
+import {
+  recommendModules,
+  syncModulesFromFiles,
+} from '../module-recommender.js'
 
 // ============================================================
 // Response Types
@@ -881,6 +885,72 @@ export async function handleMamaGrowthReport(args: GrowthReportArgs): Promise<To
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     logger.error(`mama_growth_report failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// mama_recommend_modules Handler (Story 11.19)
+// ============================================================
+
+export interface RecommendModulesArgs {
+  query: string
+  limit?: number
+  min_score?: number
+  tags?: string[]
+  sync_first?: boolean
+}
+
+/**
+ * Handle mama_recommend_modules tool call
+ *
+ * Story 11.19: Module Library Recommendation
+ */
+export async function handleMamaRecommendModules(
+  args: RecommendModulesArgs
+): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    // Sync modules from files if requested
+    if (args.sync_first) {
+      const synced = await syncModulesFromFiles()
+      logger.info(`mama_recommend_modules: Synced ${synced} modules`)
+    }
+
+    // Get recommendations
+    const recommendations = await recommendModules(args.query, {
+      limit: args.limit,
+      minScore: args.min_score,
+      tags: args.tags,
+    })
+
+    logger.info(
+      `mama_recommend_modules: Found ${recommendations.length} modules for query "${args.query}"`
+    )
+
+    return {
+      success: true,
+      data: {
+        query: args.query,
+        count: recommendations.length,
+        recommendations: recommendations.map((r) => ({
+          name: r.name,
+          description: r.description,
+          tags: r.tags,
+          score: Math.round(r.score * 100) / 100,
+          scoreBreakdown: {
+            semantic: Math.round(r.scoreBreakdown.semantic * 100) / 100,
+            usage: Math.round(r.scoreBreakdown.usage * 100) / 100,
+            recency: Math.round(r.scoreBreakdown.recency * 100) / 100,
+          },
+          example: r.example,
+        })),
+      },
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_recommend_modules failed: ${errorMsg}`)
     return { success: false, error: errorMsg }
   }
 }

@@ -9,10 +9,14 @@
 
 import Database from 'better-sqlite3'
 import { existsSync, readFileSync, readdirSync } from 'fs'
+import { createRequire } from 'module'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { DB_PATH, ensureDataDirs, getEmbeddingDim } from './config.js'
 import { logger } from '../logger.js'
+
+// ESM에서 CommonJS 모듈 로드를 위한 require 함수 생성
+const require = createRequire(import.meta.url)
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -99,6 +103,18 @@ export interface TerminologyEvolutionRow {
   domain: string | null         // Domain (style, color, spatial, etc.)
   learning_id: string | null    // Related learning
   detected_at: number           // Unix timestamp (seconds)
+}
+
+// Module metadata for recommendation (Story 11.19)
+export interface ModuleRow {
+  name: string  // Primary key
+  description: string
+  tags: string | null  // JSON array
+  example: string | null
+  usage_count: number
+  last_used_at: number | null
+  created_at: number
+  updated_at: number | null
 }
 
 // ============================================================
@@ -465,6 +481,50 @@ export function getEdgeSummary(decisionId: string): {
     builds_on: outgoing.filter((e) => e.relationship === 'builds_on').map((e) => e.to_id),
     debates: outgoing.filter((e) => e.relationship === 'debates').map((e) => e.to_id),
     synthesizes: outgoing.filter((e) => e.relationship === 'synthesizes').map((e) => e.to_id),
+  }
+}
+
+// ============================================================
+// Topic to Decision ID Resolution
+// ============================================================
+
+/**
+ * Get the latest decision ID for a given topic
+ *
+ * Follows the supersedes chain to find the most recent decision
+ * that hasn't been superseded.
+ *
+ * @param topic - Topic name (e.g., 'cad:mama_comparison_test')
+ * @returns Decision ID or null if not found
+ */
+export function getDecisionIdByTopic(topic: string): string | null {
+  if (!db) {
+    return null
+  }
+
+  try {
+    // Find the latest decision with this topic that is not superseded
+    const row = db.prepare(`
+      SELECT d.id FROM decisions d
+      LEFT JOIN decision_edges e ON d.id = e.to_id AND e.relationship = 'supersedes'
+      WHERE d.topic = ? AND e.from_id IS NULL
+      ORDER BY d.created_at DESC
+      LIMIT 1
+    `).get(topic) as { id: string } | undefined
+
+    if (row) {
+      return row.id
+    }
+
+    // Fallback: just get the latest decision with this topic
+    const fallback = db.prepare(`
+      SELECT id FROM decisions WHERE topic = ? ORDER BY created_at DESC LIMIT 1
+    `).get(topic) as { id: string } | undefined
+
+    return fallback?.id || null
+  } catch (error) {
+    logger.error(`Failed to get decision ID by topic: ${error}`)
+    return null
   }
 }
 
@@ -1165,4 +1225,144 @@ export function countTerminologyByDomain(
   }
 
   return counts
+}
+
+// ============================================================
+// Module Library (Story 11.19)
+// ============================================================
+
+/**
+ * Upsert module metadata
+ *
+ * @param module - Module metadata
+ */
+export function upsertModule(module: {
+  name: string
+  description: string
+  tags?: string[]
+  example?: string
+}): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  const tagsJson = module.tags ? JSON.stringify(module.tags) : null
+
+  db!.prepare(`
+    INSERT INTO modules (name, description, tags, example, usage_count, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 0, ?, ?)
+    ON CONFLICT(name) DO UPDATE SET
+      description = excluded.description,
+      tags = excluded.tags,
+      example = excluded.example,
+      updated_at = excluded.updated_at
+  `).run(module.name, module.description, tagsJson, module.example || null, now, now)
+}
+
+/**
+ * Get module by name
+ *
+ * @param name - Module name
+ * @returns Module row or null
+ */
+export function getModule(name: string): ModuleRow | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  return db!.prepare(`
+    SELECT * FROM modules WHERE name = ?
+  `).get(name) as ModuleRow | undefined ?? null
+}
+
+/**
+ * Get all modules
+ *
+ * @returns Array of module rows
+ */
+export function getAllModules(): ModuleRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  return db!.prepare(`
+    SELECT * FROM modules ORDER BY usage_count DESC, name ASC
+  `).all() as ModuleRow[]
+}
+
+/**
+ * Record module usage (increment count and update timestamp)
+ *
+ * @param name - Module name
+ */
+export function recordModuleUsage(name: string): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  db!.prepare(`
+    UPDATE modules
+    SET usage_count = usage_count + 1, last_used_at = ?
+    WHERE name = ?
+  `).run(now, name)
+}
+
+/**
+ * Search modules by criteria
+ *
+ * @param options - Search options
+ * @returns Array of module rows
+ */
+export function searchModules(options: {
+  namePattern?: string
+  tags?: string[]
+  limit?: number
+}): ModuleRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  let query = 'SELECT * FROM modules WHERE 1=1'
+  const params: (string | number)[] = []
+
+  if (options.namePattern) {
+    query += ' AND name LIKE ?'
+    params.push(`%${options.namePattern}%`)
+  }
+
+  if (options.tags && options.tags.length > 0) {
+    // Match any tag
+    const tagConditions = options.tags.map(() => 'tags LIKE ?').join(' OR ')
+    query += ` AND (${tagConditions})`
+    options.tags.forEach(tag => params.push(`%"${tag}"%`))
+  }
+
+  query += ' ORDER BY usage_count DESC, name ASC'
+
+  if (options.limit) {
+    query += ' LIMIT ?'
+    params.push(options.limit)
+  }
+
+  return db!.prepare(query).all(...params) as ModuleRow[]
+}
+
+/**
+ * Delete module
+ *
+ * @param name - Module name
+ */
+export function deleteModule(name: string): boolean {
+  if (!db) {
+    initDatabase()
+  }
+
+  const result = db!.prepare(`
+    DELETE FROM modules WHERE name = ?
+  `).run(name)
+
+  return result.changes > 0
 }

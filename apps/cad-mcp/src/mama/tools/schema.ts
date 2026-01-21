@@ -371,6 +371,57 @@ Use this to monitor knowledge quality and identify areas for improvement.`,
       required: [],
     },
   },
+
+  // === mama_recommend_modules: Module library recommendation (Story 11.19) ===
+  mama_recommend_modules: {
+    name: 'mama_recommend_modules',
+    description: `📚 Recommend CAD modules based on semantic query.
+
+**Scoring Algorithm:**
+Score = (semantic_similarity × 0.6) + (usage_frequency × 0.3) + (recency × 0.1)
+
+**Use this when:**
+• User describes what they want to create (e.g., "draw a chicken")
+• Looking for reusable modules for a specific task
+• Exploring available module library
+
+**Example:**
+query: "draw a chicken character"
+→ Returns: chicken, animal_lib, crossy_lib with relevance scores
+
+**Options:**
+• limit: Number of results (default: 5)
+• min_score: Minimum score threshold (default: 0.1)
+• tags: Filter by specific tags
+• sync_first: Sync module files before search`,
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Natural language query describing what you want to create (e.g., "draw a chicken", "create farm background")',
+        },
+        limit: {
+          type: 'number',
+          description: 'Maximum number of recommendations to return. Default: 5',
+        },
+        min_score: {
+          type: 'number',
+          description: 'Minimum score threshold (0-1). Default: 0.1',
+        },
+        tags: {
+          type: 'array',
+          description: 'Filter modules by specific tags',
+          items: { type: 'string', description: 'Tag to filter by' },
+        },
+        sync_first: {
+          type: 'boolean',
+          description: 'Sync module files to database before searching. Default: false',
+        },
+      },
+      required: ['query'],
+    },
+  },
 }
 
 /**

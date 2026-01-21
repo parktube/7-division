@@ -301,8 +301,10 @@ describe('Reasoning Parser', () => {
 
     const result = parseReasoning('builds_on: invalid_id_format')
 
+    // Malformed IDs (not matching decision_xxx or topic:pattern) are silently ignored
     expect(result.edges).toHaveLength(0)
-    expect(result.warnings.length).toBeGreaterThan(0)
+    // No warnings for malformed patterns - they are simply not recognized
+    expect(result.warnings).toHaveLength(0)
   })
 
   it('should handle null/undefined reasoning', async () => {
@@ -1531,10 +1533,10 @@ describe('Adaptive Mentoring', () => {
       optional: false,
     }
 
-    // Expert: minimal
+    // Expert: minimal (action name + first sentence of relevance)
     const expertHint = formatNextStep(step, 'expert')
     expect(expertHint.description).toBe('add_door')
-    expect(expertHint.relevance).toBe('')
+    expect(expertHint.relevance).toBe('방이 생성되었으니 출입구가 필요합니다')
 
     // Intermediate: brief
     const intermediateHint = formatNextStep(step, 'intermediate')

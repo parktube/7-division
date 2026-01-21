@@ -15,6 +15,7 @@ import type {
 } from '../types/action-hints.js'
 import { detectEntityTypes, generateActionHints } from '../rules/index.js'
 import { getAdaptiveHints, trackAction, getActionDomain } from '../mentoring.js'
+import { trackImportsFromCode } from '../module-recommender.js'
 
 // ============================================================
 // Entity Name Extraction
@@ -161,6 +162,11 @@ export function executePostExecute(
   }
 
   try {
+    // Track module usage from import statements (Story 11.19)
+    if (context.code) {
+      trackImportsFromCode(context.code)
+    }
+
     // Collect entity names from multiple sources
     const entitiesFromCode = context.code
       ? extractEntityNames(context.code)

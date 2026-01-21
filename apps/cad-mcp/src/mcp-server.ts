@@ -31,6 +31,7 @@ import {
   handleMamaSetSkillLevel,
   handleMamaHealth,
   handleMamaGrowthReport,
+  handleMamaRecommendModules,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
@@ -39,8 +40,9 @@ import {
   type SetSkillLevelArgs,
   type HealthArgs,
   type GrowthReportArgs,
+  type RecommendModulesArgs,
 } from './mama/tools/index.js'
-import { shutdownMAMA } from './mama/index.js'
+import { shutdownMAMA, getHintsForTool } from './mama/index.js'
 import { orchestrator } from './orchestrator.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
@@ -166,6 +168,15 @@ function getExecutor(): CADExecutor {
     executor = CADExecutor.create('mcp-scene')
   }
   return executor
+}
+
+/**
+ * Add hints to tool result (max 3 hints per tool)
+ */
+function addHintsToResult<T extends object>(toolName: string, result: T): T & { _hints?: string[] } {
+  const hints = getHintsForTool(toolName)
+  if (hints.length === 0) return result
+  return { ...result, _hints: hints.map(h => `💡 ${h}`) }
 }
 
 /**
@@ -364,6 +375,8 @@ export async function createMCPServer(): Promise<Server> {
       capabilities: {
         tools: {},
       },
+      // Story 11.5: SessionStart - inject checkpoint/decisions context
+      instructions: sessionContext || undefined,
     }
   )
 
@@ -372,21 +385,11 @@ export async function createMCPServer(): Promise<Server> {
     const tools = getAllMCPTools()
 
     // Apply preToolList hook via orchestrator (LLM-agnostic)
-    const enhancedTools = orchestrator.handleToolsList(
-      tools.map((t) => ({
-        name: t.name,
-        description: t.description,
-        parameters: t.inputSchema,
-      }))
-    )
+    const enhancedTools = orchestrator.handleToolsList(tools)
 
-    // Convert back to MCP format
+    // Return enhanced tools
     return {
-      tools: enhancedTools.map((t) => ({
-        name: t.name,
-        description: t.description,
-        inputSchema: t.parameters,
-      })),
+      tools: enhancedTools,
     }
   })
 
@@ -403,30 +406,20 @@ export async function createMCPServer(): Promise<Server> {
         // === glob: 파일 목록 조회 ===
         case 'glob': {
           const pattern = (args as Record<string, unknown>)?.pattern as string | undefined
-          const result = handleGlob({ pattern })
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
+          const result = addHintsToResult('glob', handleGlob({ pattern }))
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
         // === read: 파일 읽기 ===
         case 'read': {
           const file = (args as Record<string, unknown>)?.file as string
-          const result = handleRead({ file })
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
+          const result = addHintsToResult('read', handleRead({ file }))
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
@@ -458,7 +451,7 @@ export async function createMCPServer(): Promise<Server> {
 
           if (!editResult.success) {
             return {
-              content: [{ type: 'text', text: JSON.stringify(editResult, null, 2) }],
+              content: [{ type: 'text', text: JSON.stringify(addHintsToResult('edit', editResult), null, 2) }],
               isError: true,
             }
           }
@@ -482,7 +475,7 @@ export async function createMCPServer(): Promise<Server> {
               { toolName: 'edit', file, entitiesCreated: entities, code: newCode }
             )
 
-            const response = {
+            const response = addHintsToResult('edit', {
               success: true,
               data: {
                 file,
@@ -492,7 +485,7 @@ export async function createMCPServer(): Promise<Server> {
               logs: execResult.logs,
               warnings: allWarnings.length > 0 ? allWarnings : undefined,
               actionHints: orchestrator.formatHints(cadResult),
-            }
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
             }
@@ -505,7 +498,7 @@ export async function createMCPServer(): Promise<Server> {
             // Story 10.10: Restore scene from main.js
             const sceneRestored = await restoreSceneFromMainCode(exec)
 
-            const response = {
+            const response = addHintsToResult('edit', {
               success: false,
               data: {
                 file,
@@ -517,7 +510,7 @@ export async function createMCPServer(): Promise<Server> {
               hint: sceneRestored
                 ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'
                 : 'Code execution failed. Changes rolled back.',
-            }
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
               isError: true,
@@ -538,7 +531,7 @@ export async function createMCPServer(): Promise<Server> {
 
           if (!writeResult.success) {
             return {
-              content: [{ type: 'text', text: JSON.stringify(writeResult, null, 2) }],
+              content: [{ type: 'text', text: JSON.stringify(addHintsToResult('write', writeResult), null, 2) }],
               isError: true,
             }
           }
@@ -557,7 +550,7 @@ export async function createMCPServer(): Promise<Server> {
             )
 
             const combinedWarnings = [...(writeResult.warnings || []), ...(execResult.warnings || [])]
-            const response = {
+            const response = addHintsToResult('write', {
               success: true,
               data: {
                 file,
@@ -567,7 +560,7 @@ export async function createMCPServer(): Promise<Server> {
               logs: execResult.logs,
               warnings: combinedWarnings.length > 0 ? combinedWarnings : undefined,
               actionHints: orchestrator.formatHints(cadResult),
-            }
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
             }
@@ -579,7 +572,7 @@ export async function createMCPServer(): Promise<Server> {
             const sceneRestored = await restoreSceneFromMainCode(exec)
 
             const combinedWarnings = [...(writeResult.warnings || []), ...(execResult.warnings || [])]
-            const response = {
+            const response = addHintsToResult('write', {
               success: false,
               data: {
                 file,
@@ -591,7 +584,7 @@ export async function createMCPServer(): Promise<Server> {
               hint: sceneRestored
                 ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'
                 : 'Code execution failed. Changes rolled back.',
-            }
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
               isError: true,
@@ -606,21 +599,16 @@ export async function createMCPServer(): Promise<Server> {
           const funcName = (args as Record<string, unknown>)?.name as string | undefined
           const file = (args as Record<string, unknown>)?.file as string | undefined
 
-          const result = handleLsp({
+          const result = addHintsToResult('lsp', handleLsp({
             operation: operation as 'domains' | 'describe' | 'schema' | 'symbols',
             domain,
             name: funcName,
             file,
-          })
+          }))
 
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
@@ -632,7 +620,7 @@ export async function createMCPServer(): Promise<Server> {
           const clearSketch = (args as Record<string, unknown>)?.clearSketch as boolean | undefined
 
           const exec = getExecutor()
-          const result = await handleBash(
+          const bashResult = await handleBash(
             { command, name, group, clearSketch },
             exec,
             () => {
@@ -645,14 +633,10 @@ export async function createMCPServer(): Promise<Server> {
             }
           )
 
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
+          const result = addHintsToResult('bash', bashResult)
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
@@ -749,11 +733,21 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === mama_recommend_modules: Module library recommendation (Story 11.19) ===
+        case 'mama_recommend_modules': {
+          const recommendArgs = args as unknown as RecommendModulesArgs
+          const result = await handleMamaRecommendModules(recommendArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report, mama_recommend_modules`,
             }],
             isError: true,
           }
