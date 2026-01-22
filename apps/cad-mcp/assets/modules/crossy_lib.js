@@ -60,11 +60,14 @@ function stackZ(baseName, gap) {
 }
 
 // 깊이 정렬 (엔티티/그룹 내부용)
+// 공식: (wx - wy + wz) - 3D 공간에서 개별 엔티티의 깊이 (z축 포함)
+// vs registerIsoGroup의 (x + y) - 화면 Y 좌표 기반 그룹 간 정렬
+// 두 공식은 다른 용도: sortByDepth는 3D 박스 겹침, registerIsoGroup은 2D 화면 배치
 function sortByDepth() {
   const names = Array.prototype.slice.call(arguments);
   const valid = names.filter(function(n) { return _parts[n]; });
   if (valid.length < 2) return;
-  
+
   valid.sort(function(a, b) {
     const pa = _parts[a], pb = _parts[b];
     return (pa.wx - pa.wy + pa.wz) - (pb.wx - pb.wy + pb.wz);

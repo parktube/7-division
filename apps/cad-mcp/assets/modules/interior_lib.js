@@ -8,6 +8,7 @@
 
 // ============================================
 // Isometric 기본
+// TODO: crossy_lib.js와 중복 - 향후 공유 유틸로 분리 고려
 // ============================================
 const ISO = Math.PI / 6;
 const COS = Math.cos(ISO);
@@ -199,6 +200,7 @@ function wallRight(name, wx, wy, wz, depth, height, color) {
  * @param {object} color - 색상 (J.oak 등)
  */
 function woodFloor(name, wx, wy, wz, width, depth, plankWidth, color) {
+  // || 사용: plankWidth=0은 무의미하므로 falsy 체크로 충분
   plankWidth = plankWidth || 20;
   
   const hw = width / 2;

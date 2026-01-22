@@ -290,6 +290,7 @@ export async function recommendModules(
   // Score each module
   const scored: ModuleRecommendation[] = []
 
+  // TODO: 모듈 저장 시 임베딩 미리 계산하여 DB 캐싱 (확장성 개선)
   for (const module of modules) {
     // Generate module embedding from description + tags
     const moduleText = buildModuleText(module)
@@ -406,8 +407,9 @@ export function trackModuleUsage(moduleName: string): void {
  * @param code - CAD code being executed
  */
 export function trackImportsFromCode(code: string): void {
-  // Match: import 'module', import { x } from 'module', import * as x from 'module'
-  const importMatches = code.matchAll(/import\s+(?:\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
+  // Match: import 'module', import { x } from 'module', import * as x from 'module', import x from 'module'
+  // Note: CAD 모듈은 주로 import 'module' 형태 사용
+  const importMatches = code.matchAll(/import\s+(?:\w+\s+from\s+|\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
 
   for (const match of importMatches) {
     const moduleName = match[1]
