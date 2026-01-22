@@ -257,7 +257,7 @@ function formatHintContext(
   }
 
   if (decisions.length > 0) {
-    parts.push(`${decisions.length} related decisions available`)
+    parts.push(`${decisions.length} recent decisions available`)
   }
 
   if (learningHints.length > 0) {

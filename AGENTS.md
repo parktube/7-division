@@ -25,7 +25,7 @@ GitHub Pages (Viewer)          Local MCP Server
 └── modules/         # 저장된 모듈
 ```
 
-## MCP 도구 (14개)
+## MCP 도구 (17개)
 
 Claude Code 패턴과 일치하도록 설계된 도구입니다:
 
@@ -74,6 +74,18 @@ mama_workflow({ command: 'start', project_name: 'My Room' })
 
 // 모듈 추천
 mama_recommend_modules({ query: 'draw a sofa' })
+
+// 설정 조회/변경
+mama_configure({ action: 'get' })
+mama_configure({ action: 'set', contextInjection: 'full' })
+
+// 동적 힌트 관리
+mama_edit_hint({ action: 'add', tool_name: 'edit', hint_text: 'rect의 x,y는 CENTER 좌표' })
+mama_edit_hint({ action: 'list', tool_name: 'edit' })
+
+// 스킬 레벨 설정
+mama_set_skill_level({ level: 'intermediate' })
+mama_set_skill_level({ level: 'expert', domain: 'color' })
 ```
 
 ### 파일 관리 (glob, read, edit, write)
