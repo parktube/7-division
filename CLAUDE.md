@@ -87,6 +87,42 @@ read({ file: 'chicken' })        // 모듈 읽기
 
 **상세 가이드**: [docs/cad-mcp-guide.md](docs/cad-mcp-guide.md)
 
+### 3. MAMA 도구 (Memory-Augmented Meta Agent)
+
+세션 간 컨텍스트 유지, 결정 추적, 학습 진행 관리를 위한 도구입니다.
+
+| MCP 도구 | 용도 | 예시 |
+|----------|------|------|
+| `mcp__ai-native-cad__mama_save` | 결정/체크포인트 저장 | `mama_save({ type: 'decision', topic: 'color', decision: '...' })` |
+| `mcp__ai-native-cad__mama_search` | 추론 그래프 검색 | `mama_search({ query: 'color' })` |
+| `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 | `mama_update({ id: 'decision_xxx', outcome: 'success' })` |
+| `mcp__ai-native-cad__mama_load_checkpoint` | 이전 세션 복원 | `mama_load_checkpoint()` |
+| `mcp__ai-native-cad__mama_workflow` | 디자인 워크플로우 | `mama_workflow({ command: 'status' })` |
+| `mcp__ai-native-cad__mama_recommend_modules` | 모듈 추천 | `mama_recommend_modules({ query: 'chicken' })` |
+
+**자주 쓰는 MAMA 명령**:
+```javascript
+// 세션 시작 시 컨텍스트 로드
+mama_load_checkpoint()
+
+// 결정 저장 전 관련 결정 검색 (링크를 위해)
+mama_search({ query: 'authentication' })
+
+// 결정 저장 (반드시 search 후에!)
+mama_save({
+  type: 'decision',
+  topic: 'auth_strategy',
+  decision: 'Use JWT with refresh tokens',
+  reasoning: 'Stateless, scalable. builds_on: decision_xxx'
+})
+
+// 디자인 프로젝트 시작
+mama_workflow({ command: 'start', project_name: 'My House' })
+
+// 모듈 추천
+mama_recommend_modules({ query: 'draw a chicken' })
+```
+
 ## Quick Start
 
 ```bash

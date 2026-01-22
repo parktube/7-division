@@ -25,7 +25,7 @@ GitHub Pages (Viewer)          Local MCP Server
 └── modules/         # 저장된 모듈
 ```
 
-## MCP 도구 (6개)
+## MCP 도구 (14개)
 
 Claude Code 패턴과 일치하도록 설계된 도구입니다:
 
@@ -37,6 +37,41 @@ Claude Code 패턴과 일치하도록 설계된 도구입니다:
 | `write` | 파일 전체 작성 → 자동 실행 | Write |
 | `lsp` | 코드 인텔리전스 (함수 탐색) | LSP |
 | `bash` | 명령 실행 (씬 조회, 내보내기) | Bash |
+
+### MAMA 도구 (Memory-Augmented Meta Agent)
+
+| 도구 | 설명 |
+|------|------|
+| `mama_save` | 결정/체크포인트/학습 저장 |
+| `mama_search` | 추론 그래프 검색 (시맨틱) |
+| `mama_update` | 결정 결과 업데이트 |
+| `mama_load_checkpoint` | 이전 세션 복원 |
+| `mama_workflow` | 디자인 워크플로우 관리 |
+| `mama_recommend_modules` | 모듈 추천 |
+| `mama_health` | 그래프 건강도 체크 |
+| `mama_growth_report` | 사용자 성장 리포트 |
+
+```javascript
+// 세션 시작 시 컨텍스트 로드
+mama_load_checkpoint()
+
+// 결정 저장 전 관련 결정 검색 (링크 필수!)
+mama_search({ query: 'color palette' })
+
+// 결정 저장 (builds_on/debates 링크 포함)
+mama_save({
+  type: 'decision',
+  topic: 'interior:palette',
+  decision: 'Japandi style - oak + off-white',
+  reasoning: '60-30-10 rule. builds_on: decision_xxx'
+})
+
+// 디자인 프로젝트 시작
+mama_workflow({ command: 'start', project_name: 'My Room' })
+
+// 모듈 추천
+mama_recommend_modules({ query: 'draw a sofa' })
+```
 
 ### 파일 관리 (glob, read, edit, write)
 
@@ -431,4 +466,4 @@ logger.error('always');
 
 ---
 
-*최종 업데이트: 2026-01-19*
+*최종 업데이트: 2026-01-22*

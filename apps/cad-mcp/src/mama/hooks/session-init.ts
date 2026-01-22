@@ -133,6 +133,25 @@ function formatFullContext(
 ): string {
   const lines: string[] = []
 
+  // New user onboarding (no checkpoint, no decisions)
+  const isNewUser = !checkpoint && decisions.length === 0
+  if (isNewUser) {
+    lines.push('👋 **NEW USER WELCOME:**')
+    lines.push('   Welcome to AI-Native CAD! This is your first session.')
+    lines.push('   ')
+    lines.push('   📺 **Viewer**: https://parktube.github.io/7-division/')
+    lines.push('   (Open in browser to see your creations in real-time)')
+    lines.push('   ')
+    lines.push('   🎯 **Try these prompts**:')
+    lines.push('   - "닭 그려줘" or "draw a chicken"')
+    lines.push('   - "원룸 인테리어 디자인해줘"')
+    lines.push('   - "mama_recommend_modules({ query: \'sofa\' })" to find modules')
+    lines.push('   ')
+    lines.push('   💡 Use `mama_workflow({ command: \'start\', project_name: \'My Project\' })` to start a guided design session.')
+    lines.push('')
+    return lines.join('\n')
+  }
+
   // Proactive Greeting Instruction (맨 앞에 위치 - 훅 없이도 작동하도록)
   lines.push('🤖 **PROACTIVE GREETING INSTRUCTION:**')
   lines.push('   If the user\'s first message is a simple greeting ("hi", "hello", "안녕"),')
@@ -219,6 +238,12 @@ function formatHintContext(
   learningHints: LearningHint[] = [],
   workflowStatus: WorkflowStatus | null = null
 ): string {
+  // New user onboarding (no checkpoint, no decisions)
+  const isNewUser = !checkpoint && decisions.length === 0
+  if (isNewUser) {
+    return '👋 Welcome! Viewer: https://parktube.github.io/7-division/ | Try: "닭 그려줘"'
+  }
+
   const parts: string[] = []
 
   if (checkpoint) {
