@@ -107,7 +107,12 @@ jobs:
         run: pnpm install
 
       - name: Rebuild native modules (better-sqlite3)
-        run: npm rebuild better-sqlite3 --build-from-source
+        run: |
+          SQLITE_PATH=$(find node_modules/.pnpm -name "better-sqlite3" -type d | head -1)
+          if [ -n "$SQLITE_PATH" ]; then
+            cd "$SQLITE_PATH"
+            npm run build-release
+          fi
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
