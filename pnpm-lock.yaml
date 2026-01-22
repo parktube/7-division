@@ -27,7 +27,7 @@ importers:
         specifier: ^1.25.2
         version: 1.25.2(hono@4.11.4)(zod@3.25.76)
       better-sqlite3:
-        specifier: ^11.0.0
+        specifier: ^11.8.0
         version: 11.10.0
       es-module-lexer:
         specifier: ^2.0.0
