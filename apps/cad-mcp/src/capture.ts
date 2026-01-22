@@ -184,21 +184,19 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     forceMethod,
   } = options;
 
-  // On Windows/Mac, use Electron capture (unless forced to use Puppeteer)
-  if (forceMethod !== 'puppeteer' && (process.platform === 'win32' || process.platform === 'darwin')) {
+  // Check if Puppeteer is preferred via environment variable
+  const preferPuppeteer = process.env.CAD_CAPTURE_METHOD === 'puppeteer';
+
+  // On Windows/Mac, try Electron capture first (unless Puppeteer is preferred)
+  if (!preferPuppeteer && forceMethod !== 'puppeteer' && (process.platform === 'win32' || process.platform === 'darwin')) {
     logger.debug('Trying Electron capture');
     const electronResult = await tryElectronCapture(outputPath);
     if (electronResult?.success) {
       logger.debug('Electron capture succeeded');
       return electronResult;
     }
-    // Don't fall back to Puppeteer - Electron is the expected method on Windows/Mac
-    const portFile = join(getElectronUserDataPath(), '.server-port');
-    return {
-      success: false,
-      error: `Electron capture failed. Is the CADViewer app running? (Check ${portFile})`,
-      method: 'electron',
-    };
+    // Fall back to Puppeteer if Electron is not running
+    logger.debug('Electron not available, falling back to Puppeteer');
   }
 
   // Skip Puppeteer if forced to use Electron
