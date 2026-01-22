@@ -877,22 +877,33 @@ describe('SessionStart Hook', () => {
   })
 
   it('should return empty context for none mode', async () => {
-    // TODO: Replace with actual executeSessionInit call when test DB setup is available
-    // Currently testing the expected behavior of 'none' mode as per session-init.ts:63-73
-    const expectedNoneModeResult = {
-      checkpoint: null,
-      recentDecisions: [],
-      contextMode: 'none' as const,
-      formattedContext: '',
-      healthWarning: null,
-      learningHints: [],
-      workflowStatus: null,
-    }
+    // Import config functions to test actual implementation
+    const { loadConfig, updateConfig } = await import('../src/mama/config.js')
+    const { executeSessionInit } = await import('../src/mama/hooks/session-init.js')
 
-    expect(expectedNoneModeResult.formattedContext).toBe('')
-    expect(expectedNoneModeResult.checkpoint).toBeNull()
-    expect(expectedNoneModeResult.recentDecisions).toHaveLength(0)
-    expect(expectedNoneModeResult.healthWarning).toBeNull()
+    // Save original config
+    const originalConfig = loadConfig()
+    const originalMode = originalConfig.contextInjection
+
+    try {
+      // Set none mode
+      updateConfig({ contextInjection: 'none' })
+
+      // Call actual implementation
+      const result = await executeSessionInit()
+
+      // Verify none mode behavior (session-init.ts:63-73)
+      expect(result.contextMode).toBe('none')
+      expect(result.formattedContext).toBe('')
+      expect(result.checkpoint).toBeNull()
+      expect(result.recentDecisions).toHaveLength(0)
+      expect(result.healthWarning).toBeNull()
+      expect(result.learningHints).toHaveLength(0)
+      expect(result.workflowStatus).toBeNull()
+    } finally {
+      // Restore original config
+      updateConfig({ contextInjection: originalMode })
+    }
   })
 })
 
