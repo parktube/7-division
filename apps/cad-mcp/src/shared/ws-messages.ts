@@ -109,8 +109,8 @@ export const PointSchema = z.object({
 export const StrokeSchema = z.object({
   id: z.string(),
   points: z.array(PointSchema),
-  color: z.string(),
-  width: z.number(),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex string (#RRGGBB)'),
+  width: z.number().positive(),
 });
 
 export const SketchUpdateDataSchema = z.object({
