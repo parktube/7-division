@@ -5,6 +5,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { MODULES_DIR, SCENE_CODE_FILE } from './constants.js';
+import { resolveFile } from '../utils/paths.js';
 
 /**
  * 모듈 목록 조회
@@ -155,14 +156,15 @@ export function preprocessCode(
       return `// [import] '${moduleName}' already loaded`;
     }
 
-    const modulePath = getModulePath(moduleName);
+    // Dual-source: user modules 우선, 없으면 builtin 확인
+    const resolved = resolveFile(moduleName);
 
-    if (!existsSync(modulePath)) {
+    if (!resolved.exists) {
       errors.push(`could not load module '${moduleName}'`);
       return `// [import] ERROR: '${moduleName}' not found`;
     }
 
-    const moduleCode = readFileSync(modulePath, 'utf-8');
+    const moduleCode = readFileSync(resolved.path, 'utf-8');
     importedModules.add(moduleName);
     newlyImported.push(moduleName);
 

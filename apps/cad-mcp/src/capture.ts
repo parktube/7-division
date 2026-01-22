@@ -25,6 +25,24 @@ export interface CaptureOptions {
   forceMethod?: 'electron' | 'puppeteer';
   /** Scene data to inject directly (bypasses WebSocket for Puppeteer capture) */
   sceneData?: unknown;
+  /** Sketch data to inject directly (bypasses HTTP fetch for Puppeteer capture) */
+  sketchData?: unknown;
+}
+
+// Path to sketch.json for reading sketch data
+const SKETCH_FILE = join(homedir(), '.ai-native-cad', 'sketch.json');
+
+/**
+ * Read sketch data from ~/.ai-native-cad/sketch.json
+ */
+async function readSketchData(): Promise<unknown | null> {
+  try {
+    const data = await fs.readFile(SKETCH_FILE, 'utf-8');
+    const parsed = JSON.parse(data);
+    return parsed.strokes || [];
+  } catch {
+    return null;
+  }
 }
 
 export interface CaptureResult {
@@ -268,6 +286,29 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
         if (!canvasReady) {
           logger.warn('Canvas not ready after injection, proceeding with capture anyway');
+        }
+
+        // Inject sketch data if provided or read from file
+        const sketchData = options.sketchData ?? await readSketchData();
+        if (sketchData && Array.isArray(sketchData) && sketchData.length > 0) {
+          logger.debug('Injecting sketch data', { strokeCount: sketchData.length });
+
+          const sketchInjected = await page.evaluate((strokes) => {
+            type WindowWithSketch = Window & { __injectSketch?: (strokes: unknown) => void };
+            const win = window as WindowWithSketch;
+            if (win.__injectSketch) {
+              win.__injectSketch(strokes);
+              return true;
+            }
+            return false;
+          }, sketchData);
+
+          if (sketchInjected) {
+            // Wait for sketch overlay to render
+            await new Promise(done => setTimeout(done, 300));
+          } else {
+            logger.warn('__injectSketch not available - sketch will not be captured');
+          }
         }
 
         // Additional wait for render to complete

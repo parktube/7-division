@@ -44,6 +44,15 @@ import {
   recommendModules,
   syncModulesFromFiles,
 } from '../module-recommender.js'
+import {
+  searchBuiltinKnowledge,
+  listBuiltinDomains,
+  type BuiltinDecision,
+} from '../builtin-knowledge.js'
+import {
+  handleMamaWorkflow as handleWorkflow,
+  type WorkflowInput,
+} from '../workflow.js'
 
 // ============================================================
 // Response Types
@@ -263,6 +272,8 @@ export interface SearchArgs {
 
 /**
  * Handle mama_search tool call
+ *
+ * Story 11.20: Dual-source support - searches both user decisions and builtin knowledge
  */
 export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> {
   try {
@@ -270,20 +281,26 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
 
     // Handle list_domains special case
     if (args.list_domains) {
-      const domains = await listDomains()
-      logger.info(`mama_search: Listed ${domains.length} domains`)
+      const userDomains = await listDomains()
+      const builtinDomains = listBuiltinDomains()
+
+      // Merge and dedupe domains
+      const allDomains = [...new Set([...userDomains, ...builtinDomains])].sort()
+
+      logger.info(`mama_search: Listed ${allDomains.length} domains (${userDomains.length} user, ${builtinDomains.length} builtin)`)
 
       return {
         success: true,
         data: {
           list_domains: true,
-          count: domains.length,
-          domains,
+          count: allDomains.length,
+          domains: allDomains,
         },
       }
     }
 
-    const results = await searchDecisions({
+    // Search user decisions
+    const userResults = await searchDecisions({
       query: args.query,
       limit: args.limit || 10,
       type: args.type || 'all',
@@ -292,8 +309,17 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
       outcome_filter: args.outcome_filter,
     })
 
-    // Format results for LLM consumption
-    const formattedResults = results.map((r: DecisionResult) => {
+    // Search builtin knowledge (Story 11.20)
+    // Skip if outcome_filter is set (builtin doesn't have outcomes)
+    const builtinResults: BuiltinDecision[] = args.outcome_filter
+      ? []
+      : searchBuiltinKnowledge(args.query, {
+          limit: args.limit || 10,
+          domain: args.domain,
+        })
+
+    // Format user results for LLM consumption
+    const formattedUserResults = userResults.map((r: DecisionResult) => {
       const result: Record<string, unknown> = {
         id: r.id,
         topic: r.topic,
@@ -305,6 +331,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
         created_at: r.created_at,
         age: formatAge(r.created_at),
         edges: r.edges,
+        source: 'user',  // Story 11.20: Add source field
       }
 
       // Add warning for failed decisions
@@ -329,7 +356,36 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
       return result
     })
 
-    logger.info(`mama_search: Found ${results.length} results for "${args.query || '(recent)'}"${args.domain ? ` in domain "${args.domain}"` : ''}`)
+    // Format builtin results (Story 11.20)
+    const formattedBuiltinResults = builtinResults.map((r: BuiltinDecision) => ({
+      id: r.id,
+      topic: r.topic,
+      decision: r.decision,
+      reasoning: r.reasoning,
+      outcome: null,
+      confidence: r.confidence,
+      similarity: 0.8,  // Default similarity for builtin
+      created_at: null,
+      age: 'builtin',
+      edges: null,
+      source: 'builtin',  // Story 11.20: Add source field
+    }))
+
+    // Merge results: user first, then builtin (avoiding duplicates by topic)
+    const seenTopics = new Set(formattedUserResults.map((r) => r.topic as string))
+    const mergedBuiltin = formattedBuiltinResults.filter((r) => !seenTopics.has(r.topic))
+
+    const allResults = [...formattedUserResults, ...mergedBuiltin]
+
+    // Apply limit if needed
+    const limit = args.limit || 10
+    const limitedResults = allResults.slice(0, limit)
+
+    logger.info(
+      `mama_search: Found ${limitedResults.length} results ` +
+      `(${formattedUserResults.length} user, ${mergedBuiltin.length} builtin) ` +
+      `for "${args.query || '(recent)'}"${args.domain ? ` in domain "${args.domain}"` : ''}`
+    )
 
     return {
       success: true,
@@ -337,8 +393,8 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
         query: args.query || null,
         domain: args.domain || null,
         group_by_topic: args.group_by_topic || false,
-        count: results.length,
-        results: formattedResults,
+        count: limitedResults.length,
+        results: limitedResults,
       },
     }
   } catch (error) {
@@ -931,6 +987,51 @@ export async function handleMamaRecommendModules(
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     logger.error(`mama_recommend_modules failed: ${errorMsg}`)
+    return { success: false, error: errorMsg }
+  }
+}
+
+// ============================================================
+// mama_workflow Handler (Story 11.21)
+// ============================================================
+
+export interface WorkflowArgs {
+  command: string
+  project_name?: string
+  description?: string
+  phase?: string
+  content?: string
+  artifact_type?: string
+}
+
+/**
+ * Handle mama_workflow tool call
+ *
+ * Commands: start, status, next, goto, list, artifact
+ */
+export async function handleMamaWorkflow(args: WorkflowArgs): Promise<ToolResponse> {
+  try {
+    await initMAMA()
+
+    const result = handleWorkflow({
+      command: args.command as WorkflowInput['command'],
+      project_name: args.project_name,
+      description: args.description,
+      phase: args.phase as WorkflowInput['phase'],
+      content: args.content,
+      artifact_type: args.artifact_type,
+    })
+
+    if (result.success) {
+      logger.info(`mama_workflow: ${args.command} completed`)
+      return { success: true, data: result.data }
+    } else {
+      logger.warn(`mama_workflow: ${args.command} failed - ${result.error}`)
+      return { success: false, error: result.error }
+    }
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    logger.error(`mama_workflow failed: ${errorMsg}`)
     return { success: false, error: errorMsg }
   }
 }

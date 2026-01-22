@@ -5,6 +5,24 @@ import { debounce } from '@/utils/debounce'
 import { sendSketchUpdateDirect, isWebSocketConnected } from './useWebSocket'
 
 const DEFAULT_COLOR = '#ef4444' // red-500
+
+// Global sketch store for injection (similar to scene injection)
+let globalSketchSetter: ((strokes: Stroke[]) => void) | null = null
+
+/**
+ * Inject sketch data directly (for Puppeteer capture without HTTP fetch)
+ * Usage: window.__injectSketch(strokesData)
+ */
+function injectSketch(strokes: Stroke[]) {
+  if (globalSketchSetter) {
+    globalSketchSetter(strokes)
+  }
+}
+
+// Expose to window for Puppeteer capture
+if (typeof window !== 'undefined') {
+  (window as unknown as { __injectSketch: typeof injectSketch }).__injectSketch = injectSketch
+}
 const DEFAULT_WIDTH = 2
 const MIN_DISTANCE = 2 // Minimum distance between points
 const ERASER_RADIUS = 15 // Eraser hit radius
@@ -109,6 +127,14 @@ export function useSketch() {
 
   // Debounced save function (300ms delay to batch rapid changes)
   const debouncedSave = useMemo(() => debounce(saveStrokes, 300), [])
+
+  // Register global setter for injection (Puppeteer capture)
+  useEffect(() => {
+    globalSketchSetter = setStrokes
+    return () => {
+      globalSketchSetter = null
+    }
+  }, [])
 
   // Load strokes on mount
   useEffect(() => {

@@ -1,0 +1,33 @@
+# Architecture Phase
+# Goal: 기술적 접근과 구성요소 분해
+
+name: Architecture
+description: 구조와 동선 설계
+order: 3
+
+ai_actions:
+  - explain_spatial_design
+  - create_component_list
+  - decide_zorder_strategy
+
+outputs:
+  - design-architecture
+
+questions:
+  - 동선에 대해 고려해보셨나요?
+  - 어떤 요소들이 필요한지 목록을 작성해볼까요?
+  - z-order(겹침 순서)를 어떻게 잡을까요?
+
+concepts_to_introduce:
+  - 동선 설계
+  - 시선 유도
+  - z-order 개념
+
+learning_to_track:
+  - 동선 개념
+  - z-order 전략
+
+completion_criteria:
+  - 컴포넌트 구조 정의됨
+  - z-order 전략 결정됨
+  - design-architecture 문서 생성됨

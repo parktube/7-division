@@ -17,6 +17,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  InitializeRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { CADExecutor } from './executor.js'
 import { CAD_TOOLS, MAMA_TOOLS, type ToolSchema } from './schema.js'
@@ -32,6 +33,7 @@ import {
   handleMamaHealth,
   handleMamaGrowthReport,
   handleMamaRecommendModules,
+  handleMamaWorkflow,
   type SaveArgs,
   type SearchArgs,
   type UpdateArgs,
@@ -41,6 +43,7 @@ import {
   type HealthArgs,
   type GrowthReportArgs,
   type RecommendModulesArgs,
+  type WorkflowArgs,
 } from './mama/tools/index.js'
 import { shutdownMAMA, getHintsForTool } from './mama/index.js'
 import { orchestrator } from './orchestrator.js'
@@ -53,7 +56,7 @@ import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
 import type { Scene } from './shared/index.js'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs'
 import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { homedir } from 'os'
@@ -73,6 +76,67 @@ import { preprocessCode } from './run-cad-code/utils.js'
 // 씬 영속성 파일 경로 (~/.ai-native-cad/scene.json)
 const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad')
 const SCENE_FILE = resolve(CAD_DATA_DIR, 'scene.json')
+const PID_FILE = resolve(CAD_DATA_DIR, 'mcp.pid')
+
+/**
+ * Check if a process with given PID is running
+ */
+function isProcessRunning(pid: number): boolean {
+  try {
+    // Sending signal 0 checks if process exists without killing it
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Check if another MCP server instance is already running
+ * Returns the PID of existing process, or null if none
+ */
+function getExistingServerPid(): number | null {
+  try {
+    if (!existsSync(PID_FILE)) {
+      return null
+    }
+    const pidStr = readFileSync(PID_FILE, 'utf-8').trim()
+    const pid = parseInt(pidStr, 10)
+    if (isNaN(pid)) {
+      return null
+    }
+    if (isProcessRunning(pid)) {
+      return pid
+    }
+    // Stale PID file - process no longer running
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Write current process PID to file
+ */
+function writePidFile(): void {
+  ensureCadDataDir()
+  writeFileSync(PID_FILE, process.pid.toString(), 'utf-8')
+  logger.debug(`PID file written: ${PID_FILE} (PID: ${process.pid})`)
+}
+
+/**
+ * Remove PID file on shutdown
+ */
+function cleanupPidFile(): void {
+  try {
+    if (existsSync(PID_FILE)) {
+      unlinkSync(PID_FILE)
+      logger.debug('PID file removed')
+    }
+  } catch (e) {
+    logger.warn(`Failed to remove PID file: ${e}`)
+  }
+}
 
 /**
  * Ensure CAD data directory exists
@@ -379,6 +443,41 @@ export async function createMCPServer(): Promise<Server> {
       instructions: sessionContext || undefined,
     }
   )
+
+  // Handle initialize request - return fresh checkpoint on each session
+  // Fix: Previously instructions were set once at server startup,
+  // so new sessions would see stale checkpoint data.
+  server.setRequestHandler(InitializeRequestSchema, async (_request) => {
+    // Get fresh session context on each initialize request
+    let instructions: string | undefined
+    try {
+      const hookResult = await orchestrator.handleInitialize()
+      if (hookResult) {
+        instructions = hookResult.formattedContext
+        logger.info(
+          `Initialize request: mode=${hookResult.contextMode}, decisions=${hookResult.recentDecisions.length}`
+        )
+        if (instructions) {
+          logger.info(`Fresh SessionStart context:\n${instructions}`)
+        }
+      }
+    } catch (err) {
+      logger.warn(`Initialize hook failed (non-fatal): ${err}`)
+    }
+
+    // Return standard MCP initialize response with fresh instructions
+    return {
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        tools: {},
+      },
+      serverInfo: {
+        name: MCP_SERVER_NAME,
+        version: MCP_SERVER_VERSION,
+      },
+      ...(instructions && { instructions }),
+    }
+  })
 
   // Handle list tools request with dynamic hint injection (Story 11.8)
   server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -743,11 +842,21 @@ export async function createMCPServer(): Promise<Server> {
           }
         }
 
+        // === mama_workflow: Design workflow management (Story 11.21) ===
+        case 'mama_workflow': {
+          const workflowArgs = args as unknown as WorkflowArgs
+          const result = await handleMamaWorkflow(workflowArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
         default:
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report, mama_recommend_modules`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report, mama_recommend_modules, mama_workflow`,
             }],
             isError: true,
           }
@@ -782,6 +891,18 @@ export async function startMCPServer(): Promise<void> {
  * CLI entry point for MCP server
  */
 export async function runMCPServer(): Promise<void> {
+  // Singleton check: prevent multiple instances
+  const existingPid = getExistingServerPid()
+  if (existingPid !== null) {
+    logger.error(`MCP server already running (PID: ${existingPid}). Kill it first or use the existing instance.`)
+    logger.error(`To kill: kill ${existingPid}`)
+    logger.error(`PID file: ${PID_FILE}`)
+    process.exit(1)
+  }
+
+  // Write PID file for singleton enforcement
+  writePidFile()
+
   // Graceful shutdown handler
   const shutdown = async (signal: string) => {
     logger.info(`Received ${signal}, shutting down gracefully...`)
@@ -789,10 +910,13 @@ export async function runMCPServer(): Promise<void> {
       // Shutdown MAMA (Epic 11)
       shutdownMAMA()
       await stopWSServer()
+      // Cleanup PID file
+      cleanupPidFile()
       logger.info('Cleanup complete, exiting')
       process.exit(0)
     } catch (e) {
       logger.error(`Error during shutdown: ${e}`)
+      cleanupPidFile() // Best effort cleanup
       process.exit(1)
     }
   }
@@ -806,6 +930,7 @@ export async function runMCPServer(): Promise<void> {
   } catch (e) {
     logger.error(`MCP server error: ${e}`)
     await stopWSServer().catch(() => {}) // Best effort cleanup
+    cleanupPidFile() // Cleanup on error
     process.exit(1)
   }
 }

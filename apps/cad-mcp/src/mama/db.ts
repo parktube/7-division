@@ -117,6 +117,38 @@ export interface ModuleRow {
   updated_at: number | null
 }
 
+// Design Workflow phases (Story 11.21)
+export type WorkflowPhase = 'discovery' | 'planning' | 'architecture' | 'creation' | 'completed'
+
+// Project tracking (Story 11.21)
+export interface ProjectRow {
+  id: string
+  name: string
+  description: string | null
+  current_phase: WorkflowPhase
+  created_at: number
+  updated_at: number | null
+}
+
+// Project artifacts per phase (Story 11.21)
+export interface ProjectArtifactRow {
+  id: string
+  project_id: string
+  phase: WorkflowPhase
+  artifact_type: string
+  content: string | null
+  created_at: number
+}
+
+// Phase completion tracking (Story 11.21)
+export interface ProjectPhaseRow {
+  project_id: string
+  phase: WorkflowPhase
+  completed_at: number | null
+  learnings_count: number
+  decisions_count: number
+}
+
 // ============================================================
 // Database Singleton
 // ============================================================
@@ -1365,4 +1397,310 @@ export function deleteModule(name: string): boolean {
   `).run(name)
 
   return result.changes > 0
+}
+
+// ============================================================
+// Design Workflow Projects (Story 11.21)
+// ============================================================
+
+/**
+ * Create a new project
+ *
+ * @param project - Project data
+ * @returns Created project row
+ */
+export function createProject(project: {
+  name: string
+  description?: string
+}): ProjectRow {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  const id = `project_${project.name.toLowerCase().replace(/\s+/g, '_')}_${now.toString(36)}`
+
+  db!.prepare(`
+    INSERT INTO projects (id, name, description, current_phase, created_at, updated_at)
+    VALUES (?, ?, ?, 'discovery', ?, ?)
+  `).run(id, project.name, project.description || null, now, now)
+
+  logger.info(`Project created: ${id}`)
+
+  return {
+    id,
+    name: project.name,
+    description: project.description || null,
+    current_phase: 'discovery',
+    created_at: now,
+    updated_at: now,
+  }
+}
+
+/**
+ * Get project by ID
+ *
+ * @param id - Project ID
+ * @returns Project row or null
+ */
+export function getProject(id: string): ProjectRow | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  return db!.prepare(`
+    SELECT * FROM projects WHERE id = ?
+  `).get(id) as ProjectRow | undefined ?? null
+}
+
+/**
+ * Get active project (most recent non-completed)
+ *
+ * @returns Active project or null
+ */
+export function getActiveProject(): ProjectRow | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  return db!.prepare(`
+    SELECT * FROM projects
+    WHERE current_phase != 'completed'
+    ORDER BY updated_at DESC
+    LIMIT 1
+  `).get() as ProjectRow | undefined ?? null
+}
+
+/**
+ * List all projects
+ *
+ * @param options - Filter options
+ * @returns Array of project rows
+ */
+export function listProjects(options?: {
+  phase?: WorkflowPhase
+  limit?: number
+}): ProjectRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  let query = 'SELECT * FROM projects WHERE 1=1'
+  const params: (string | number)[] = []
+
+  if (options?.phase) {
+    query += ' AND current_phase = ?'
+    params.push(options.phase)
+  }
+
+  query += ' ORDER BY updated_at DESC'
+
+  if (options?.limit) {
+    query += ' LIMIT ?'
+    params.push(options.limit)
+  }
+
+  return db!.prepare(query).all(...params) as ProjectRow[]
+}
+
+/**
+ * Update project phase
+ *
+ * @param id - Project ID
+ * @param phase - New phase
+ */
+export function updateProjectPhase(id: string, phase: WorkflowPhase): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  db!.prepare(`
+    UPDATE projects SET current_phase = ?, updated_at = ? WHERE id = ?
+  `).run(phase, now, id)
+
+  logger.info(`Project ${id} phase updated to: ${phase}`)
+}
+
+/**
+ * Delete project (cascades to artifacts and phases)
+ *
+ * @param id - Project ID
+ */
+export function deleteProject(id: string): boolean {
+  if (!db) {
+    initDatabase()
+  }
+
+  const result = db!.prepare(`
+    DELETE FROM projects WHERE id = ?
+  `).run(id)
+
+  return result.changes > 0
+}
+
+// ============================================================
+// Project Artifacts (Story 11.21)
+// ============================================================
+
+/**
+ * Add artifact to project
+ *
+ * @param artifact - Artifact data
+ * @returns Created artifact row
+ */
+export function addProjectArtifact(artifact: {
+  project_id: string
+  phase: WorkflowPhase
+  artifact_type: string
+  content?: string
+}): ProjectArtifactRow {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  const id = `artifact_${artifact.project_id.split('_')[1]}_${artifact.phase}_${artifact.artifact_type}_${now.toString(36)}`
+
+  db!.prepare(`
+    INSERT INTO project_artifacts (id, project_id, phase, artifact_type, content, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, artifact.project_id, artifact.phase, artifact.artifact_type, artifact.content || null, now)
+
+  logger.info(`Artifact added: ${id}`)
+
+  return {
+    id,
+    project_id: artifact.project_id,
+    phase: artifact.phase,
+    artifact_type: artifact.artifact_type,
+    content: artifact.content || null,
+    created_at: now,
+  }
+}
+
+/**
+ * Get artifacts for a project
+ *
+ * @param projectId - Project ID
+ * @param options - Filter options
+ * @returns Array of artifact rows
+ */
+export function getProjectArtifacts(
+  projectId: string,
+  options?: {
+    phase?: WorkflowPhase
+    artifact_type?: string
+  }
+): ProjectArtifactRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  let query = 'SELECT * FROM project_artifacts WHERE project_id = ?'
+  const params: string[] = [projectId]
+
+  if (options?.phase) {
+    query += ' AND phase = ?'
+    params.push(options.phase)
+  }
+
+  if (options?.artifact_type) {
+    query += ' AND artifact_type = ?'
+    params.push(options.artifact_type)
+  }
+
+  query += ' ORDER BY created_at ASC'
+
+  return db!.prepare(query).all(...params) as ProjectArtifactRow[]
+}
+
+/**
+ * Update artifact content
+ *
+ * @param id - Artifact ID
+ * @param content - New content
+ */
+export function updateArtifactContent(id: string, content: string): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  db!.prepare(`
+    UPDATE project_artifacts SET content = ? WHERE id = ?
+  `).run(content, id)
+}
+
+// ============================================================
+// Project Phases (Story 11.21)
+// ============================================================
+
+/**
+ * Complete a project phase
+ *
+ * @param projectId - Project ID
+ * @param phase - Phase to complete
+ */
+export function completeProjectPhase(
+  projectId: string,
+  phase: WorkflowPhase,
+  stats?: { learnings_count?: number; decisions_count?: number }
+): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+
+  db!.prepare(`
+    INSERT INTO project_phases (project_id, phase, completed_at, learnings_count, decisions_count)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(project_id, phase) DO UPDATE SET
+      completed_at = excluded.completed_at,
+      learnings_count = excluded.learnings_count,
+      decisions_count = excluded.decisions_count
+  `).run(
+    projectId,
+    phase,
+    now,
+    stats?.learnings_count || 0,
+    stats?.decisions_count || 0
+  )
+
+  logger.info(`Project ${projectId} phase ${phase} completed`)
+}
+
+/**
+ * Get project phases status
+ *
+ * @param projectId - Project ID
+ * @returns Array of phase rows
+ */
+export function getProjectPhases(projectId: string): ProjectPhaseRow[] {
+  if (!db) {
+    initDatabase()
+  }
+
+  return db!.prepare(`
+    SELECT * FROM project_phases WHERE project_id = ? ORDER BY completed_at ASC
+  `).all(projectId) as ProjectPhaseRow[]
+}
+
+/**
+ * Check if phase is completed
+ *
+ * @param projectId - Project ID
+ * @param phase - Phase to check
+ */
+export function isPhaseCompleted(projectId: string, phase: WorkflowPhase): boolean {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = db!.prepare(`
+    SELECT completed_at FROM project_phases WHERE project_id = ? AND phase = ?
+  `).get(projectId, phase) as { completed_at: number | null } | undefined
+
+  return row?.completed_at !== null && row?.completed_at !== undefined
 }

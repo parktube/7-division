@@ -119,6 +119,7 @@ export const SketchUpdateDataSchema = z.object({
 
 // WebSocket Message Schema (Discriminated Union)
 export const WSMessageSchema = z.discriminatedUnion('type', [
+  // Server → Client messages
   z.object({
     type: z.literal('scene_update'),
     data: SceneUpdateDataSchema,
@@ -139,6 +140,7 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     data: ErrorDataSchema,
     timestamp: z.number().int().positive(),
   }),
+  // Bidirectional messages
   z.object({
     type: z.literal('ping'),
     data: z.object({}),

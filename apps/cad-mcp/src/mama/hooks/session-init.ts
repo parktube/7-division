@@ -3,22 +3,36 @@
  *
  * Story 11.5: SessionStart Hook (onSessionInit)
  * Story 11.11: Graph Health Metrics (health check at session start)
+ * Story 11.21: Design Workflow integration
  *
  * Loads checkpoint and recent decisions at session start.
  * Formats output based on contextInjection mode (none/hint/full).
  * Includes graph health warnings when applicable.
+ * Shows active workflow project status.
  */
 
 import { getContextInjection } from '../config.js'
 import { loadCheckpoint, searchDecisions, type CheckpointResult, type DecisionResult } from '../index.js'
 import { calculateGraphHealth, getHealthSummary } from '../health.js'
 import { getSessionLearningHints, formatLearningHints, type LearningHint } from '../learning-tracker.js'
+import { getWorkflowStatusForSession } from '../workflow.js'
 import { formatAge } from '../utils.js'
 import { logger } from '../../logger.js'
 
 // ============================================================
 // Types
 // ============================================================
+
+export interface WorkflowStatus {
+  hasActiveProject: boolean
+  project?: {
+    id: string
+    name: string
+    phase: string
+    progress: string
+  }
+  nextSteps?: string[]
+}
 
 export interface SessionInitResult {
   checkpoint: CheckpointResult | null
@@ -27,6 +41,7 @@ export interface SessionInitResult {
   formattedContext: string
   healthWarning: string | null  // Story 11.11
   learningHints: LearningHint[]  // Story 11.13
+  workflowStatus: WorkflowStatus | null  // Story 11.21
 }
 
 // ============================================================
@@ -53,6 +68,7 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
       formattedContext: '',
       healthWarning: null,
       learningHints: [],
+      workflowStatus: null,
     }
   }
 
@@ -76,6 +92,14 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
     logger.debug(`Learning hints skipped: ${error}`)
   }
 
+  // Get workflow status (Story 11.21)
+  let workflowStatus: WorkflowStatus | null = null
+  try {
+    workflowStatus = getWorkflowStatusForSession()
+  } catch (error) {
+    logger.debug(`Workflow status skipped: ${error}`)
+  }
+
   const result: SessionInitResult = {
     checkpoint,
     recentDecisions: decisions,
@@ -83,14 +107,15 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
     formattedContext: '',
     healthWarning,
     learningHints,
+    workflowStatus,
   }
 
   // Format based on mode
   if (contextMode === 'full') {
-    result.formattedContext = formatFullContext(checkpoint, decisions, healthWarning, learningHints)
+    result.formattedContext = formatFullContext(checkpoint, decisions, healthWarning, learningHints, workflowStatus)
   } else {
     // hint mode
-    result.formattedContext = formatHintContext(checkpoint, decisions, healthWarning, learningHints)
+    result.formattedContext = formatHintContext(checkpoint, decisions, healthWarning, learningHints, workflowStatus)
   }
 
   return result
@@ -103,14 +128,39 @@ function formatFullContext(
   checkpoint: CheckpointResult | null,
   decisions: DecisionResult[],
   healthWarning: string | null = null,
-  learningHints: LearningHint[] = []
+  learningHints: LearningHint[] = [],
+  workflowStatus: WorkflowStatus | null = null
 ): string {
   const lines: string[] = []
+
+  // Proactive Greeting Instruction (맨 앞에 위치 - 훅 없이도 작동하도록)
+  lines.push('🤖 **PROACTIVE GREETING INSTRUCTION:**')
+  lines.push('   If the user\'s first message is a simple greeting ("hi", "hello", "안녕"),')
+  lines.push('   YOU MUST proactively initiate a contextual conversation:')
+  lines.push('   1. Greet the user warmly in their language')
+  lines.push('   2. Summarize what was being worked on from the last checkpoint (if exists)')
+  lines.push('   3. Highlight 1-2 recent key decisions that might be relevant')
+  lines.push('   4. Ask if they want to continue previous work or start something new')
+  lines.push('   5. Suggest specific next steps based on checkpoint\'s next_steps')
+  lines.push('')
 
   // Health warning section (Story 11.11)
   if (healthWarning) {
     lines.push(`📊 **Graph Health:**`)
     lines.push(`   ${healthWarning}`)
+    lines.push('')
+  }
+
+  // Workflow status section (Story 11.21)
+  if (workflowStatus?.hasActiveProject && workflowStatus.project) {
+    const p = workflowStatus.project
+    lines.push(`🎨 **Active Design Project:**`)
+    lines.push(`   Project: ${p.name}`)
+    lines.push(`   Phase: ${p.phase} (${p.progress})`)
+    if (workflowStatus.nextSteps && workflowStatus.nextSteps.length > 0) {
+      lines.push(`   Questions: ${workflowStatus.nextSteps[0]}`)
+    }
+    lines.push(`   Use mama_workflow({ command: 'status' }) for details`)
     lines.push('')
   }
 
@@ -166,7 +216,8 @@ function formatHintContext(
   checkpoint: CheckpointResult | null,
   decisions: DecisionResult[],
   healthWarning: string | null = null,
-  learningHints: LearningHint[] = []
+  learningHints: LearningHint[] = [],
+  workflowStatus: WorkflowStatus | null = null
 ): string {
   const parts: string[] = []
 
@@ -180,6 +231,11 @@ function formatHintContext(
 
   if (learningHints.length > 0) {
     parts.push(`${learningHints.length} concept(s) learned`)
+  }
+
+  // Add workflow status (Story 11.21)
+  if (workflowStatus?.hasActiveProject && workflowStatus.project) {
+    parts.push(`project "${workflowStatus.project.name}" in ${workflowStatus.project.phase}`)
   }
 
   if (parts.length === 0 && !healthWarning) {

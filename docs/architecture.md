@@ -980,6 +980,10 @@ Score = (semantic_similarity × 0.6) + (usage_frequency × 0.3) + (recency × 0.
 
 ```
 apps/cad-mcp/
+├── assets/                    # 📦 Built-in Assets (npm 배포 포함)
+│   ├── modules/               #   기본 CAD 모듈 (animal_lib, chicken, etc.)
+│   └── knowledge/             #   기본 MAMA decisions (베스트 프랙티스)
+│       └── decisions.json
 ├── src/
 │   ├── server.ts           # MCP + WebSocket 서버
 │   ├── mama/               # MAMA 모듈 (통합)
@@ -994,7 +998,7 @@ apps/cad-mcp/
 │   │   ├── search.ts       # 시맨틱 검색
 │   │   └── embeddings.ts   # 임베딩 생성
 │   └── ...
-└── package.json            # @ai-native-cad/mcp
+└── package.json            # @ai-native-cad/mcp (files: ["dist", "wasm", "assets"])
 
 # ~~llm/~~ 폴더 - 제외됨 (MCP 프로토콜이 LLM-agnostic 인터페이스 제공)
 ```
@@ -1047,49 +1051,145 @@ apps/cad-mcp/
 | **Phase 3: Intelligence** | 컨텍스트 + 멘토링 | Configurable Context, Adaptive Mentoring | FR75-78 |
 | **Phase 4: Learning** | 사용자 성장 추적 | learnings, growth_metrics | FR81-84 |
 | **Phase 5: Platform** | Module Library + MCP 통합 | Module Recommendation, 도메인 폴더 | FR80, FR85-86 |
+| **Phase 6: Distribution** | Built-in Assets | Dual-source 모듈/knowledge | FR88-91 |
+| **Phase 7: Workflow** | Design Workflow | mama_workflow, 단계별 학습 | FR92-96 |
 
-#### Phase 1: Core (FR67-70)
+#### Phase 1: Core (FR67-70) ✅ 완료
 
-- [ ] SQLite DB 스키마 구현 (`decisions`, `checkpoints`, `vss_memories`)
-- [ ] better-sqlite3 + sqlite-vec 어댑터 구현
-- [ ] 임베딩 시스템 구현 (@huggingface/transformers, multilingual-e5-small)
-- [ ] 임베딩 캐시 구현 (LRU)
-- [ ] `save()` 도구 구현 (Decision + Checkpoint + 임베딩)
-- [ ] `search()` 도구 구현 (시맨틱 검색 + 최근 항목)
-- [ ] `update()` 도구 구현 (outcome tracking)
-- [ ] `load_checkpoint()` 도구 구현
-- [ ] `decision_edges` 테이블 + Reasoning Graph edge 파싱
-- [ ] Topic Prefix 규칙 적용
+- [x] SQLite DB 스키마 구현 (`decisions`, `checkpoints`, `vss_memories`)
+- [x] better-sqlite3 + sqlite-vec 어댑터 구현
+- [x] 임베딩 시스템 구현 (@huggingface/transformers, multilingual-e5-small)
+- [x] 임베딩 캐시 구현 (LRU)
+- [x] `save()` 도구 구현 (Decision + Checkpoint + 임베딩)
+- [x] `search()` 도구 구현 (시맨틱 검색 + 최근 항목)
+- [x] `update()` 도구 구현 (outcome tracking)
+- [x] `load_checkpoint()` 도구 구현
+- [x] `decision_edges` 테이블 + Reasoning Graph edge 파싱
+- [x] Topic Prefix 규칙 적용
 
-#### Phase 2: Hook (FR71-74)
+#### Phase 2: Hook (FR71-74) ✅ 완료
 
-- [ ] `onSessionInit` Hook 구현
-- [ ] `preToolList` Hook 구현 (Dynamic Hint Injection)
-- [ ] `postExecute` Hook 구현 (ActionHints)
-- [ ] HookRegistry 클래스 구현
-- [ ] CADOrchestrator 통합
-- [ ] Configurable Context 모드 (none/hint/full)
+- [x] `onSessionInit` Hook 구현
+- [x] `preToolList` Hook 구현 (Dynamic Hint Injection)
+- [x] `postExecute` Hook 구현 (ActionHints)
+- [x] HookRegistry 클래스 구현
+- [x] CADOrchestrator 통합
+- [x] Configurable Context 모드 (none/hint/full)
 
-#### Phase 3: Intelligence (FR75-78)
+#### Phase 3: Intelligence (FR75-78) ✅ 완료
 
-- [ ] Adaptive Mentoring 구현 (ADR-0020)
-- [ ] Graph Health Metrics 구현 (ADR-0019)
-- [ ] Anti-Echo Chamber 경고 구현 (ADR-0021)
-- [ ] 90일 이상 된 결정 경고
+- [x] Adaptive Mentoring 구현 (ADR-0020)
+- [x] Graph Health Metrics 구현 (ADR-0019)
+- [x] Anti-Echo Chamber 경고 구현 (ADR-0021)
+- [x] 90일 이상 된 결정 경고
 
-#### Phase 4: Learning Track (FR81-84)
+#### Phase 4: Learning Track (FR81-84) ✅ 완료
 
-- [ ] learnings 테이블 구현 (개념 학습 저장)
-- [ ] growth_metrics 테이블 구현 (성장 지표)
-- [ ] DesignHints 시스템 구현 (Human CoT 유도)
-- [ ] terminology_evolution 테이블 구현 (용어 변화)
+- [x] learnings 테이블 구현 (개념 학습 저장)
+- [x] growth_metrics 테이블 구현 (성장 지표)
+- [x] DesignHints 시스템 구현 (Human CoT 유도)
+- [x] terminology_evolution 테이블 구현 (용어 변화)
 
-#### Phase 5: Platform (FR80, FR85-86)
+#### Phase 5: Platform (FR80, FR85-86) ✅ 완료
 
-- [x] MCP 내부 통합 (npm install 시 MAMA 포함) - ✅ Phase 1에서 완료
-- [ ] 도메인 폴더 구조 (domains/)
-- [ ] Module Library Recommendation 구현 (ADR-0024)
+- [x] MCP 내부 통합 (npm install 시 MAMA 포함)
+- [ ] 도메인 폴더 구조 (domains/) - 선택적, 대기
+- [x] Module Library Recommendation 구현 (ADR-0024)
 - ~~LLMAdapter 인터페이스~~ - ❌ 제외 (MCP 프로토콜이 LLM-agnostic 인터페이스 제공)
+
+#### Phase 6: Built-in Assets Distribution (FR88-91) - 📋 계획됨
+
+**목표**: 개발자 제공 데이터와 사용자 데이터를 분리하여 관리
+
+```
+Dual-source 아키텍처:
+
+[Builtin] npm 패키지 포함 (읽기 전용, npm update로 갱신)
+├── assets/modules/        ← 기본 CAD 모듈
+└── assets/knowledge/      ← 기본 decisions (베스트 프랙티스)
+
+[User] 사용자 로컬 (읽기/쓰기, 영구 보존)
+└── ~/.ai-native-cad/
+    ├── modules/           ← 사용자 모듈
+    └── data/mama.db       ← 사용자 decisions
+```
+
+- [ ] `assets/modules/` 디렉토리 생성 및 기본 모듈 포함
+- [ ] `assets/knowledge/decisions.json` 베스트 프랙티스 포함
+- [ ] Dual-source glob/read 로직 구현 (builtin + user 병합)
+- [ ] Builtin 보호 로직 (write/edit 시 에러)
+- [ ] MAMA Dual-source 검색 (builtin knowledge + user DB 병합)
+- [ ] `package.json` files에 "assets" 추가
+
+**ADR**: [ADR-0027 Built-in Assets](adr/0027-builtin-assets.md)
+
+#### Phase 7: Design Workflow System (FR92-96) - 📋 계획됨
+
+**목표**: 구조화된 워크플로우로 사용자와 대화하며 디자인 학습 지원
+
+```
+워크플로우 단계:
+Discovery → Planning → Architecture → Creation
+(발견)       (계획)      (설계)        (제작)
+```
+
+**MCP Tool (단일)**: `mama_workflow`
+
+```typescript
+mama_workflow({
+  command: 'start' | 'status' | 'next' | 'goto' | 'list' | 'artifact',
+  project_name?: string,   // start용
+  phase?: string,          // goto용: 'discovery'|'planning'|'architecture'|'creation'
+  content?: string,        // next/artifact용: 산출물 내용
+  artifact_type?: string   // artifact용: 'design-brief'|'style-prd'|'design-architecture'
+})
+```
+
+**DB 스키마 확장**:
+
+```sql
+-- projects: 워크플로우 프로젝트
+CREATE TABLE projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  current_phase TEXT DEFAULT 'discovery',
+  created_at INTEGER,
+  updated_at INTEGER
+);
+
+-- project_artifacts: 프로젝트 산출물
+CREATE TABLE project_artifacts (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  artifact_type TEXT NOT NULL,
+  content TEXT,
+  created_at INTEGER,
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+-- project_phases: 단계 완료 기록
+CREATE TABLE project_phases (
+  project_id TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  completed_at INTEGER,
+  learnings_count INTEGER DEFAULT 0,
+  decisions_count INTEGER DEFAULT 0,
+  PRIMARY KEY (project_id, phase),
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+```
+
+**구현 항목**:
+- [ ] projects, project_artifacts, project_phases 테이블 생성
+- [ ] mama_workflow MCP 도구 구현 (6개 command)
+- [ ] 단계별 DesignHints 자동 활성화 로직
+- [ ] Session Init에 활성 프로젝트 로드 연동
+- [ ] Built-in 워크플로우 템플릿 (assets/workflows/)
+- [ ] Learning Tracker 연동 (개념 자동 기록)
+
+**상세**: [docs/sprint-artifacts/11-21-design-workflow.md](sprint-artifacts/11-21-design-workflow.md)
 
 ### 4.11 Architecture Validation
 
@@ -1112,6 +1212,8 @@ apps/cad-mcp/
 | FR80 (Module Library) | Module Recommendation | Phase 5 |
 | FR81-84 (Learning) | Learning Progress, Growth Metrics | Phase 4 |
 | FR85-86 (Platform) | MCP 통합, 도메인 폴더 | Phase 5 |
+| FR88-91 (Distribution) | Built-in Assets, Dual-source | Phase 6 |
+| FR92-96 (Workflow) | Design Workflow System | Phase 7 |
 | ~~FR87 (LLM Adapter)~~ | ~~LLMAdapter~~ | ❌ 제외 (MCP로 대체) |
 
 #### Technical Risk Assessment
@@ -1152,6 +1254,7 @@ apps/cad-mcp/
 | [ADR-0024](./adr/0024-module-library-recommendation.md) | Module Library | 시맨틱 모듈 추천 |
 | [ADR-0025](./adr/0025-learning-track.md) | Learning Track | 사용자 성장 추적 시스템 |
 | [ADR-0026](./adr/0026-semantic-search-infra.md) | Semantic Search Infra | sqlite-vec + 로컬 임베딩 |
+| [ADR-0027](./adr/0027-builtin-assets.md) | Built-in Assets | Dual-source 모듈/knowledge 배포 |
 
 ---
 

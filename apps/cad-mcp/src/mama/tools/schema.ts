@@ -422,6 +422,59 @@ query: "draw a chicken character"
       required: ['query'],
     },
   },
+
+  // === mama_workflow: Design workflow management (Story 11.21) ===
+  mama_workflow: {
+    name: 'mama_workflow',
+    description: `🎨 디자인 워크플로우 관리. 프로젝트 생성/상태 조회/단계 전환.
+
+**워크플로우 단계:**
+1. Discovery - 비전과 스타일 탐색
+2. Planning - 색상/재료 결정
+3. Architecture - 구조와 동선 설계
+4. Creation - 실제 제작
+
+**Commands:**
+• start: 새 프로젝트 시작
+• status: 현재 상태 조회
+• next: 다음 단계로 전환
+• goto: 특정 단계로 이동
+• list: 모든 프로젝트 목록
+• artifact: 산출물 저장/조회
+
+**DesignHints 자동 활성화:**
+각 단계에 맞는 DesignHints가 응답에 포함됩니다.`,
+    parameters: {
+      type: 'object',
+      properties: {
+        command: {
+          type: 'string',
+          description: "명령: 'start' | 'status' | 'next' | 'goto' | 'list' | 'artifact'",
+        },
+        project_name: {
+          type: 'string',
+          description: "start용: 프로젝트 이름",
+        },
+        description: {
+          type: 'string',
+          description: "start용: 프로젝트 설명 (선택)",
+        },
+        phase: {
+          type: 'string',
+          description: "goto용: 이동할 단계 ('discovery' | 'planning' | 'architecture' | 'creation')",
+        },
+        content: {
+          type: 'string',
+          description: "next/artifact용: 산출물 내용",
+        },
+        artifact_type: {
+          type: 'string',
+          description: "artifact용: 산출물 유형 ('design-brief' | 'style-prd' | 'design-architecture')",
+        },
+      },
+      required: ['command'],
+    },
+  },
 }
 
 /**

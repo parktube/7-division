@@ -9,15 +9,29 @@
 
 import { WebSocketServer, WebSocket } from 'ws'
 import type { IncomingMessage } from 'http'
-import { readFileSync } from 'fs'
-import { dirname, join } from 'path'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
+import { homedir } from 'os'
 import { logger } from './logger.js'
 import {
   safeValidateMessage,
   type Scene,
   type ConnectionData,
+  type SelectionUpdateData,
+  type SketchUpdateData,
 } from './shared/index.js'
+
+// Data directory for selection/sketch files
+const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad')
+const SELECTION_FILE = resolve(CAD_DATA_DIR, 'selection.json')
+const SKETCH_FILE = resolve(CAD_DATA_DIR, 'sketch.json')
+
+function ensureDataDir(): void {
+  if (!existsSync(CAD_DATA_DIR)) {
+    mkdirSync(CAD_DATA_DIR, { recursive: true })
+  }
+}
 
 const DEFAULT_PORT = 3001
 const DEFAULT_MAX_PORT = 3003
@@ -211,12 +225,56 @@ export class CADWebSocketServer {
             timestamp: Date.now(),
           })
           break
+        case 'selection_update':
+          this.handleSelectionUpdate(message.data as SelectionUpdateData)
+          break
+        case 'sketch_update':
+          this.handleSketchUpdate(message.data as SketchUpdateData)
+          break
         default:
           // Client shouldn't send scene_update, selection, etc.
           logger.warn(`Unexpected message type from client: ${message.type}`)
       }
     } catch (e) {
       logger.error(`Message parse error: ${e}`)
+    }
+  }
+
+  /**
+   * Handle selection update from viewer (Client → Server)
+   * Saves selection data to ~/.ai-native-cad/selection.json
+   */
+  private handleSelectionUpdate(data: SelectionUpdateData): void {
+    try {
+      ensureDataDir()
+      const selection = {
+        selected_entities: data.selected_entities,
+        locked_entities: data.locked_entities || [],
+        hidden_entities: data.hidden_entities || [],
+        timestamp: Date.now(),
+      }
+      writeFileSync(SELECTION_FILE, JSON.stringify(selection, null, 2), 'utf-8')
+      logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities?.length || 0} hidden, ${data.locked_entities?.length || 0} locked`)
+    } catch (e) {
+      logger.error(`Failed to save selection: ${e}`)
+    }
+  }
+
+  /**
+   * Handle sketch update from viewer (Client → Server)
+   * Saves sketch data to ~/.ai-native-cad/sketch.json
+   */
+  private handleSketchUpdate(data: SketchUpdateData): void {
+    try {
+      ensureDataDir()
+      const sketch = {
+        strokes: data.strokes,
+        timestamp: Date.now(),
+      }
+      writeFileSync(SKETCH_FILE, JSON.stringify(sketch, null, 2), 'utf-8')
+      logger.debug(`Sketch saved: ${data.strokes.length} strokes`)
+    } catch (e) {
+      logger.error(`Failed to save sketch: ${e}`)
     }
   }
 

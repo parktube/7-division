@@ -206,6 +206,107 @@ const NEXT_STEP_RULES: NextStepRule[] = [
       },
     ],
   },
+
+  // ============================================================
+  // Advanced Feature Rules (Boolean, Geometry, Utility)
+  // ============================================================
+
+  // Multiple overlapping shapes → suggest boolean operations
+  {
+    condition: (ctx) => ctx.entitiesCreated.length >= 2,
+    steps: [
+      {
+        action: 'boolean_union',
+        description: 'booleanUnion으로 도형 합치기',
+        relevance: '여러 도형을 하나로 합쳐 단일 객체로 관리',
+        optional: true,
+      },
+      {
+        action: 'boolean_difference',
+        description: 'booleanDifference로 구멍 뚫기',
+        relevance: '한 도형에서 다른 도형을 빼서 구멍이나 오목한 형태 생성',
+        optional: true,
+      },
+    ],
+  },
+
+  // Room/Building with door/window → suggest boolean for cutouts
+  {
+    condition: (ctx) =>
+      (ctx.entityTypes.includes('room') || ctx.entityTypes.includes('building')) &&
+      (ctx.entityTypes.includes('door') || ctx.entityTypes.includes('window')),
+    steps: [
+      {
+        action: 'cut_opening',
+        description: 'booleanDifference로 벽에 개구부 만들기',
+        relevance: '문/창문 위치에 실제 구멍을 뚫어 리얼리티 향상',
+        optional: true,
+      },
+    ],
+  },
+
+  // Furniture/Character → suggest mirror for symmetry
+  {
+    condition: (ctx) =>
+      ctx.entityTypes.includes('furniture') || ctx.entityTypes.includes('character'),
+    steps: [
+      {
+        action: 'mirror_duplicate',
+        description: 'mirror로 대칭 부품 생성',
+        relevance: '팔/다리/손잡이 등 대칭 부품을 쉽게 생성',
+        optional: true,
+      },
+      {
+        action: 'duplicate_variation',
+        description: 'duplicate로 변형 복제',
+        relevance: '유사한 객체를 빠르게 복제 후 수정',
+        optional: true,
+      },
+    ],
+  },
+
+  // Wall/Frame → suggest offsetPolygon for thickness
+  {
+    condition: (ctx) =>
+      ctx.entityTypes.includes('wall') ||
+      ctx.entitiesCreated.some((name) => /frame|border|outline/i.test(name)),
+    steps: [
+      {
+        action: 'offset_outline',
+        description: 'offsetPolygon으로 테두리 생성',
+        relevance: '도형 외곽에 일정 두께의 테두리 추가',
+        optional: true,
+      },
+    ],
+  },
+
+  // Floor/Room → suggest getArea for space analysis
+  {
+    condition: (ctx) =>
+      ctx.entityTypes.includes('room') ||
+      ctx.entitiesCreated.some((name) => /floor|space|area/i.test(name)),
+    steps: [
+      {
+        action: 'calculate_area',
+        description: 'getArea로 면적 계산',
+        relevance: '공간의 면적을 계산하여 설계 검증',
+        optional: true,
+      },
+    ],
+  },
+
+  // Complex shape → suggest convexHull
+  {
+    condition: (ctx) => ctx.entitiesCreated.length >= 5,
+    steps: [
+      {
+        action: 'create_hull',
+        description: 'convexHull로 외곽 윤곽 생성',
+        relevance: '복잡한 형태의 외곽선을 단순화',
+        optional: true,
+      },
+    ],
+  },
 ]
 
 // ============================================================
@@ -266,7 +367,11 @@ interface ModuleHintRule {
 const MODULE_HINT_RULES: ModuleHintRule[] = [
   {
     condition: (ctx) => ctx.entityTypes.includes('character'),
-    hints: ['primitives (drawBox, drawCylinder)', 'materials (setColor)'],
+    hints: [
+      'primitives (drawBox, drawCylinder)',
+      'materials (setColor)',
+      'utility (mirror) - 대칭 부품 생성',
+    ],
   },
   {
     condition: (ctx) => ctx.entityTypes.includes('building'),
@@ -274,12 +379,49 @@ const MODULE_HINT_RULES: ModuleHintRule[] = [
       'primitives (drawBox)',
       'transforms (translate, rotate)',
       'groups (group)',
+      'boolean (booleanDifference) - 창문/문 구멍 뚫기',
+      'geometry (offsetPolygon) - 벽 두께 조절',
     ],
   },
   {
     condition: (ctx) =>
       ctx.entityTypes.includes('room') || ctx.entityTypes.includes('wall'),
-    hints: ['primitives (drawBox)', 'materials (setColor, setOpacity)'],
+    hints: [
+      'primitives (drawBox)',
+      'materials (setColor, setOpacity)',
+      'boolean (booleanDifference) - 문/창문 구멍',
+      'geometry (getArea) - 면적 계산',
+    ],
+  },
+  // Advanced: Boolean operations for overlapping/combined shapes
+  {
+    condition: (ctx) => ctx.entitiesCreated.length >= 2,
+    hints: [
+      'boolean (booleanUnion) - 여러 도형 합치기',
+      'boolean (booleanDifference) - 도형에서 구멍 뚫기',
+      'boolean (booleanIntersect) - 겹치는 부분만 추출',
+    ],
+  },
+  // Advanced: Geometry analysis for complex shapes
+  {
+    condition: (ctx) =>
+      ctx.entityTypes.includes('furniture') || ctx.entityTypes.includes('vehicle'),
+    hints: [
+      'geometry (offsetPolygon) - 외곽선/테두리 생성',
+      'geometry (convexHull) - 복잡한 형태 단순화',
+      'utility (duplicate) - 복제',
+      'utility (mirror) - 대칭 복제',
+    ],
+  },
+  // Advanced: Mirror for symmetric objects
+  {
+    condition: (ctx) => {
+      const hasSymmetricKeyword = ctx.entitiesCreated.some(
+        (name) => /left|right|l_|r_|_l|_r|arm|leg|eye|ear|wing/i.test(name)
+      )
+      return hasSymmetricKeyword
+    },
+    hints: ['utility (mirror) - 반대편 대칭 복제 (x/y축 기준)'],
   },
 ]
 

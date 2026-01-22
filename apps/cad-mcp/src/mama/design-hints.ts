@@ -339,6 +339,79 @@ export function shouldGenerateDesignHints(userMessage: string): boolean {
 }
 
 // ============================================================
+// Workflow Phase DesignHints (Story 11.21)
+// ============================================================
+
+/**
+ * DesignHints by workflow phase
+ */
+const PHASE_DESIGN_HINTS: Record<string, DesignHints> = {
+  discovery: {
+    next_concepts: [
+      { concept: '스타일 카테고리', relevance: '선호 스타일 파악의 기초' },
+      { concept: '레퍼런스 수집', relevance: '비전 구체화' },
+    ],
+    questions: [
+      { question: '이 공간에서 어떤 기분을 느끼고 싶으세요?', purpose: '감정적 목표 명확화' },
+      { question: '가장 좋아하는 공간의 특징을 설명해주세요', purpose: '선호 패턴 발견' },
+    ],
+    options: STYLE_OPTIONS.minimal,
+    principle: '비전을 명확히 하면 결정이 쉬워집니다',
+  },
+  planning: {
+    next_concepts: [
+      { concept: '60-30-10 법칙', relevance: '색상 비율의 기본' },
+      { concept: '재료 선택', relevance: '질감과 분위기 결정' },
+    ],
+    questions: [
+      { question: '따뜻한 분위기 vs 차가운 분위기 중 어떤 것을 선호하세요?', purpose: '색온도 결정' },
+      { question: '관리 편의성과 고급스러움 중 우선순위는?', purpose: '재료 트레이드오프' },
+    ],
+    options: [],
+    principle: '60-30-10 법칙: 주색 60%, 보조색 30%, 강조색 10%',
+  },
+  architecture: {
+    next_concepts: [
+      { concept: '동선', relevance: '공간의 실용성' },
+      { concept: 'z-order', relevance: '시각적 깊이감' },
+    ],
+    questions: [
+      { question: '이 공간에서 가장 많이 이동하는 경로는?', purpose: '동선 파악' },
+      { question: '어떤 요소가 먼저 눈에 들어오면 좋겠어요?', purpose: '시선 유도 계획' },
+    ],
+    options: [],
+    principle: '동선은 공간의 스토리를 만듭니다',
+  },
+  creation: {
+    next_concepts: [
+      { concept: '점진적 디테일링', relevance: '단계별 완성' },
+      { concept: '비율 검증', relevance: '시각적 균형' },
+    ],
+    questions: [
+      { question: '가장 중요한 요소부터 시작할까요?', purpose: '우선순위 결정' },
+      { question: '어디서 멈춰야 할지 기준이 있으세요?', purpose: '완성도 기준' },
+    ],
+    options: [],
+    principle: '만들면서 배우고, 배우면서 만듭니다',
+  },
+  completed: {
+    next_concepts: [],
+    questions: [],
+    options: [],
+  },
+}
+
+/**
+ * Get DesignHints for a workflow phase
+ *
+ * @param phase - Workflow phase
+ * @returns DesignHints for the phase or null
+ */
+export function getPhaseDesignHints(phase: string): DesignHints | null {
+  return PHASE_DESIGN_HINTS[phase] || null
+}
+
+// ============================================================
 // Exports
 // ============================================================
 
@@ -347,4 +420,5 @@ export {
   PRINCIPLES,
   STYLE_OPTIONS,
   THINKING_QUESTIONS,
+  PHASE_DESIGN_HINTS,
 }

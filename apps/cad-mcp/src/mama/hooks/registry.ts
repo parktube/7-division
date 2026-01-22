@@ -76,6 +76,7 @@ class MAMAHookRegistry implements HookRegistry {
         formattedContext: '',
         healthWarning: null,
         learningHints: [],
+        workflowStatus: null,
       }
     }
   }

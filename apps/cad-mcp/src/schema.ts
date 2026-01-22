@@ -254,6 +254,11 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
     description: "도형의 그리기 순서(z-order)를 변경. ⚠️ 'back'은 전체 씬의 맨 뒤로 이동(배경보다 뒤로 갈 수 있음!). 💡 레이어링 패턴: 배경을 먼저 생성 → 오브젝트 나중에 생성 = 자동으로 위에 배치. 'above:target'/'below:target'으로 특정 엔티티 기준 배치. 그룹 이동 시 자식도 함께 이동",
     example: "drawOrder('player', 'above:grass_0_0')  // grass_0_0 바로 위로",
   },
+  sortByIsoDepth: {
+    signature: "sortByIsoDepth(groupName?: string): boolean",
+    description: "그룹 내 자식들을 isometric depth(x+y) 기준으로 자동 정렬. x+y가 클수록 뒤(먼저 그림), 작을수록 앞(나중 그림). 💡 3D 가구/오브젝트 생성 후 호출하면 올바른 z-order로 자동 배치. groupName 생략 시 root level 정렬",
+    example: "sortByIsoDepth('tv_cabinet')  // 캐비닛 내부 자동 정렬\nsortByIsoDepth()  // 전체 씬 정렬",
+  },
   // transforms
   translate: {
     signature: "translate(name: string, dx: number, dy: number, options?: { space?: 'world' | 'local' }): boolean",
