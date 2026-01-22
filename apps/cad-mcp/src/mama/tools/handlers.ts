@@ -1034,6 +1034,15 @@ export async function handleMamaWorkflow(args: WorkflowArgs): Promise<ToolRespon
   try {
     await initMAMA()
 
+    // Validate command
+    const validCommands = ['start', 'status', 'next', 'goto', 'list', 'artifact'] as const
+    if (!validCommands.includes(args.command as typeof validCommands[number])) {
+      return {
+        success: false,
+        error: `Invalid command: ${args.command}. Use one of: ${validCommands.join(', ')}`,
+      }
+    }
+
     const result = handleWorkflow({
       command: args.command as WorkflowInput['command'],
       project_name: args.project_name,

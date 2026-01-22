@@ -307,17 +307,27 @@ export function shouldTrigger30DayReport(): boolean {
 }
 
 /**
+ * Escape special regex characters
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
  * Find related learning by matching concept in user message
+ * Uses word boundary matching to avoid false positives (e.g., "box" in "sandbox")
  *
  * @param userMessage - User's message
  * @returns Related learning if found
  */
 export function findRelatedLearning(userMessage: string): LearningRow | null {
   const learnings = getUserLearnings(DEFAULT_USER_ID)
-  const lowerMessage = userMessage.toLowerCase()
 
   for (const learning of learnings) {
-    if (lowerMessage.includes(learning.concept.toLowerCase())) {
+    // Use word boundary regex for accurate matching
+    const escapedConcept = escapeRegex(learning.concept)
+    const pattern = new RegExp(`\\b${escapedConcept}\\b`, 'i')
+    if (pattern.test(userMessage)) {
       return learning
     }
   }

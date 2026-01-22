@@ -243,9 +243,9 @@ export function handleNext(input: WorkflowInput): WorkflowResult {
 
   const nextPhase = PHASE_ORDER[currentIndex + 1]
 
-  // Save artifact if content provided
+  // Save artifact if content provided (allow empty string)
   let savedArtifact: string | undefined
-  if (input.content) {
+  if (input.content !== undefined) {
     const artifactType = PHASE_ARTIFACTS[currentPhase]
     if (artifactType) {
       addProjectArtifact({
@@ -470,7 +470,9 @@ export function getWorkflowStatusForSession(): {
   }
 
   const currentIndex = PHASE_ORDER.indexOf(project.current_phase as WorkflowPhase)
-  const progress = `${currentIndex + 1}/${PHASE_ORDER.length}`
+  const progress = currentIndex >= 0
+    ? `${currentIndex + 1}/${PHASE_ORDER.length}`
+    : `?/${PHASE_ORDER.length}`
 
   return {
     hasActiveProject: true,
