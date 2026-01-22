@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import type { Scene } from '@/types/scene'
+import type { Selection } from '@/types/selection'
+import type { Stroke } from '@/types/sketch'
 import { safeValidateMessage, type ConnectionData } from '@ai-native-cad/shared'
 import {
   VIEWER_VERSION,
@@ -98,6 +100,53 @@ const store: WebSocketStore = {
   listeners: new Set(),
 }
 
+/**
+ * Check if WebSocket is connected (for use outside hook context)
+ */
+export function isWebSocketConnected(): boolean {
+  return globalWs?.readyState === WebSocket.OPEN
+}
+
+/**
+ * Send selection update via WebSocket (for use outside hook context)
+ * Returns true if message was sent, false if not connected
+ */
+export function sendSelectionUpdateDirect(selection: {
+  selected_entities: string[]
+  locked_entities?: string[]
+  hidden_entities?: string[]
+}): boolean {
+  if (globalWs?.readyState === WebSocket.OPEN) {
+    globalWs.send(JSON.stringify({
+      type: 'selection_update',
+      data: {
+        selected_entities: selection.selected_entities,
+        locked_entities: selection.locked_entities || [],
+        hidden_entities: selection.hidden_entities || [],
+      },
+      timestamp: Date.now(),
+    }))
+    return true
+  }
+  return false
+}
+
+/**
+ * Send sketch update via WebSocket (for use outside hook context)
+ * Returns true if message was sent, false if not connected
+ */
+export function sendSketchUpdateDirect(strokes: Stroke[]): boolean {
+  if (globalWs?.readyState === WebSocket.OPEN) {
+    globalWs.send(JSON.stringify({
+      type: 'sketch_update',
+      data: { strokes },
+      timestamp: Date.now(),
+    }))
+    return true
+  }
+  return false
+}
+
 // For testing purposes only
 export function __resetStoreForTesting() {
   Object.assign(store, initialStoreState)
@@ -175,6 +224,8 @@ export interface UseWebSocketResult {
   maxRetriesReached: boolean
   reconnect: () => void
   sendPing: () => void
+  sendSelectionUpdate: (selection: Selection) => void
+  sendSketchUpdate: (strokes: Stroke[]) => void
 }
 
 export function useWebSocket(): UseWebSocketResult {
@@ -374,6 +425,38 @@ export function useWebSocket(): UseWebSocketResult {
     }
   }, [])
 
+  /**
+   * Send selection update to MCP server via WebSocket
+   * Used for GitHub Pages where HTTP POST is not available
+   */
+  const sendSelectionUpdate = useCallback((selection: Selection) => {
+    if (globalWs?.readyState === WebSocket.OPEN) {
+      globalWs.send(JSON.stringify({
+        type: 'selection_update',
+        data: {
+          selected_entities: selection.selected_entities,
+          locked_entities: selection.locked_entities || [],
+          hidden_entities: selection.hidden_entities || [],
+        },
+        timestamp: Date.now(),
+      }))
+    }
+  }, [])
+
+  /**
+   * Send sketch update to MCP server via WebSocket
+   * Used for GitHub Pages where HTTP POST is not available
+   */
+  const sendSketchUpdate = useCallback((strokes: Stroke[]) => {
+    if (globalWs?.readyState === WebSocket.OPEN) {
+      globalWs.send(JSON.stringify({
+        type: 'sketch_update',
+        data: { strokes },
+        timestamp: Date.now(),
+      }))
+    }
+  }, [])
+
   useEffect(() => {
     mountedRef.current = true
     connect()
@@ -397,5 +480,7 @@ export function useWebSocket(): UseWebSocketResult {
     maxRetriesReached: storeState.maxRetriesReached,
     reconnect,
     sendPing,
+    sendSelectionUpdate,
+    sendSketchUpdate,
   }
 }

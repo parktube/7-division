@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import type { Stroke, Point, SketchTool } from '@/types/sketch'
 import { getDataUrl } from '@/utils/dataUrl'
 import { debounce } from '@/utils/debounce'
+import { sendSketchUpdateDirect, isWebSocketConnected } from './useWebSocket'
 
 const DEFAULT_COLOR = '#ef4444' // red-500
 const DEFAULT_WIDTH = 2
@@ -41,12 +42,28 @@ function strokeIntersectsEraser(stroke: Stroke, eraserPoint: Point, radius: numb
 
 // Save strokes to sketch.json
 async function saveStrokes(strokes: Stroke[]) {
+  // Try WebSocket first (works for both local and GitHub Pages when MCP is running)
+  if (isWebSocketConnected()) {
+    sendSketchUpdateDirect(strokes)
+    return
+  }
+
+  // Fallback to HTTP POST for local development without WebSocket
+  // Skip on GitHub Pages (HTTPS) - no local server to handle POST
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return // Silently skip - expected behavior on GitHub Pages
+  }
+
   try {
-    await fetch(getDataUrl('sketch.json'), {
+    const res = await fetch(getDataUrl('sketch.json'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ strokes }),
     })
+    // Silently ignore 404/405 errors (expected on static hosting)
+    if (!res.ok && res.status !== 404 && res.status !== 405) {
+      console.warn('Failed to save strokes:', res.status)
+    }
   } catch {
     // Ignore save errors (e.g., in production without middleware)
   }
