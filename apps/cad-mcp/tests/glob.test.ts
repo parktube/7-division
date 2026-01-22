@@ -95,9 +95,9 @@ describe('glob 도구', () => {
       expect(resultEmptyPattern.success).toBe(true);
       // 빈 패턴은 전체 파일을 반환해야 함 (필터링 없음)
       expect(resultEmptyPattern.data.files.length).toBeGreaterThan(0);
-      // main 파일이 포함되어야 함 (항상 존재)
+      // builtin 파일이 포함되어야 함 (항상 존재)
       const names = getNames(resultEmptyPattern.data.files);
-      expect(names).toContain('main');
+      expect(names).toContain('japandi_palette');  // builtin 파일은 CI에서도 존재
     });
   });
 
