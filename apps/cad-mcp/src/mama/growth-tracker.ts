@@ -88,6 +88,7 @@ export function recordGrowth(params: RecordGrowthParams): number {
   logger.info(`Growth recorded: ${params.type}`)
 
   // Check for automatic skill level upgrade after recording
+  // Note: 대량 기록 시나리오에서는 배치 처리 후 한 번만 호출하는 것을 고려
   checkSkillLevelUpgrade()
 
   return metricId
