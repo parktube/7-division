@@ -216,13 +216,13 @@ function woodFloor(name, wx, wy, wz, width, depth, plankWidth, color) {
     1
   ];
   
-  // 마루판 간 틈새 색상 (더 어두움)
-  const gapColor = [
-    color.t[0] * 0.7,
-    color.t[1] * 0.7,
-    color.t[2] * 0.7,
-    1
-  ];
+  // TODO: 마루판 간 틈새 렌더링 시 사용 (현재 미사용)
+  // const gapColor = [
+  //   color.t[0] * 0.7,
+  //   color.t[1] * 0.7,
+  //   color.t[2] * 0.7,
+  //   1
+  // ];
   
   // Y축 방향으로 마루판 배치 (화면에서 왼쪽위→오른쪽아래 방향)
   const plankCount = Math.ceil(depth / plankWidth);
