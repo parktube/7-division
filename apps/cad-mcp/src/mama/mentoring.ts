@@ -133,6 +133,16 @@ export function trackAction(action: string): {
 // ============================================================
 
 /**
+ * Extract first sentence from text (handles edge cases)
+ */
+function getFirstSentence(text: string): string {
+  if (!text || text.trim() === '') return text
+  const firstSentence = text.split('.')[0]?.trim()
+  // Return original if split results in empty (e.g., text starts with '.')
+  return firstSentence || text
+}
+
+/**
  * Format next step based on skill level
  */
 export function formatNextStep(step: NextStep, level: SkillLevel): NextStep {
@@ -141,13 +151,13 @@ export function formatNextStep(step: NextStep, level: SkillLevel): NextStep {
     return {
       ...step,
       description: step.action,
-      relevance: step.relevance.split('.')[0] || step.relevance, // First sentence
+      relevance: getFirstSentence(step.relevance),
     }
   } else if (level === 'intermediate') {
     // Intermediate: brief description
     return {
       ...step,
-      relevance: step.relevance.split('.')[0] || step.relevance, // First sentence only
+      relevance: getFirstSentence(step.relevance),
     }
   }
 

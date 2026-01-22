@@ -83,17 +83,17 @@ z_order:
 # ============================================================
 furniture_sizes:
   bed:
-    single: { w: 40, d: 80, h: 15 }
-    double: { w: 60, d: 80, h: 15 }
+    single: {w: 40, d: 80, h: 15}
+    double: {w: 60, d: 80, h: 15}
   sofa:
-    two_seater: { w: 60, d: 30, h: 25 }
-    three_seater: { w: 80, d: 30, h: 25 }
+    two_seater: {w: 60, d: 30, h: 25}
+    three_seater: {w: 80, d: 30, h: 25}
   table:
-    coffee: { w: 40, d: 25, h: 12 }
-    dining: { w: 60, d: 40, h: 25 }
-    desk: { w: 50, d: 25, h: 25 }
-  chair: { w: 15, d: 15, h: 30 }
-  shelf: { w: 40, d: 12, h: 60 }
+    coffee: {w: 40, d: 25, h: 12}
+    dining: {w: 60, d: 40, h: 25}
+    desk: {w: 50, d: 25, h: 25}
+  chair: {w: 15, d: 15, h: 30}
+  shelf: {w: 40, d: 12, h: 60}
 
 # ============================================================
 # MCP 도구 사용 가이드
