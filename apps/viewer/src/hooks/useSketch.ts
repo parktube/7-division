@@ -112,9 +112,13 @@ export function useSketch() {
 
   // Register global setter for injection (Puppeteer capture)
   useEffect(() => {
-    globalSketchSetter = setStrokes
+    const currentSetter = setStrokes
+    globalSketchSetter = currentSetter
     return () => {
-      globalSketchSetter = null
+      // Only clear if this instance set it (protect against multiple instances)
+      if (globalSketchSetter === currentSetter) {
+        globalSketchSetter = null
+      }
     }
   }, [])
 

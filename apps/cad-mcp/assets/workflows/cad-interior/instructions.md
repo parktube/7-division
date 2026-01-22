@@ -102,11 +102,15 @@ mama_save({ type: 'decision', topic: 'interior:architecture', decision: '구조'
 </build-order>
 
 <tools>
-write/edit → 자동 실행됨 → bash capture로 결과 확인
-- write({ file: 'main', code: '...' }): 전체 작성 (자동 실행)
-- edit({ file, old_code, new_code }): 부분 수정 (자동 실행)
-- bash({ command: 'capture' }): 코드 실행 후 결과 캡처
-- bash({ command: 'tree' }): 구조 확인
+도구 순서: lsp(discovery) → write/edit(cad_code) → bash(scene/export) → write(module)
+
+1. lsp({ operation: 'domains' }): 사용 가능한 함수 탐색
+2. lsp({ operation: 'describe', domain: 'primitives' }): 함수 시그니처 확인
+3. write({ file: 'main', code: '...' }): 전체 작성 (자동 실행)
+4. edit({ file, old_code, new_code }): 부분 수정 (자동 실행)
+5. bash({ command: 'capture' }): 코드 실행 후 결과 캡처
+6. bash({ command: 'tree' }): 구조 확인
+7. write({ file: 'module_name', code }): 모듈로 저장
 </tools>
 
 <iterate>

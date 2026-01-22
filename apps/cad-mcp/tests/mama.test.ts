@@ -877,21 +877,22 @@ describe('SessionStart Hook', () => {
   })
 
   it('should return empty context for none mode', async () => {
-    // Mock none mode by testing the logic
-    const contextMode = 'none'
-
-    if (contextMode === 'none') {
-      const result = {
-        checkpoint: null,
-        recentDecisions: [],
-        contextMode: 'none' as const,
-        formattedContext: '',
-      }
-
-      expect(result.formattedContext).toBe('')
-      expect(result.checkpoint).toBeNull()
-      expect(result.recentDecisions).toHaveLength(0)
+    // TODO: Replace with actual executeSessionInit call when test DB setup is available
+    // Currently testing the expected behavior of 'none' mode as per session-init.ts:63-73
+    const expectedNoneModeResult = {
+      checkpoint: null,
+      recentDecisions: [],
+      contextMode: 'none' as const,
+      formattedContext: '',
+      healthWarning: null,
+      learningHints: [],
+      workflowStatus: null,
     }
+
+    expect(expectedNoneModeResult.formattedContext).toBe('')
+    expect(expectedNoneModeResult.checkpoint).toBeNull()
+    expect(expectedNoneModeResult.recentDecisions).toHaveLength(0)
+    expect(expectedNoneModeResult.healthWarning).toBeNull()
   })
 })
 

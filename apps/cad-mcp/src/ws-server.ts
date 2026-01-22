@@ -228,11 +228,11 @@ export class CADWebSocketServer {
           break
         case 'selection_update':
           // Fire-and-forget async write (errors handled in method)
-          void this.handleSelectionUpdate(message.data as SelectionUpdateData)
+          void this.handleSelectionUpdate(message.data)
           break
         case 'sketch_update':
           // Fire-and-forget async write (errors handled in method)
-          void this.handleSketchUpdate(message.data as SketchUpdateData)
+          void this.handleSketchUpdate(message.data)
           break
         default:
           // Client shouldn't send scene_update, selection, etc.

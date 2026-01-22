@@ -31,6 +31,9 @@ const ENTITY_NAME_PATTERNS = [
   /const\s+(\w+)\s*=\s*(?:draw|create|make)/g,
 ]
 
+/** Pattern to extract CAD function calls for domain detection */
+const CAD_FUNCTION_PATTERN = /\b(drawBox|drawCylinder|drawSphere|drawCircle|drawRect|drawPolygon|drawLine|drawPoint|translate|rotate|scale|mirror|group|ungroup|clone|union|subtract|intersect|select|find|getEntity)\s*\(/g
+
 /**
  * Extract entity names from CAD code
  */
@@ -49,6 +52,21 @@ export function extractEntityNames(code: string): string[] {
   }
 
   return [...new Set(names)]
+}
+
+/**
+ * Extract CAD function calls from code for domain detection
+ */
+export function extractCadFunctions(code: string): string[] {
+  const functions: string[] = []
+  CAD_FUNCTION_PATTERN.lastIndex = 0
+  let match
+  while ((match = CAD_FUNCTION_PATTERN.exec(code)) !== null) {
+    if (match[1]) {
+      functions.push(match[1])
+    }
+  }
+  return [...new Set(functions)]
 }
 
 /**
@@ -191,15 +209,20 @@ export function executePostExecute(
       return result
     }
 
-    // Track action for adaptive mentoring
-    const primaryDomain = entityTypes.length > 0
-      ? getActionDomain(entityTypes[0])
-      : 'general'
+    // Extract CAD function calls for domain detection
+    const cadFunctions = context.code
+      ? extractCadFunctions(context.code)
+      : []
 
-    // Track each entity type as an action
-    for (const entityType of entityTypes) {
-      trackAction(entityType)
+    // Track each CAD function call as an action (for adaptive mentoring)
+    for (const func of cadFunctions) {
+      trackAction(func)
     }
+
+    // Determine primary domain from CAD functions (not entity types)
+    const primaryDomain = cadFunctions.length > 0
+      ? getActionDomain(cadFunctions[0])
+      : 'general'
 
     // Generate action hints
     const hints = generateActionHints({

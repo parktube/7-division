@@ -314,7 +314,8 @@ export function calculateQuestionQuality(question: string): QuestionQualityScore
   const specificWords = words.filter((w) => w.length > 4)
   const specificity = Math.min(50, (specificWords.length / Math.max(1, words.length)) * 100)
 
-  // Professionalism: count specific terms from mapping
+  // Professionalism: count specific terms from mapping (max 50 points, ~3 terms)
+  // Note: 15 points per term, capped at 50 to balance with specificity score
   const specificTerms = extractSpecificTerms(question)
   const professionalism = Math.min(50, specificTerms.length * 15)
 

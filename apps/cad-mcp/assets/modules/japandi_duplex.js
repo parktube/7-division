@@ -206,6 +206,7 @@ function japandiLivingRoom(name, wx, wy, wz, opts) {
 // opts: { platformW(150), platformD(150), platformH(50) }
 function japandiMezzanine(name, wx, wy, wz, opts) {
   opts = opts || {};
+  // Note: Using || is intentional - 0 is not a valid dimension value
   const platformW = opts.platformW || 150;
   const platformD = opts.platformD || 150;
   const platformH = opts.platformH || 50;

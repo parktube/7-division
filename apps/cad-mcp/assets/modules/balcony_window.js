@@ -3,6 +3,10 @@
 // - 프레임 + 창살 + 유리 패널
 // - 좌우 미닫이문 + 중앙 고정창
 //
+// TODO: Consider refactoring to local coordinate pattern (0,0,0 based)
+// then use createGroup() + translate() for placement. Current world coordinate
+// approach works but makes reuse/rotation harder.
+//
 // 사용법:
 //   import 'balcony_window'
 //   balconyWindow('window', 140, 0, 0, { w: 160, h: 200 });

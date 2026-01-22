@@ -8,6 +8,16 @@
  * Includes DesignHints for guiding Human Chain of Thought (CoT).
  */
 
+// Import and re-export DesignHints types from canonical source to avoid type drift
+import type {
+  DesignHints,
+  NextConcept,
+  ThinkingQuestion,
+  DesignOption,
+} from '../design-hints.js'
+
+export type { DesignHints, NextConcept, ThinkingQuestion, DesignOption }
+
 // ============================================================
 // NextStep - Suggested next action
 // ============================================================
@@ -32,44 +42,6 @@ export interface SaveSuggestion {
   topic: string
   /** Reason for saving (e.g., '새로운 방 레이아웃 패턴 발견') */
   reason: string
-}
-
-// ============================================================
-// DesignHints - Human CoT guidance (Story 11.15)
-// ============================================================
-
-export interface NextConcept {
-  /** Concept name (e.g., '60-30-10 법칙') */
-  concept: string
-  /** Why learn this now */
-  relevance: string
-}
-
-export interface ThinkingQuestion {
-  /** Question to ask the user */
-  question: string
-  /** Purpose of this question for Human CoT */
-  purpose: string
-}
-
-export interface DesignOption {
-  /** Option label (e.g., 'Japandi') */
-  label: string
-  /** Pros of this option */
-  pros: string[]
-  /** Cons of this option */
-  cons: string[]
-}
-
-export interface DesignHints {
-  /** Concepts to learn next */
-  next_concepts: NextConcept[]
-  /** Questions to stimulate thinking */
-  questions: ThinkingQuestion[]
-  /** Choices with tradeoffs */
-  options: DesignOption[]
-  /** Relevant design principle */
-  principle?: string
 }
 
 // ============================================================

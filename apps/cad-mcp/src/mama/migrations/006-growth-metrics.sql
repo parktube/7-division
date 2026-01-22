@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS growth_metrics (
   related_learning_id TEXT,                 -- FK to learnings table
   related_decision_id TEXT,                 -- FK to decisions table
   context TEXT,                             -- Situation context
-  created_at INTEGER                        -- Unix timestamp (ms)
+  created_at INTEGER,                       -- Unix timestamp (ms)
+  FOREIGN KEY (related_learning_id) REFERENCES learnings(id),
+  FOREIGN KEY (related_decision_id) REFERENCES decisions(id)
 );
 
 -- Indexes for common queries
@@ -19,5 +21,5 @@ CREATE INDEX IF NOT EXISTS idx_growth_metrics_type ON growth_metrics(metric_type
 -- Composite index for user + type queries
 CREATE INDEX IF NOT EXISTS idx_growth_metrics_user_type ON growth_metrics(user_id, metric_type);
 
--- Track schema version (after successful table creation)
-INSERT OR IGNORE INTO schema_version (version) VALUES (6);
+-- Note: Version is recorded by db.ts with Date.now() timestamp
+-- INSERT OR IGNORE INTO schema_version (version) VALUES (6);

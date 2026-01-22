@@ -3,6 +3,10 @@
 // - L자형 (복층/선큰 플랫폼용)
 // - 계단 영역 제외
 //
+// TODO: Consider refactoring to local coordinate pattern (0,0,0 based)
+// then use createGroup() + translate() for placement. Current world coordinate
+// approach works but makes reuse/rotation harder.
+//
 // 사용법:
 //   import 'glass_railing'
 //   glassRailing('railing', platformX, platformY, 150, 150, 50);

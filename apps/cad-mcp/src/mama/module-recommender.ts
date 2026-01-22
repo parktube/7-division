@@ -406,8 +406,8 @@ export function trackModuleUsage(moduleName: string): void {
  * @param code - CAD code being executed
  */
 export function trackImportsFromCode(code: string): void {
-  // Match both: import 'module' and import { x } from 'module'
-  const importMatches = code.matchAll(/import\s+(?:\{[^}]*\}\s+from\s+)?['"]([^'"]+)['"]/g)
+  // Match: import 'module', import { x } from 'module', import * as x from 'module'
+  const importMatches = code.matchAll(/import\s+(?:\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
 
   for (const match of importMatches) {
     const moduleName = match[1]

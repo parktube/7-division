@@ -285,12 +285,14 @@ function runMigrations(database: Database.Database): void {
 
     logger.info(`Applying migration: ${file}`)
 
+    // Note: Using exec() with manual transaction for multi-statement SQL files.
+    // better-sqlite3 transaction() API is for prepared statements, not exec().
     try {
       database.exec('BEGIN TRANSACTION')
       database.exec(migrationSQL)
       database
-        .prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)')
-        .run(version)
+        .prepare('INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)')
+        .run(version, Date.now())
       database.exec('COMMIT')
 
       logger.info(`Migration ${file} applied successfully`)
@@ -301,8 +303,8 @@ function runMigrations(database: Database.Database): void {
       if (err instanceof Error && err.message.includes('duplicate column')) {
         logger.warn(`Migration ${file} skipped (duplicate column - already applied)`)
         database
-          .prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)')
-          .run(version)
+          .prepare('INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)')
+          .run(version, Date.now())
         continue
       }
 

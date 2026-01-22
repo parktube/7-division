@@ -61,6 +61,7 @@ export function getUserPath(file: string): string {
  */
 export function isBuiltinModule(file: string): boolean {
   if (file === 'main') return false;
+  if (!isValidFileName(file)) return false;
   const builtinPath = getBuiltinPath(file);
   return existsSync(builtinPath);
 }

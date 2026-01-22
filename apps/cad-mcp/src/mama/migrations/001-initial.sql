@@ -70,12 +70,13 @@ CREATE INDEX IF NOT EXISTS idx_checkpoints_status ON checkpoints(status);
 
 CREATE TABLE IF NOT EXISTS schema_version (
   version INTEGER PRIMARY KEY,
-  applied_at INTEGER DEFAULT (unixepoch() * 1000),
+  applied_at INTEGER,
   description TEXT
 );
 
-INSERT OR IGNORE INTO schema_version (version, description)
-VALUES (1, 'Initial CAD MAMA schema');
+-- Note: Version is recorded by db.ts with Date.now() timestamp
+-- INSERT OR IGNORE INTO schema_version (version, description)
+-- VALUES (1, 'Initial CAD MAMA schema');
 
 -- ══════════════════════════════════════════════════════════════
 -- Note: vss_memories virtual table is created programmatically

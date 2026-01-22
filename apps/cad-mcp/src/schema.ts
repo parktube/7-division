@@ -6,7 +6,9 @@
  * 6개 도구: glob, read, edit, write, lsp, bash
  *
  * Epic 11: MAMA 통합 도구
- * 5개 도구: mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure
+ * 11개 도구: mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure,
+ *           mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report,
+ *           mama_recommend_modules, mama_workflow
  */
 
 export interface ParameterSchema {

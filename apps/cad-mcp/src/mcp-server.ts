@@ -131,11 +131,11 @@ function writePidFile(): void {
   ensureCadDataDir()
   const pidContent = process.pid.toString()
 
+  let fd: number | null = null
   try {
     // Try atomic create with O_EXCL (fail if file exists)
-    const fd = openSync(PID_FILE, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
+    fd = openSync(PID_FILE, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
     writeFileSync(fd, pidContent, 'utf-8')
-    closeSync(fd)
   } catch (err: unknown) {
     const error = err as NodeJS.ErrnoException
     if (error.code === 'EEXIST') {
@@ -153,6 +153,15 @@ function writePidFile(): void {
       // If process is running, let the main startup logic handle it
     } else {
       throw error
+    }
+  } finally {
+    // Close file descriptor if opened
+    if (fd !== null) {
+      try {
+        closeSync(fd)
+      } catch {
+        // Ignore close errors
+      }
     }
   }
   logger.debug(`PID file written: ${PID_FILE} (PID: ${process.pid})`)
