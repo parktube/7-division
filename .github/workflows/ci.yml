@@ -103,6 +103,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Rebuild native modules (better-sqlite3)
+        run: pnpm rebuild better-sqlite3
+
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
 
