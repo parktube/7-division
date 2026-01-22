@@ -572,12 +572,12 @@ export function getUserProfile(): UserProfileRow {
     initDatabase()
   }
 
-  const row = db!.prepare('SELECT * FROM user_profile WHERE id = 1').get() as UserProfileRow | undefined
+  const row = getDatabase().prepare('SELECT * FROM user_profile WHERE id = 1').get() as UserProfileRow | undefined
 
   if (!row) {
     // Create default profile
     const now = Date.now()
-    db!.prepare(`
+    getDatabase().prepare(`
       INSERT OR IGNORE INTO user_profile (id, global_skill_level, domain_skill_levels, action_counts, created_at, updated_at)
       VALUES (1, 'intermediate', '{}', '{}', ?, ?)
     `).run(now, now)
@@ -604,7 +604,7 @@ export function setGlobalSkillLevel(level: SkillLevel): void {
   }
 
   const now = Date.now()
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE user_profile SET global_skill_level = ?, updated_at = ? WHERE id = 1
   `).run(level, now)
 
@@ -643,7 +643,7 @@ export function setDomainSkillLevel(domain: string, level: SkillLevel): void {
   levels[domain] = level
 
   const now = Date.now()
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE user_profile SET domain_skill_levels = ?, updated_at = ? WHERE id = 1
   `).run(JSON.stringify(levels), now)
 
@@ -669,7 +669,7 @@ export function incrementActionCount(action: string): number {
   counts[action] = (counts[action] || 0) + 1
 
   const now = Date.now()
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE user_profile SET action_counts = ?, updated_at = ? WHERE id = 1
   `).run(JSON.stringify(counts), now)
 
@@ -726,13 +726,13 @@ export function upsertLearning(learning: {
   const now = Date.now()
 
   // Check if learning already exists for this user/concept
-  const existing = db!.prepare(`
+  const existing = getDatabase().prepare(`
     SELECT * FROM learnings WHERE user_id = ? AND concept = ?
   `).get(learning.user_id, learning.concept) as LearningRow | undefined
 
   if (existing) {
     // Update existing
-    db!.prepare(`
+    getDatabase().prepare(`
       UPDATE learnings
       SET understanding_level = COALESCE(?, understanding_level),
           user_explanation = COALESCE(?, user_explanation),
@@ -746,11 +746,12 @@ export function upsertLearning(learning: {
       learning.concept
     )
 
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Row guaranteed after update
     return getLearning(learning.user_id, learning.concept)!
   }
 
   // Insert new
-  db!.prepare(`
+  getDatabase().prepare(`
     INSERT INTO learnings (id, user_id, concept, domain, understanding_level, first_introduced, applied_count, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 0, ?)
   `).run(
@@ -765,6 +766,7 @@ export function upsertLearning(learning: {
 
   logger.info(`Learning created: ${learning.concept} for user ${learning.user_id}`)
 
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Row guaranteed after insert
   return getLearning(learning.user_id, learning.concept)!
 }
 
@@ -776,7 +778,7 @@ export function getLearning(userId: string, concept: string): LearningRow | null
     initDatabase()
   }
 
-  const row = db!.prepare(`
+  const row = getDatabase().prepare(`
     SELECT * FROM learnings WHERE user_id = ? AND concept = ?
   `).get(userId, concept) as LearningRow | undefined
 
@@ -791,7 +793,7 @@ export function getLearningById(id: string): LearningRow | null {
     initDatabase()
   }
 
-  const row = db!.prepare(`
+  const row = getDatabase().prepare(`
     SELECT * FROM learnings WHERE id = ?
   `).get(id) as LearningRow | undefined
 
@@ -814,7 +816,7 @@ export function updateUnderstandingLevel(
     initDatabase()
   }
 
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE learnings
     SET understanding_level = ?
     WHERE user_id = ? AND concept = ?
@@ -838,7 +840,7 @@ export function incrementAppliedCount(userId: string, concept: string): number {
   const now = Date.now()
 
   // Increment count and update last_applied
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE learnings
     SET applied_count = applied_count + 1,
         last_applied = ?,
@@ -871,14 +873,14 @@ export function getUserLearnings(
   }
 
   if (domain) {
-    return db!.prepare(`
+    return getDatabase().prepare(`
       SELECT * FROM learnings
       WHERE user_id = ? AND domain = ?
       ORDER BY last_applied DESC NULLS LAST, first_introduced DESC
     `).all(userId, domain) as LearningRow[]
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM learnings
     WHERE user_id = ?
     ORDER BY last_applied DESC NULLS LAST, first_introduced DESC
@@ -896,7 +898,7 @@ export function getLearningsByLevel(
     initDatabase()
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM learnings
     WHERE user_id = ? AND understanding_level >= ?
     ORDER BY understanding_level DESC, applied_count DESC
@@ -958,7 +960,7 @@ export function recordGrowthMetric(metric: {
 
   const now = Date.now()
 
-  const result = db!.prepare(`
+  const result = getDatabase().prepare(`
     INSERT INTO growth_metrics (user_id, metric_type, related_learning_id, related_decision_id, context, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(
@@ -994,14 +996,14 @@ export function getGrowthMetrics(
   const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
 
   if (metricType) {
-    return db!.prepare(`
+    return getDatabase().prepare(`
       SELECT * FROM growth_metrics
       WHERE user_id = ? AND metric_type = ? AND created_at > ?
       ORDER BY created_at DESC
     `).all(userId, metricType, cutoff) as GrowthMetricRow[]
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM growth_metrics
     WHERE user_id = ? AND created_at > ?
     ORDER BY created_at DESC
@@ -1024,7 +1026,7 @@ export function countGrowthMetricsByType(
 
   const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
 
-  const rows = db!.prepare(`
+  const rows = getDatabase().prepare(`
     SELECT metric_type, COUNT(*) as count
     FROM growth_metrics
     WHERE user_id = ? AND created_at > ?
@@ -1053,7 +1055,7 @@ export function getFirstActivityTimestamp(userId: string): number | null {
     initDatabase()
   }
 
-  const result = db!.prepare(`
+  const result = getDatabase().prepare(`
     SELECT MIN(created_at) as first_activity
     FROM growth_metrics
     WHERE user_id = ?
@@ -1083,22 +1085,22 @@ export function calculateIndependentRatio(
   const start = now - periodDays * 24 * 60 * 60 * 1000
 
   // Get totals and independent counts for each half
-  const firstHalfTotal = db!.prepare(`
+  const firstHalfTotal = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
     WHERE user_id = ? AND created_at BETWEEN ? AND ?
   `).get(userId, start, midpoint) as { count: number }
 
-  const firstHalfIndependent = db!.prepare(`
+  const firstHalfIndependent = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
     WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at BETWEEN ? AND ?
   `).get(userId, start, midpoint) as { count: number }
 
-  const secondHalfTotal = db!.prepare(`
+  const secondHalfTotal = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
     WHERE user_id = ? AND created_at BETWEEN ? AND ?
   `).get(userId, midpoint, now) as { count: number }
 
-  const secondHalfIndependent = db!.prepare(`
+  const secondHalfIndependent = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
     WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at BETWEEN ? AND ?
   `).get(userId, midpoint, now) as { count: number }
@@ -1144,7 +1146,7 @@ export function recordTerminologyEvolution(evolution: {
 
   const now = Date.now()
 
-  const result = db!.prepare(`
+  const result = getDatabase().prepare(`
     INSERT INTO terminology_evolution (user_id, before_term, after_term, domain, learning_id, detected_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(
@@ -1180,14 +1182,14 @@ export function getTerminologyEvolutions(
   const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
 
   if (domain) {
-    return db!.prepare(`
+    return getDatabase().prepare(`
       SELECT * FROM terminology_evolution
       WHERE user_id = ? AND domain = ? AND detected_at > ?
       ORDER BY detected_at DESC
     `).all(userId, domain, cutoff) as TerminologyEvolutionRow[]
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM terminology_evolution
     WHERE user_id = ? AND detected_at > ?
     ORDER BY detected_at DESC
@@ -1205,7 +1207,7 @@ export function getUserLastTerms(userId: string): Record<string, string[]> {
     initDatabase()
   }
 
-  const evolutions = db!.prepare(`
+  const evolutions = getDatabase().prepare(`
     SELECT DISTINCT after_term, domain
     FROM terminology_evolution
     WHERE user_id = ?
@@ -1243,7 +1245,7 @@ export function countTerminologyByDomain(
 
   const cutoff = Date.now() - periodDays * 24 * 60 * 60 * 1000
 
-  const rows = db!.prepare(`
+  const rows = getDatabase().prepare(`
     SELECT domain, COUNT(*) as count
     FROM terminology_evolution
     WHERE user_id = ? AND detected_at > ?
@@ -1281,7 +1283,7 @@ export function upsertModule(module: {
   const now = Date.now()
   const tagsJson = module.tags ? JSON.stringify(module.tags) : null
 
-  db!.prepare(`
+  getDatabase().prepare(`
     INSERT INTO modules (name, description, tags, example, usage_count, created_at, updated_at)
     VALUES (?, ?, ?, ?, 0, ?, ?)
     ON CONFLICT(name) DO UPDATE SET
@@ -1303,7 +1305,7 @@ export function getModule(name: string): ModuleRow | null {
     initDatabase()
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM modules WHERE name = ?
   `).get(name) as ModuleRow | undefined ?? null
 }
@@ -1318,7 +1320,7 @@ export function getAllModules(): ModuleRow[] {
     initDatabase()
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM modules ORDER BY usage_count DESC, name ASC
   `).all() as ModuleRow[]
 }
@@ -1335,7 +1337,7 @@ export function recordModuleUsage(name: string): void {
 
   const now = Date.now()
 
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE modules
     SET usage_count = usage_count + 1, last_used_at = ?
     WHERE name = ?
@@ -1379,7 +1381,7 @@ export function searchModules(options: {
     params.push(options.limit)
   }
 
-  return db!.prepare(query).all(...params) as ModuleRow[]
+  return getDatabase().prepare(query).all(...params) as ModuleRow[]
 }
 
 /**
@@ -1392,7 +1394,7 @@ export function deleteModule(name: string): boolean {
     initDatabase()
   }
 
-  const result = db!.prepare(`
+  const result = getDatabase().prepare(`
     DELETE FROM modules WHERE name = ?
   `).run(name)
 
@@ -1420,7 +1422,7 @@ export function createProject(project: {
   const now = Date.now()
   const id = `project_${project.name.toLowerCase().replace(/\s+/g, '_')}_${now.toString(36)}`
 
-  db!.prepare(`
+  getDatabase().prepare(`
     INSERT INTO projects (id, name, description, current_phase, created_at, updated_at)
     VALUES (?, ?, ?, 'discovery', ?, ?)
   `).run(id, project.name, project.description || null, now, now)
@@ -1448,7 +1450,7 @@ export function getProject(id: string): ProjectRow | null {
     initDatabase()
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM projects WHERE id = ?
   `).get(id) as ProjectRow | undefined ?? null
 }
@@ -1463,7 +1465,7 @@ export function getActiveProject(): ProjectRow | null {
     initDatabase()
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM projects
     WHERE current_phase != 'completed'
     ORDER BY updated_at DESC
@@ -1500,7 +1502,7 @@ export function listProjects(options?: {
     params.push(options.limit)
   }
 
-  return db!.prepare(query).all(...params) as ProjectRow[]
+  return getDatabase().prepare(query).all(...params) as ProjectRow[]
 }
 
 /**
@@ -1516,7 +1518,7 @@ export function updateProjectPhase(id: string, phase: WorkflowPhase): void {
 
   const now = Date.now()
 
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE projects SET current_phase = ?, updated_at = ? WHERE id = ?
   `).run(phase, now, id)
 
@@ -1533,7 +1535,7 @@ export function deleteProject(id: string): boolean {
     initDatabase()
   }
 
-  const result = db!.prepare(`
+  const result = getDatabase().prepare(`
     DELETE FROM projects WHERE id = ?
   `).run(id)
 
@@ -1563,7 +1565,7 @@ export function addProjectArtifact(artifact: {
   const now = Date.now()
   const id = `artifact_${artifact.project_id.split('_')[1]}_${artifact.phase}_${artifact.artifact_type}_${now.toString(36)}`
 
-  db!.prepare(`
+  getDatabase().prepare(`
     INSERT INTO project_artifacts (id, project_id, phase, artifact_type, content, created_at)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(id, artifact.project_id, artifact.phase, artifact.artifact_type, artifact.content || null, now)
@@ -1613,7 +1615,7 @@ export function getProjectArtifacts(
 
   query += ' ORDER BY created_at ASC'
 
-  return db!.prepare(query).all(...params) as ProjectArtifactRow[]
+  return getDatabase().prepare(query).all(...params) as ProjectArtifactRow[]
 }
 
 /**
@@ -1627,7 +1629,7 @@ export function updateArtifactContent(id: string, content: string): void {
     initDatabase()
   }
 
-  db!.prepare(`
+  getDatabase().prepare(`
     UPDATE project_artifacts SET content = ? WHERE id = ?
   `).run(content, id)
 }
@@ -1653,7 +1655,7 @@ export function completeProjectPhase(
 
   const now = Date.now()
 
-  db!.prepare(`
+  getDatabase().prepare(`
     INSERT INTO project_phases (project_id, phase, completed_at, learnings_count, decisions_count)
     VALUES (?, ?, ?, ?, ?)
     ON CONFLICT(project_id, phase) DO UPDATE SET
@@ -1682,7 +1684,7 @@ export function getProjectPhases(projectId: string): ProjectPhaseRow[] {
     initDatabase()
   }
 
-  return db!.prepare(`
+  return getDatabase().prepare(`
     SELECT * FROM project_phases WHERE project_id = ? ORDER BY completed_at ASC
   `).all(projectId) as ProjectPhaseRow[]
 }
@@ -1698,7 +1700,7 @@ export function isPhaseCompleted(projectId: string, phase: WorkflowPhase): boole
     initDatabase()
   }
 
-  const row = db!.prepare(`
+  const row = getDatabase().prepare(`
     SELECT completed_at FROM project_phases WHERE project_id = ? AND phase = ?
   `).get(projectId, phase) as { completed_at: number | null } | undefined
 

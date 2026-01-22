@@ -156,8 +156,9 @@ export function handleGlob(input: GlobInput): GlobOutput {
 
     // Apply pattern filter if provided
     let resultFiles: FileInfo[];
-    if (input.pattern) {
-      resultFiles = allFiles.filter(f => matchPattern(input.pattern!, f.name));
+    const pattern = input.pattern;
+    if (pattern) {
+      resultFiles = allFiles.filter(f => matchPattern(pattern, f.name));
     } else {
       resultFiles = allFiles;
     }
