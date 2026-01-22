@@ -136,7 +136,7 @@ export function searchBuiltinKnowledge(
     );
   }
 
-  // If no query, return recent items (sorted by id for consistency)
+  // If no query, return first N items (builtin knowledge is already in logical order)
   if (!query || query.trim().length === 0) {
     return filtered.slice(0, limit);
   }

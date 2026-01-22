@@ -288,29 +288,6 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           logger.warn('Canvas not ready after injection, proceeding with capture anyway');
         }
 
-        // Inject sketch data if provided or read from file
-        const sketchData = options.sketchData ?? await readSketchData();
-        if (sketchData && Array.isArray(sketchData) && sketchData.length > 0) {
-          logger.debug('Injecting sketch data', { strokeCount: sketchData.length });
-
-          const sketchInjected = await page.evaluate((strokes) => {
-            type WindowWithSketch = Window & { __injectSketch?: (strokes: unknown) => void };
-            const win = window as WindowWithSketch;
-            if (win.__injectSketch) {
-              win.__injectSketch(strokes);
-              return true;
-            }
-            return false;
-          }, sketchData);
-
-          if (sketchInjected) {
-            // Wait for sketch overlay to render
-            await new Promise(done => setTimeout(done, 300));
-          } else {
-            logger.warn('__injectSketch not available - sketch will not be captured');
-          }
-        }
-
         // Additional wait for render to complete
         await new Promise(done => setTimeout(done, 500));
       } else {
@@ -379,6 +356,29 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         });
 
         logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);
+      }
+    }
+
+    // Inject sketch data if provided or read from file (common for both paths)
+    const sketchData = options.sketchData ?? await readSketchData();
+    if (sketchData && Array.isArray(sketchData) && sketchData.length > 0) {
+      logger.debug('Injecting sketch data', { strokeCount: sketchData.length });
+
+      const sketchInjected = await page.evaluate((strokes) => {
+        type WindowWithSketch = Window & { __injectSketch?: (strokes: unknown) => void };
+        const win = window as WindowWithSketch;
+        if (win.__injectSketch) {
+          win.__injectSketch(strokes);
+          return true;
+        }
+        return false;
+      }, sketchData);
+
+      if (sketchInjected) {
+        // Wait for sketch overlay to render
+        await new Promise(done => setTimeout(done, 300));
+      } else {
+        logger.warn('__injectSketch not available - sketch will not be captured');
       }
     }
 

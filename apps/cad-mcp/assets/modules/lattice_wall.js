@@ -37,9 +37,9 @@ function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
   const width = x1 - x0;
   const centerX = (x0 + x1) / 2;
 
-  // 내부 격자 영역
-  const gw = width - outerT * 2;
-  const gh = height - outerT * 2;
+  // 내부 격자 영역 (음수/0 방지)
+  const gw = Math.max(1, width - outerT * 2);
+  const gh = Math.max(1, height - outerT * 2);
   const cellW = gw / cols;
   const cellH = gh / rows;
 

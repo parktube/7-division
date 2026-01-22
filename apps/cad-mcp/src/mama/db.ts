@@ -102,7 +102,7 @@ export interface TerminologyEvolutionRow {
   after_term: string            // Specific term (e.g., 'Japandi 스타일로')
   domain: string | null         // Domain (style, color, spatial, etc.)
   learning_id: string | null    // Related learning
-  detected_at: number           // Unix timestamp (seconds)
+  detected_at: number           // Unix timestamp (ms) - matches Date.now()
 }
 
 // Module metadata for recommendation (Story 11.19)

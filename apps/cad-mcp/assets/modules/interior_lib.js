@@ -393,10 +393,11 @@ function sunkenPlatformWithStairs(name, cornerX, cornerY, platformW, platformD, 
   // 3. 계단 (z-order: 뒤쪽 먼저 → 앞쪽 나중에)
   const stairY = cornerY - backD - stairD/2;
   const stairLeftX = cornerX - platformW;
-  const stepW = stairW / steps;
-  const stepH = platformH / steps;
+  const validSteps = Math.max(1, steps);  // 0이나 음수 방지
+  const stepW = stairW / validSteps;
+  const stepH = platformH / validSteps;
   
-  for (let i = steps - 1; i >= 0; i--) {
+  for (let i = validSteps - 1; i >= 0; i--) {
     const stepX = stairLeftX + (i + 0.5) * stepW;
     const stepHeight = (i + 1) * stepH;  // Solid from Z=0
     const stairName = name + '_stair_' + (i + 1);

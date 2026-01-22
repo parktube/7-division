@@ -108,7 +108,7 @@ function sortIsoGroups() {
   _isoGroups.sort(function(a, b) { return b.depth - a.depth; });
   
   // front로 밀어서 마지막이 맨 앞
-  for (var i = 0; i < _isoGroups.length; i++) {
+  for (let i = 0; i < _isoGroups.length; i++) {
     drawOrder(_isoGroups[i].name, 'front');
   }
   

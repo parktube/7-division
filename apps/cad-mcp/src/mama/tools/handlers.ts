@@ -642,9 +642,6 @@ export interface EditHintArgs {
   tags?: string[]
 }
 
-/**
- * Handle mama_edit_hint tool call
- */
 // ============================================================
 // mama_set_skill_level Handler
 // ============================================================
@@ -699,6 +696,13 @@ export async function handleMamaSetSkillLevel(args: SetSkillLevelArgs): Promise<
   }
 }
 
+// ============================================================
+// mama_edit_hint Handler
+// ============================================================
+
+/**
+ * Handle mama_edit_hint tool call
+ */
 export async function handleMamaEditHint(args: EditHintArgs): Promise<ToolResponse> {
   try {
     await initMAMA()

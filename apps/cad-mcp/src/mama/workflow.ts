@@ -207,7 +207,9 @@ export function handleStatus(): WorkflowResult {
 
   // Calculate progress
   const currentIndex = PHASE_ORDER.indexOf(project.current_phase as WorkflowPhase)
-  const progress = `${currentIndex + 1}/${PHASE_ORDER.length}`
+  const progress = currentIndex >= 0
+    ? `${currentIndex + 1}/${PHASE_ORDER.length}`
+    : `?/${PHASE_ORDER.length}`
 
   return {
     success: true,
