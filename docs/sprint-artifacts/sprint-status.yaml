@@ -107,4 +107,7 @@ development_status:
   # Phase 11.5: Platform (FR80)
   11-18-llm-adapter-pattern: deprecated  # FR87: 제외 (MCP가 LLM-agnostic 제공)
   11-19-module-library-recommendation: done  # FR80: Module Library Recommendation
+  # Phase 11.6: Platform Extension (FR88-96)
+  11-20-builtin-assets-distribution: done  # FR88-91: Built-in Assets Distribution
+  11-21-design-workflow-system: done  # FR92-96: Design Workflow System
   epic-11-retrospective: optional

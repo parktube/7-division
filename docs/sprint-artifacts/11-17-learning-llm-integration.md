@@ -77,25 +77,25 @@ SessionStart에 주입된 학습 개념을 사용자가 언급하면 감지:
 ## Acceptance Criteria
 
 ### AC1: type='understood' 지원
-- [ ] mama_save(type='understood', concept='X') 호출 시 해당 개념의 level이 2로 업데이트됨
-- [ ] 존재하지 않는 개념은 에러 반환
+- [x] mama_save(type='understood', concept='X') 호출 시 해당 개념의 level이 2로 업데이트됨
+- [x] 존재하지 않는 개념은 에러 반환
 
 ### AC2: type='applied' 지원
-- [ ] mama_save(type='applied', concept='X') 호출 시 applied_count 증가
-- [ ] 3회 이상 적용 시 level=4(숙달)로 자동 업그레이드
-- [ ] 존재하지 않는 개념은 에러 반환
+- [x] mama_save(type='applied', concept='X') 호출 시 applied_count 증가
+- [x] 3회 이상 적용 시 level=4(숙달)로 자동 업그레이드
+- [x] 존재하지 않는 개념은 에러 반환
 
 ### AC3: SessionStart Learning 가이드
-- [ ] full mode에서 학습 현황과 함께 활용 가이드 표시
-- [ ] 가이드에 트리거 조건 명시
+- [x] full mode에서 학습 현황과 함께 활용 가이드 표시
+- [x] 가이드에 트리거 조건 명시
 
 ### AC4: Tool Description 업데이트
-- [ ] mama_save 도구 설명에 learning/understood/applied 트리거 조건 명시
-- [ ] 예시 포함
+- [x] mama_save 도구 설명에 learning/understood/applied 트리거 조건 명시
+- [x] 예시 포함
 
 ### AC5: (선택) 자동 감지 힌트
-- [ ] 사용자가 학습된 개념을 언급하면 시스템이 감지
-- [ ] LLM에게 applied 기록 권장 힌트 제공
+- [x] 사용자가 학습된 개념을 언급하면 시스템이 감지
+- [x] LLM에게 applied 기록 권장 힌트 제공
 
 ## Technical Design
 
@@ -172,3 +172,16 @@ MAMA_TOOLS.mama_save.description = `
 2. `mama_save(type='applied', concept='X')` 3회 호출 → level=4 확인
 3. 새 세션 시작 → Learning 가이드 표시 확인
 4. 도구 설명에 트리거 조건 포함 확인
+
+## Completion Notes
+
+- Implementation completed: 2026-01-21
+- All ACs verified against actual implementation
+
+### File List (Actual Implementation)
+
+- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - type='understood', 'applied' 처리, lines 188-252)
+- `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - 도구 설명에 트리거 조건 추가, lines 41-42)
+- `apps/cad-mcp/src/mama/hooks/session-init.ts` (수정 - Learning 가이드 섹션 추가, lines 200-207)
+- `apps/cad-mcp/src/mama/learning-tracker.ts` (기존 - markUnderstood, recordApplication 함수)
+- `apps/cad-mcp/src/mama/growth-tracker.ts` (기존 - concept_applied 메트릭 추적)
