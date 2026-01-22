@@ -9,6 +9,24 @@ const DEFAULT_WIDTH = 2
 const MIN_DISTANCE = 2 // Minimum distance between points
 const ERASER_RADIUS = 15 // Eraser hit radius
 
+// Global sketch setter for injection (Puppeteer capture)
+let globalSketchSetter: ((strokes: Stroke[]) => void) | null = null
+
+/**
+ * Inject sketch data directly (for Puppeteer capture without HTTP fetch)
+ * Usage: window.__injectSketch(strokesData)
+ */
+function injectSketch(strokes: Stroke[]) {
+  if (globalSketchSetter) {
+    globalSketchSetter(strokes)
+  }
+}
+
+// Expose to window for Puppeteer capture
+if (typeof window !== 'undefined') {
+  (window as unknown as { __injectSketch: typeof injectSketch }).__injectSketch = injectSketch
+}
+
 // Calculate stroke bounding box for quick rejection
 function getStrokeBounds(stroke: Stroke) {
   const xs = stroke.points.map(p => p.x)
@@ -106,6 +124,14 @@ export function useSketch() {
       // Allow saves after initial load completes
       isLoadingRef.current = false
     })
+  }, [])
+
+  // Register global setter for injection (Puppeteer capture)
+  useEffect(() => {
+    globalSketchSetter = setStrokes
+    return () => {
+      globalSketchSetter = null
+    }
   }, [])
 
   // Cleanup debounced save on unmount
