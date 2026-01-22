@@ -51,18 +51,23 @@ export interface DesignHintsData {
 }
 
 // ============================================================
-// Cache
+// Cache (keyed by workflowId)
 // ============================================================
 
-let instructionsCache: string | null = null
-let designHintsCache: DesignHintsData | null = null
+const instructionsCache = new Map<string, string>()
+const designHintsCache = new Map<string, DesignHintsData>()
 
 /**
- * Clear all caches
+ * Clear all caches or specific workflow cache
  */
-export function clearWorkflowCache(): void {
-  instructionsCache = null
-  designHintsCache = null
+export function clearWorkflowCache(workflowId?: string): void {
+  if (workflowId) {
+    instructionsCache.delete(workflowId)
+    designHintsCache.delete(workflowId)
+  } else {
+    instructionsCache.clear()
+    designHintsCache.clear()
+  }
 }
 
 // ============================================================
@@ -73,7 +78,8 @@ export function clearWorkflowCache(): void {
  * Load workflow instructions from Markdown
  */
 export function loadWorkflowInstructions(workflowId: string = 'cad-interior'): string | null {
-  if (instructionsCache) return instructionsCache
+  const cached = instructionsCache.get(workflowId)
+  if (cached) return cached
 
   const instructionsPath = resolve(WORKFLOWS_DIR, workflowId, 'instructions.md')
 
@@ -83,9 +89,10 @@ export function loadWorkflowInstructions(workflowId: string = 'cad-interior'): s
   }
 
   try {
-    instructionsCache = readFileSync(instructionsPath, 'utf-8')
+    const content = readFileSync(instructionsPath, 'utf-8')
+    instructionsCache.set(workflowId, content)
     logger.info(`Loaded workflow instructions: ${workflowId}`)
-    return instructionsCache
+    return content
   } catch (error) {
     logger.error(`Failed to load workflow instructions: ${error}`)
     return null
@@ -93,10 +100,25 @@ export function loadWorkflowInstructions(workflowId: string = 'cad-interior'): s
 }
 
 /**
+ * Type guard for DesignHintsData
+ */
+function isValidDesignHintsData(data: unknown): data is DesignHintsData {
+  if (!data || typeof data !== 'object') return false
+  const obj = data as Record<string, unknown>
+  // Check required top-level keys
+  return (
+    'cad_dimensions' in obj &&
+    'isometric_shading' in obj &&
+    'z_order' in obj
+  )
+}
+
+/**
  * Load CAD-specific design hints from YAML
  */
 export function loadDesignHintsData(workflowId: string = 'cad-interior'): DesignHintsData | null {
-  if (designHintsCache) return designHintsCache
+  const cached = designHintsCache.get(workflowId)
+  if (cached) return cached
 
   const hintsPath = resolve(WORKFLOWS_DIR, workflowId, 'design-hints.yaml')
 
@@ -107,9 +129,16 @@ export function loadDesignHintsData(workflowId: string = 'cad-interior'): Design
 
   try {
     const content = readFileSync(hintsPath, 'utf-8')
-    designHintsCache = parseYaml(content) as DesignHintsData
+    const parsed = parseYaml(content)
+
+    if (!isValidDesignHintsData(parsed)) {
+      logger.error(`Invalid design hints data structure: ${workflowId}`)
+      return null
+    }
+
+    designHintsCache.set(workflowId, parsed)
     logger.info(`Loaded design hints: ${workflowId}`)
-    return designHintsCache
+    return parsed
   } catch (error) {
     logger.error(`Failed to load design hints: ${error}`)
     return null
@@ -224,7 +253,8 @@ export function listAvailableWorkflows(): string[] {
     }
 
     return workflows
-  } catch {
+  } catch (error) {
+    logger.error(`Failed to list available workflows: ${error}`)
     return []
   }
 }

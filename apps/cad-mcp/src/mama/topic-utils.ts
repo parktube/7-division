@@ -113,13 +113,8 @@ export function validateTopic(topic: string): boolean {
     return true
   }
 
-  // Allow simple format for backwards compatibility
+  // Allow simple format for backwards compatibility (also handles underscore-separated legacy names)
   if (SIMPLE_TOPIC_PATTERN.test(trimmed)) {
-    return true
-  }
-
-  // Also allow underscore-separated names (legacy)
-  if (/^[a-z][a-z0-9_]*$/.test(trimmed)) {
     return true
   }
 
@@ -148,10 +143,15 @@ export function isFullFormat(topic: string): boolean {
  * @param aspect - Aspect name
  * @returns Formatted topic string
  */
-export function buildTopic(domain: string, entity: string, aspect: string): string {
+export function buildTopic(domain: string, entity: string, aspect: string): string | null {
   const d = domain.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
   const e = entity.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
   const a = aspect.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
+
+  // Prevent empty topic components (would create '::' or ':x:' patterns)
+  if (!d || !e || !a) {
+    return null
+  }
 
   return `${d}:${e}:${a}`
 }

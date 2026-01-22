@@ -3,9 +3,13 @@
  * 돼지 구조를 기반으로 모든 동물 생성
  */
 
+import 'crossy_lib'
+
 // scaleLocal 헬퍼
 function scaleLocal(name, sx, sy) {
-  const before = getEntity(name).world.center;
+  const entity = getEntity(name);
+  if (!entity || !entity.world) return;
+  const before = entity.world.center;
   scale(name, sx, sy, { space: 'local' });
   const after = getEntity(name).world.center;
   translate(name, before[0] - after[0], before[1] - after[1]);

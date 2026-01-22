@@ -21,7 +21,8 @@
 // @builtin true
 // @version 1.0.0
 
-// 의존성: interior_lib, japandi_palette (japandi_lib에서 로드)
+import 'interior_lib'
+import 'japandi_palette'
 
 // 플로팅 선반
 // name: 이름, x: 중심X, y: 벽앞Y, z: 높이

@@ -70,6 +70,9 @@ export interface ReadOutput {
  * Execute read operation
  */
 export function handleRead(input: ReadInput): ReadOutput {
+  // Track resolved source for error responses
+  let resolvedSource: 'user' | 'builtin' = 'user';
+
   try {
     const { file } = input;
 
@@ -92,12 +95,13 @@ export function handleRead(input: ReadInput): ReadOutput {
 
     // Resolve file with dual-source support
     const resolved = resolveFile(file);
+    resolvedSource = resolved.source;
 
     // Check file existence
     if (!resolved.exists) {
       return {
         success: false,
-        data: { file, content: '', source: 'user' },
+        data: { file, content: '', source: resolvedSource },
         error: `File not found: ${file}`,
       };
     }
@@ -119,7 +123,7 @@ export function handleRead(input: ReadInput): ReadOutput {
   } catch (e) {
     return {
       success: false,
-      data: { file: input?.file ?? '', content: '', source: 'user' },
+      data: { file: input?.file ?? '', content: '', source: resolvedSource },
       error: e instanceof Error ? e.message : String(e),
     };
   }

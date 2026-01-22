@@ -566,8 +566,13 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     return []
   }
 
-  const likeConditions = keywords.map(() => '(topic LIKE ? OR decision LIKE ? OR reasoning LIKE ?)').join(' OR ')
-  const likeParams = keywords.flatMap((k) => [`%${k}%`, `%${k}%`, `%${k}%`])
+  const likeConditions = keywords.map(() => '(topic LIKE ? ESCAPE \'\\\' OR decision LIKE ? ESCAPE \'\\\' OR reasoning LIKE ? ESCAPE \'\\\')').join(' OR ')
+  // Escape SQL wildcards in keywords
+  const escapeWildcards = (s: string) => s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+  const likeParams = keywords.flatMap((k) => {
+    const escaped = escapeWildcards(k)
+    return [`%${escaped}%`, `%${escaped}%`, `%${escaped}%`]
+  })
 
   let rows: DecisionRow[]
 

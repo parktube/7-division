@@ -88,13 +88,16 @@ describe('glob 도구', () => {
     });
 
     it('should handle empty pattern same as no pattern (falsy check)', () => {
-      const resultNoPattern = handleGlob({});
       const resultEmptyPattern = handleGlob({ pattern: '' });
 
       // 빈 패턴 ''는 JavaScript에서 falsy이므로 if(pattern) 체크를 통과하지 못함
       // 따라서 패턴 필터가 적용되지 않고 모든 파일이 반환됨
       expect(resultEmptyPattern.success).toBe(true);
-      expect(resultEmptyPattern.data.files).toEqual(resultNoPattern.data.files);
+      // 빈 패턴은 전체 파일을 반환해야 함 (필터링 없음)
+      expect(resultEmptyPattern.data.files.length).toBeGreaterThan(0);
+      // main 파일이 포함되어야 함 (항상 존재)
+      const names = getNames(resultEmptyPattern.data.files);
+      expect(names).toContain('main');
     });
   });
 

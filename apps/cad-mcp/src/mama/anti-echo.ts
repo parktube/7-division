@@ -105,9 +105,14 @@ export function analyzeDecisionBeforeSave(
   }
 
   // 3. Check for similar recent decisions (AC1)
-  const similarWarning = checkSimilarDecisions(topic)
-  if (similarWarning) {
-    warnings.push(similarWarning)
+  try {
+    const similarWarning = checkSimilarDecisions(topic)
+    if (similarWarning) {
+      warnings.push(similarWarning)
+    }
+  } catch (error) {
+    // DB error should not block save flow - warnings are advisory only
+    logger.warn(`Anti-echo similar check failed: ${error}`)
   }
 
   logger.info(`Anti-echo analysis: ${warnings.length} warnings for topic "${topic}"`)

@@ -118,6 +118,13 @@ export function loadConfig(reload = false): MAMAConfig {
       config.embeddingDim = DEFAULT_CONFIG.embeddingDim
     }
 
+    // Validate contextInjection
+    const validModes = ['none', 'hint', 'full'] as const
+    if (!validModes.includes(config.contextInjection as typeof validModes[number])) {
+      logger.warn(`Invalid contextInjection "${config.contextInjection}", using default: ${DEFAULT_CONFIG.contextInjection}`)
+      config.contextInjection = DEFAULT_CONFIG.contextInjection
+    }
+
     cachedConfig = config
     return config
   } catch (error) {

@@ -95,7 +95,7 @@ function getModulesFromDir(dir: string): string[] {
   try {
     return readdirSync(dir)
       .filter(f => f.endsWith('.js'))
-      .map(f => f.replace('.js', ''));
+      .map(f => f.replace(/\.js$/, ''));
   } catch {
     // 디렉토리 읽기 실패 시 빈 배열 반환 (권한 문제, 경로 오류 등)
     // 에러 전파 대신 graceful degradation 선택
@@ -152,7 +152,8 @@ export function handleGlob(input: GlobInput): GlobOutput {
     if (hasMain) {
       allFiles.push({ name: 'main', source: 'user' });
     }
-    allFiles = allFiles.concat(modules);
+    // Filter out 'main' from modules to avoid duplication
+    allFiles = allFiles.concat(modules.filter(m => m.name !== 'main'));
 
     // Apply pattern filter if provided
     let resultFiles: FileInfo[];

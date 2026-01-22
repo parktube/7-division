@@ -13,6 +13,12 @@
 export function formatAge(timestamp: number): string {
   const now = Date.now()
   const diffMs = now - timestamp
+
+  // Handle future timestamps
+  if (diffMs < 0) {
+    return 'in the future'
+  }
+
   const diffSec = Math.floor(diffMs / 1000)
   const diffMin = Math.floor(diffSec / 60)
   const diffHour = Math.floor(diffMin / 60)

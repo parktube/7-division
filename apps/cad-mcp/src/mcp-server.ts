@@ -56,7 +56,7 @@ import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
 import type { Scene } from './shared/index.js'
-import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, openSync, closeSync, constants } from 'fs'
 import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import { homedir } from 'os'
@@ -86,8 +86,15 @@ function isProcessRunning(pid: number): boolean {
     // Sending signal 0 checks if process exists without killing it
     process.kill(pid, 0)
     return true
-  } catch {
-    return false
+  } catch (err: unknown) {
+    // Distinguish error types:
+    // - EPERM: process exists but we don't have permission (still running)
+    // - ESRCH: no such process (not running)
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EPERM') {
+      return true // Process exists but we can't signal it
+    }
+    return false // ESRCH or other errors mean process is not running
   }
 }
 
@@ -117,10 +124,37 @@ function getExistingServerPid(): number | null {
 
 /**
  * Write current process PID to file
+ * Uses O_EXCL for atomic creation to prevent race conditions (TOCTOU)
+ * If file exists, attempts to remove stale PID file and retry
  */
 function writePidFile(): void {
   ensureCadDataDir()
-  writeFileSync(PID_FILE, process.pid.toString(), 'utf-8')
+  const pidContent = process.pid.toString()
+
+  try {
+    // Try atomic create with O_EXCL (fail if file exists)
+    const fd = openSync(PID_FILE, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
+    writeFileSync(fd, pidContent, 'utf-8')
+    closeSync(fd)
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EEXIST') {
+      // File exists - check if process is running, clean up if stale
+      const existingPid = getExistingServerPid()
+      if (existingPid === null) {
+        // Stale file, remove and retry
+        try {
+          unlinkSync(PID_FILE)
+          writeFileSync(PID_FILE, pidContent, 'utf-8')
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      // If process is running, let the main startup logic handle it
+    } else {
+      throw error
+    }
+  }
   logger.debug(`PID file written: ${PID_FILE} (PID: ${process.pid})`)
 }
 

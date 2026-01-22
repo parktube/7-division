@@ -136,6 +136,15 @@ export function calculateGraphHealth(): GraphHealth {
   const now = Date.now()
   const staleThreshold = now - (STALE_THRESHOLD_DAYS * 24 * 60 * 60 * 1000)
 
+  // Get total count of stale decisions first
+  const staleCountResult = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM decisions
+    WHERE created_at < ?
+  `).get(staleThreshold) as { count: number }
+  const totalStaleCount = staleCountResult.count
+
+  // Get sample of stale decisions for display
   const staleDecisions = db.prepare(`
     SELECT id, topic, created_at
     FROM decisions
@@ -163,12 +172,12 @@ export function calculateGraphHealth(): GraphHealth {
   }
 
   // Stale decisions warning
-  if (staleWithAge.length > 0) {
-    warnings.push(`⚠️ ${staleWithAge.length}개의 오래된 결정(90일+)이 있습니다. 여전히 유효한지 확인하세요.`)
+  if (totalStaleCount > 0) {
+    warnings.push(`⚠️ ${totalStaleCount}개의 오래된 결정(90일+)이 있습니다. 여전히 유효한지 확인하세요.`)
   }
 
   // 7. Calculate health score (0-100)
-  const healthScore = calculateHealthScore(totalDecisions, totalEdges, ratios, orphanRatio, staleWithAge.length)
+  const healthScore = calculateHealthScore(totalDecisions, totalEdges, ratios, orphanRatio, totalStaleCount)
 
   logger.info(`Graph health calculated: ${totalDecisions} decisions, ${totalEdges} edges, score=${healthScore}`)
 

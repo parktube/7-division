@@ -247,8 +247,13 @@ export async function recommendModules(
   if (tags && tags.length > 0) {
     modules = modules.filter(m => {
       if (!m.tags) return false
-      const moduleTags: string[] = JSON.parse(m.tags)
-      return tags.some(t => moduleTags.includes(t))
+      try {
+        const moduleTags: string[] = JSON.parse(m.tags)
+        return tags.some(t => moduleTags.includes(t))
+      } catch {
+        // Invalid JSON tags - skip this module
+        return false
+      }
     })
   }
 

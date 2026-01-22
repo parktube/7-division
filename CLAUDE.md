@@ -97,6 +97,11 @@ read({ file: 'chicken' })        // 모듈 읽기
 | `mcp__ai-native-cad__mama_search` | 추론 그래프 검색 | `mama_search({ query: 'color' })` |
 | `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 | `mama_update({ id: 'decision_xxx', outcome: 'success' })` |
 | `mcp__ai-native-cad__mama_load_checkpoint` | 이전 세션 복원 | `mama_load_checkpoint()` |
+| `mcp__ai-native-cad__mama_configure` | 설정 조회/수정 | `mama_configure({ action: 'get' })` |
+| `mcp__ai-native-cad__mama_edit_hint` | 동적 힌트 관리 | `mama_edit_hint({ action: 'list' })` |
+| `mcp__ai-native-cad__mama_set_skill_level` | 스킬 레벨 설정 | `mama_set_skill_level({ level: 'intermediate' })` |
+| `mcp__ai-native-cad__mama_health` | 추론 그래프 건강도 | `mama_health()` |
+| `mcp__ai-native-cad__mama_growth_report` | 성장 지표 리포트 | `mama_growth_report()` |
 | `mcp__ai-native-cad__mama_workflow` | 디자인 워크플로우 | `mama_workflow({ command: 'status' })` |
 | `mcp__ai-native-cad__mama_recommend_modules` | 모듈 추천 | `mama_recommend_modules({ query: 'chicken' })` |
 

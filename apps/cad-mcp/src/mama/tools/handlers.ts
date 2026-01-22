@@ -28,6 +28,9 @@ import {
   type DecisionResult,
 } from '../index.js'
 import { formatAge } from '../utils.js'
+
+// Constants
+const DEFAULT_BUILTIN_SIMILARITY = 0.8
 import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js'
 import { loadConfig, updateConfig } from '../config.js'
 import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
@@ -364,7 +367,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
       reasoning: r.reasoning,
       outcome: null,
       confidence: r.confidence,
-      similarity: 0.8,  // Default similarity for builtin
+      similarity: DEFAULT_BUILTIN_SIMILARITY,
       created_at: null,
       age: 'builtin',
       edges: null,
@@ -421,29 +424,33 @@ export async function handleMamaUpdate(args: UpdateArgs): Promise<ToolResponse> 
   try {
     await initMAMA()
 
-    // Normalize outcome to uppercase
-    const normalizedOutcome = args.outcome.toUpperCase() as 'SUCCESS' | 'FAILED' | 'PARTIAL'
+    // Normalize and validate outcome
+    const normalizedOutcome = args.outcome.toUpperCase()
+    const validOutcomes = ['SUCCESS', 'FAILED', 'PARTIAL'] as const
 
-    if (!['SUCCESS', 'FAILED', 'PARTIAL'].includes(normalizedOutcome)) {
+    if (!validOutcomes.includes(normalizedOutcome as typeof validOutcomes[number])) {
       return {
         success: false,
         error: "outcome must be 'SUCCESS', 'FAILED', or 'PARTIAL'",
       }
     }
 
+    // Safe cast after validation
+    const validatedOutcome = normalizedOutcome as 'SUCCESS' | 'FAILED' | 'PARTIAL'
+
     await updateOutcome({
       id: args.id,
-      outcome: normalizedOutcome,
+      outcome: validatedOutcome,
       reason: args.reason,
     })
 
-    logger.info(`mama_update: Decision ${args.id} outcome updated to ${normalizedOutcome}`)
+    logger.info(`mama_update: Decision ${args.id} outcome updated to ${validatedOutcome}`)
 
     return {
       success: true,
       data: {
         id: args.id,
-        outcome: normalizedOutcome,
+        outcome: validatedOutcome,
         reason: args.reason || null,
         message: `Decision ${args.id} updated to ${normalizedOutcome}`,
       },
@@ -785,14 +792,24 @@ export async function handleMamaEditHint(args: EditHintArgs): Promise<ToolRespon
             action: 'list',
             tool_name: args.tool_name || 'all',
             count: hints.length,
-            hints: hints.map((h) => ({
-              id: h.id,
-              tool_name: h.tool_name,
-              hint_text: h.hint_text,
-              priority: h.priority,
-              tags: h.tags ? JSON.parse(h.tags) : [],
-              source: h.source,
-            })),
+            hints: hints.map((h) => {
+              let parsedTags: string[] = [];
+              if (h.tags) {
+                try {
+                  parsedTags = JSON.parse(h.tags);
+                } catch {
+                  // Invalid JSON tags - use empty array
+                }
+              }
+              return {
+                id: h.id,
+                tool_name: h.tool_name,
+                hint_text: h.hint_text,
+                priority: h.priority,
+                tags: parsedTags,
+                source: h.source,
+              };
+            }),
           },
         }
       }

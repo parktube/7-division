@@ -152,10 +152,15 @@ export function formatNextStep(step: NextStep, level: SkillLevel): NextStep {
   }
 
   // Beginner: full detail with examples
+  const tip = getBeginnerTip(step.action)
+  const relevanceWithTip = step.relevance
+    ? `${step.relevance} 💡 ${tip}`
+    : `💡 ${tip}`
+
   return {
     ...step,
     description: `${step.description}`,
-    relevance: `${step.relevance} 💡 ${getBeginnerTip(step.action)}`,
+    relevance: relevanceWithTip,
   }
 }
 

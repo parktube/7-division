@@ -29,8 +29,9 @@ function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
   const frameT = opts.frameT || 4;
   const outerT = opts.outerT || 10;
   const capDepth = opts.capDepth || 10;
-  const cols = opts.cols || 8;
-  const rows = opts.rows || 16;
+  // cols/rows 최소값 검증 (0이나 음수 시 Infinity/NaN 방지)
+  const cols = Math.max(1, opts.cols || 8);
+  const rows = Math.max(1, opts.rows || 16);
   const color = opts.color || japandiOak;
 
   const width = x1 - x0;
