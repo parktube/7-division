@@ -10,7 +10,7 @@ import { logger } from '../../logger.js'
 import { getDatabase } from '../db.js'
 
 // ============================================================
-// Types
+// Types (canonical source - re-exported from registry.ts)
 // ============================================================
 
 export interface ToolDefinition {

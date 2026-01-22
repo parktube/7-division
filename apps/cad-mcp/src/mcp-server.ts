@@ -45,7 +45,7 @@ import {
   type RecommendModulesArgs,
   type WorkflowArgs,
 } from './mama/tools/index.js'
-import { shutdownMAMA, getHintsForTool } from './mama/index.js'
+import { shutdownMAMA, getHintsForTool, detectEntityTypes } from './mama/index.js'
 import { orchestrator } from './orchestrator.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
@@ -611,10 +611,11 @@ export async function createMCPServer(): Promise<Server> {
           if (execResult.success) {
             // Apply postExecute hook via orchestrator (Story 11.8)
             const entities = getSceneEntities(exec)
+            const entityTypes = detectEntityTypes(entities)
             const cadResult = orchestrator.handleToolCall(
               'edit',
               { success: true, data: { file, entities } },
-              { toolName: 'edit', file, entitiesCreated: entities, code: newCode }
+              { toolName: 'edit', file, entitiesCreated: entities, entityTypes, code: newCode }
             )
 
             const response = addHintsToResult('edit', {
@@ -685,10 +686,11 @@ export async function createMCPServer(): Promise<Server> {
           if (execResult.success) {
             // Apply postExecute hook via orchestrator (Story 11.8)
             const entities = getSceneEntities(exec)
+            const entityTypes = detectEntityTypes(entities)
             const cadResult = orchestrator.handleToolCall(
               'write',
               { success: true, data: { file, entities } },
-              { toolName: 'write', file, entitiesCreated: entities, code }
+              { toolName: 'write', file, entitiesCreated: entities, entityTypes, code }
             )
 
             const combinedWarnings = [...(writeResult.warnings || []), ...(execResult.warnings || [])]

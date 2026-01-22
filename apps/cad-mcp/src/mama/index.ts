@@ -918,3 +918,6 @@ export {
   type TerminologyEvolution,
   type QuestionQualityScore,
 } from './terminology-tracker.js'
+
+// Re-export rules utilities
+export { detectEntityTypes } from './rules/index.js'

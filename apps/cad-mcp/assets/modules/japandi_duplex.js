@@ -181,6 +181,7 @@ function japandiDuplex(name, wx, wy, wz, opts) {
 // opts: { w: 너비(140), d: 깊이(280), h: 높이(280) }
 function japandiLivingRoom(name, wx, wy, wz, opts) {
   opts = opts || {};
+  // Note: Using || is intentional - 0 is not a valid dimension value
   const w = opts.w || 140;
   const d = opts.d || 280;
   const h = opts.h || 280;
