@@ -1096,7 +1096,7 @@ describe('ActionHints - Entity Name Extraction', () => {
 
     const code = `
       drawBox({ name: 'chicken_body', size: [4, 6, 3] })
-      drawCylinder({ name: "pig_head", radius: 2 })
+      drawCylinder({ name: 'pig_head', radius: 2 })
     `
 
     const names = extractEntityNames(code)

@@ -41,6 +41,16 @@ function balconyWindow(name, x, y, z0, opts) {
 
   const entities = [];
 
+  // 치수 검증 (음수/0 방지)
+  const paneW = (w - frameT*2 - mullionT*2) / 3;
+  const glassH1 = doorH - frameT - mullionT;
+  const glassH2 = h - doorH - frameT - mullionT;
+  if (paneW <= 0 || glassH1 <= 0 || glassH2 <= 0) {
+    // 유효하지 않은 치수 - 빈 그룹 반환
+    createGroup(name, []);
+    return;
+  }
+
   // 1. 외곽 프레임
   box(name + '_frame_b', x, y, z0 + frameT/2, depth, w, frameT, frameColor);
   box(name + '_frame_t', x, y, z0 + h - frameT/2, depth, w, frameT, frameColor);
@@ -49,8 +59,7 @@ function balconyWindow(name, x, y, z0, opts) {
   createGroup(name + '_frame', [name + '_frame_b', name + '_frame_t', name + '_frame_l', name + '_frame_r']);
   entities.push(name + '_frame');
 
-  // 2. 창살 (3분할)
-  const paneW = (w - frameT*2 - mullionT*2) / 3;
+  // 2. 창살 (3분할) - paneW는 위에서 이미 계산됨
   wallSide(name + '_mull_v1', x, y - paneW/2 - mullionT/2, z0 + frameT, mullionT, h - frameT*2, frameColor);
   wallSide(name + '_mull_v2', x, y + paneW/2 + mullionT/2, z0 + frameT, mullionT, h - frameT*2, frameColor);
   wallSide(name + '_mull_h', x, y, z0 + doorH, w - frameT*2, mullionT, frameColor);

@@ -204,12 +204,7 @@ export function executePostExecute(
     const entityTypes =
       context.entityTypes || detectEntityTypes(allEntities)
 
-    // Skip if no entities detected
-    if (allEntities.length === 0 && entityTypes.length === 0) {
-      return result
-    }
-
-    // Extract CAD function calls for domain detection
+    // Extract CAD function calls for domain detection (before skip check)
     const cadFunctions = context.code
       ? extractCadFunctions(context.code)
       : []
@@ -217,6 +212,11 @@ export function executePostExecute(
     // Track each CAD function call as an action (for adaptive mentoring)
     for (const func of cadFunctions) {
       trackAction(func)
+    }
+
+    // Skip if no entities and no CAD functions detected
+    if (allEntities.length === 0 && entityTypes.length === 0 && cadFunctions.length === 0) {
+      return result
     }
 
     // Determine primary domain from CAD functions (not entity types)

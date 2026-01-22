@@ -112,16 +112,16 @@ function japandiDuplex(name, wx, wy, wz, opts) {
   // ==========================================
   const livingCX = wx - 80;
 
-  // TV 스탠드 + 그림자
-  furnitureShadow(name + '_shadow_tv', livingCX, wy + 98, 85, 28);
+  // TV 스탠드 + 그림자 (wz로 높이 동기화)
+  furnitureShadow(name + '_shadow_tv', livingCX, wy + 98, 85, 28, 4, wz);
   tvStandSet(name + '_tv', livingCX, wy + 100, wz);
 
-  // 커피 테이블 + 그림자
-  furnitureShadow(name + '_shadow_table', livingCX, wy + 18, 65, 38);
+  // 커피 테이블 + 그림자 (wz로 높이 동기화)
+  furnitureShadow(name + '_shadow_table', livingCX, wy + 18, 65, 38, 4, wz);
   coffeeTable(name + '_table', livingCX, wy + 20, wz, 60, 35, 18);
 
-  // 소파 + 그림자
-  furnitureShadow(name + '_shadow_sofa', livingCX, wy - 40, 105, 55);
+  // 소파 + 그림자 (wz로 높이 동기화)
+  furnitureShadow(name + '_shadow_sofa', livingCX, wy - 40, 105, 55, 4, wz);
   sofa(name + '_sofa', livingCX, wy - 40, wz, 100, 50, 38, J.white);
 
   createGroup(name + '_living', [

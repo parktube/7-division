@@ -26,8 +26,9 @@
 // 필요 심볼: japandiShadow (rgba(0,0,0,0.25)), box (primitives)
 
 // 가구 그림자 추가
-// name: 이름, x/y: 좌표, w/d: 너비/깊이, offset: 오프셋 (기본 4)
-function furnitureShadow(name, x, y, w, d, offset) {
+// name: 이름, x/y: 좌표, w/d: 너비/깊이, offset: 오프셋 (기본 4), z: 바닥Z (기본 0)
+function furnitureShadow(name, x, y, w, d, offset, z) {
   offset = typeof offset === 'number' ? offset : 4;
-  box(name, x - offset, y, 0.5, w, d, 1, japandiShadow);
+  z = typeof z === 'number' ? z : 0;
+  box(name, x - offset, y, z + 0.5, w, d, 1, japandiShadow);
 }

@@ -26,6 +26,11 @@
 //         cols: 세로칸수(8), rows: 가로칸수(16), color }
 function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
   opts = opts || {};
+
+  // 입력 검증 및 정규화
+  if (x1 < x0) { const tmp = x0; x0 = x1; x1 = tmp; }  // x0/x1 순서 보장
+  if (height <= 0) { createGroup(name, []); return; }   // 유효하지 않은 높이
+
   const frameT = typeof opts.frameT === 'number' ? opts.frameT : 4;
   const outerT = typeof opts.outerT === 'number' ? opts.outerT : 10;
   const capDepth = typeof opts.capDepth === 'number' ? opts.capDepth : 10;
@@ -35,6 +40,7 @@ function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
   const color = opts.color || japandiOak;
 
   const width = x1 - x0;
+  if (width <= 0) { createGroup(name, []); return; }    // 유효하지 않은 너비
   const centerX = (x0 + x1) / 2;
 
   // 내부 격자 영역 (음수/0 방지)

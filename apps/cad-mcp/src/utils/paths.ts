@@ -44,15 +44,23 @@ export function isValidFileName(file: string): boolean {
 
 /**
  * Get builtin module path
+ * @throws Error if file name is invalid
  */
 export function getBuiltinPath(file: string): string {
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid module name: ${file}`);
+  }
   return resolve(BUILTIN_MODULES_DIR, `${file}.js`);
 }
 
 /**
  * Get user module path
+ * @throws Error if file name is invalid
  */
 export function getUserPath(file: string): string {
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid module name: ${file}`);
+  }
   return resolve(MODULES_DIR, `${file}.js`);
 }
 

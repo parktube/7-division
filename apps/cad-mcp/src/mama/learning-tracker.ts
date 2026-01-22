@@ -160,19 +160,10 @@ export function recordApplication(concept: string): number {
     return 0
   }
 
-  // AC3: Upgrade to level 3 (applied) on first application
-  if (learning.understanding_level < 3) {
-    updateUnderstandingLevel(DEFAULT_USER_ID, concept, 3)
-    logger.info(`Concept "${concept}" upgraded to level 3 (applied)`)
-  }
-
+  // AC3/AC4: Level upgrades are handled by incrementAppliedCount in db.ts
+  // - Level 3 (applied): First application
+  // - Level 4 (mastery): After 3+ applications
   const newCount = incrementAppliedCount(DEFAULT_USER_ID, concept)
-
-  // AC4: Auto-upgrade to level 4 (mastery) after 3+ applications
-  if (newCount >= 3 && learning.understanding_level < 4) {
-    updateUnderstandingLevel(DEFAULT_USER_ID, concept, 4)
-    logger.info(`Concept "${concept}" upgraded to level 4 (mastery)`)
-  }
 
   logger.info(`Concept "${concept}" applied (count: ${newCount})`)
 
