@@ -46,7 +46,7 @@
     "@anthropic-ai/sdk": "^0.71.2",
     "@huggingface/transformers": "^3.0.0",
     "@modelcontextprotocol/sdk": "^1.25.2",
-    "better-sqlite3": "^11.0.0",
+    "better-sqlite3": "^11.8.0",
     "es-module-lexer": "^2.0.0",
     "manifold-3d": "^3.3.2",
     "nanoid": "^5.1.6",

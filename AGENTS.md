@@ -50,6 +50,9 @@ Claude Code 패턴과 일치하도록 설계된 도구입니다:
 | `mama_recommend_modules` | 모듈 추천 |
 | `mama_health` | 그래프 건강도 체크 |
 | `mama_growth_report` | 사용자 성장 리포트 |
+| `mama_configure` | MAMA 설정 조회/변경 |
+| `mama_edit_hint` | 동적 힌트 관리 |
+| `mama_set_skill_level` | 사용자 스킬 레벨 설정 |
 
 ```javascript
 // 세션 시작 시 컨텍스트 로드

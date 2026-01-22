@@ -73,7 +73,13 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
   }
 
   // Load checkpoint and recent decisions
-  const [checkpoint, decisions] = await Promise.all([loadCheckpoint(), searchDecisions({ limit: 5 })])
+  let checkpoint = null
+  let decisions: Awaited<ReturnType<typeof searchDecisions>> = []
+  try {
+    [checkpoint, decisions] = await Promise.all([loadCheckpoint(), searchDecisions({ limit: 5 })])
+  } catch (error) {
+    logger.error(`Session init core load failed: ${error}`)
+  }
 
   // Check graph health (Story 11.11)
   let healthWarning: string | null = null

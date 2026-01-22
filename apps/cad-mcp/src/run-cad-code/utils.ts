@@ -157,7 +157,14 @@ export function preprocessCode(
     }
 
     // Dual-source: user modules 우선, 없으면 builtin 확인
-    const resolved = resolveFile(moduleName);
+    let resolved;
+    try {
+      resolved = resolveFile(moduleName);
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      errors.push(`could not resolve module '${moduleName}': ${errMsg}`);
+      return `// [import] ERROR: '${moduleName}' resolve failed`;
+    }
 
     if (!resolved.exists) {
       errors.push(`could not load module '${moduleName}'`);

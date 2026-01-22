@@ -189,7 +189,9 @@ export function getGrowthSummary(
   const newConceptsLearned = learnings.filter((l) => l.first_introduced > periodStart).length
 
   // Check if should upgrade skill level (AC5)
-  const shouldUpgradeSkillLevel = independentRatio.secondHalf >= EXPERT_THRESHOLD
+  // Require enough data to avoid premature upgrades
+  const shouldUpgradeSkillLevel =
+    independentRatio.hasEnoughData && independentRatio.secondHalf >= EXPERT_THRESHOLD
 
   // Calculate days active
   const firstActivity = getFirstActivityTimestamp(DEFAULT_USER_ID)
