@@ -151,9 +151,11 @@ export function handleGlob(input: GlobInput): GlobOutput {
     let allFiles: FileInfo[] = [];
     if (hasMain) {
       allFiles.push({ name: 'main', source: 'user' });
+      // Filter out 'main' from modules only when main exists to avoid duplication
+      allFiles = allFiles.concat(modules.filter(m => m.name !== 'main'));
+    } else {
+      allFiles = allFiles.concat(modules);
     }
-    // Filter out 'main' from modules to avoid duplication
-    allFiles = allFiles.concat(modules.filter(m => m.name !== 'main'));
 
     // Apply pattern filter if provided
     let resultFiles: FileInfo[];

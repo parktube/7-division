@@ -110,7 +110,7 @@ function makeChicken(id, wx, wy, scale) {
     n+'eye',
     n+'comb'
   ];
-  for (var i = 0; i < zOrder.length; i++) {
+  for (let i = 0; i < zOrder.length; i++) {
     drawOrder(zOrder[i], 'front');
   }
 

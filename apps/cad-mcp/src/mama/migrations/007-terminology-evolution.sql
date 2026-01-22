@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS terminology_evolution (
   after_term TEXT NOT NULL,        -- Specific term (e.g., 'Japandi 스타일로')
   domain TEXT,                     -- Domain (style, color, spatial, etc.)
   learning_id TEXT,                -- Related learning (if any)
-  detected_at INTEGER NOT NULL,    -- Unix timestamp (seconds)
+  detected_at INTEGER NOT NULL,    -- Unix timestamp (ms) - matches Date.now() pattern
   FOREIGN KEY (learning_id) REFERENCES learnings(id)
 );
 

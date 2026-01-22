@@ -41,7 +41,7 @@ export interface WorkflowInput {
 }
 
 // Phase order for navigation
-const PHASE_ORDER: WorkflowPhase[] = ['discovery', 'planning', 'architecture', 'creation']
+const PHASE_ORDER: WorkflowPhase[] = ['discovery', 'planning', 'architecture', 'creation', 'completed']
 
 // Artifact types by phase
 const PHASE_ARTIFACTS: Record<WorkflowPhase, string> = {

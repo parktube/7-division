@@ -35,16 +35,26 @@ const CACHE_MAX_SIZE = 1000
 const embeddingCache = new Map<string, Float32Array>()
 
 /**
- * Get cached embedding
+ * Get cached embedding (LRU: reinsert on hit to update recency)
  */
 function getCached(text: string): Float32Array | undefined {
-  return embeddingCache.get(text)
+  const value = embeddingCache.get(text)
+  if (value !== undefined) {
+    // Reinsert to mark as recently used (LRU)
+    embeddingCache.delete(text)
+    embeddingCache.set(text, value)
+  }
+  return value
 }
 
 /**
  * Set cached embedding with LRU eviction
  */
 function setCache(text: string, embedding: Float32Array): void {
+  // If key exists, remove it first to update its position
+  if (embeddingCache.has(text)) {
+    embeddingCache.delete(text)
+  }
   // Simple LRU: delete oldest if at capacity
   if (embeddingCache.size >= CACHE_MAX_SIZE) {
     const firstKey = embeddingCache.keys().next().value
@@ -218,7 +228,12 @@ export function cosineSimilarity(embA: Float32Array, embB: Float32Array): number
     normB += embB[i] * embB[i]
   }
 
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB))
+  const denominator = Math.sqrt(normA) * Math.sqrt(normB)
+  // Avoid division by zero
+  if (denominator < 1e-12) {
+    return 0
+  }
+  return dotProduct / denominator
 }
 
 /**

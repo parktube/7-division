@@ -68,11 +68,11 @@ class MAMAHookRegistry implements HookRegistry {
       return result
     } catch (error) {
       logger.error(`onSessionInit failed: ${error}`)
-      // Return safe empty result on error
+      // Return safe empty result on error (contextMode: 'none' to avoid injecting any context)
       return {
         checkpoint: null,
         recentDecisions: [],
-        contextMode: 'hint',
+        contextMode: 'none',
         formattedContext: '',
         healthWarning: null,
         learningHints: [],

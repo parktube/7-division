@@ -11,14 +11,15 @@
 -- decision_edges: 결정 관계 (Reasoning Graph)
 -- ══════════════════════════════════════════════════════════════
 
+-- Decisions are immutable; edges must be cleaned separately if deletion is ever needed
 CREATE TABLE IF NOT EXISTS decision_edges (
   from_id TEXT NOT NULL,
   to_id TEXT NOT NULL,
   relationship TEXT NOT NULL,    -- 'supersedes', 'builds_on', 'debates', 'synthesizes'
   created_at INTEGER NOT NULL,
   PRIMARY KEY (from_id, to_id, relationship),
-  FOREIGN KEY (from_id) REFERENCES decisions(id),
-  FOREIGN KEY (to_id) REFERENCES decisions(id),
+  FOREIGN KEY (from_id) REFERENCES decisions(id) ON DELETE RESTRICT,
+  FOREIGN KEY (to_id) REFERENCES decisions(id) ON DELETE RESTRICT,
   CHECK (relationship IN ('supersedes', 'builds_on', 'debates', 'synthesizes'))
 );
 

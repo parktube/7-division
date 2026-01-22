@@ -13,12 +13,6 @@ import { join } from 'path'
 import { tmpdir, homedir } from 'os'
 import Database from 'better-sqlite3'
 
-// Test paths - use actual MAMA paths but backup/restore
-const CAD_DATA_DIR = join(homedir(), '.ai-native-cad')
-const MAMA_DATA_DIR = join(CAD_DATA_DIR, 'data')
-const DB_PATH = join(MAMA_DATA_DIR, 'mama.db')
-const BACKUP_PATH = join(MAMA_DATA_DIR, 'mama.db.backup')
-
 describe('MAMA Database Operations', () => {
   let db: Database.Database
   let testDbPath: string
@@ -592,9 +586,9 @@ describe('Domain Filter and Group By Topic', () => {
     const domain = 'voxel'
     const rows = db.prepare(`
       SELECT * FROM decisions
-      WHERE topic LIKE '${domain}:%'
+      WHERE topic LIKE ?
       AND superseded_by IS NULL
-    `).all() as Record<string, unknown>[]
+    `).all(`${domain}:%`) as Record<string, unknown>[]
 
     // Should get voxel:pig:size and voxel:chicken:color (superseded_by IS NULL only)
     expect(rows.length).toBe(2)

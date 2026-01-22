@@ -28,10 +28,10 @@ import {
   type DecisionResult,
 } from '../index.js'
 import { formatAge } from '../utils.js'
+import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js'
 
 // Constants
 const DEFAULT_BUILTIN_SIMILARITY = 0.8
-import { setSkillLevel, getSkillProfile, type SkillLevel } from '../mentoring.js'
 import { loadConfig, updateConfig } from '../config.js'
 import { calculateGraphHealth, formatHealthReport, type GraphHealth } from '../health.js'
 import { analyzeDecisionBeforeSave, getStaleWarning, type AntiEchoWarning } from '../anti-echo.js'

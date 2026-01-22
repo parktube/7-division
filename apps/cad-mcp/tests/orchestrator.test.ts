@@ -234,7 +234,7 @@ describe('CADOrchestrator', () => {
       const result = await orchestrator.handleInitialize()
 
       // Should return result or null, not throw
-      expect(result !== undefined).toBe(true)
+      expect(result).toBeDefined()
     })
 
     it('should return original tools on handleToolsList error', () => {

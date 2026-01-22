@@ -117,7 +117,7 @@ const fabricBeige = {
 /**
  * 소파 (2인/3인)
  * - 낮은 나무 프레임 + 패브릭 쿠션
- * 
+ *
  * @param {string} name - 이름
  * @param {number} wx, wy, wz - 중심 좌표
  * @param {number} w - 너비 (기본 70)
@@ -126,11 +126,12 @@ const fabricBeige = {
  * @param {object} frameColor - 프레임 색상 (기본 brightOak)
  * @param {object} cushionColor - 쿠션 색상 (기본 fabricBeige)
  */
-function sofa(name, wx, wy, wz, w, d, h, color) {
+function sofa(name, wx, wy, wz, w, d, h, frameColor, cushionColor) {
   w = w || 70;
   d = d || 35;
   h = h || 30;
-  color = color || J.white;
+  frameColor = frameColor || brightOak;
+  cushionColor = cushionColor || fabricBeige;
   
   const frameH = 5;      // 프레임 높이
   const seatH = 8;       // 좌석 높이
@@ -141,24 +142,24 @@ function sofa(name, wx, wy, wz, w, d, h, color) {
   
   // TV를 향함: 등받이가 Y- 방향 (화면 앞쪽)
   // z-order: 뒤(Y+)부터 앞(Y-)으로
-  
+
   // 1. 오른쪽 팔걸이 (X+ 방향, 가장 뒤 depth)
-  box(name+'_arm_r', wx + w/2 - armW/2, wy, wz, armW, d, frameH + armH, color);
-  
+  box(name+'_arm_r', wx + w/2 - armW/2, wy, wz, armW, d, frameH + armH, frameColor);
+
   // 2. 프레임 (베이스)
-  box(name+'_frame', wx, wy, wz, w, d, frameH, color);
-  
+  box(name+'_frame', wx, wy, wz, w, d, frameH, frameColor);
+
   // 3. 좌석 (중앙)
   const seatD = d - backD;
   const seatY = wy + backD/2;
-  box(name+'_seat', wx, seatY, wz + frameH, w - armW*2, seatD, seatH, color);
-  
+  box(name+'_seat', wx, seatY, wz + frameH, w - armW*2, seatD, seatH, cushionColor);
+
   // 4. 등받이 (Y- 방향, TV를 향함)
   const backY = wy - d/2 + backD/2;
-  box(name+'_back', wx, backY, wz + frameH, w - armW*2, backD, backH, color);
-  
+  box(name+'_back', wx, backY, wz + frameH, w - armW*2, backD, backH, cushionColor);
+
   // 5. 왼쪽 팔걸이 (X- 방향, 가장 앞 depth)
-  box(name+'_arm_l', wx - w/2 + armW/2, wy, wz, armW, d, frameH + armH, color);
+  box(name+'_arm_l', wx - w/2 + armW/2, wy, wz, armW, d, frameH + armH, frameColor);
   
   createGroup(name, [
     name+'_arm_r',

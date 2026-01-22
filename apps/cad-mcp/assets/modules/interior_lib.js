@@ -442,14 +442,7 @@ function parquetFloor(name, wx, wy, wz, width, depth, blockSize, plankCount, col
   // 블록 묶음 단위로 배치
   const countX = Math.ceil(width / blockSize);
   const countY = Math.ceil(depth / blockSize);
-  
-  // 의사 난수 생성 (더 균일한 분포)
-  function rand(seed) {
-    let x = Math.sin(seed * 127.1 + seed * seed * 0.0013) * 43758.5453;
-    x = Math.sin(x * 78.233) * 43758.5453;
-    return x - Math.floor(x);
-  }
-  
+
   let idx = 0;
   for (let bx = 0; bx < countX; bx++) {
     for (let by = 0; by < countY; by++) {

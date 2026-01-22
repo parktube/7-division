@@ -60,6 +60,22 @@ const WEIGHTS = {
 // Recency decay: 7 days = 50% score
 const RECENCY_HALF_LIFE_MS = 7 * 24 * 60 * 60 * 1000
 
+/**
+ * Safely parse tags JSON with error handling
+ */
+function parseTagsSafe(tagsJson: string | null): string[] {
+  if (!tagsJson) return []
+  try {
+    const parsed = JSON.parse(tagsJson)
+    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+      return parsed
+    }
+    return []
+  } catch {
+    return []
+  }
+}
+
 // ============================================================
 // JSDoc Parser
 // ============================================================
@@ -296,7 +312,7 @@ export async function recommendModules(
       scored.push({
         name: module.name,
         description: module.description,
-        tags: module.tags ? JSON.parse(module.tags) : [],
+        tags: parseTagsSafe(module.tags),
         score: totalScore,
         scoreBreakdown: {
           semantic: semanticScore,
@@ -323,11 +339,9 @@ function buildModuleText(module: ModuleRow): string {
     `Description: ${module.description}`
   ]
 
-  if (module.tags) {
-    const tags: string[] = JSON.parse(module.tags)
-    if (tags.length > 0) {
-      parts.push(`Tags: ${tags.join(', ')}`)
-    }
+  const tags = parseTagsSafe(module.tags)
+  if (tags.length > 0) {
+    parts.push(`Tags: ${tags.join(', ')}`)
   }
 
   return parts.join('\n')
@@ -352,7 +366,7 @@ function keywordFallback(
     return {
       name: module.name,
       description: module.description,
-      tags: module.tags ? JSON.parse(module.tags) : [],
+      tags: parseTagsSafe(module.tags),
       score,
       scoreBreakdown: {
         semantic: score,

@@ -27,11 +27,11 @@
 // opts: { h: 높이(35), t: 두께(5), stairW: 계단너비(60), stairD: 계단깊이(50), color }
 function glassRailing(name, platformX, platformY, platformW, platformD, z, opts) {
   opts = opts || {};
-  const h = opts.h || 35;
-  const t = opts.t || 5;
-  const stairW = opts.stairW || 60;
-  const stairD = opts.stairD || 50;
-  const color = opts.color || japandiRailGlass;
+  const h = opts.h ?? 35;
+  const t = opts.t ?? 5;
+  const stairW = opts.stairW ?? 60;
+  const stairD = opts.stairD ?? 50;
+  const color = opts.color ?? japandiRailGlass;
 
   // 계단 경계
   const stairEndX = platformX + stairW;

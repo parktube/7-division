@@ -28,6 +28,8 @@ CREATE INDEX IF NOT EXISTS idx_hints_priority ON hints(priority DESC);
 
 -- ══════════════════════════════════════════════════════════════
 -- Default CAD hints (시드 데이터)
+-- Note: One-time seed with SQLite timestamp for initial DB setup.
+-- App-layer hint additions use Date.now() via addHint() in db.ts.
 -- ══════════════════════════════════════════════════════════════
 
 INSERT OR IGNORE INTO hints (tool_name, hint_text, priority, tags, source, created_at)

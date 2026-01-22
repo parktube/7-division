@@ -53,7 +53,7 @@ interface NextStepRule {
   steps: NextStep[]
 }
 
-interface RuleContext {
+export interface RuleContext {
   entityTypes: string[]
   entitiesCreated: string[]
   toolName: string

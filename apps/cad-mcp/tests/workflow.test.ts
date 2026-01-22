@@ -50,8 +50,9 @@ describe('Design Workflow System', () => {
     if (existingProject) {
       try {
         deleteProject(existingProject.id)
-      } catch {
-        // Ignore cleanup errors
+      } catch (e) {
+        // Log cleanup errors for debugging
+        console.debug(`Cleanup failed for project ${existingProject.id}:`, e)
       }
     }
   })
@@ -84,7 +85,7 @@ describe('Design Workflow System', () => {
       const data = result.data as StartResult
       expect(data.project_id).toBeDefined()
       expect(data.current_phase).toBe('discovery')
-      expect(data.phases).toEqual(['discovery', 'planning', 'architecture', 'creation'])
+      expect(data.phases).toEqual(['discovery', 'planning', 'architecture', 'creation', 'completed'])
       expect(data.questions).toHaveLength(3)
 
       testProjectId = data.project_id
@@ -133,7 +134,7 @@ describe('Design Workflow System', () => {
       const data = result.data as StatusResult
       expect(data.project_name).toBe('Status Test Project')
       expect(data.current_phase).toBe('discovery')
-      expect(data.progress).toBe('1/4')
+      expect(data.progress).toBe('1/5')
       expect(data.completed_phases).toEqual([])
     })
 
@@ -194,8 +195,8 @@ describe('Design Workflow System', () => {
       expect(artifacts[0].content).toBe(content)
     })
 
-    it('should fail at creation phase (no next phase)', () => {
-      // Create and advance to creation
+    it('should fail after completed phase (project no longer active)', () => {
+      // Create and advance to completed
       const startResult = handleStart({
         command: 'start',
         project_name: 'End Test Project',
@@ -205,11 +206,13 @@ describe('Design Workflow System', () => {
       handleNext({ command: 'next' }) // discovery -> planning
       handleNext({ command: 'next' }) // planning -> architecture
       handleNext({ command: 'next' }) // architecture -> creation
+      handleNext({ command: 'next' }) // creation -> completed (project becomes inactive)
 
       const result = handleNext({ command: 'next' })
 
+      // Completed projects are no longer returned by getActiveProject()
       expect(result.success).toBe(false)
-      expect(result.error).toContain('Cannot advance from phase')
+      expect(result.error).toContain('No active project')
     })
   })
 
@@ -457,7 +460,7 @@ describe('Design Workflow System', () => {
       expect(status.hasActiveProject).toBe(true)
       expect(status.project?.name).toBe('Session Status Test')
       expect(status.project?.phase).toBe('discovery')
-      expect(status.project?.progress).toBe('1/4')
+      expect(status.project?.progress).toBe('1/5')  // 5 phases: discovery, planning, architecture, creation, completed
       expect(status.nextSteps?.length).toBeGreaterThan(0)
     })
   })
