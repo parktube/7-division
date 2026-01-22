@@ -1,9 +1,6 @@
 -- Story 11.14: User Growth Metrics
 -- FR82: Track user growth metrics for adaptive mentoring
 
--- Track schema version
-INSERT OR IGNORE INTO schema_version (version) VALUES (6);
-
 -- User growth metrics table
 CREATE TABLE IF NOT EXISTS growth_metrics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,3 +18,6 @@ CREATE INDEX IF NOT EXISTS idx_growth_metrics_user ON growth_metrics(user_id);
 CREATE INDEX IF NOT EXISTS idx_growth_metrics_type ON growth_metrics(metric_type);
 -- Composite index for user + type queries
 CREATE INDEX IF NOT EXISTS idx_growth_metrics_user_type ON growth_metrics(user_id, metric_type);
+
+-- Track schema version (after successful table creation)
+INSERT OR IGNORE INTO schema_version (version) VALUES (6);
