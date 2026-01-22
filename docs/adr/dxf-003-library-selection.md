@@ -49,8 +49,8 @@ DXF import 기능 구현을 위해 npm DXF 파싱 라이브러리를 선정해�
 ### 기각된 옵션
 
 **dxf-parser:**
-- ❌ 메인테이너가 2024년 10월 "dead" 선언
-- ❌ 4년간 업데이트 없음
+- ⚠️ 유지보수 비활성 상태 (Inactive)
+- ❌ ~3.5년간 업데이트 없음 (npm: 2022년 6월)
 - 다운로드 수는 높지만 레거시 사용
 
 **dxf-json:**
@@ -121,12 +121,12 @@ const polylines = helper.toPolylines();
 
 | 용도 | 파일 | Entity 타입 |
 |------|------|-------------|
-| 기본 테스트 | `cad-tools/dxf-poc/sample.dxf` | LINE, CIRCLE, ARC |
+| 기본 테스트 | jscad/sample-files (`circle.dxf`) | LINE, CIRCLE, ARC |
 | 폴리라인 | 3axis.co 패턴 파일 | LWPOLYLINE |
 | 복잡한 도면 | Autodesk 건축 샘플 | HATCH, DIMENSION, TEXT |
 
 ## References
 
 - [dxf GitHub](https://github.com/bjnortier/dxf) - 391 stars, MIT
-- [dxf-parser GitHub](https://github.com/gdsestimating/dxf-parser) - "dead" 선언
+- [dxf-parser GitHub](https://github.com/gdsestimating/dxf-parser) - 유지보수 비활성
 - [dxf-json GitHub](https://github.com/dotoritos-kim/dxf-json) - GPL-3.0, 가장 포괄적

@@ -72,7 +72,7 @@ bash({
 ### 의존성
 
 ```json
-{ "dependencies": { "dxf": "^5.0.0" } }
+{ "dependencies": { "dxf": "^5.3.1" } }
 ```
 
 ## Consequences
@@ -97,7 +97,7 @@ bash({
 - 단점: Source of Truth 없음, LLM 수정 어려움
 - **기각**: AI-Native 철학과 맞지 않음
 
-### Option B: 코드 Import (SVG → Sandbox JS) ⭐ 채택
+### Option B: 코드 Import (DXF → Sandbox JS) ⭐ 채택
 - 장점: 코드 기반, LLM이 이해/수정 가능
 - 단점: 변환 로직 복잡
 
