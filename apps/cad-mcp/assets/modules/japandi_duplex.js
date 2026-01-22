@@ -142,9 +142,7 @@ function japandiDuplex(name, wx, wy, wz, opts) {
   const mezzCY = wallInnerY - bedD/2 - 4;
 
   // 침대 + 그림자 (복층 레벨)
-  box(name + '_shadow_bed', mezzCX - 4, mezzCY, mezzZ + 0.5, bedW + 10, bedD + 10, 1, {
-    t: [0, 0, 0, 0.25], l: [0, 0, 0, 0.25], r: [0, 0, 0, 0.25]
-  });
+  box(name + '_shadow_bed', mezzCX - 4, mezzCY, mezzZ + 0.5, bedW + 10, bedD + 10, 1, japandiShadow);
   bed(name + '_bed', mezzCX, mezzCY, mezzZ, bedW, bedD, J.oak, J.white, headW);
 
   // 벽 장식

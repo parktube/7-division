@@ -9,7 +9,8 @@
 
 import { WebSocketServer, WebSocket } from 'ws'
 import type { IncomingMessage } from 'http'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, existsSync, mkdirSync } from 'fs'
+import { writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { homedir } from 'os'
@@ -226,10 +227,12 @@ export class CADWebSocketServer {
           })
           break
         case 'selection_update':
-          this.handleSelectionUpdate(message.data as SelectionUpdateData)
+          // Fire-and-forget async write (errors handled in method)
+          void this.handleSelectionUpdate(message.data as SelectionUpdateData)
           break
         case 'sketch_update':
-          this.handleSketchUpdate(message.data as SketchUpdateData)
+          // Fire-and-forget async write (errors handled in method)
+          void this.handleSketchUpdate(message.data as SketchUpdateData)
           break
         default:
           // Client shouldn't send scene_update, selection, etc.
@@ -244,7 +247,7 @@ export class CADWebSocketServer {
    * Handle selection update from viewer (Client → Server)
    * Saves selection data to ~/.ai-native-cad/selection.json
    */
-  private handleSelectionUpdate(data: SelectionUpdateData): void {
+  private async handleSelectionUpdate(data: SelectionUpdateData): Promise<void> {
     try {
       ensureDataDir()
       const selection = {
@@ -253,7 +256,7 @@ export class CADWebSocketServer {
         hidden_entities: data.hidden_entities || [],
         timestamp: Date.now(),
       }
-      writeFileSync(SELECTION_FILE, JSON.stringify(selection, null, 2), 'utf-8')
+      await writeFile(SELECTION_FILE, JSON.stringify(selection, null, 2), 'utf-8')
       logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities?.length || 0} hidden, ${data.locked_entities?.length || 0} locked`)
     } catch (e) {
       logger.error(`Failed to save selection: ${e}`)
@@ -264,14 +267,14 @@ export class CADWebSocketServer {
    * Handle sketch update from viewer (Client → Server)
    * Saves sketch data to ~/.ai-native-cad/sketch.json
    */
-  private handleSketchUpdate(data: SketchUpdateData): void {
+  private async handleSketchUpdate(data: SketchUpdateData): Promise<void> {
     try {
       ensureDataDir()
       const sketch = {
         strokes: data.strokes,
         timestamp: Date.now(),
       }
-      writeFileSync(SKETCH_FILE, JSON.stringify(sketch, null, 2), 'utf-8')
+      await writeFile(SKETCH_FILE, JSON.stringify(sketch, null, 2), 'utf-8')
       logger.debug(`Sketch saved: ${data.strokes.length} strokes`)
     } catch (e) {
       logger.error(`Failed to save sketch: ${e}`)

@@ -64,9 +64,7 @@ type='checkpoint': session state for resumption (ALSO requires search first!)`,
         },
         confidence: {
           type: 'number',
-          description: '[Decision] Confidence 0.0-1.0. Default: 0.5',
-          minimum: 0,
-          maximum: 1,
+          description: '[Decision] Confidence 0.0-1.0 (validated at runtime). Default: 0.5',
         },
         summary: {
           type: 'string',

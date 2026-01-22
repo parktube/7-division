@@ -34,13 +34,24 @@ const SKETCH_FILE = join(homedir(), '.ai-native-cad', 'sketch.json');
 
 /**
  * Read sketch data from ~/.ai-native-cad/sketch.json
+ * Handles both { strokes: [...] } and [...] array formats
  */
 async function readSketchData(): Promise<unknown | null> {
   try {
     const data = await fs.readFile(SKETCH_FILE, 'utf-8');
     const parsed = JSON.parse(data);
+    // Handle both object format { strokes: [...] } and direct array format [...]
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
     return parsed.strokes || [];
-  } catch {
+  } catch (error) {
+    // Silently ignore ENOENT (file not found) - expected when no sketch exists
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    // Log other errors for debugging (corrupt file, parse error, etc.)
+    logger.warn(`Failed to read sketch data: ${error}`);
     return null;
   }
 }

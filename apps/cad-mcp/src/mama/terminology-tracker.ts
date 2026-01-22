@@ -272,11 +272,16 @@ export function detectEvolution(
     return null
   }
 
+  // Check for related learning (same as recordEvolution logic)
+  const learning = getLearning(userId, matchingSpecific.term)
+  const learningId = learning?.id ?? null
+
   // Record evolution
   const id = recordEvolution({
     beforeTerm: vagueInfo.vagueTerm,
     afterTerm: matchingSpecific.term,
     domain: vagueInfo.domain,
+    learningId: learningId ?? undefined,
     userId,
   })
 
@@ -285,7 +290,7 @@ export function detectEvolution(
     beforeTerm: vagueInfo.vagueTerm,
     afterTerm: matchingSpecific.term,
     domain: vagueInfo.domain,
-    learningId: null,
+    learningId,
     detectedAt: Date.now(),
   }
 }

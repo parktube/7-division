@@ -102,9 +102,10 @@ mama_save({ type: 'decision', topic: 'interior:architecture', decision: '구조'
 </build-order>
 
 <tools>
-- write({ file: 'main', code: '...' }): 전체 작성
-- edit({ file, old_code, new_code }): 부분 수정
-- bash({ command: 'capture' }): 캡처
+write/edit → 자동 실행됨 → bash capture로 결과 확인
+- write({ file: 'main', code: '...' }): 전체 작성 (자동 실행)
+- edit({ file, old_code, new_code }): 부분 수정 (자동 실행)
+- bash({ command: 'capture' }): 코드 실행 후 결과 캡처
 - bash({ command: 'tree' }): 구조 확인
 </tools>
 

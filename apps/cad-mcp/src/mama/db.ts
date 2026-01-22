@@ -288,6 +288,9 @@ function runMigrations(database: Database.Database): void {
     try {
       database.exec('BEGIN TRANSACTION')
       database.exec(migrationSQL)
+      database
+        .prepare('INSERT OR IGNORE INTO schema_version (version) VALUES (?)')
+        .run(version)
       database.exec('COMMIT')
 
       logger.info(`Migration ${file} applied successfully`)
