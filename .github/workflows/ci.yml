@@ -71,6 +71,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Install build tools for native modules
+        run: sudo apt-get update && sudo apt-get install -y python3 build-essential
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -104,7 +107,7 @@ jobs:
         run: pnpm install
 
       - name: Rebuild native modules (better-sqlite3)
-        run: pnpm rebuild better-sqlite3
+        run: npm rebuild better-sqlite3 --build-from-source
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
