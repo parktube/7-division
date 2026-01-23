@@ -180,9 +180,14 @@ function injectScene(scene: Scene) {
   emitChange()
 }
 
-// Expose to window for Puppeteer capture
+// Expose to window for Puppeteer capture and debugging
 if (typeof window !== 'undefined') {
-  (window as unknown as { __injectScene: typeof injectScene }).__injectScene = injectScene
+  const win = window as unknown as {
+    __injectScene: typeof injectScene;
+    __getConnectionState: () => string;
+  };
+  win.__injectScene = injectScene;
+  win.__getConnectionState = () => store.connectionState;
 }
 
 // Cached snapshot for useSyncExternalStore

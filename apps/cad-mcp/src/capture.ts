@@ -8,7 +8,7 @@
  */
 
 import puppeteer from 'puppeteer';
-import { promises as fs } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
@@ -238,8 +238,19 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       ? ['--allow-running-insecure-content', '--allow-insecure-localhost']
       : [];
 
+    // Try to find Chrome executable
+    const chromePaths = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/usr/bin/google-chrome',
+      '/usr/bin/chromium-browser',
+    ];
+    const executablePath = chromePaths.find(p => existsSync(p));
+
     browser = await puppeteer.launch({
       headless: true,
+      executablePath,
       args: [...baseArgs, ...sandboxArgs, ...mixedContentArgs],
     });
 
@@ -256,6 +267,11 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // Use networkidle0 to ensure React app is fully mounted before injection
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
 
+    // Set capture mode flag to prevent onboarding dialog from appearing
+    await page.evaluate(() => {
+      (window as unknown as { __captureMode: boolean }).__captureMode = true;
+    });
+
     // If scene data is provided, inject it directly (bypass WebSocket)
     if (options.sceneData) {
       logger.debug('Injecting scene data directly');
@@ -267,34 +283,42 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         if (i > 0) {
           await new Promise(done => setTimeout(done, 500));
         }
-        injected = await page.evaluate((sceneJson) => {
-          type WindowWithInject = Window & { __injectScene?: (scene: unknown) => void };
+        const injectResult = await page.evaluate((sceneJson) => {
+          type WindowWithInject = Window & {
+            __injectScene?: (scene: unknown) => void;
+            __getConnectionState?: () => string;
+          };
           const win = window as WindowWithInject;
+          const stateBefore = win.__getConnectionState?.() || 'no-func';
           if (win.__injectScene) {
             // sceneJson이 문자열이면 파싱 (exportScene()은 string 반환)
             const scene = typeof sceneJson === 'string' ? JSON.parse(sceneJson) : sceneJson;
             win.__injectScene(scene);
-            return true;
+            const stateAfter = win.__getConnectionState?.() || 'no-func';
+            return {
+              injected: true,
+              stateBefore,
+              stateAfter
+            };
           }
-          return false;
+          return { injected: false, stateBefore, stateAfter: 'n/a' };
         }, options.sceneData);
+        injected = injectResult.injected;
+        logger.debug('Scene injection result', injectResult);
       }
 
       if (injected) {
-        // Wait for onboarding overlay to disappear (React re-render after connectionState change)
-        const maxOnboardingWait = 1000;
-        const onboardingCheckInterval = 100;
-        let onboardingElapsed = 0;
-        while (onboardingElapsed < maxOnboardingWait) {
-          const hasOverlay = await page.evaluate(() => {
-            // Check if onboarding modal overlay exists
-            const overlay = document.querySelector('.fixed.inset-0.z-40');
-            return overlay !== null;
-          });
-          if (!hasOverlay) break;
-          await new Promise(done => setTimeout(done, onboardingCheckInterval));
-          onboardingElapsed += onboardingCheckInterval;
-        }
+        // Wait a bit for React to process the connectionState change
+        await new Promise(done => setTimeout(done, 200));
+
+        // Force hide any onboarding overlay (in case React re-render is slow)
+        await page.evaluate(() => {
+          // Hide onboarding modal overlay if it exists
+          const overlay = document.querySelector('.fixed.inset-0.z-40') as HTMLElement;
+          if (overlay) {
+            overlay.style.display = 'none';
+          }
+        });
 
         // Wait for Canvas component to mount and render with frame stability check
         let canvasStable = false;
@@ -485,6 +509,37 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     });
     logger.debug('Zoom setting', { zoomApplied, targetZoom: 1 });
     await new Promise(done => setTimeout(done, 500)); // Wait for zoom to apply
+
+    // Hide onboarding dialog right before capture (it appears after 1.5s delay)
+    const hiddenOverlay = await page.evaluate(() => {
+      // Find and hide any modal overlay (fixed position with z-40 class)
+      // Try multiple selectors to be safe
+      const selectors = [
+        '.fixed.inset-0.z-40',
+        '[class*="fixed"][class*="inset-0"][class*="z-40"]',
+        '.fixed.inset-0.z-\\[40\\]',
+      ];
+      for (const selector of selectors) {
+        try {
+          const overlay = document.querySelector(selector) as HTMLElement;
+          if (overlay) {
+            overlay.style.display = 'none';
+            return selector;
+          }
+        } catch { /* ignore invalid selector */ }
+      }
+      // Fallback: find by text content
+      const allDivs = document.querySelectorAll('div');
+      for (const div of allDivs) {
+        if (div.textContent?.includes('MCP 서버') &&
+            getComputedStyle(div).position === 'fixed') {
+          (div as HTMLElement).style.display = 'none';
+          return 'text-content-match';
+        }
+      }
+      return null;
+    });
+    logger.debug('Onboarding overlay hidden', { selector: hiddenOverlay });
 
     // Find the canvas container element
     const canvasElement = await page.$('#cad-canvas');
