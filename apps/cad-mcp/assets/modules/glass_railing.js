@@ -148,10 +148,10 @@ function glassRailing(name, platformX, platformY, platformW, platformD, z, opts)
     .setHeight(z);
 
   if (opts.h !== undefined || opts.t !== undefined) {
-    builder.setRailingSize(opts.h || 35, opts.t || 5);
+    builder.setRailingSize(opts.h ?? 35, opts.t ?? 5);
   }
   if (opts.stairW !== undefined || opts.stairD !== undefined) {
-    builder.setStairSize(opts.stairW || 60, opts.stairD || 50);
+    builder.setStairSize(opts.stairW ?? 60, opts.stairD ?? 50);
   }
   if (opts.color !== undefined) {
     builder.setColor(opts.color);

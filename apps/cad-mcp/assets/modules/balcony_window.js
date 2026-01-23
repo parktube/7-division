@@ -99,8 +99,8 @@ class BalconyWindowBuilder {
     const mullionT = this.mullionT;
     const depth = this.depth;
     const doorH = this.doorH;
-    const frameColor = this.frameColor || J.white;
-    const glassColor = this.glassColor || japandiGlass;
+    const frameColor = this.frameColor ?? J.white;
+    const glassColor = this.glassColor ?? japandiGlass;
 
     const entities = [];
 
@@ -159,10 +159,10 @@ function balconyWindow(name, x, y, z0, opts) {
   opts = opts || {};
   const builder = new BalconyWindowBuilder(name)
     .setPosition(x, y, z0)
-    .setSize(opts.w || 160, opts.h || 200)
-    .setFrameThickness(opts.frameT || 4, opts.mullionT || 3)
-    .setDepth(opts.depth || 6)
-    .setDoorHeight(opts.doorH || 180);
+    .setSize(opts.w ?? 160, opts.h ?? 200)
+    .setFrameThickness(opts.frameT ?? 4, opts.mullionT ?? 3)
+    .setDepth(opts.depth ?? 6)
+    .setDoorHeight(opts.doorH ?? 180);
 
   if (opts.frameColor) builder.setFrameColor(opts.frameColor);
   if (opts.glassColor) builder.setGlassColor(opts.glassColor);

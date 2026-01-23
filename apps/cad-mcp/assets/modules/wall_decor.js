@@ -67,7 +67,7 @@ class FloatingShelfBuilder {
   }
 
   build() {
-    const color = this.color || J.oak;
+    const color = this.color ?? J.oak;
     box(this.name, this.x, this.y - this.d/2, this.z, this.w, this.d, this.h, color);
     return this;
   }
@@ -133,8 +133,8 @@ class WallFrameBuilder {
     const h = this.h;
     const frameT = this.frameT;
     const depth = this.depth;
-    const frameColor = this.frameColor || J.white;
-    const artColor = this.artColor || artBeige;
+    const frameColor = this.frameColor ?? J.white;
+    const artColor = this.artColor ?? artBeige;
 
     const fY = y - depth/2;
 
@@ -237,7 +237,7 @@ function floatingShelf(name, x, y, z, opts) {
     .setPosition(x, y, z);
 
   if (opts.w !== undefined || opts.d !== undefined || opts.h !== undefined) {
-    builder.setSize(opts.w || 100, opts.d || 12, opts.h || 3);
+    builder.setSize(opts.w ?? 100, opts.d ?? 12, opts.h ?? 3);
   }
   if (opts.color) {
     builder.setColor(opts.color);
@@ -255,10 +255,10 @@ function wallFrame(name, x, y, z, opts) {
     .setPosition(x, y, z);
 
   if (opts.w !== undefined || opts.h !== undefined) {
-    builder.setSize(opts.w || 24, opts.h || 32);
+    builder.setSize(opts.w ?? 24, opts.h ?? 32);
   }
   if (opts.frameT !== undefined || opts.depth !== undefined) {
-    builder.setFrameThickness(opts.frameT || 3, opts.depth || 3);
+    builder.setFrameThickness(opts.frameT ?? 3, opts.depth ?? 3);
   }
   if (opts.frameColor) {
     builder.setFrameColor(opts.frameColor);
@@ -278,6 +278,6 @@ function wallFrameSet(name, centerX, y, z, opts) {
   opts = opts || {};
   new WallFrameSetBuilder(name)
     .setPosition(centerX, y, z)
-    .setSpacing(opts.spacing || 35)
+    .setSpacing(opts.spacing ?? 35)
     .build();
 }

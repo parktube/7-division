@@ -371,9 +371,9 @@ function japandiDuplex(name, wx, wy, wz, opts) {
   if (opts.room) {
     if (opts.room.w !== undefined || opts.room.d !== undefined || opts.room.h !== undefined) {
       builder.setRoomSize(
-        opts.room.w || DEFAULT_ROOM.w,
-        opts.room.d || DEFAULT_ROOM.d,
-        opts.room.h || DEFAULT_ROOM.h
+        opts.room.w ?? DEFAULT_ROOM.w,
+        opts.room.d ?? DEFAULT_ROOM.d,
+        opts.room.h ?? DEFAULT_ROOM.h
       );
     }
     if (opts.room.floorT !== undefined) {
@@ -386,9 +386,9 @@ function japandiDuplex(name, wx, wy, wz, opts) {
 
   if (opts.platform) {
     builder.setPlatformSize(
-      opts.platform.w || DEFAULT_PLATFORM.w,
-      opts.platform.d || DEFAULT_PLATFORM.d,
-      opts.platform.h || DEFAULT_PLATFORM.h
+      opts.platform.w ?? DEFAULT_PLATFORM.w,
+      opts.platform.d ?? DEFAULT_PLATFORM.d,
+      opts.platform.h ?? DEFAULT_PLATFORM.h
     );
   }
 
@@ -402,7 +402,7 @@ function japandiLivingRoom(name, wx, wy, wz, opts) {
   opts = opts || {};
   new JapandiLivingRoomBuilder(name)
     .setPosition(wx, wy, wz)
-    .setSize(opts.w || 140, opts.d || 280, opts.h || 280)
+    .setSize(opts.w ?? 140, opts.d ?? 280, opts.h ?? 280)
     .build();
 }
 
@@ -414,9 +414,9 @@ function japandiMezzanine(name, wx, wy, wz, opts) {
   new JapandiMezzanineBuilder(name)
     .setPosition(wx, wy, wz)
     .setPlatformSize(
-      opts.platformW || 150,
-      opts.platformD || 150,
-      opts.platformH || 50
+      opts.platformW ?? 150,
+      opts.platformD ?? 150,
+      opts.platformH ?? 50
     )
     .build();
 }
