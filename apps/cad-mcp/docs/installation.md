@@ -103,6 +103,9 @@ cd apps/cad-mcp
 npm link
 ```
 
+> **Windows Git Bash 사용자**: pnpm과 Git Bash 호환성 문제로 빌드가 실패할 수 있습니다.
+> 이 경우 PowerShell 또는 cmd.exe를 사용하거나, `cmd //c "pnpm build"`로 실행하세요.
+
 ### 로컬 설치 (프로젝트별)
 
 ```bash
