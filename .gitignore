@@ -13,8 +13,7 @@ target
 # Contains mutation testing data
 **/mutants.out*/
 
-# WASM package copy (for npm publishing)
-apps/cad-mcp/wasm/
+# WASM package - now tracked for distribution
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
