@@ -88,7 +88,7 @@ bash({
 
 ## Alternatives Considered
 
-### Option A: 데이터 Import (SVG → scene.json)
+### Option A: 데이터 Import (DXF → scene.json)
 - 장점: 단순
 - 단점: Source of Truth 없음, LLM 수정 어려움
 - **기각**: AI-Native 철학과 맞지 않음

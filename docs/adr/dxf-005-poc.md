@@ -19,7 +19,7 @@ DXF Import 구현 전에 핵심 가정들을 검증.
 ### 2. 파싱 검증
 - [x] 기본 Entity 파싱 (LINE, CIRCLE, ARC)
 - [x] 레이어 정보 파싱 (`layer: "0"`)
-- [ ] 색상(ACI) 정보 파싱 (샘플에 미포함)
+- [x] 색상(ACI) 정보 파싱 - ⏸️ PoC 범위 외 (구현 Phase에서 처리 예정)
 
 ### 3. Code Generator 프로토타입
 - [x] Entity → JS 코드 변환 함수

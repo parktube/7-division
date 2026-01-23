@@ -28,6 +28,8 @@
 - [ ] Entity 타입별 파싱 (LINE, CIRCLE, ARC, LWPOLYLINE)
 - [ ] 단위 테스트
 
+**AC:** 샘플 DXF 파일(LINE, CIRCLE, ARC 포함)을 파싱하여 Entity 배열 반환, 단위 테스트 통과
+
 ---
 
 ### Story 2: Code Generator 모듈 (2-3일)
@@ -46,6 +48,8 @@
 - [ ] 네이밍 규칙 (`dxf_line_1`, `dxf_circle_2` 등)
 - [ ] 레이어 → 주석 변환
 - [ ] 단위 테스트
+
+**AC:** Entity 배열을 실행 가능한 JS 코드로 변환, Sandbox에서 실행 성공, 단위 테스트 통과
 
 ---
 
@@ -66,6 +70,8 @@
   }
   ```
 - [ ] 통합 테스트
+
+**AC:** MCP 도구로 DXF 파일 경로 전달 시 JS 코드 반환, 통합 테스트 통과
 
 ---
 
