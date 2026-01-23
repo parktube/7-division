@@ -106,11 +106,17 @@ export const PointSchema = z.object({
   y: z.number(),
 });
 
+// Color formats: CSS color string (#fff, #ffffff, rgb(), rgba(), named colors)
+const CSSColorSchema = z.string().refine(
+  (val) => /^(#[0-9a-fA-F]{3,8}|rgb\(|rgba\(|[a-zA-Z]+)/.test(val),
+  { message: 'Invalid CSS color format' }
+);
+
 export const StrokeSchema = z.object({
   id: z.string(),
   points: z.array(PointSchema),
-  color: z.string(),
-  width: z.number(),
+  color: CSSColorSchema,
+  width: z.number().positive(),
 });
 
 export const SketchUpdateDataSchema = z.object({
