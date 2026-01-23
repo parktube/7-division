@@ -51,6 +51,19 @@ claude mcp list
 | `lsp` | 도메인/함수 탐색 (Progressive Disclosure) |
 | `bash` | 씬 조회, 캡처, 내보내기 |
 
+### MAMA 도구 (Memory-Augmented Meta Agent)
+
+| 도구 | 설명 |
+|------|------|
+| `mama_save` | 결정/체크포인트 저장 |
+| `mama_search` | 추론 그래프 검색 |
+| `mama_update` | 결정 결과 업데이트 |
+| `mama_load_checkpoint` | 이전 세션 복원 |
+| `mama_workflow` | 디자인 워크플로우 관리 |
+| `mama_recommend_modules` | 모듈 추천 |
+| `mama_health` | 추론 그래프 건강도 |
+| `mama_growth_report` | 성장 지표 리포트 |
+
 ## 사용 예시
 
 ```javascript
@@ -65,6 +78,16 @@ write({ file: 'main', code: `
 
 // 스크린샷 캡처
 bash({ command: 'capture' })
+
+// MAMA: 디자인 워크플로우 시작
+mama_workflow({ command: 'start', project_name: 'My House' })
+
+// MAMA: 결정 저장
+mama_save({
+  type: 'decision',
+  topic: 'color_scheme',
+  decision: 'Use warm earth tones for exterior'
+})
 ```
 
 ## 뷰어

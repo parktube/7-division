@@ -80,16 +80,40 @@ async function main() {
   const os = platform();
   console.error('\n⚠️  @ai-native-cad/mcp: Native module installation issues detected\n');
 
+  // Classify issues as critical or non-critical
+  const criticalIssues = [];
+  const nonCriticalIssues = [];
+
   for (const issue of issues) {
-    console.error(`  ❌ ${issue.module}: ${issue.error}`);
+    // better-sqlite3 is critical - MAMA features won't work without it
+    if (issue.module === 'better-sqlite3') {
+      criticalIssues.push(issue);
+    } else {
+      nonCriticalIssues.push(issue);
+    }
+  }
+
+  for (const issue of issues) {
+    const prefix = criticalIssues.includes(issue) ? '❌ [CRITICAL]' : '⚠️  [WARNING]';
+    console.error(`  ${prefix} ${issue.module}: ${issue.error}`);
   }
 
   const instructions = PLATFORM_INSTRUCTIONS[os] || PLATFORM_INSTRUCTIONS.linux;
   console.error('\n📋 To fix:');
   console.error(instructions);
 
-  // Don't fail the install - user can still try to run and see specific errors
-  console.error('\n💡 You can try running the MCP server anyway - it may work if prebuilds were downloaded.');
+  // Fail on critical issues, warn on non-critical
+  if (criticalIssues.length > 0) {
+    console.error('\n❌ Installation failed due to critical native module build errors.');
+    console.error('   Please install build tools and run: npm rebuild');
+    process.exit(1);
+  }
+
+  // Non-critical issues - log and continue
+  console.error('\n💡 Non-critical issues detected. MCP server may still work.');
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  console.error('Postinstall script error:', error);
+  process.exit(1);
+});

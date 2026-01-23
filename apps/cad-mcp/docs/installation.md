@@ -15,13 +15,13 @@ AI-Native CAD MCP 서버 설치 가이드
 
 ## 사전 요구사항
 
-- **Node.js**: v18 이상 (LTS 권장)
+- **Node.js**: v22 이상 (LTS 권장)
 - **npm**: v8 이상
 - **Claude Desktop** 또는 **Claude Code**
 
 ```bash
 # 버전 확인
-node --version  # v18.0.0 이상
+node --version  # v22.0.0 이상
 npm --version   # v8.0.0 이상
 ```
 
@@ -262,8 +262,12 @@ PORT=3002 npx -y @ai-native-cad/mcp start
 ### npx 캐시 문제
 
 ```bash
-# 캐시 삭제 후 재시도
-npx clear-npx-cache
+# npm 캐시 삭제 후 재시도
+npm cache clean --force
+
+# npm v11+ 환경에서 npx 캐시 삭제
+npm cache npx rm --force
+
 npx -y @ai-native-cad/mcp start
 ```
 
