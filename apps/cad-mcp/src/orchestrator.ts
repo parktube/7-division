@@ -90,6 +90,7 @@ export interface ToolCallResponse {
  */
 export class CADOrchestrator {
   private initialized = false
+  private initFailed = false
   private sessionContext: SessionInitResult | null = null
 
   /**
@@ -101,12 +102,22 @@ export class CADOrchestrator {
     try {
       await initMAMA()
       this.initialized = true
+      this.initFailed = false
       logger.info('CADOrchestrator initialized')
     } catch (error) {
       logger.error(`CADOrchestrator init failed: ${error}`)
-      // Don't throw - allow degraded operation
+      // Mark as failed but don't set initialized - allows retry
+      this.initFailed = true
+      // Set initialized to allow degraded operation without retry spam
       this.initialized = true
     }
+  }
+
+  /**
+   * Check if init failed (for external inspection)
+   */
+  get hasInitFailed(): boolean {
+    return this.initFailed
   }
 
   /**

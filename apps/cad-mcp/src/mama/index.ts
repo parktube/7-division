@@ -192,6 +192,8 @@ export function shutdownMAMA(): void {
   closeDatabase()
   clearEmbeddingCache()
   initialized = false
+  // Reset initPromise so next initMAMA creates a fresh promise
+  initPromise = undefined as unknown as typeof initPromise
   logger.info('MAMA shutdown complete')
 }
 

@@ -31,10 +31,11 @@
 // opts: { h: 높이(35), t: 두께(5), stairW: 계단너비(60), stairD: 계단깊이(50), color }
 function glassRailing(name, platformX, platformY, platformW, platformD, z, opts) {
   opts = opts || {};
-  const h = opts.h ?? 35;
-  const t = opts.t ?? 5;
-  const stairW = opts.stairW ?? 60;
-  const stairD = opts.stairD ?? 50;
+  // Number.isFinite로 NaN/Infinity 방지 + Math.max(0, ...)로 음수 방지
+  const h = Math.max(0, Number.isFinite(opts.h) ? opts.h : 35);
+  const t = Math.max(0, Number.isFinite(opts.t) ? opts.t : 5);
+  const stairW = Math.max(0, Number.isFinite(opts.stairW) ? opts.stairW : 60);
+  const stairD = Math.max(0, Number.isFinite(opts.stairD) ? opts.stairD : 50);
   const color = opts.color ?? japandiRailGlass;
 
   // 계단 치수 검증 (음수 방지 + 플랫폼보다 클 수 없음)

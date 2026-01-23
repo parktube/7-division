@@ -365,8 +365,8 @@ export function handleArtifact(input: WorkflowInput): WorkflowResult {
     return { success: false, error: 'No active project. Use start command to begin.' }
   }
 
-  // Save artifact
-  if (input.content) {
+  // Save artifact (explicit undefined check to allow empty string as valid content)
+  if (input.content !== undefined) {
     // Determine phase from artifact type
     let phase: WorkflowPhase = project.current_phase as WorkflowPhase
     for (const [p, type] of Object.entries(PHASE_ARTIFACTS)) {

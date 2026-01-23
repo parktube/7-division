@@ -72,13 +72,22 @@ export async function executeSessionInit(): Promise<SessionInitResult> {
     }
   }
 
-  // Load checkpoint and recent decisions
+  // Load checkpoint and recent decisions using Promise.allSettled for resilience
   let checkpoint = null
   let decisions: Awaited<ReturnType<typeof searchDecisions>> = []
-  try {
-    [checkpoint, decisions] = await Promise.all([loadCheckpoint(), searchDecisions({ limit: 5 })])
-  } catch (error) {
-    logger.error(`Session init core load failed: ${error}`)
+  const [checkpointResult, decisionsResult] = await Promise.allSettled([
+    loadCheckpoint(),
+    searchDecisions({ limit: 5 }),
+  ])
+  if (checkpointResult.status === 'fulfilled') {
+    checkpoint = checkpointResult.value
+  } else {
+    logger.error(`Checkpoint load failed: ${checkpointResult.reason}`)
+  }
+  if (decisionsResult.status === 'fulfilled') {
+    decisions = decisionsResult.value
+  } else {
+    logger.error(`Decisions search failed: ${decisionsResult.reason}`)
   }
 
   // Check graph health (Story 11.11)

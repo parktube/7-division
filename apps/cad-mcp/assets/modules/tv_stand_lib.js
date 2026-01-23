@@ -135,7 +135,8 @@ function sofa(name, wx, wy, wz, w, d, h, frameColor, cushionColor) {
   
   const frameH = 5;      // 프레임 높이
   const seatH = 8;       // 좌석 높이
-  const backH = h - frameH - seatH + 8;  // 등받이 높이 (더 높게)
+  const extraBackH = 8;  // 등받이 추가 높이 (시각적으로 더 높게 보이게)
+  const backH = h - frameH - seatH + extraBackH;  // 등받이 높이
   const backD = 8;       // 등받이 깊이
   const armW = 6;        // 팔걸이 너비
   const armH = 14;       // 팔걸이 높이

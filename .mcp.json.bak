@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "agentvibes": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "--package=agentvibes",
+        "agentvibes-mcp-server"
+      ]
+    },
+    "ai-native-cad": {
+      "command": "node",
+      "args": [
+        "/home/hoons/r2-7f-division/apps/cad-mcp/dist/mcp-cli.js",
+        "start"
+      ],
+      "env": {
+        "CAD_VIEWER_URL": "https://parktube.github.io/7-division/"
+      }
+    }
+  }
+}

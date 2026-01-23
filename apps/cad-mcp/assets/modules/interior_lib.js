@@ -179,10 +179,16 @@ function wallSide(name, wx, wy, wz, depth, height, color) {
   _parts[name] = { wx, wy, wz, w: 0, d: depth, h: height };
 }
 
-// 이전 함수명 호환 (deprecated)
+/**
+ * @deprecated Use wallBack instead
+ */
 function wallLeft(name, wx, wy, wz, width, height, color) {
   wallBack(name, wx, wy, wz, width, height, color);
 }
+
+/**
+ * @deprecated Use wallSide instead
+ */
 function wallRight(name, wx, wy, wz, depth, height, color) {
   wallSide(name, wx, wy, wz, depth, height, color);
 }

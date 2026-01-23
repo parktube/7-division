@@ -176,7 +176,7 @@ export function addHint(params: AddHintParams): number {
     .run(
       params.tool_name,
       params.hint_text,
-      params.priority || 5,
+      params.priority ?? 5,
       params.tags ? JSON.stringify(params.tags) : null,
       now
     )

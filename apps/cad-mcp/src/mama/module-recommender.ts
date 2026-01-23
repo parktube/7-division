@@ -380,8 +380,14 @@ function keywordFallback(
   limit: number,
   minScore: number = 0
 ): ModuleRecommendation[] {
-  const queryLower = query.toLowerCase()
-  const queryWords = queryLower.split(/\s+/)
+  const queryLower = query.toLowerCase().trim()
+  // Filter empty tokens to prevent empty query matching everything
+  const queryWords = queryLower.split(/\s+/).filter(Boolean)
+
+  // Empty query returns no results
+  if (queryWords.length === 0) {
+    return []
+  }
 
   const scored = modules.map(module => {
     const textLower = `${module.name} ${module.description}`.toLowerCase()

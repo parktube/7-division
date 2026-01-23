@@ -171,7 +171,15 @@ export function preprocessCode(
       return `// [import] ERROR: '${moduleName}' not found`;
     }
 
-    const moduleCode = readFileSync(resolved.path, 'utf-8');
+    // Wrap readFileSync in try/catch to handle race condition (file deleted after exists check)
+    let moduleCode: string;
+    try {
+      moduleCode = readFileSync(resolved.path, 'utf-8');
+    } catch (readError) {
+      const errMsg = readError instanceof Error ? readError.message : String(readError);
+      errors.push(`could not read module '${moduleName}': ${errMsg}`);
+      return `// [import] ERROR: '${moduleName}' read failed`;
+    }
     importedModules.add(moduleName);
     newlyImported.push(moduleName);
 

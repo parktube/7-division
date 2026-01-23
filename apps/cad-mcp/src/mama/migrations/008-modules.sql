@@ -13,5 +13,8 @@ CREATE TABLE IF NOT EXISTS modules (
   updated_at INTEGER                  -- Unix timestamp of last update
 );
 
+-- Index for sorting by usage
+CREATE INDEX IF NOT EXISTS idx_modules_usage ON modules(usage_count DESC);
+
 -- Record version
 INSERT OR IGNORE INTO schema_version (version) VALUES (8);

@@ -211,7 +211,7 @@ Confidence: ${decision.confidence ?? 0.5}
  *
  * @param embA - First embedding
  * @param embB - Second embedding
- * @returns Similarity score (0-1)
+ * @returns Similarity score (-1 to 1, where 1 = identical, 0 = orthogonal, -1 = opposite)
  */
 export function cosineSimilarity(embA: Float32Array, embB: Float32Array): number {
   if (embA.length !== embB.length) {

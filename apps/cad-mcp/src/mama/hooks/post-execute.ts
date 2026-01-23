@@ -31,8 +31,8 @@ const ENTITY_NAME_PATTERNS = [
   /const\s+(\w+)\s*=\s*(?:draw|create|make)/g,
 ]
 
-/** Pattern to extract CAD function calls for domain detection */
-const CAD_FUNCTION_PATTERN = /\b(drawBox|drawCylinder|drawSphere|drawCircle|drawRect|drawPolygon|drawLine|drawPoint|translate|rotate|scale|mirror|group|ungroup|clone|union|subtract|intersect|select|find|getEntity)\s*\(/g
+/** Pattern to extract CAD function calls for domain detection (without /g flag to avoid shared state) */
+const CAD_FUNCTION_PATTERN_STR = '\\b(drawBox|drawCylinder|drawSphere|drawCircle|drawRect|drawPolygon|drawLine|drawPoint|translate|rotate|scale|mirror|group|ungroup|clone|union|subtract|intersect|select|find|getEntity)\\s*\\('
 
 /**
  * Extract entity names from CAD code
@@ -59,9 +59,10 @@ export function extractEntityNames(code: string): string[] {
  */
 export function extractCadFunctions(code: string): string[] {
   const functions: string[] = []
-  CAD_FUNCTION_PATTERN.lastIndex = 0
+  // Create local RegExp to avoid shared state issues with global flag
+  const pattern = new RegExp(CAD_FUNCTION_PATTERN_STR, 'g')
   let match
-  while ((match = CAD_FUNCTION_PATTERN.exec(code)) !== null) {
+  while ((match = pattern.exec(code)) !== null) {
     if (match[1]) {
       functions.push(match[1])
     }

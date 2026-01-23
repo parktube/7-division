@@ -1350,6 +1350,14 @@ export function recordModuleUsage(name: string): void {
 }
 
 /**
+ * Escape special characters for LIKE pattern matching
+ * Escapes %, _, and \ to prevent SQL injection and unintended wildcards
+ */
+function escapeLike(str: string): string {
+  return str.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+/**
  * Search modules by criteria
  *
  * @param options - Search options
@@ -1368,15 +1376,15 @@ export function searchModules(options: {
   const params: (string | number)[] = []
 
   if (options.namePattern) {
-    query += ' AND name LIKE ?'
-    params.push(`%${options.namePattern}%`)
+    query += " AND name LIKE ? ESCAPE '\\'"
+    params.push(`%${escapeLike(options.namePattern)}%`)
   }
 
   if (options.tags && options.tags.length > 0) {
-    // Match any tag
-    const tagConditions = options.tags.map(() => 'tags LIKE ?').join(' OR ')
+    // Match any tag with LIKE escape
+    const tagConditions = options.tags.map(() => "tags LIKE ? ESCAPE '\\'").join(' OR ')
     query += ` AND (${tagConditions})`
-    options.tags.forEach(tag => params.push(`%"${tag}"%`))
+    options.tags.forEach(tag => params.push(`%"${escapeLike(tag)}"%`))
   }
 
   query += ' ORDER BY usage_count DESC, name ASC'
@@ -1568,7 +1576,11 @@ export function addProjectArtifact(artifact: {
   }
 
   const now = Date.now()
-  const id = `artifact_${artifact.project_id.split('_')[1]}_${artifact.phase}_${artifact.artifact_type}_${now.toString(36)}`
+  // Safely extract project segment from project_id (handles missing underscore)
+  const projectSegment = artifact.project_id.includes('_')
+    ? artifact.project_id.split('_').slice(1).join('_')
+    : artifact.project_id
+  const id = `artifact_${projectSegment}_${artifact.phase}_${artifact.artifact_type}_${now.toString(36)}`
 
   getDatabase().prepare(`
     INSERT INTO project_artifacts (id, project_id, phase, artifact_type, content, created_at)

@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS hints (
 
 CREATE INDEX IF NOT EXISTS idx_hints_tool ON hints(tool_name);
 CREATE INDEX IF NOT EXISTS idx_hints_priority ON hints(priority DESC);
+-- Unique constraint for INSERT OR IGNORE to work correctly
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hints_tool_text ON hints(tool_name, hint_text);
 
 -- ══════════════════════════════════════════════════════════════
 -- Default CAD hints (시드 데이터)

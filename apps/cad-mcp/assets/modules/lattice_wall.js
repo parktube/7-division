@@ -31,12 +31,13 @@ function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
   if (x1 < x0) { const tmp = x0; x0 = x1; x1 = tmp; }  // x0/x1 순서 보장
   if (height <= 0) { createGroup(name, []); return; }   // 유효하지 않은 높이
 
-  const frameT = typeof opts.frameT === 'number' ? opts.frameT : 4;
-  const outerT = typeof opts.outerT === 'number' ? opts.outerT : 10;
-  const capDepth = typeof opts.capDepth === 'number' ? opts.capDepth : 10;
+  // Number.isFinite 사용하여 NaN/Infinity 방지
+  const frameT = Number.isFinite(opts.frameT) ? opts.frameT : 4;
+  const outerT = Number.isFinite(opts.outerT) ? opts.outerT : 10;
+  const capDepth = Number.isFinite(opts.capDepth) ? opts.capDepth : 10;
   // cols/rows 최소값 검증 (0이나 음수 시 Infinity/NaN 방지)
-  const cols = Math.max(1, typeof opts.cols === 'number' ? opts.cols : 8);
-  const rows = Math.max(1, typeof opts.rows === 'number' ? opts.rows : 16);
+  const cols = Math.max(1, Number.isFinite(opts.cols) ? opts.cols : 8);
+  const rows = Math.max(1, Number.isFinite(opts.rows) ? opts.rows : 16);
   const color = opts.color || japandiOak;
 
   const width = x1 - x0;

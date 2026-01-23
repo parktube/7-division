@@ -51,8 +51,12 @@ function wallFrame(name, x, y, z, opts) {
 
   const fY = y - depth/2;
 
+  // 내부 치수 계산 (음수 방지)
+  const innerW = Math.max(1, w - frameT * 2);
+  const innerH = Math.max(1, h - frameT * 2);
+
   // 배경
-  wallBack(name + '_back', x, y, z, w - frameT*2, h - frameT*2, artColor);
+  wallBack(name + '_back', x, y, z, innerW, innerH, artColor);
 
   // 프레임 테두리
   box(name + '_l', x - w/2 + frameT/2, fY, z, frameT, depth, h, frameColor);
