@@ -12,6 +12,7 @@
 
 import { getDatabase } from './db.js'
 import { logger } from '../logger.js'
+import { STALE_THRESHOLD_DAYS, DEBATES_WARNING_THRESHOLD } from './anti-echo.js'
 
 // ============================================================
 // Types
@@ -47,11 +48,9 @@ export interface GraphHealth {
 }
 
 // ============================================================
-// Constants
+// Constants (STALE_THRESHOLD_DAYS, DEBATES_WARNING_THRESHOLD imported from anti-echo.js)
 // ============================================================
 
-const STALE_THRESHOLD_DAYS = 90
-const DEBATES_WARNING_THRESHOLD = 0.10  // 10%
 const ORPHAN_WARNING_THRESHOLD = 0.30   // 30%
 
 // ============================================================

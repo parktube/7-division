@@ -3,9 +3,10 @@
 // - 프레임 + 창살 + 유리 패널
 // - 좌우 미닫이문 + 중앙 고정창
 //
-// TODO: Consider refactoring to local coordinate pattern (0,0,0 based)
-// then use createGroup() + translate() for placement. Current world coordinate
-// approach works but makes reuse/rotation harder.
+// NOTE: Uses world coordinate pattern (direct x,y,z placement).
+// Alternative: local coordinate pattern (0,0,0 based) + createGroup() + translate().
+// Current approach is simpler for inline wall placement but less flexible for rotation.
+// See: interior_lib.js for local coordinate examples.
 //
 // 사용법:
 //   import 'balcony_window'
