@@ -61,7 +61,7 @@ importers:
         version: 3.25.76
     devDependencies:
       '@types/better-sqlite3':
-        specifier: ^7.6.0
+        specifier: ^7.6.13
         version: 7.6.13
       '@types/node':
         specifier: ^22.10.2
