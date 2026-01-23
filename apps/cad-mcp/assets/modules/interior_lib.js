@@ -521,7 +521,7 @@ function parquetFloor(name, wx, wy, wz, width, depth, blockSize, plankCount, col
         drawPolygon(plankName, [p.f[0],p.f[1], p.r[0],p.r[1], p.b[0],p.b[1], p.l[0],p.l[1]]);
         
         // color 파라미터에서 톤 팔레트 생성
-        const baseColor = color || [0.82, 0.62, 0.38, 1];  // 기본: 오크색
+        const baseColor = color || J.oak.t;  // 기본: Japandi 오크색
         const r = baseColor[0], g = baseColor[1], b = baseColor[2], a = baseColor[3] ?? 1;
 
         // 밝은 톤 변형 (3단계)

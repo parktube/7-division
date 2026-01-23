@@ -95,7 +95,7 @@ read({ file: 'chicken' })        // 모듈 읽기
 |----------|------|------|
 | `mcp__ai-native-cad__mama_save` | 결정/체크포인트 저장 | `mama_save({ type: 'decision', topic: 'color', decision: '...' })` |
 | `mcp__ai-native-cad__mama_search` | 추론 그래프 검색 | `mama_search({ query: 'color' })` |
-| `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 | `mama_update({ id: 'decision_xxx', outcome: 'success' })` |
+| `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 | `mama_update({ id: 'decision_auth_abc123', outcome: 'success' })` |
 | `mcp__ai-native-cad__mama_load_checkpoint` | 이전 세션 복원 | `mama_load_checkpoint()` |
 | `mcp__ai-native-cad__mama_configure` | 설정 조회/수정 | `mama_configure({ action: 'get' })` |
 | `mcp__ai-native-cad__mama_edit_hint` | 동적 힌트 관리 | `mama_edit_hint({ action: 'list' })` |
@@ -118,7 +118,7 @@ mama_save({
   type: 'decision',
   topic: 'auth_strategy',
   decision: 'Use JWT with refresh tokens',
-  reasoning: 'Stateless, scalable. builds_on: decision_xxx'
+  reasoning: 'Stateless, scalable. builds_on: decision_auth_session_abc123'
 })
 
 // 디자인 프로젝트 시작

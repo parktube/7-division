@@ -66,7 +66,7 @@ mama_save({
   type: 'decision',
   topic: 'interior:palette',
   decision: 'Japandi style - oak + off-white',
-  reasoning: '60-30-10 rule. builds_on: decision_xxx'
+  reasoning: '60-30-10 rule. builds_on: decision_color_theory_abc123'
 })
 
 // 디자인 프로젝트 시작
