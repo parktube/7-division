@@ -128,7 +128,7 @@ class TVCabinetBuilder {
 function tvCabinet(name, wx, wy, wz, w, d, h, frameColor, drawerColor) {
   const builder = new TVCabinetBuilder(name)
     .setPosition(wx, wy, wz)
-    .setSize(w || 60, d || 20, h || 25);
+    .setSize(w ?? 60, d ?? 20, h ?? 25);
 
   if (frameColor) builder.setFrameColor(frameColor);
   if (drawerColor) builder.setDrawerColor(drawerColor);
@@ -148,8 +148,8 @@ function tvCabinet(name, wx, wy, wz, w, d, h, frameColor, drawerColor) {
  * @param {number} screenH - 화면 높이 (기본 25)
  */
 function tv(name, wx, wy, wz, screenW, screenH) {
-  screenW = screenW || 40;
-  screenH = screenH || 25;
+  screenW = screenW ?? 40;
+  screenH = screenH ?? 25;
   
   const screenD = 2;  // 화면 두께
   const standW = 15;
@@ -189,11 +189,11 @@ const fabricBeige = {
  * @param {object} cushionColor - 쿠션 색상 (기본 fabricBeige)
  */
 function sofa(name, wx, wy, wz, w, d, h, frameColor, cushionColor) {
-  w = w || 70;
-  d = d || 35;
-  h = h || 30;
-  frameColor = frameColor || brightOak;
-  cushionColor = cushionColor || fabricBeige;
+  w = w ?? 70;
+  d = d ?? 35;
+  h = h ?? 30;
+  frameColor = frameColor ?? brightOak;
+  cushionColor = cushionColor ?? fabricBeige;
   
   const frameH = 5;      // 프레임 높이
   const seatH = 8;       // 좌석 높이
@@ -249,10 +249,10 @@ function sofa(name, wx, wy, wz, w, d, h, frameColor, cushionColor) {
  * @param {object} color - 벽체 색상 (기본 brightOak)
  */
 function coffeeTable(name, wx, wy, wz, w, d, h, color) {
-  w = w || 50;
-  d = d || 30;
-  h = h || 18;
-  color = color || brightOak;
+  w = w ?? 50;
+  d = d ?? 30;
+  h = h ?? 18;
+  color = color ?? brightOak;
   
   const topT = 2;      // 상판 두께
   const wallT = 4;     // 벽체 두께
@@ -322,11 +322,11 @@ function coffeeTable(name, wx, wy, wz, w, d, h, color) {
  * @param {number} headW - 헤드보드 너비 (기본 w와 같음, 별도 지정 가능)
  */
 function bed(name, wx, wy, wz, w, d, frameColor, mattressColor, headW) {
-  w = w || 50;
-  d = d || 90;
-  frameColor = frameColor || brightOak;
-  mattressColor = mattressColor || J.white;
-  headW = headW || w;  // 헤드보드 너비 (기본은 침대 너비와 같음)
+  w = w ?? 50;
+  d = d ?? 90;
+  frameColor = frameColor ?? brightOak;
+  mattressColor = mattressColor ?? J.white;
+  headW = headW ?? w;  // 헤드보드 너비 (기본은 침대 너비와 같음)
   
   const platformH = 6;     // 플랫폼 높이
   const mattressH = 10;    // 매트리스 높이

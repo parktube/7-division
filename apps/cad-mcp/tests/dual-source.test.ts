@@ -285,20 +285,24 @@ describe('Dual-source 모듈 시스템', () => {
         rmSync(userPath);
       }
 
-      const result = handleEdit({
-        file: testBuiltin,
-        old_code: 'function',
-        new_code: 'modified',
-      });
+      try {
+        const result = handleEdit({
+          file: testBuiltin,
+          old_code: 'function',
+          new_code: 'modified',
+        });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Cannot edit builtin module');
-      // 참조 및 새 이름 사용 안내 포함
-      expect(result.error).toContain('read("' + testBuiltin + '")');
-      expect(result.error).toContain(testBuiltin + '_custom');
-
-      // Cleanup
-      rmSync(builtinPath);
+        expect(result.success).toBe(false);
+        expect(result.error).toContain('Cannot edit builtin module');
+        // 참조 및 새 이름 사용 안내 포함
+        expect(result.error).toContain('read("' + testBuiltin + '")');
+        expect(result.error).toContain(testBuiltin + '_custom');
+      } finally {
+        // Cleanup - ensure file is removed even if test fails
+        if (existsSync(builtinPath)) {
+          rmSync(builtinPath);
+        }
+      }
     });
 
     it('should allow editing user module', () => {

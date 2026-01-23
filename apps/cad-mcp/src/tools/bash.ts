@@ -196,7 +196,7 @@ export async function handleBash(
                 level: parsed.level || (groupName || 'root'),
                 order: parsed.order,
                 count: parsed.order.length,
-                hint: '배열 왼쪽이 뒤(먼저 그림), 오른쪽이 앞(나중 그림)',
+                hint: '배열 왼쪽이 앞(나중 그림), 오른쪽이 뒤(먼저 그림)',
               },
             };
           } catch (e) {

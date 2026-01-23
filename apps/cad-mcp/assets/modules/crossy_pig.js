@@ -80,61 +80,61 @@ PigBuilder.prototype.build = function() {
   var name = this.name;
   var wx = this.wx;
   var wy = this.wy;
-  var S = this.scale * 8;
+  var s = this.scale;
   var n = name + '_';
   var P = PIG_PARTS;
   var COL = PIG_COLORS;
 
   // 몸통
-  box3d(n + 'body', wx + P.body.x * S / 8, wy + P.body.y * S / 8, P.body.z * S / 8,
-        P.body.w * S / 8, P.body.d * S / 8, P.body.h * S / 8,
+  box3d(n + 'body', wx + P.body.x * s, wy + P.body.y * s, P.body.z * s,
+        P.body.w * s, P.body.d * s, P.body.h * s,
         COL.body.t, COL.body.l, COL.body.r);
 
   // 코
-  box3d(n + 'snout', wx + P.snout.x * S / 8, wy + P.snout.y * S / 8, P.snout.z * S / 8,
-        P.snout.w * S / 8, P.snout.d * S / 8, P.snout.h * S / 8,
+  box3d(n + 'snout', wx + P.snout.x * s, wy + P.snout.y * s, P.snout.z * s,
+        P.snout.w * s, P.snout.d * s, P.snout.h * s,
         COL.snout.t, COL.snout.l, COL.snout.r);
-  box3d(n + 'nostril_l', wx + P.nostril_l.x * S / 8, wy + P.nostril_l.y * S / 8, P.nostril_l.z * S / 8,
-        P.nostril_l.w * S / 8, P.nostril_l.d * S / 8, P.nostril_l.h * S / 8,
+  box3d(n + 'nostril_l', wx + P.nostril_l.x * s, wy + P.nostril_l.y * s, P.nostril_l.z * s,
+        P.nostril_l.w * s, P.nostril_l.d * s, P.nostril_l.h * s,
         COL.pupil.t, COL.pupil.l, COL.pupil.r);
-  box3d(n + 'nostril_r', wx + P.nostril_r.x * S / 8, wy + P.nostril_r.y * S / 8, P.nostril_r.z * S / 8,
-        P.nostril_r.w * S / 8, P.nostril_r.d * S / 8, P.nostril_r.h * S / 8,
+  box3d(n + 'nostril_r', wx + P.nostril_r.x * s, wy + P.nostril_r.y * s, P.nostril_r.z * s,
+        P.nostril_r.w * s, P.nostril_r.d * s, P.nostril_r.h * s,
         COL.pupil.t, COL.pupil.l, COL.pupil.r);
 
   // 눈
-  box3d(n + 'eye_w_l', wx + P.eye_w_l.x * S / 8, wy + P.eye_w_l.y * S / 8, P.eye_w_l.z * S / 8,
-        P.eye_w_l.w * S / 8, P.eye_w_l.d * S / 8, P.eye_w_l.h * S / 8,
+  box3d(n + 'eye_w_l', wx + P.eye_w_l.x * s, wy + P.eye_w_l.y * s, P.eye_w_l.z * s,
+        P.eye_w_l.w * s, P.eye_w_l.d * s, P.eye_w_l.h * s,
         COL.eye.t, COL.eye.l, COL.eye.r);
-  box3d(n + 'eye_p_l', wx + P.eye_p_l.x * S / 8, wy + P.eye_p_l.y * S / 8, P.eye_p_l.z * S / 8,
-        P.eye_p_l.w * S / 8, P.eye_p_l.d * S / 8, P.eye_p_l.h * S / 8,
+  box3d(n + 'eye_p_l', wx + P.eye_p_l.x * s, wy + P.eye_p_l.y * s, P.eye_p_l.z * s,
+        P.eye_p_l.w * s, P.eye_p_l.d * s, P.eye_p_l.h * s,
         COL.pupil.t, COL.pupil.l, COL.pupil.r);
-  box3d(n + 'eye_w_r', wx + P.eye_w_r.x * S / 8, wy + P.eye_w_r.y * S / 8, P.eye_w_r.z * S / 8,
-        P.eye_w_r.w * S / 8, P.eye_w_r.d * S / 8, P.eye_w_r.h * S / 8,
+  box3d(n + 'eye_w_r', wx + P.eye_w_r.x * s, wy + P.eye_w_r.y * s, P.eye_w_r.z * s,
+        P.eye_w_r.w * s, P.eye_w_r.d * s, P.eye_w_r.h * s,
         COL.eye.t, COL.eye.l, COL.eye.r);
-  box3d(n + 'eye_p_r', wx + P.eye_p_r.x * S / 8, wy + P.eye_p_r.y * S / 8, P.eye_p_r.z * S / 8,
-        P.eye_p_r.w * S / 8, P.eye_p_r.d * S / 8, P.eye_p_r.h * S / 8,
+  box3d(n + 'eye_p_r', wx + P.eye_p_r.x * s, wy + P.eye_p_r.y * s, P.eye_p_r.z * s,
+        P.eye_p_r.w * s, P.eye_p_r.d * s, P.eye_p_r.h * s,
         COL.pupil.t, COL.pupil.l, COL.pupil.r);
 
   // 귀
-  box3d(n + 'ear_l', wx + P.ear_l.x * S / 8, wy + P.ear_l.y * S / 8, P.ear_l.z * S / 8,
-        P.ear_l.w * S / 8, P.ear_l.d * S / 8, P.ear_l.h * S / 8,
+  box3d(n + 'ear_l', wx + P.ear_l.x * s, wy + P.ear_l.y * s, P.ear_l.z * s,
+        P.ear_l.w * s, P.ear_l.d * s, P.ear_l.h * s,
         COL.ear.t, COL.ear.l, COL.ear.r);
-  box3d(n + 'ear_r', wx + P.ear_r.x * S / 8, wy + P.ear_r.y * S / 8, P.ear_r.z * S / 8,
-        P.ear_r.w * S / 8, P.ear_r.d * S / 8, P.ear_r.h * S / 8,
+  box3d(n + 'ear_r', wx + P.ear_r.x * s, wy + P.ear_r.y * s, P.ear_r.z * s,
+        P.ear_r.w * s, P.ear_r.d * s, P.ear_r.h * s,
         COL.ear.t, COL.ear.l, COL.ear.r);
 
   // 다리
-  box3d(n + 'leg_fl', wx + P.leg_fl.x * S / 8, wy + P.leg_fl.y * S / 8, P.leg_fl.z * S / 8,
-        P.leg_fl.w * S / 8, P.leg_fl.d * S / 8, P.leg_fl.h * S / 8,
+  box3d(n + 'leg_fl', wx + P.leg_fl.x * s, wy + P.leg_fl.y * s, P.leg_fl.z * s,
+        P.leg_fl.w * s, P.leg_fl.d * s, P.leg_fl.h * s,
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
-  box3d(n + 'leg_fr', wx + P.leg_fr.x * S / 8, wy + P.leg_fr.y * S / 8, P.leg_fr.z * S / 8,
-        P.leg_fr.w * S / 8, P.leg_fr.d * S / 8, P.leg_fr.h * S / 8,
+  box3d(n + 'leg_fr', wx + P.leg_fr.x * s, wy + P.leg_fr.y * s, P.leg_fr.z * s,
+        P.leg_fr.w * s, P.leg_fr.d * s, P.leg_fr.h * s,
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
-  box3d(n + 'leg_bl', wx + P.leg_bl.x * S / 8, wy + P.leg_bl.y * S / 8, P.leg_bl.z * S / 8,
-        P.leg_bl.w * S / 8, P.leg_bl.d * S / 8, P.leg_bl.h * S / 8,
+  box3d(n + 'leg_bl', wx + P.leg_bl.x * s, wy + P.leg_bl.y * s, P.leg_bl.z * s,
+        P.leg_bl.w * s, P.leg_bl.d * s, P.leg_bl.h * s,
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
-  box3d(n + 'leg_br', wx + P.leg_br.x * S / 8, wy + P.leg_br.y * S / 8, P.leg_br.z * S / 8,
-        P.leg_br.w * S / 8, P.leg_br.d * S / 8, P.leg_br.h * S / 8,
+  box3d(n + 'leg_br', wx + P.leg_br.x * s, wy + P.leg_br.y * s, P.leg_br.z * s,
+        P.leg_br.w * s, P.leg_br.d * s, P.leg_br.h * s,
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
 
   // z-order
@@ -169,7 +169,7 @@ PigBuilder.prototype.getName = function() {
 // name: 이름, wx/wy: 월드 좌표, scale: 스케일(1)
 function makePig(name, wx, wy, scale) {
   new PigBuilder(name)
-    .setPosition(wx || 0, wy || 0)
-    .setScale(scale || 1)
+    .setPosition(wx ?? 0, wy ?? 0)
+    .setScale(scale ?? 1)
     .build();
 }

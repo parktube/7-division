@@ -141,7 +141,7 @@ DuckBuilder.prototype.getName = function() {
 // name: 이름, wx/wy: 월드 좌표, scale: 스케일(1)
 function makeDuck(name, wx, wy, scale) {
   new DuckBuilder(name)
-    .setPosition(wx || 0, wy || 0)
-    .setScale(scale || 1)
+    .setPosition(wx ?? 0, wy ?? 0)
+    .setScale(scale ?? 1)
     .build();
 }

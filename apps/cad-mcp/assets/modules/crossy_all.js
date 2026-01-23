@@ -41,8 +41,8 @@ import 'crossy_duck'
 // 기본 3레인 씬 생성 (잔디-도로-잔디)
 // prefix: 이름 프리픽스, startLane: 시작 레인(0)
 function basicScene(prefix, startLane) {
-  var start = startLane || 0;
-  var p = prefix || 'lane';
+  var start = startLane ?? 0;
+  var p = prefix ?? 'lane';
   grassLane(p + '_g1', start);
   roadLane(p + '_r1', start + 1);
   grassLane(p + '_g2', start + 2);
@@ -51,8 +51,8 @@ function basicScene(prefix, startLane) {
 // 물/통나무 씬 생성
 // prefix: 이름 프리픽스, startLane: 시작 레인
 function waterScene(prefix, startLane) {
-  var start = startLane || 0;
-  var p = prefix || 'water';
+  var start = startLane ?? 0;
+  var p = prefix ?? 'water';
   grassLane(p + '_g1', start);
   waterLane(p + '_w1', start + 1);
   waterLane(p + '_w2', start + 2);
@@ -69,8 +69,8 @@ function waterScene(prefix, startLane) {
 // 도로/자동차 씬 생성
 // prefix: 이름 프리픽스, startLane: 시작 레인
 function roadScene(prefix, startLane) {
-  var start = startLane || 0;
-  var p = prefix || 'road';
+  var start = startLane ?? 0;
+  var p = prefix ?? 'road';
   grassLane(p + '_g1', start);
   roadLane(p + '_r1', start + 1);
   roadLane(p + '_r2', start + 2);
@@ -87,8 +87,8 @@ function roadScene(prefix, startLane) {
 // 철로/기차 씬 생성
 // prefix: 이름 프리픽스, startLane: 시작 레인
 function railScene(prefix, startLane) {
-  var start = startLane || 0;
-  var p = prefix || 'rail';
+  var start = startLane ?? 0;
+  var p = prefix ?? 'rail';
   grassLane(p + '_g1', start);
   railLane(p + '_rail', start + 1);
   grassLane(p + '_g2', start + 2);

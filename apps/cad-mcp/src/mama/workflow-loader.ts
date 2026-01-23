@@ -18,6 +18,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const WORKFLOWS_DIR = resolve(__dirname, '../../assets/workflows')
 
 // ============================================================
+// Security Helpers
+// ============================================================
+
+/**
+ * Validate workflowId to prevent path traversal attacks
+ * Only allows alphanumeric characters, hyphens, and underscores
+ */
+function validateWorkflowId(workflowId: string): boolean {
+  // Reject if contains path separators or parent directory references
+  if (workflowId.includes('..') || workflowId.includes('/') || workflowId.includes('\\')) {
+    return false
+  }
+  // Only allow alphanumeric, hyphens, and underscores
+  return /^[a-zA-Z0-9_-]+$/.test(workflowId)
+}
+
+// ============================================================
 // Types
 // ============================================================
 
@@ -78,6 +95,12 @@ export function clearWorkflowCache(workflowId?: string): void {
  * Load workflow instructions from Markdown
  */
 export function loadWorkflowInstructions(workflowId: string = 'cad-interior'): string | null {
+  // Path traversal protection
+  if (!validateWorkflowId(workflowId)) {
+    logger.error(`Invalid workflowId (path traversal attempt?): ${workflowId}`)
+    return null
+  }
+
   const cached = instructionsCache.get(workflowId)
   if (cached) return cached
 
@@ -136,6 +159,12 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
  * Load CAD-specific design hints from YAML
  */
 export function loadDesignHintsData(workflowId: string = 'cad-interior'): DesignHintsData | null {
+  // Path traversal protection
+  if (!validateWorkflowId(workflowId)) {
+    logger.error(`Invalid workflowId (path traversal attempt?): ${workflowId}`)
+    return null
+  }
+
   const cached = designHintsCache.get(workflowId)
   if (cached) return cached
 

@@ -153,7 +153,7 @@ function railLane(id, laneIndex) {
 // 나무
 // id: 이름, x/y: 위치, scale: 스케일(1)
 function tree(id, x, y, scale) {
-  var s = scale || 1;
+  var s = scale ?? 1;
   var n = 'tree_' + id;
   var parts = [];
 
@@ -183,7 +183,7 @@ function tree(id, x, y, scale) {
 // 바위
 // id: 이름, x/y: 위치, scale: 스케일(1)
 function rock(id, x, y, scale) {
-  var s = scale || 1;
+  var s = scale ?? 1;
   var n = 'rock_' + id;
   var parts = [];
 
@@ -206,7 +206,7 @@ function rock(id, x, y, scale) {
 // id: 이름, x/y: 위치, length: 길이(100)
 function log(id, x, y, length) {
   var n = 'log_' + id;
-  var len = length || 100;
+  var len = length ?? 100;
 
   box3d(n, x, y, LANE_HEIGHT - 2, 20, len, 12,
         BG.log.t, BG.log.l, BG.log.r);
@@ -224,8 +224,9 @@ function log(id, x, y, length) {
 // 차량은 Y축 방향(도로 방향)으로 달림. -Y가 전진 방향.
 function car(id, x, y, color) {
   var n = 'car_' + id;
-  var colorKey = 'car' + (color || 'Red').charAt(0).toUpperCase() + (color || 'red').slice(1);
-  var col = BG[colorKey] || BG.carRed;
+  var c = color ?? 'red';
+  var colorKey = 'car' + c.charAt(0).toUpperCase() + c.slice(1);
+  var col = BG[colorKey] ?? BG.carRed;
 
   // 뒷바퀴 (뒤쪽 = +Y, 먼저 그려서 뒤에)
   box3d(n + '_wheel2', x - 12, y + 14, LANE_HEIGHT - 2, 6, 10, 10,
@@ -272,7 +273,7 @@ function car(id, x, y, color) {
 function train(id, x, y, color, cars) {
   var n = 'train_' + id;
   var col = (color === 'blue') ? BG.trainBlue : BG.trainRed;
-  var numCars = cars || 3;
+  var numCars = cars ?? 3;
   var zOrder = [];
 
   // 객차 (뒤쪽 = +Y, 뒤에서 앞으로)

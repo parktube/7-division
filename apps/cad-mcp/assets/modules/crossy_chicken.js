@@ -178,7 +178,7 @@ ChickenBuilder.prototype.getName = function() {
 // name: 이름, wx/wy: 월드 좌표, scale: 스케일(1)
 function makeChicken(name, wx, wy, scale) {
   new ChickenBuilder(name)
-    .setPosition(wx || 0, wy || 0)
-    .setScale(scale || 1)
+    .setPosition(wx ?? 0, wy ?? 0)
+    .setScale(scale ?? 1)
     .build();
 }

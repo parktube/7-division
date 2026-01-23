@@ -14,12 +14,13 @@
 //   .build();
 //
 // @example 레거시 함수 사용 (하위 호환)
-// woodLatticeWall('my_wall', -100, 100, 140, 0, 280);
+// woodLatticeWall(name, x0, x1, y, z0, height, opts)
+// woodLatticeWall('my_wall', -70, 70, 100, 0, 280);  // 폭140, y=100(벽면), z0=0, 높이280
 //
 // 조립 예시:
 //   // 거실과 침실 분리
-//   woodLatticeWall('divider', -50, 50, 0, 0, 200);
-//   sofa('sofa', 0, -60, 0, 80, 40, 35, J.white);
+//   woodLatticeWall('divider', -50, 50, 100, 0, 200);  // x:-50~50, y=100(벽면)
+//   sofa('sofa', 0, -20, 0, 80, 40, 35, J.white);      // 소파는 격자벽 앞에
 //
 // @builtin true
 // @version 2.0.0

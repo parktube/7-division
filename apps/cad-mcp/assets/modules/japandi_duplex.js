@@ -41,6 +41,12 @@ const DEFAULT_PLATFORM = {
   h: 50          // 높이
 };
 
+const DEFAULT_STAIR = {
+  w: 60,         // 계단 너비
+  d: 50,         // 계단 깊이
+  steps: 4       // 계단 수
+};
+
 // ============================================
 // JapandiDuplexBuilder Class
 // ============================================
@@ -150,7 +156,7 @@ class JapandiDuplexBuilder {
       platform.w,
       platform.d,
       platform.h,
-      60, 50, 4,
+      DEFAULT_STAIR.w, DEFAULT_STAIR.d, DEFAULT_STAIR.steps,
       J.white
     );
     topLevelGroups.push(name + '_platform');
@@ -209,8 +215,8 @@ class JapandiDuplexBuilder {
     // ==========================================
     const railPlatformX = wallInnerX - platform.w;
     glassRailing(name + '_railing', railPlatformX, wallInnerY, platform.w, platform.d, mezzZ, {
-      stairW: 60,
-      stairD: 50
+      stairW: DEFAULT_STAIR.w,
+      stairD: DEFAULT_STAIR.d
     });
     topLevelGroups.push(name + '_railing');
 
@@ -325,7 +331,7 @@ class JapandiMezzanineBuilder {
       name + '_platform',
       wx, wy,
       platformW, platformD, platformH,
-      60, 50, 4,
+      DEFAULT_STAIR.w, DEFAULT_STAIR.d, DEFAULT_STAIR.steps,
       J.white
     );
 
@@ -343,7 +349,7 @@ class JapandiMezzanineBuilder {
 
     // 유리 난간
     glassRailing(name + '_railing', wx - platformW, wy, platformW, platformD, wz + platformH, {
-      stairW: 60, stairD: 50
+      stairW: DEFAULT_STAIR.w, stairD: DEFAULT_STAIR.d
     });
 
     // 그룹화
