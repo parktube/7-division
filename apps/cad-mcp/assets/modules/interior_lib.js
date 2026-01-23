@@ -374,8 +374,24 @@ function boxAtWallCorner(name, cornerX, cornerY, width, depth, height, color) {
  * @param {object} color - 색상 (J.white 등)
  */
 function sunkenPlatformWithStairs(name, cornerX, cornerY, platformW, platformD, platformH, stairW, stairD, steps, color) {
+  // 입력 검증: 모든 치수가 양수여야 함
+  if (platformW <= 0 || platformD <= 0 || platformH <= 0) {
+    createGroup(name, []);
+    return;
+  }
+  if (stairW <= 0 || stairD <= 0) {
+    createGroup(name, []);
+    return;
+  }
+  // 계단이 플랫폼보다 클 수 없음
+  if (stairW >= platformW || stairD >= platformD) {
+    createGroup(name, []);
+    return;
+  }
+
   const entities = [];
-  
+  const validSteps = Math.max(1, steps);
+
   // L자형 플랫폼 계산
   const backD = platformD - stairD;
   
@@ -395,7 +411,6 @@ function sunkenPlatformWithStairs(name, cornerX, cornerY, platformW, platformD, 
   // 3. 계단 (z-order: 뒤쪽 먼저 → 앞쪽 나중에)
   const stairY = cornerY - backD - stairD/2;
   const stairLeftX = cornerX - platformW;
-  const validSteps = Math.max(1, steps);  // 0이나 음수 방지
   const stepW = stairW / validSteps;
   const stepH = platformH / validSteps;
   

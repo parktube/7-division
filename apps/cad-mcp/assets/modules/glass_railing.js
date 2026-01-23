@@ -37,9 +37,9 @@ function glassRailing(name, platformX, platformY, platformW, platformD, z, opts)
   const stairD = opts.stairD ?? 50;
   const color = opts.color ?? japandiRailGlass;
 
-  // 계단 치수 검증 (플랫폼보다 클 수 없음)
-  const validStairW = Math.min(stairW, platformW);
-  const validStairD = Math.min(stairD, platformD);
+  // 계단 치수 검증 (음수 방지 + 플랫폼보다 클 수 없음)
+  const validStairW = Math.max(0, Math.min(stairW, platformW));
+  const validStairD = Math.max(0, Math.min(stairD, platformD));
 
   // 계단 경계
   const stairEndX = platformX + validStairW;

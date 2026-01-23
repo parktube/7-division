@@ -404,7 +404,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       }
       lastPixelHash = result.hash;
 
-      logger.debug(`Scene stability check: loaded=${result.loaded}, stable=${sceneStable}, entities=${result.entityCount}, elapsed=${elapsed}ms`);
+      logger.debug('Scene stability check', { loaded: result.loaded, stable: sceneStable, entities: result.entityCount, elapsed });
     }
 
     if (!sceneStable) {
@@ -428,14 +428,14 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           return false;
         }, sketchData);
       } catch (error) {
-        logger.warn(`__injectSketch failed, continuing without sketch: ${error}`);
+        logger.warn('__injectSketch failed, continuing without sketch', { error: String(error) });
         sketchInjected = false;
       }
 
       if (sketchInjected) {
         // Wait for sketch overlay to render
         await new Promise(done => setTimeout(done, 300));
-      } else if (!sketchInjected) {
+      } else {
         logger.warn('__injectSketch not available - sketch will not be captured');
       }
     }

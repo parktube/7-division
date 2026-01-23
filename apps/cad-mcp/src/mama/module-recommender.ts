@@ -139,8 +139,9 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
     result.example = exampleMatch[1].replace(/^\s*\*\s*/gm, '').trim()
   }
 
-  // Parse imports
-  const importMatches = content.matchAll(/import\s+['"]([^'"]+)['"]/g)
+  // Parse imports (consistent with trackImportsFromCode pattern)
+  // Matches: import 'module', import { x } from 'module', import * as x from 'module', import x from 'module'
+  const importMatches = content.matchAll(/import\s+(?:\w+\s+from\s+|\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
   for (const match of importMatches) {
     if (result.imports) {
       result.imports.push(match[1])
