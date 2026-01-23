@@ -81,11 +81,19 @@ class GlassRailingBuilder {
 
   build() {
     const name = this.name;
-    const platformX = this.platformX;
-    const platformY = this.platformY;
-    const platformW = this.platformW;
-    const platformD = this.platformD;
-    const z = this.z;
+
+    // Number.isFinite로 NaN/Infinity 방지 (플랫폼 좌표/치수도 검증)
+    const platformX = Number.isFinite(this.platformX) ? this.platformX : 0;
+    const platformY = Number.isFinite(this.platformY) ? this.platformY : 0;
+    const platformW = Math.max(0, Number.isFinite(this.platformW) ? this.platformW : 0);
+    const platformD = Math.max(0, Number.isFinite(this.platformD) ? this.platformD : 0);
+    const z = Number.isFinite(this.z) ? this.z : 0;
+
+    // 플랫폼 치수가 0이면 빈 그룹 반환
+    if (platformW === 0 || platformD === 0) {
+      createGroup(name, []);
+      return this;
+    }
 
     // Number.isFinite로 NaN/Infinity 방지 + Math.max(0, ...)로 음수 방지
     const h = Math.max(0, Number.isFinite(this.h) ? this.h : 35);

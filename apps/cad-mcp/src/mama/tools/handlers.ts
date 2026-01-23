@@ -209,14 +209,15 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
 
       logger.info(`mama_save: Concept "${args.concept}" marked as understood`)
 
+      const newLevel = Math.max(existing.understanding_level, 2)
       return {
         success: true,
         data: {
           type: 'understood',
           concept: args.concept,
           previous_level: existing.understanding_level,
-          new_level: Math.max(existing.understanding_level, 2),
-          message: `Concept "${args.concept}" marked as understood (level: 2)`,
+          new_level: newLevel,
+          message: `Concept "${args.concept}" marked as understood (level: ${newLevel})`,
         },
       }
     } else if (args.type === 'applied') {
@@ -525,6 +526,7 @@ export interface ConfigureArgs {
  */
 export async function handleMamaConfigure(args: ConfigureArgs): Promise<ToolResponse> {
   try {
+    await initMAMA()
     const action = args.action || 'get'
 
     // Debug: Show current tool descriptions with injected hints
