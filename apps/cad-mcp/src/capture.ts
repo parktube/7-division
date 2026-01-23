@@ -298,15 +298,17 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
               if (!canvas || canvas.width === 0 || canvas.height === 0) {
                 return { ready: false, hash: '' };
               }
-              // Sample pixels to create a simple hash for stability check
+              // Sample 5 pixels for stability check (consistent with WebSocket path)
               const ctx = canvas.getContext('2d');
               if (!ctx) return { ready: false, hash: '' };
               const w = canvas.width;
               const h = canvas.height;
               const samples = [
-                ctx.getImageData(w / 2, h / 2, 1, 1).data,
-                ctx.getImageData(w / 4, h / 4, 1, 1).data,
-                ctx.getImageData(3 * w / 4, 3 * h / 4, 1, 1).data,
+                ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
+                ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
+                ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
+                ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
+                ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data,
               ];
               const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
               return { ready: true, hash };

@@ -514,14 +514,19 @@ function parquetFloor(name, wx, wy, wz, width, depth, blockSize, plankCount, col
         
         drawPolygon(plankName, [p.f[0],p.f[1], p.r[0],p.r[1], p.b[0],p.b[1], p.l[0],p.l[1]]);
         
-        // 나무 갈색 톤 색상 팔레트 (약간 어둡게)
+        // color 파라미터에서 톤 팔레트 생성
+        const baseColor = color || [0.82, 0.62, 0.38, 1];  // 기본: 오크색
+        const r = baseColor[0], g = baseColor[1], b = baseColor[2], a = baseColor[3] ?? 1;
+
+        // 밝은 톤 변형 (3단계)
         const lightTones = [
-          [0.85, 0.65, 0.40, 1],  // 미디엄 오크
-          [0.80, 0.60, 0.35, 1],  // 허니 오크
-          [0.82, 0.62, 0.37, 1],  // 골든 오크
-          [0.78, 0.56, 0.32, 1],  // 웜 오크
+          [Math.min(1, r * 1.05), Math.min(1, g * 1.05), Math.min(1, b * 1.05), a],
+          [Math.min(1, r * 1.00), Math.min(1, g * 1.00), Math.min(1, b * 1.00), a],
+          [Math.min(1, r * 0.97), Math.min(1, g * 0.97), Math.min(1, b * 0.97), a],
+          [Math.min(1, r * 0.95), Math.min(1, g * 0.95), Math.min(1, b * 0.95), a],
         ];
-        const darkTone = [0.65, 0.45, 0.25, 1];  // 다크 포인트
+        // 어두운 포인트 톤 (20% 어둡게)
+        const darkTone = [r * 0.80, g * 0.80, b * 0.80, a];
         
         // 밝은 색 순차 배치, 10개마다 어두운 포인트
         let plankColor;

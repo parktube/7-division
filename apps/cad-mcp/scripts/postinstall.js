@@ -29,6 +29,16 @@ const PLATFORM_INSTRUCTIONS = {
   `,
 };
 
+/**
+ * Safely extract error message from unknown error type
+ */
+function getErrorMessage(error) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 async function checkNativeModules() {
   const issues = [];
 
@@ -38,7 +48,7 @@ async function checkNativeModules() {
   } catch (error) {
     issues.push({
       module: 'better-sqlite3',
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 
@@ -47,10 +57,11 @@ async function checkNativeModules() {
     await import('sqlite-vec');
   } catch (error) {
     // sqlite-vec may fail to load extension, which is different from missing module
-    if (error.message.includes('Cannot find module')) {
+    const errorMsg = getErrorMessage(error);
+    if (errorMsg.includes('Cannot find module')) {
       issues.push({
         module: 'sqlite-vec',
-        error: error.message,
+        error: errorMsg,
       });
     }
   }

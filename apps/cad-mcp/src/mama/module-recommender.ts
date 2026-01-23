@@ -254,8 +254,13 @@ function calculateRecencyScore(lastUsedAt: number | null): number {
   if (!lastUsedAt) return 0
 
   const elapsed = Date.now() - lastUsedAt
+  // Handle future timestamps (negative elapsed) by clamping
+  if (elapsed < 0) return 1
+
   // Exponential decay: score = 0.5^(elapsed / half_life)
-  return Math.pow(0.5, elapsed / RECENCY_HALF_LIFE_MS)
+  const score = Math.pow(0.5, elapsed / RECENCY_HALF_LIFE_MS)
+  // Clamp to [0, 1] range for safety
+  return Math.min(Math.max(score, 0), 1)
 }
 
 // ============================================================
@@ -299,7 +304,7 @@ export async function recommendModules(
   const queryEmbedding = await generateEmbedding(query)
   if (!queryEmbedding) {
     logger.warn('Failed to generate query embedding, falling back to keyword search')
-    return keywordFallback(query, modules, limit)
+    return keywordFallback(query, modules, limit, minScore)
   }
 
   // Calculate max usage for normalization
@@ -372,7 +377,8 @@ function buildModuleText(module: ModuleRow): string {
 function keywordFallback(
   query: string,
   modules: ModuleRow[],
-  limit: number
+  limit: number,
+  minScore: number = 0
 ): ModuleRecommendation[] {
   const queryLower = query.toLowerCase()
   const queryWords = queryLower.split(/\s+/)
@@ -397,7 +403,7 @@ function keywordFallback(
   })
 
   return scored
-    .filter(s => s.score > 0)
+    .filter(s => s.score > 0 && s.score >= minScore)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
 }
