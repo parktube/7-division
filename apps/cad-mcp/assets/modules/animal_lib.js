@@ -213,8 +213,9 @@ function createDog(name, x, y) {
   deleteEntity(name+'_nostril_r');
   // 주둥이 위치 조정 (스케치 기준)
   const snoutNow = getEntity(name+'_snout').world.center;
-  const snoutTarget = [-82 - x, 5 - y];  // 스케치 위치 (로컬 좌표)
-  translate(name+'_snout', snoutTarget[0] - snoutNow[0] + x, snoutTarget[1] - snoutNow[1] + y);
+  const snoutLocalTarget = [-82, 5];  // 로컬 좌표 (원점 기준)
+  const snoutWorldTarget = [snoutLocalTarget[0] + x, snoutLocalTarget[1] + y];
+  translate(name+'_snout', snoutWorldTarget[0] - snoutNow[0], snoutWorldTarget[1] - snoutNow[1]);
   // 귀 위치 아래로 (축 늘어진 귀)
   translate(name+'_ear_l', 0, -5);
   translate(name+'_ear_r', 0, -5);

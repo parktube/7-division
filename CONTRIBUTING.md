@@ -61,7 +61,7 @@ cat docs/sprint-artifacts/sprint-status.yaml
 
 ## MCP 도구
 
-MCP 서버는 Claude Code 패턴과 정렬된 6개의 도구를 제공합니다:
+MCP 서버는 Claude Code 패턴과 정렬된 17개의 도구를 제공합니다 (기본 6개 + MAMA 11개):
 
 | 도구 | 설명 | Claude Code 대응 |
 |------|------|------------------|
@@ -71,7 +71,7 @@ MCP 서버는 Claude Code 패턴과 정렬된 6개의 도구를 제공합니다:
 | `write` | 파일 전체 작성 → 자동 실행 | Write |
 | `lsp` | 함수 탐색 | LSP |
 | `bash` | 씬 조회/내보내기 | Bash |
-| `mama_*` | MAMA 도구 (8개) | - |
+| `mama_*` | MAMA 도구 (11개) | - |
 
 **MAMA 도구** (Memory-Augmented Meta Agent):
 
@@ -81,10 +81,13 @@ MCP 서버는 Claude Code 패턴과 정렬된 6개의 도구를 제공합니다:
 | `mama_search` | 추론 그래프 검색 |
 | `mama_update` | 결정 결과 업데이트 |
 | `mama_load_checkpoint` | 이전 세션 복원 |
-| `mama_workflow` | 디자인 워크플로우 관리 |
-| `mama_recommend_modules` | 모듈 추천 |
+| `mama_configure` | 설정 조회/수정 |
+| `mama_edit_hint` | 동적 힌트 관리 |
+| `mama_set_skill_level` | 스킬 레벨 설정 |
 | `mama_health` | 그래프 건강도 체크 |
 | `mama_growth_report` | 사용자 성장 리포트 |
+| `mama_recommend_modules` | 모듈 추천 |
+| `mama_workflow` | 디자인 워크플로우 관리 |
 
 ### 기본 사용법
 

@@ -310,7 +310,7 @@ GitHub Pages (Viewer)          Local MCP Server
 | `lsp` | 함수 탐색 (domains, describe, schema) |
 | `bash` | 씬 조회/내보내기 (tree, capture, svg 등) |
 
-**MAMA 도구** (Memory-Augmented Meta Agent)
+**MAMA 도구** (Memory-Augmented Meta Agent) - 11개
 
 | 도구 | 설명 |
 |------|------|
@@ -318,10 +318,13 @@ GitHub Pages (Viewer)          Local MCP Server
 | `mama_search` | 추론 그래프 검색 |
 | `mama_update` | 결정 결과 업데이트 |
 | `mama_load_checkpoint` | 이전 세션 복원 |
-| `mama_workflow` | 디자인 워크플로우 관리 |
-| `mama_recommend_modules` | 모듈 추천 |
+| `mama_configure` | 설정 조회/수정 |
+| `mama_edit_hint` | 동적 힌트 관리 |
+| `mama_set_skill_level` | 스킬 레벨 설정 |
 | `mama_health` | 그래프 건강도 체크 |
 | `mama_growth_report` | 사용자 성장 리포트 |
+| `mama_recommend_modules` | 모듈 추천 |
+| `mama_workflow` | 디자인 워크플로우 관리 |
 
 **Sandbox 함수 도메인** (`lsp({ operation: 'describe', domain: '...' })`)
 ```
