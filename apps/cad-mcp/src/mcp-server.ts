@@ -948,20 +948,27 @@ export async function runMCPServer(): Promise<void> {
   // Write PID file for singleton enforcement
   writePidFile()
 
-  // Graceful shutdown handler
+  // Graceful shutdown handler (with guard against duplicate calls)
+  let isShuttingDown = false
   const shutdown = async (signal: string) => {
+    if (isShuttingDown) {
+      return // Prevent duplicate shutdown
+    }
+    isShuttingDown = true
+
     logger.info(`Received ${signal}, shutting down gracefully...`)
+
+    // Cleanup PID file first (synchronous) to prevent stale file
+    cleanupPidFile()
+
     try {
       // Shutdown MAMA (Epic 11)
       shutdownMAMA()
       await stopWSServer()
-      // Cleanup PID file
-      cleanupPidFile()
       logger.info('Cleanup complete, exiting')
       process.exit(0)
     } catch (e) {
       logger.error(`Error during shutdown: ${e}`)
-      cleanupPidFile() // Best effort cleanup
       process.exit(1)
     }
   }
@@ -969,6 +976,10 @@ export async function runMCPServer(): Promise<void> {
   // Register signal handlers
   process.on('SIGINT', () => shutdown('SIGINT'))
   process.on('SIGTERM', () => shutdown('SIGTERM'))
+
+  // Handle stdin close (when Claude Code disconnects/disables MCP)
+  process.stdin.on('end', () => void shutdown('stdin-end'))
+  process.stdin.on('close', () => void shutdown('stdin-close'))
 
   try {
     await startMCPServer()
