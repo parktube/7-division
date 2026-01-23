@@ -270,14 +270,20 @@ export function recordStyleChoice(choice: string, reason?: string): void {
   }
 
   // Record as independent decision if user expressed understanding
-  if (reason && (
-    reason.includes('취향') ||
-    reason.includes('내가') ||
-    reason.includes('좋아') ||
-    reason.includes('prefer') ||
-    reason.includes('like')
-  )) {
-    recordIndependentDecision(learning?.id, `User named their preference: ${choice}`)
+  // Use word boundary patterns to reduce false positives (e.g., "unlike" matching "like")
+  if (reason) {
+    const independencePatterns = [
+      /취향/,           // Korean: preference/taste
+      /내가\s/,         // Korean: "I" (followed by space to avoid partial matches)
+      /좋아[해하]/,     // Korean: like/love (with verb endings)
+      /\bprefer\b/i,    // English: prefer (word boundary)
+      /\bI\s+like\b/i,  // English: "I like" (not "unlike")
+      /\bmy\s+choice\b/i, // English: "my choice"
+    ]
+    const expressedIndependence = independencePatterns.some(p => p.test(reason))
+    if (expressedIndependence) {
+      recordIndependentDecision(learning?.id, `User named their preference: ${choice}`)
+    }
   }
 }
 

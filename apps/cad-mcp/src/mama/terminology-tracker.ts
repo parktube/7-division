@@ -45,8 +45,9 @@ export const TERM_MAPPING: Record<string, { vague: string[]; specific: string[] 
   },
 }
 
-// Domain keywords for detection
-export const DOMAIN_KEYWORDS: Record<string, string[]> = {
+// Domain keywords for terminology evolution detection
+// Note: Distinct from DOMAIN_KEYWORDS in design-hints.ts (used for DesignHints phase detection)
+export const TERMINOLOGY_DOMAIN_KEYWORDS: Record<string, string[]> = {
   style: ['스타일', 'style', '인테리어', 'interior', '디자인', 'design'],
   color: ['색', 'color', '컬러', '팔레트', 'palette', '톤', 'tone'],
   spatial: ['공간', 'space', '위치', 'position', '배치', 'layout', '동선'],
@@ -88,7 +89,7 @@ export function detectTermDomain(text: string): string | null {
   const lowerText = text.toLowerCase()
 
   // First check domain keywords
-  for (const [domain, keywords] of Object.entries(DOMAIN_KEYWORDS)) {
+  for (const [domain, keywords] of Object.entries(TERMINOLOGY_DOMAIN_KEYWORDS)) {
     for (const keyword of keywords) {
       if (lowerText.includes(keyword.toLowerCase())) {
         return domain
@@ -451,5 +452,5 @@ export function getTerminologyStats(
 }
 
 // ============================================================
-// Note: TERM_MAPPING and DOMAIN_KEYWORDS are already exported via their const declarations
+// Note: TERM_MAPPING and TERMINOLOGY_DOMAIN_KEYWORDS are already exported via their const declarations
 // ============================================================

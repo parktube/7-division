@@ -76,7 +76,7 @@ const REPORT_TRIGGER_DAYS = 30
  * @param params - Metric parameters
  * @returns Created metric ID
  */
-export function recordGrowth(params: RecordGrowthParams): number {
+export function recordGrowth(params: RecordGrowthParams & { skipUpgradeCheck?: boolean }): number {
   const metricId = recordGrowthMetric({
     user_id: DEFAULT_USER_ID,
     metric_type: params.type,
@@ -88,8 +88,10 @@ export function recordGrowth(params: RecordGrowthParams): number {
   logger.info(`Growth recorded: ${params.type}`)
 
   // Check for automatic skill level upgrade after recording
-  // Note: 대량 기록 시나리오에서는 배치 처리 후 한 번만 호출하는 것을 고려
-  checkSkillLevelUpgrade()
+  // skipUpgradeCheck=true for batch scenarios (caller triggers check once at end)
+  if (!params.skipUpgradeCheck) {
+    checkSkillLevelUpgrade()
+  }
 
   return metricId
 }

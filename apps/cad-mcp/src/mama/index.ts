@@ -918,7 +918,7 @@ export {
   formatTerminologySection,
   getTerminologyStats,
   TERM_MAPPING,
-  DOMAIN_KEYWORDS,
+  TERMINOLOGY_DOMAIN_KEYWORDS,
   type TerminologyEvolution,
   type QuestionQualityScore,
 } from './terminology-tracker.js'

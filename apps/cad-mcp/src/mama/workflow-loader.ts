@@ -105,12 +105,29 @@ export function loadWorkflowInstructions(workflowId: string = 'cad-interior'): s
 function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (!data || typeof data !== 'object') return false
   const obj = data as Record<string, unknown>
+
   // Check required top-level keys
-  return (
-    'cad_dimensions' in obj &&
-    'isometric_shading' in obj &&
-    'z_order' in obj
-  )
+  if (!('cad_dimensions' in obj) || !('isometric_shading' in obj) || !('z_order' in obj)) {
+    return false
+  }
+
+  // Validate nested structure to prevent runtime errors
+  const cad = obj.cad_dimensions
+  if (!cad || typeof cad !== 'object') return false
+  const cadObj = cad as Record<string, unknown>
+  if (!('space_sizes' in cadObj) || !('furniture_sizes' in cadObj)) return false
+
+  const shading = obj.isometric_shading
+  if (!shading || typeof shading !== 'object') return false
+  const shadingObj = shading as Record<string, unknown>
+  if (!('light_direction' in shadingObj) || !('face_brightness' in shadingObj)) return false
+
+  const zOrder = obj.z_order
+  if (!zOrder || typeof zOrder !== 'object') return false
+  const zOrderObj = zOrder as Record<string, unknown>
+  if (!('layering_rules' in zOrderObj)) return false
+
+  return true
 }
 
 /**

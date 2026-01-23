@@ -60,9 +60,14 @@ describe('MAMA Database Operations', () => {
     if (db) {
       db.close()
     }
-    // Cleanup test DB
+    // Cleanup test DB and directory
     if (testDbPath && existsSync(testDbPath)) {
       rmSync(testDbPath, { force: true })
+      // Also remove the parent temp directory
+      const testDir = testDbPath.replace(/\/[^/]+$/, '')
+      if (existsSync(testDir)) {
+        rmSync(testDir, { recursive: true, force: true })
+      }
     }
   })
 
