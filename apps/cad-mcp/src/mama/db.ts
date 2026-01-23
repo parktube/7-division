@@ -182,6 +182,8 @@ export function initDatabase(): Database.Database {
   db.pragma('foreign_keys = ON')
 
   // Load sqlite-vec extension (graceful degradation)
+  // Note: initDatabase is called only once (singleton pattern via dbInstance check above)
+  // so this require() is not repeatedly executed
   try {
     // Dynamic import for sqlite-vec
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -352,12 +354,15 @@ export function insertEmbedding(rowid: number, embedding: Float32Array): void {
 
   const embeddingJson = JSON.stringify(Array.from(embedding))
 
-  // sqlite-vec requires rowid as literal (not placeholder)
+  // SECURITY: sqlite-vec requires rowid as literal (not placeholder)
+  // rowid comes from internal DB operations (insertDecision return value), not user input
+  // Validation ensures it's a positive integer before string interpolation
   const safeRowid = Number(rowid)
   if (!Number.isInteger(safeRowid) || safeRowid < 1) {
     throw new Error(`Invalid rowid: ${rowid}`)
   }
 
+  // Safe: safeRowid is validated integer from trusted internal source
   db.prepare(`INSERT INTO vss_memories(rowid, embedding) VALUES (${safeRowid}, ?)`).run(
     embeddingJson
   )

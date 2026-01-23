@@ -459,6 +459,8 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     }
   }
 
+  // SECURITY: filterClause is built from validated filterConditions (static templates)
+  // Actual values are in filterParams and passed as parameterized query arguments
   const filterClause = filterConditions.length > 0
     ? 'AND ' + filterConditions.join(' AND ')
     : ''
@@ -570,8 +572,10 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
     return []
   }
 
+  // SECURITY: likeConditions is built from static template strings (no user input in SQL structure)
+  // Actual keyword values are parameterized via likeParams below
   const likeConditions = keywords.map(() => '(topic LIKE ? ESCAPE \'\\\' OR decision LIKE ? ESCAPE \'\\\' OR reasoning LIKE ? ESCAPE \'\\\')').join(' OR ')
-  // Escape SQL wildcards in keywords
+  // Escape SQL wildcards (%, _) in keywords to prevent unintended pattern matching
   const escapeWildcards = (s: string) => s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
   const likeParams = keywords.flatMap((k) => {
     const escaped = escapeWildcards(k)

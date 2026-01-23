@@ -58,7 +58,8 @@ function setCache(text: string, embedding: Float32Array): void {
   // Simple LRU: delete oldest if at capacity
   if (embeddingCache.size >= CACHE_MAX_SIZE) {
     const firstKey = embeddingCache.keys().next().value
-    if (firstKey) {
+    // Guard against undefined (empty cache or race condition)
+    if (firstKey !== undefined) {
       embeddingCache.delete(firstKey)
     }
   }

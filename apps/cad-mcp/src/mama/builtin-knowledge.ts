@@ -142,10 +142,13 @@ export function searchBuiltinKnowledge(
   }
 
   // Keyword search
+  // Korean characters are meaningful even at 1-2 chars (색, 톤, 창, 문 등)
+  // English/ASCII words need 3+ chars to be meaningful
+  const hasKorean = (s: string) => /[\uAC00-\uD7AF]/.test(s)
   const keywords = query
     .toLowerCase()
     .split(/\s+/)
-    .filter((w) => w.length > 2);
+    .filter((w) => hasKorean(w) ? w.length >= 1 : w.length > 2);
 
   if (keywords.length === 0) {
     return [];

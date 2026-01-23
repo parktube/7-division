@@ -91,13 +91,28 @@ export interface ToolCallResponse {
 export class CADOrchestrator {
   private initialized = false
   private initFailed = false
+  private lastInitAttempt: number | null = null
   private sessionContext: SessionInitResult | null = null
 
   /**
    * Initialize the orchestrator and MAMA module
+   * Allows retry after failure with cooldown to prevent spam
    */
   async init(): Promise<void> {
     if (this.initialized) return
+
+    // Cooldown: prevent retry spam (30 seconds)
+    const RETRY_COOLDOWN_MS = 30_000
+    if (this.initFailed && this.lastInitAttempt) {
+      const elapsed = Date.now() - this.lastInitAttempt
+      if (elapsed < RETRY_COOLDOWN_MS) {
+        logger.debug(`Init retry blocked (cooldown: ${Math.ceil((RETRY_COOLDOWN_MS - elapsed) / 1000)}s remaining)`)
+        return
+      }
+      logger.info('Retrying MAMA initialization after cooldown')
+    }
+
+    this.lastInitAttempt = Date.now()
 
     try {
       await initMAMA()
@@ -106,10 +121,9 @@ export class CADOrchestrator {
       logger.info('CADOrchestrator initialized')
     } catch (error) {
       logger.error(`CADOrchestrator init failed: ${error}`)
-      // Mark as failed but don't set initialized - allows retry
+      // Mark as failed - allows retry after cooldown
       this.initFailed = true
-      // Set initialized to allow degraded operation without retry spam
-      this.initialized = true
+      // Don't set initialized = true, allowing retry
     }
   }
 

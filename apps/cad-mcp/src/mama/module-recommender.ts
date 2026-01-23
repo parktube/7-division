@@ -141,6 +141,8 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
 
   // Parse imports (consistent with trackImportsFromCode pattern)
   // Matches: import 'module', import { x } from 'module', import * as x from 'module', import x from 'module'
+  // LIMITATION: May match import-like strings in comments or string literals
+  // For production use, consider es-module-lexer for precise parsing
   const importMatches = content.matchAll(/import\s+(?:\w+\s+from\s+|\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
   for (const match of importMatches) {
     if (result.imports) {

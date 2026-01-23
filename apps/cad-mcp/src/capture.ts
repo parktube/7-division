@@ -234,7 +234,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       return electronResult;
     }
     // Fall back to Puppeteer if Electron is not running
-    logger.debug('Electron not available, falling back to Puppeteer');
+    // Note: tryElectronCapture logs specific failure reason (no port, connection error, etc.)
+    logger.info('Electron capture unavailable, falling back to Puppeteer headless browser');
   }
 
   // Skip Puppeteer if forced to use Electron
