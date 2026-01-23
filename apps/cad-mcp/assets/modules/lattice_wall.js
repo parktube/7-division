@@ -199,4 +199,5 @@ function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
   }
 
   builder.build();
+  return builder.getName();
 }

@@ -47,6 +47,17 @@ const DEFAULT_STAIR = {
   steps: 4       // 계단 수
 };
 
+// 침대 관련 상수
+const BED_WIDTH = 95;
+const BED_DEPTH = 120;
+const BED_HEAD_WIDTH = 148;
+const BED_OFFSET_Y = -60;           // 침대 Y 오프셋 (플랫폼 후면 기준)
+const SHADOW_OFFSET_X = -4;
+const SHADOW_OFFSET_Z = 0.5;
+const SHADOW_EXPAND = 10;
+const SHELF_HEIGHT = 65;            // 선반 높이 (플랫폼 바닥 기준)
+const FRAME_HEIGHT = 95;            // 프레임 높이 (플랫폼 바닥 기준)
+
 // ============================================
 // JapandiDuplexBuilder Class
 // ============================================
@@ -337,15 +348,13 @@ class JapandiMezzanineBuilder {
 
     // 침대 + 그림자
     const bedCX = wx - platformW/2;
-    const bedCY = wy - 60;
-    const bedW = 95;
-    const bedD = 120;
-    box(name + '_shadow_bed', bedCX - 4, bedCY, wz + platformH + 0.5, bedW + 10, bedD + 10, 1, japandiShadow);
-    bed(name + '_bed', bedCX, bedCY, wz + platformH, bedW, bedD, J.oak, J.white, 148);
+    const bedCY = wy + BED_OFFSET_Y;
+    box(name + '_shadow_bed', bedCX + SHADOW_OFFSET_X, bedCY, wz + platformH + SHADOW_OFFSET_Z, BED_WIDTH + SHADOW_EXPAND, BED_DEPTH + SHADOW_EXPAND, 1, japandiShadow);
+    bed(name + '_bed', bedCX, bedCY, wz + platformH, BED_WIDTH, BED_DEPTH, J.oak, J.white, BED_HEAD_WIDTH);
 
     // 벽 장식
-    floatingShelf(name + '_shelf', bedCX, wy - 1, wz + platformH + 65);
-    wallFrameSet(name + '_frames', bedCX, wy - 1, wz + platformH + 95);
+    floatingShelf(name + '_shelf', bedCX, wy - 1, wz + platformH + SHELF_HEIGHT);
+    wallFrameSet(name + '_frames', bedCX, wy - 1, wz + platformH + FRAME_HEIGHT);
 
     // 유리 난간
     glassRailing(name + '_railing', wx - platformW, wy, platformW, platformD, wz + platformH, {
@@ -403,26 +412,32 @@ function japandiDuplex(name, wx, wy, wz, opts) {
 
 // Japandi 거실 영역 - 격자벽 + TV + 소파 + 테이블
 // name: 이름 프리픽스, wx/wy/wz: 중심 좌표
-// opts: { w: 너비(140), d: 깊이(280), h: 높이(280) }
+// opts: { w: 너비, d: 깊이, h: 높이 } (생략 시 빌더 기본값 사용)
 function japandiLivingRoom(name, wx, wy, wz, opts) {
   opts = opts || {};
-  new JapandiLivingRoomBuilder(name)
-    .setPosition(wx, wy, wz)
-    .setSize(opts.w ?? 140, opts.d ?? 280, opts.h ?? 280)
-    .build();
+  const builder = new JapandiLivingRoomBuilder(name)
+    .setPosition(wx, wy, wz);
+  // 빌더가 기본값 소유 - opts가 제공된 경우만 오버라이드
+  if (opts.w !== undefined || opts.d !== undefined || opts.h !== undefined) {
+    builder.setSize(opts.w ?? builder.w, opts.d ?? builder.d, opts.h ?? builder.h);
+  }
+  builder.build();
 }
 
 // Japandi 복층 침실 - 플랫폼 + 침대 + 벽 장식 + 유리 난간
 // name: 이름 프리픽스, wx/wy/wz: 코너 좌표
-// opts: { platformW(150), platformD(150), platformH(50) }
+// opts: { platformW, platformD, platformH } (생략 시 빌더 기본값 사용)
 function japandiMezzanine(name, wx, wy, wz, opts) {
   opts = opts || {};
-  new JapandiMezzanineBuilder(name)
-    .setPosition(wx, wy, wz)
-    .setPlatformSize(
-      opts.platformW ?? 150,
-      opts.platformD ?? 150,
-      opts.platformH ?? 50
-    )
-    .build();
+  const builder = new JapandiMezzanineBuilder(name)
+    .setPosition(wx, wy, wz);
+  // 빌더가 기본값 소유 - opts가 제공된 경우만 오버라이드
+  if (opts.platformW !== undefined || opts.platformD !== undefined || opts.platformH !== undefined) {
+    builder.setPlatformSize(
+      opts.platformW ?? builder.platformW,
+      opts.platformD ?? builder.platformD,
+      opts.platformH ?? builder.platformH
+    );
+  }
+  builder.build();
 }

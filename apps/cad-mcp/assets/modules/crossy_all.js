@@ -58,9 +58,9 @@ function waterScene(prefix, startLane) {
   waterLane(p + '_w2', start + 2);
   grassLane(p + '_g2', start + 3);
 
-  // 통나무 배치
-  var laneX1 = -(start + 1) * 80;
-  var laneX2 = -(start + 2) * 80;
+  // 통나무 배치 (LANE_DEPTH from crossy_scene)
+  var laneX1 = -(start + 1) * LANE_DEPTH;
+  var laneX2 = -(start + 2) * LANE_DEPTH;
   log(p + '_log1', laneX1, -100, 120);
   log(p + '_log2', laneX1, 80, 100);
   log(p + '_log3', laneX2, -20, 140);
@@ -76,9 +76,9 @@ function roadScene(prefix, startLane) {
   roadLane(p + '_r2', start + 2);
   grassLane(p + '_g2', start + 3);
 
-  // 자동차 배치
-  var laneX1 = -(start + 1) * 80;
-  var laneX2 = -(start + 2) * 80;
+  // 자동차 배치 (LANE_DEPTH from crossy_scene)
+  var laneX1 = -(start + 1) * LANE_DEPTH;
+  var laneX2 = -(start + 2) * LANE_DEPTH;
   car(p + '_c1', laneX1, -100, 'red');
   car(p + '_c2', laneX1, 120, 'blue');
   car(p + '_c3', laneX2, 0, 'yellow');
@@ -93,8 +93,8 @@ function railScene(prefix, startLane) {
   railLane(p + '_rail', start + 1);
   grassLane(p + '_g2', start + 2);
 
-  // 기차 배치
-  var laneX = -(start + 1) * 80;
+  // 기차 배치 (LANE_DEPTH from crossy_scene)
+  var laneX = -(start + 1) * LANE_DEPTH;
   train(p + '_train', laneX, -150, 'red', 3);
 }
 

@@ -166,4 +166,5 @@ function glassRailing(name, platformX, platformY, platformW, platformD, z, opts)
   }
 
   builder.build();
+  return builder.getName();
 }

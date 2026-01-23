@@ -245,17 +245,19 @@ describe('Dual-source 모듈 시스템', () => {
     });
 
     it('should allow writing to user module with any name not in builtin', () => {
-      const result = handleWrite({
-        file: 'my_custom_module_xyz',
-        code: '// Custom version',
-      });
-
-      expect(result.success).toBe(true);
-
-      // Cleanup
       const customPath = resolve(MODULES_DIR, 'my_custom_module_xyz.js');
-      if (existsSync(customPath)) {
-        rmSync(customPath);
+      try {
+        const result = handleWrite({
+          file: 'my_custom_module_xyz',
+          code: '// Custom version',
+        });
+
+        expect(result.success).toBe(true);
+      } finally {
+        // Cleanup always runs even on assertion failure
+        if (existsSync(customPath)) {
+          rmSync(customPath);
+        }
       }
     });
 
@@ -370,12 +372,16 @@ describe('Dual-source 모듈 시스템', () => {
       const userPath = resolve(MODULES_DIR, `${testName}.js`);
       writeFileSync(userPath, 'user version', 'utf-8');
 
-      const resolved = resolveFile(testName);
-      expect(resolved.source).toBe('user');
-      expect(resolved.exists).toBe(true);
-
-      // Cleanup
-      rmSync(userPath);
+      try {
+        const resolved = resolveFile(testName);
+        expect(resolved.source).toBe('user');
+        expect(resolved.exists).toBe(true);
+      } finally {
+        // Cleanup always runs even on assertion failure
+        if (existsSync(userPath)) {
+          rmSync(userPath);
+        }
+      }
     });
   });
 });

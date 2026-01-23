@@ -316,7 +316,7 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
   },
   getDrawOrder: {
     signature: "getDrawOrder(groupName?: string): string[] | null",
-    description: "그리기 순서 조회(앞→뒤, 배열 왼쪽이 앞). 인자 없으면 root level, 그룹명 지정 시 해당 그룹의 자식 순서. 💡 drawOrder 전에 현재 상태 확인 권장. ⚠️ bash({command:'tree'})로도 구조 확인 가능",
+    description: "그리기 순서 조회(뒤→앞, z_index 오름차순). 배열 왼쪽이 먼저 그려짐(뒤). 인자 없으면 root level, 그룹명 지정 시 해당 그룹의 자식 순서. 💡 drawOrder 전에 현재 상태 확인 권장. ⚠️ bash({command:'tree'})로도 구조 확인 가능",
     example: "getDrawOrder()  // root: ['bg', 'player', 'ui']\ngetDrawOrder('robot')  // 그룹 내: ['body', 'head', 'arm']",
   },
   getTextMetrics: {
