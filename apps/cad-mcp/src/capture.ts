@@ -245,7 +245,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       : [];
 
     // Try to find Chrome/Chromium executable
-    // Priority: Puppeteer's bundled Chromium > System browsers
+    // Priority: System browsers > Puppeteer's bundled Chromium (fallback)
     const chromePaths = [
       // Windows - Chrome
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -468,13 +468,22 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         }
       });
 
-      if (result.loaded && result.hash === lastPixelHash && lastPixelHash !== '') {
-        stableCount++;
-        if (stableCount >= requiredStableChecks) {
-          sceneStable = true;
+      if (result.loaded) {
+        if (result.hash === lastPixelHash && lastPixelHash !== '') {
+          // Consecutive identical frame
+          stableCount++;
+          if (stableCount >= requiredStableChecks) {
+            sceneStable = true;
+          }
+        } else if (result.hash !== '' && lastPixelHash === '') {
+          // First valid frame - count as first stable check
+          stableCount = 1;
+        } else {
+          // Content changed - reset
+          stableCount = 0;
         }
       } else {
-        stableCount = 0; // Reset if content changed
+        stableCount = 0; // Not loaded - reset
       }
       lastPixelHash = result.hash;
 
