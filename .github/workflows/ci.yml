@@ -108,12 +108,11 @@ jobs:
 
       - name: Rebuild native modules (better-sqlite3)
         run: |
-          # pnpm rebuild doesn't work for packages in pnpm store
-          # Find and rebuild better-sqlite3 in node_modules/.pnpm
-          SQLITE_DIR=$(find node_modules/.pnpm -type d -name "better-sqlite3@*" -path "*/node_modules/better-sqlite3" | head -1)
+          # Find and rebuild better-sqlite3 in pnpm store
+          SQLITE_DIR=$(find node_modules/.pnpm -type d -name "better-sqlite3@*" | head -1)
           if [ -n "$SQLITE_DIR" ]; then
-            echo "Building in: $SQLITE_DIR"
-            cd "$SQLITE_DIR"
+            cd "$SQLITE_DIR/node_modules/better-sqlite3"
+            echo "Building in: $(pwd)"
             npx prebuild-install || npx node-gyp rebuild --release
           else
             echo "better-sqlite3 not found in pnpm store"

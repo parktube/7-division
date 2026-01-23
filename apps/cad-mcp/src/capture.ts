@@ -51,7 +51,7 @@ async function readSketchData(): Promise<unknown | null> {
       return null;
     }
     // Log other errors for debugging (corrupt file, parse error, etc.)
-    logger.warn(`Failed to read sketch data: ${error}`);
+    logger.warn('Failed to read sketch data', { file: SKETCH_FILE, error: String(error) });
     return null;
   }
 }
@@ -293,22 +293,27 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           elapsed += checkInterval;
 
           const result = await page.evaluate(() => {
-            const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+            try {
+              const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+              if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                return { ready: false, hash: '' };
+              }
+              // Sample pixels to create a simple hash for stability check
+              const ctx = canvas.getContext('2d');
+              if (!ctx) return { ready: false, hash: '' };
+              const w = canvas.width;
+              const h = canvas.height;
+              const samples = [
+                ctx.getImageData(w / 2, h / 2, 1, 1).data,
+                ctx.getImageData(w / 4, h / 4, 1, 1).data,
+                ctx.getImageData(3 * w / 4, 3 * h / 4, 1, 1).data,
+              ];
+              const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
+              return { ready: true, hash };
+            } catch {
+              // SecurityError when canvas is tainted, treat as unstable frame
               return { ready: false, hash: '' };
             }
-            // Sample pixels to create a simple hash for stability check
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return { ready: false, hash: '' };
-            const w = canvas.width;
-            const h = canvas.height;
-            const samples = [
-              ctx.getImageData(w / 2, h / 2, 1, 1).data,
-              ctx.getImageData(w / 4, h / 4, 1, 1).data,
-              ctx.getImageData(3 * w / 4, 3 * h / 4, 1, 1).data,
-            ];
-            const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
-            return { ready: true, hash };
           });
 
           if (result.ready && result.hash === lastPixelHash && lastPixelHash !== '') {
@@ -347,41 +352,46 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
       // Check if scene is loaded and stable
       const result = await page.evaluate(() => {
-        const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-        if (!canvas || canvas.width === 0 || canvas.height === 0) {
+        try {
+          const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+          if (!canvas || canvas.width === 0 || canvas.height === 0) {
+            return { loaded: false, hash: '', entityCount: 0 };
+          }
+
+          // Check WebSocket connection state from window
+          type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
+          const win = window as WindowWithWS;
+          const entityCount = win.__sceneEntityCount ?? 0;
+
+          // Sample pixels for stability check
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return { loaded: false, hash: '', entityCount };
+
+          const w = canvas.width;
+          const h = canvas.height;
+          const samples = [
+            ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
+            ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
+            ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
+            ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
+            ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data,
+          ];
+          const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
+
+          // Check if content is not uniform background
+          const first = samples[0];
+          const tolerance = 5;
+          const hasContent = !samples.every(d =>
+            Math.abs(d[0] - first[0]) <= tolerance &&
+            Math.abs(d[1] - first[1]) <= tolerance &&
+            Math.abs(d[2] - first[2]) <= tolerance
+          );
+
+          return { loaded: hasContent || entityCount > 0, hash, entityCount };
+        } catch {
+          // SecurityError when canvas is tainted, treat as unstable frame
           return { loaded: false, hash: '', entityCount: 0 };
         }
-
-        // Check WebSocket connection state from window
-        type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
-        const win = window as WindowWithWS;
-        const entityCount = win.__sceneEntityCount ?? 0;
-
-        // Sample pixels for stability check
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return { loaded: false, hash: '', entityCount };
-
-        const w = canvas.width;
-        const h = canvas.height;
-        const samples = [
-          ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
-          ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
-          ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
-          ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
-          ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data,
-        ];
-        const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
-
-        // Check if content is not uniform background
-        const first = samples[0];
-        const tolerance = 5;
-        const hasContent = !samples.every(d =>
-          Math.abs(d[0] - first[0]) <= tolerance &&
-          Math.abs(d[1] - first[1]) <= tolerance &&
-          Math.abs(d[2] - first[2]) <= tolerance
-        );
-
-        return { loaded: hasContent || entityCount > 0, hash, entityCount };
       });
 
       if (result.loaded && result.hash === lastPixelHash && lastPixelHash !== '') {
