@@ -16,6 +16,36 @@ import { logger } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// ============================================================
+// Pixel Sampling Helper (injected into browser context)
+// ============================================================
+
+/**
+ * Browser-injectable pixel sampling function.
+ * Defined as string to be injected via page.evaluate() once,
+ * then reused in both injection path and WebSocket path.
+ *
+ * Samples 5 pixels from canvas corners + center for stability check.
+ * Returns a hash string for comparison between frames.
+ */
+const SAMPLE_PIXELS_SCRIPT = `
+  window.__sampleCanvasPixels = function(canvas) {
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    var w = canvas.width;
+    var h = canvas.height;
+    var samples = [
+      ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
+      ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
+      ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
+      ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
+      ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data
+    ];
+    var hash = samples.map(function(d) { return d[0] + ',' + d[1] + ',' + d[2]; }).join('|');
+    return { hash: hash, samples: samples };
+  };
+`;
+
 export interface CaptureOptions {
   url?: string;
   width?: number;
@@ -298,6 +328,9 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const page = await browser.newPage();
     await page.setViewport({ width, height });
 
+    // Inject pixel sampling helper function (reused in both stability check paths)
+    await page.evaluate(SAMPLE_PIXELS_SCRIPT);
+
     // Capture browser console logs for debugging
     const consoleLogs: string[] = [];
     page.on('console', (msg) => {
@@ -376,28 +409,19 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           await new Promise(done => setTimeout(done, checkInterval));
           elapsed += checkInterval;
 
-          // NOTE: Pixel sampling logic is duplicated in WebSocket path below.
-          // Cannot extract to shared helper because page.evaluate() runs in browser context.
           const result = await page.evaluate(() => {
             try {
               const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
               if (!canvas || canvas.width === 0 || canvas.height === 0) {
                 return { ready: false, hash: '' };
               }
-              // Sample 5 pixels for stability check (consistent with WebSocket path)
-              const ctx = canvas.getContext('2d');
-              if (!ctx) return { ready: false, hash: '' };
-              const w = canvas.width;
-              const h = canvas.height;
-              const samples = [
-                ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
-                ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
-                ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
-                ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
-                ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data,
-              ];
-              const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
-              return { ready: true, hash };
+              // Use injected pixel sampling helper
+              type WindowWithSampler = Window & {
+                __sampleCanvasPixels?: (c: HTMLCanvasElement) => { hash: string } | null;
+              };
+              const sampler = (window as WindowWithSampler).__sampleCanvasPixels;
+              const result = sampler?.(canvas);
+              return { ready: !!result, hash: result?.hash || '' };
             } catch {
               // SecurityError when canvas is tainted, treat as unstable frame
               return { ready: false, hash: '' };
@@ -438,7 +462,7 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       await new Promise(done => setTimeout(done, checkInterval));
       elapsed += checkInterval;
 
-      // Check if scene is loaded and stable
+      // Check if scene is loaded and stable using injected pixel sampler
       const result = await page.evaluate(() => {
         try {
           const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
@@ -447,24 +471,20 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           }
 
           // Check WebSocket connection state from window
-          type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
+          type WindowWithWS = Window & {
+            __wsConnectionState?: string;
+            __sceneEntityCount?: number;
+            __sampleCanvasPixels?: (c: HTMLCanvasElement) => { hash: string; samples: Uint8ClampedArray[] } | null;
+          };
           const win = window as WindowWithWS;
           const entityCount = win.__sceneEntityCount ?? 0;
 
-          // Sample pixels for stability check
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return { loaded: false, hash: '', entityCount };
+          // Use injected pixel sampling helper
+          const sampler = win.__sampleCanvasPixels;
+          const sampleResult = sampler?.(canvas);
+          if (!sampleResult) return { loaded: false, hash: '', entityCount };
 
-          const w = canvas.width;
-          const h = canvas.height;
-          const samples = [
-            ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
-            ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
-            ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
-            ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
-            ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data,
-          ];
-          const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
+          const { hash, samples } = sampleResult;
 
           // Check if content is not uniform background
           const first = samples[0];
