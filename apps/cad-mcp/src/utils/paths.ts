@@ -43,6 +43,22 @@ export function isValidFileName(file: string): boolean {
 }
 
 /**
+ * Internal: Get builtin module path without validation
+ * Used by resolveFile after initial validation
+ */
+function getBuiltinPathUnchecked(file: string): string {
+  return resolve(BUILTIN_MODULES_DIR, `${file}.js`);
+}
+
+/**
+ * Internal: Get user module path without validation
+ * Used by resolveFile after initial validation
+ */
+function getUserPathUnchecked(file: string): string {
+  return resolve(MODULES_DIR, `${file}.js`);
+}
+
+/**
  * Get builtin module path
  * @throws Error if file name is invalid
  */
@@ -50,7 +66,7 @@ export function getBuiltinPath(file: string): string {
   if (!isValidFileName(file)) {
     throw new Error(`Invalid module name: ${file}`);
   }
-  return resolve(BUILTIN_MODULES_DIR, `${file}.js`);
+  return getBuiltinPathUnchecked(file);
 }
 
 /**
@@ -61,7 +77,7 @@ export function getUserPath(file: string): string {
   if (!isValidFileName(file)) {
     throw new Error(`Invalid module name: ${file}`);
   }
-  return resolve(MODULES_DIR, `${file}.js`);
+  return getUserPathUnchecked(file);
 }
 
 /**
@@ -94,8 +110,9 @@ export function resolveFile(file: string): ResolvedFile {
     };
   }
 
-  const userPath = getUserPath(file);
-  const builtinPath = getBuiltinPath(file);
+  // Use unchecked versions since we already validated above
+  const userPath = getUserPathUnchecked(file);
+  const builtinPath = getBuiltinPathUnchecked(file);
 
   // 사용자 모듈이 있으면 우선
   if (existsSync(userPath)) {

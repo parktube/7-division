@@ -432,14 +432,21 @@ function sunkenPlatformWithStairs(name, cornerX, cornerY, platformW, platformD, 
  * @param {object} color - 색상 (J.oak 등)
  */
 function parquetFloor(name, wx, wy, wz, width, depth, blockSize, plankCount, color) {
-  blockSize = blockSize || 30;
-  plankCount = plankCount || 3;
-  
+  // 검증: 0/음수 방지 (Infinity/무한루프 방지)
+  blockSize = (blockSize && blockSize > 0) ? blockSize : 30;
+  plankCount = (plankCount && plankCount > 0) ? plankCount : 3;
+
+  // 유효하지 않은 영역이면 빈 그룹 반환
+  if (width <= 0 || depth <= 0) {
+    createGroup(name, []);
+    return;
+  }
+
   const hw = width / 2;
   const hd = depth / 2;
   const entities = [];
   const gap = 0;  // 틈새 없음
-  
+
   const plankSize = blockSize / plankCount;
   
   // 블록 묶음 단위로 배치

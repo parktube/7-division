@@ -45,7 +45,7 @@ function balconyWindow(name, x, y, z0, opts) {
   const paneW = (w - frameT*2 - mullionT*2) / 3;
   const glassH1 = doorH - frameT - mullionT;
   const glassH2 = h - doorH - frameT - mullionT;
-  if (paneW <= 0 || glassH1 <= 0 || glassH2 <= 0) {
+  if (paneW <= 0 || glassH1 <= 0 || glassH2 <= 0 || depth <= 0) {
     // 유효하지 않은 치수 - 빈 그룹 반환
     createGroup(name, []);
     return;

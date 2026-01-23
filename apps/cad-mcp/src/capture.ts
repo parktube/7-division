@@ -406,20 +406,26 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     if (sketchData && Array.isArray(sketchData) && sketchData.length > 0) {
       logger.debug('Injecting sketch data', { strokeCount: sketchData.length });
 
-      const sketchInjected = await page.evaluate((strokes) => {
-        type WindowWithSketch = Window & { __injectSketch?: (strokes: unknown) => void };
-        const win = window as WindowWithSketch;
-        if (win.__injectSketch) {
-          win.__injectSketch(strokes);
-          return true;
-        }
-        return false;
-      }, sketchData);
+      let sketchInjected = false;
+      try {
+        sketchInjected = await page.evaluate((strokes) => {
+          type WindowWithSketch = Window & { __injectSketch?: (strokes: unknown) => void };
+          const win = window as WindowWithSketch;
+          if (win.__injectSketch) {
+            win.__injectSketch(strokes);
+            return true;
+          }
+          return false;
+        }, sketchData);
+      } catch (error) {
+        logger.warn(`__injectSketch failed, continuing without sketch: ${error}`);
+        sketchInjected = false;
+      }
 
       if (sketchInjected) {
         // Wait for sketch overlay to render
         await new Promise(done => setTimeout(done, 300));
-      } else {
+      } else if (!sketchInjected) {
         logger.warn('__injectSketch not available - sketch will not be captured');
       }
     }

@@ -221,10 +221,13 @@ function japandiMezzanine(name, wx, wy, wz, opts) {
     J.white
   );
 
-  // 침대
+  // 침대 + 그림자
   const bedCX = wx - platformW/2;
   const bedCY = wy - 60;
-  bed(name + '_bed', bedCX, bedCY, wz + platformH, 95, 120, J.oak, J.white, 148);
+  const bedW = 95;
+  const bedD = 120;
+  box(name + '_shadow_bed', bedCX - 4, bedCY, wz + platformH + 0.5, bedW + 10, bedD + 10, 1, japandiShadow);
+  bed(name + '_bed', bedCX, bedCY, wz + platformH, bedW, bedD, J.oak, J.white, 148);
 
   // 벽 장식
   floatingShelf(name + '_shelf', bedCX, wy - 1, wz + platformH + 65);
@@ -236,5 +239,5 @@ function japandiMezzanine(name, wx, wy, wz, opts) {
   });
 
   // 그룹화
-  createGroup(name, [name + '_platform', name + '_bed', name + '_shelf', name + '_frames', name + '_railing']);
+  createGroup(name, [name + '_platform', name + '_shadow_bed', name + '_bed', name + '_shelf', name + '_frames', name + '_railing']);
 }

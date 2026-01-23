@@ -49,14 +49,23 @@ function glassRailing(name, platformX, platformY, platformW, platformD, z, opts)
   const frontW = (platformX + platformW) - stairEndX;
   const frontX = (stairEndX + platformX + platformW) / 2;
   const frontY = platformY - platformD + t/2;
-  box(name + '_front', frontX, frontY, z, frontW, t, h, color);
 
   // 왼쪽 난간 (계단 위)
   const leftD = platformY - stairEndY;
   const leftX = platformX + t/2;
   const leftY = (stairEndY + platformY) / 2;
-  box(name + '_left', leftX, leftY, z, t, leftD, h, color);
+
+  // 유효한 크기의 난간만 생성 (0 방지)
+  const entities = [];
+  if (frontW > 0) {
+    box(name + '_front', frontX, frontY, z, frontW, t, h, color);
+    entities.push(name + '_front');
+  }
+  if (leftD > 0) {
+    box(name + '_left', leftX, leftY, z, t, leftD, h, color);
+    entities.push(name + '_left');
+  }
 
   // 그룹화
-  createGroup(name, [name + '_front', name + '_left']);
+  createGroup(name, entities);
 }

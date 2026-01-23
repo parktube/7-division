@@ -8,7 +8,7 @@
  * Score = (semantic_similarity × 0.6) + (usage_frequency × 0.3) + (recency × 0.1)
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs'
+import { promises as fs } from 'fs'
 import { join } from 'path'
 import { logger } from '../logger.js'
 import {
@@ -147,12 +147,30 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
     }
   }
 
-  // Parse exports (function names)
-  const fnMatches = content.matchAll(/function\s+(\w+)\s*\(/g)
-  for (const match of fnMatches) {
-    if (result.exports) {
-      result.exports.push(match[1])
+  // Parse exports (function names, const/let/var declarations, classes)
+  // This regex-based approach captures common patterns; AST would be more robust
+  const exportPatterns = [
+    /function\s+(\w+)\s*\(/g,                           // function name(
+    /(?:const|let|var)\s+(\w+)\s*=/g,                   // const/let/var name =
+    /class\s+(\w+)/g,                                    // class Name
+    /export\s+function\s+(\w+)/g,                        // export function name
+    /export\s+(?:const|let|var)\s+(\w+)/g,              // export const name
+    /export\s+class\s+(\w+)/g,                           // export class Name
+    /export\s+default\s+(?:function\s+)?(\w+)/g,         // export default name
+  ]
+
+  const exportedNames = new Set<string>()
+  for (const pattern of exportPatterns) {
+    const matches = content.matchAll(pattern)
+    for (const match of matches) {
+      if (match[1]) {
+        exportedNames.add(match[1])
+      }
     }
+  }
+
+  if (result.exports) {
+    result.exports.push(...exportedNames)
   }
 
   return result
@@ -171,17 +189,21 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
 export async function syncModulesFromFiles(moduleDir?: string): Promise<number> {
   const dir = moduleDir || join(CAD_DATA_DIR, 'modules')
 
-  if (!existsSync(dir)) {
+  // Check directory existence with async fs
+  try {
+    await fs.access(dir)
+  } catch {
     logger.warn(`Module directory not found: ${dir}`)
     return 0
   }
 
-  const files = readdirSync(dir).filter(f => !f.startsWith('.'))
+  const allFiles = await fs.readdir(dir)
+  const files = allFiles.filter(f => !f.startsWith('.'))
   let synced = 0
 
   for (const file of files) {
     try {
-      const content = readFileSync(join(dir, file), 'utf-8')
+      const content = await fs.readFile(join(dir, file), 'utf-8')
       const metadata = parseModuleJSDoc(content)
 
       // Use filename if @module not specified
