@@ -12,8 +12,8 @@
 
 import { existsSync, readdirSync } from 'fs';
 import {
-  MODULES_DIR,
-  SCENE_CODE_FILE,
+  getModulesDir,
+  getSceneCodeFile,
   BUILTIN_MODULES_DIR,
 } from '../run-cad-code/constants.js';
 import { type ModuleSource } from '../utils/paths.js';
@@ -109,7 +109,7 @@ function getModulesFromDir(dir: string): string[] {
  */
 function getModuleList(): FileInfo[] {
   const builtinModules = getModulesFromDir(BUILTIN_MODULES_DIR);
-  const userModules = getModulesFromDir(MODULES_DIR);
+  const userModules = getModulesFromDir(getModulesDir());
 
   // Build result with source info
   const result: FileInfo[] = [];
@@ -136,7 +136,7 @@ function getModuleList(): FileInfo[] {
  * Check if main file exists
  */
 function mainExists(): boolean {
-  return existsSync(SCENE_CODE_FILE);
+  return existsSync(getSceneCodeFile());
 }
 
 /**

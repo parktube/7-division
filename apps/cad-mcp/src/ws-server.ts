@@ -13,7 +13,6 @@ import { readFileSync, existsSync, mkdirSync } from 'fs'
 import { writeFile } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { homedir } from 'os'
 import { logger } from './logger.js'
 import {
   safeValidateMessage,
@@ -22,15 +21,20 @@ import {
   type SelectionUpdateData,
   type SketchUpdateData,
 } from './shared/index.js'
+import { getStateDir } from './run-cad-code/constants.js'
 
-// Data directory for selection/sketch files
-const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad')
-const SELECTION_FILE = resolve(CAD_DATA_DIR, 'selection.json')
-const SKETCH_FILE = resolve(CAD_DATA_DIR, 'sketch.json')
+// Data directory for selection/sketch files (getter로 테스트 격리 지원)
+function getSelectionFile(): string {
+  return resolve(getStateDir(), 'selection.json')
+}
+function getSketchFile(): string {
+  return resolve(getStateDir(), 'sketch.json')
+}
 
 function ensureDataDir(): void {
-  if (!existsSync(CAD_DATA_DIR)) {
-    mkdirSync(CAD_DATA_DIR, { recursive: true })
+  const dataDir = getStateDir()
+  if (!existsSync(dataDir)) {
+    mkdirSync(dataDir, { recursive: true })
   }
 }
 
@@ -256,7 +260,7 @@ export class CADWebSocketServer {
         hidden_entities: data.hidden_entities || [],
         timestamp: Date.now(),
       }
-      await writeFile(SELECTION_FILE, JSON.stringify(selection, null, 2), 'utf-8')
+      await writeFile(getSelectionFile(), JSON.stringify(selection, null, 2), 'utf-8')
       logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities?.length || 0} hidden, ${data.locked_entities?.length || 0} locked`)
     } catch (e) {
       logger.error(`Failed to save selection: ${e}`)
@@ -274,7 +278,7 @@ export class CADWebSocketServer {
         strokes: data.strokes,
         timestamp: Date.now(),
       }
-      await writeFile(SKETCH_FILE, JSON.stringify(sketch, null, 2), 'utf-8')
+      await writeFile(getSketchFile(), JSON.stringify(sketch, null, 2), 'utf-8')
       logger.debug(`Sketch saved: ${data.strokes.length} strokes`)
     } catch (e) {
       logger.error(`Failed to save sketch: ${e}`)

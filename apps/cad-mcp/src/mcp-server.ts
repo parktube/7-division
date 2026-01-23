@@ -59,7 +59,6 @@ import type { Scene } from './shared/index.js'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, openSync, closeSync, constants } from 'fs'
 import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { homedir } from 'os'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -70,13 +69,13 @@ const packageJson = JSON.parse(
 )
 
 // run-cad-code 모듈에서 공유 상수/유틸리티 가져오기 (CLI와 경로 통일)
-import { SCENE_CODE_FILE, MODULES_DIR } from './run-cad-code/constants.js'
+import { getSceneCodeFile, getModulesDir, getStateDir, getSceneFile } from './run-cad-code/constants.js'
 import { preprocessCode } from './run-cad-code/utils.js'
 
-// 씬 영속성 파일 경로 (~/.ai-native-cad/scene.json)
-const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad')
-const SCENE_FILE = resolve(CAD_DATA_DIR, 'scene.json')
-const PID_FILE = resolve(CAD_DATA_DIR, 'mcp.pid')
+// PID 파일 경로 (getStateDir() 사용으로 테스트 격리 지원)
+function getPidFile(): string {
+  return resolve(getStateDir(), 'mcp.pid')
+}
 
 /**
  * Check if a process with given PID is running
@@ -104,10 +103,10 @@ function isProcessRunning(pid: number): boolean {
  */
 function getExistingServerPid(): number | null {
   try {
-    if (!existsSync(PID_FILE)) {
+    if (!existsSync(getPidFile())) {
       return null
     }
-    const pidStr = readFileSync(PID_FILE, 'utf-8').trim()
+    const pidStr = readFileSync(getPidFile(), 'utf-8').trim()
     const pid = parseInt(pidStr, 10)
     if (isNaN(pid)) {
       return null
@@ -134,7 +133,7 @@ function writePidFile(): void {
   let fd: number | null = null
   try {
     // Try atomic create with O_EXCL (fail if file exists)
-    fd = openSync(PID_FILE, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
+    fd = openSync(getPidFile(), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
     writeFileSync(fd, pidContent, 'utf-8')
   } catch (err: unknown) {
     const error = err as NodeJS.ErrnoException
@@ -144,8 +143,8 @@ function writePidFile(): void {
       if (existingPid === null) {
         // Stale file, remove and retry
         try {
-          unlinkSync(PID_FILE)
-          writeFileSync(PID_FILE, pidContent, 'utf-8')
+          unlinkSync(getPidFile())
+          writeFileSync(getPidFile(), pidContent, 'utf-8')
         } catch {
           // Ignore cleanup errors
         }
@@ -164,7 +163,7 @@ function writePidFile(): void {
       }
     }
   }
-  logger.debug(`PID file written: ${PID_FILE} (PID: ${process.pid})`)
+  logger.debug(`PID file written: ${getPidFile()} (PID: ${process.pid})`)
 }
 
 /**
@@ -172,8 +171,8 @@ function writePidFile(): void {
  */
 function cleanupPidFile(): void {
   try {
-    if (existsSync(PID_FILE)) {
-      unlinkSync(PID_FILE)
+    if (existsSync(getPidFile())) {
+      unlinkSync(getPidFile())
       logger.debug('PID file removed')
     }
   } catch (e) {
@@ -185,9 +184,9 @@ function cleanupPidFile(): void {
  * Ensure CAD data directory exists
  */
 function ensureCadDataDir(): void {
-  if (!existsSync(CAD_DATA_DIR)) {
-    mkdirSync(CAD_DATA_DIR, { recursive: true })
-    logger.info(`Created CAD data directory: ${CAD_DATA_DIR}`)
+  if (!existsSync(getStateDir())) {
+    mkdirSync(getStateDir(), { recursive: true })
+    logger.info(`Created CAD data directory: ${getStateDir()}`)
   }
 }
 
@@ -198,7 +197,7 @@ function saveScene(exec: CADExecutor): void {
   try {
     ensureCadDataDir()
     const sceneJson = exec.exportScene()
-    writeFileSync(SCENE_FILE, sceneJson, 'utf-8')
+    writeFileSync(getSceneFile(), sceneJson, 'utf-8')
     logger.debug('Scene saved to file')
   } catch (e) {
     logger.error(`Failed to save scene: ${e}`)
@@ -211,12 +210,12 @@ function saveScene(exec: CADExecutor): void {
  */
 function loadScene(exec: CADExecutor): boolean {
   try {
-    if (!existsSync(SCENE_FILE)) {
+    if (!existsSync(getSceneFile())) {
       logger.debug('No saved scene file found')
       return false
     }
 
-    const sceneJson = readFileSync(SCENE_FILE, 'utf-8')
+    const sceneJson = readFileSync(getSceneFile(), 'utf-8')
     const scene = JSON.parse(sceneJson) as Scene
 
     // Restore entities to executor
@@ -237,7 +236,7 @@ function loadScene(exec: CADExecutor): boolean {
 }
 
 function getModulePath(name: string): string {
-  return resolve(MODULES_DIR, `${name}.js`)
+  return resolve(getModulesDir(), `${name}.js`)
 }
 
 /**
@@ -245,7 +244,7 @@ function getModulePath(name: string): string {
  */
 function readMainCode(): string {
   try {
-    return existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : ''
+    return existsSync(getSceneCodeFile()) ? readFileSync(getSceneCodeFile(), 'utf-8') : ''
   } catch {
     return ''
   }
@@ -435,9 +434,9 @@ export async function createMCPServer(): Promise<Server> {
 
   // Story 10.10: main.js 우선 실행, scene.json 폴백
   // 1차: main.js 실행으로 복원 시도
-  if (existsSync(SCENE_CODE_FILE)) {
+  if (existsSync(getSceneCodeFile())) {
     try {
-      const mainCode = readFileSync(SCENE_CODE_FILE, 'utf-8')
+      const mainCode = readFileSync(getSceneCodeFile(), 'utf-8')
       const preprocessed = preprocessCode(mainCode)
       if (preprocessed.errors.length === 0) {
         const result = await runCadCode(exec, preprocessed.code, 'warn')
@@ -941,7 +940,7 @@ export async function runMCPServer(): Promise<void> {
   if (existingPid !== null) {
     logger.error(`MCP server already running (PID: ${existingPid}). Kill it first or use the existing instance.`)
     logger.error(`To kill: kill ${existingPid}`)
-    logger.error(`PID file: ${PID_FILE}`)
+    logger.error(`PID file: ${getPidFile()}`)
     process.exit(1)
   }
 

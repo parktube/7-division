@@ -13,6 +13,7 @@ import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { logger } from './logger.js';
+import { getStateDir } from './run-cad-code/constants.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -59,8 +60,10 @@ export interface CaptureOptions {
   sketchData?: unknown;
 }
 
-// Path to sketch.json for reading sketch data
-const SKETCH_FILE = join(homedir(), '.ai-native-cad', 'sketch.json');
+// Path to sketch.json for reading sketch data (getter로 테스트 격리 지원)
+function getSketchFile(): string {
+  return join(getStateDir(), 'sketch.json');
+}
 
 /**
  * Read sketch data from ~/.ai-native-cad/sketch.json
@@ -68,7 +71,7 @@ const SKETCH_FILE = join(homedir(), '.ai-native-cad', 'sketch.json');
  */
 async function readSketchData(): Promise<unknown[] | null> {
   try {
-    const data = await fs.readFile(SKETCH_FILE, 'utf-8');
+    const data = await fs.readFile(getSketchFile(), 'utf-8');
     const parsed = JSON.parse(data);
     // Handle direct array format [...]
     if (Array.isArray(parsed)) {
@@ -79,7 +82,7 @@ async function readSketchData(): Promise<unknown[] | null> {
       return parsed.strokes;
     }
     // Invalid format
-    logger.warn('Invalid sketch data format', { file: SKETCH_FILE, type: typeof parsed });
+    logger.warn('Invalid sketch data format', { file: getSketchFile(), type: typeof parsed });
     return null;
   } catch (error) {
     // Silently ignore ENOENT (file not found) - expected when no sketch exists
@@ -87,7 +90,7 @@ async function readSketchData(): Promise<unknown[] | null> {
       return null;
     }
     // Log other errors for debugging (corrupt file, parse error, etc.)
-    logger.warn('Failed to read sketch data', { file: SKETCH_FILE, error: String(error) });
+    logger.warn('Failed to read sketch data', { file: getSketchFile(), error: String(error) });
     return null;
   }
 }

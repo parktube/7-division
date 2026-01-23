@@ -25,10 +25,8 @@ import {
   clearBuiltinKnowledgeCache,
 } from '../src/mama/builtin-knowledge.js';
 
-// 테스트용 디렉토리 경로
-// TODO: 테스트 전용 임시 디렉토리로 격리 필요 (현재 실제 ~/.ai-native-cad 사용)
-// 환경 변수 또는 vitest setup으로 테스트 격리 구현 예정
-const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad');
+// 테스트용 디렉토리 경로 (setup.ts에서 CAD_DATA_DIR 환경 변수로 임시 디렉토리 설정)
+const CAD_DATA_DIR = process.env.CAD_DATA_DIR || resolve(homedir(), '.ai-native-cad');
 const MODULES_DIR = resolve(CAD_DATA_DIR, 'modules');
 
 // Builtin 디렉토리 경로 (패키지 내 assets/)

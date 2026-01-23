@@ -4,15 +4,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import { MODULES_DIR, SCENE_CODE_FILE } from './constants.js';
+import { getModulesDir, getSceneCodeFile } from './constants.js';
 import { resolveFile } from '../utils/paths.js';
 
 /**
  * 모듈 목록 조회
  */
 export function getModuleList(): string[] {
-  if (!existsSync(MODULES_DIR)) return [];
-  return readdirSync(MODULES_DIR)
+  const modulesDir = getModulesDir();
+  if (!existsSync(modulesDir)) return [];
+  return readdirSync(modulesDir)
     .filter(f => f.endsWith('.js'))
     .map(f => f.replace(/\.js$/, ''));
 }
@@ -51,8 +52,9 @@ export function ensureParentDir(filePath: string): void {
  * 모듈 디렉토리 생성
  */
 export function ensureModulesDir(): void {
-  if (!existsSync(MODULES_DIR)) {
-    mkdirSync(MODULES_DIR, { recursive: true });
+  const modulesDir = getModulesDir();
+  if (!existsSync(modulesDir)) {
+    mkdirSync(modulesDir, { recursive: true });
   }
 }
 
@@ -67,14 +69,14 @@ export function readFileOrEmpty(filePath: string): string {
  * 모듈 경로 조회
  */
 export function getModulePath(moduleName: string): string {
-  return resolve(MODULES_DIR, `${moduleName}.js`);
+  return resolve(getModulesDir(), `${moduleName}.js`);
 }
 
 /**
  * main 코드 읽기
  */
 export function readMainCode(): string {
-  return readFileOrEmpty(SCENE_CODE_FILE);
+  return readFileOrEmpty(getSceneCodeFile());
 }
 
 /**

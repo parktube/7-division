@@ -16,8 +16,8 @@ import { logger } from '../logger.js'
 // Constants
 // ============================================================
 
-/** CAD data directory */
-export const CAD_DATA_DIR = join(homedir(), '.ai-native-cad')
+/** CAD data directory (supports override via CAD_DATA_DIR env var for testing) */
+export const CAD_DATA_DIR = process.env.CAD_DATA_DIR || join(homedir(), '.ai-native-cad')
 
 /** MAMA data subdirectory */
 export const MAMA_DATA_DIR = join(CAD_DATA_DIR, 'data')

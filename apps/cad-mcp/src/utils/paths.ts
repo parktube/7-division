@@ -13,8 +13,8 @@
 import { resolve } from 'path';
 import { existsSync } from 'fs';
 import {
-  MODULES_DIR,
-  SCENE_CODE_FILE,
+  getModulesDir,
+  getSceneCodeFile,
   BUILTIN_MODULES_DIR,
 } from '../run-cad-code/constants.js';
 
@@ -55,7 +55,7 @@ function getBuiltinPathUnchecked(file: string): string {
  * Used by resolveFile after initial validation
  */
 function getUserPathUnchecked(file: string): string {
-  return resolve(MODULES_DIR, `${file}.js`);
+  return resolve(getModulesDir(), `${file}.js`);
 }
 
 /**
@@ -104,10 +104,11 @@ export function resolveFile(file: string): ResolvedFile {
 
   // main은 항상 user source
   if (file === 'main') {
+    const sceneCodeFile = getSceneCodeFile();
     return {
-      path: SCENE_CODE_FILE,
+      path: sceneCodeFile,
       source: 'user',
-      exists: existsSync(SCENE_CODE_FILE),
+      exists: existsSync(sceneCodeFile),
     };
   }
 
@@ -155,7 +156,7 @@ export function getFilePath(file: string): string {
   }
 
   if (file === 'main') {
-    return SCENE_CODE_FILE;
+    return getSceneCodeFile();
   }
-  return resolve(MODULES_DIR, `${file}.js`);
+  return resolve(getModulesDir(), `${file}.js`);
 }
