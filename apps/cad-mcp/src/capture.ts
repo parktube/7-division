@@ -224,10 +224,16 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const isHttps = /^https:\/\//.test(url);
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
     const baseArgs = ['--disable-dev-shm-usage', '--disable-gpu'];
+    // Security: --no-sandbox is required for Docker/CI but reduces security.
+    // Only enable for local URLs or CI environments where the content is trusted.
     const sandboxArgs = (isLocalUrl || isCI)
       ? ['--no-sandbox', '--disable-setuid-sandbox']
       : [];
-    // Mixed content args only when HTTPS page needs to connect to ws://localhost
+    // Mixed content handling: When HTTPS page (e.g., GitHub Pages) needs to connect
+    // to ws://localhost MCP server, browsers block this by default as "mixed content".
+    // These flags allow the connection for local development/capture purposes.
+    // Note: This is safe because we only connect to localhost, not arbitrary HTTP endpoints.
+    // In production, the viewer should use wss:// or run on the same origin.
     const mixedContentArgs = isHttps
       ? ['--allow-running-insecure-content', '--allow-insecure-localhost']
       : [];
@@ -275,97 +281,124 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       }
 
       if (injected) {
-        // Wait for Canvas component to mount and render
-        let canvasReady = false;
+        // Wait for Canvas component to mount and render with frame stability check
+        let canvasStable = false;
         const maxWaitTime = waitMs;
         const checkInterval = 200;
         let elapsed = 0;
+        let lastPixelHash = '';
 
-        while (elapsed < maxWaitTime && !canvasReady) {
+        while (elapsed < maxWaitTime && !canvasStable) {
           await new Promise(done => setTimeout(done, checkInterval));
           elapsed += checkInterval;
 
-          canvasReady = await page.evaluate(() => {
+          const result = await page.evaluate(() => {
             const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-            if (!canvas) return false;
-            // Check if canvas has non-zero dimensions
-            return canvas.width > 0 && canvas.height > 0;
+            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+              return { ready: false, hash: '' };
+            }
+            // Sample pixels to create a simple hash for stability check
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return { ready: false, hash: '' };
+            const w = canvas.width;
+            const h = canvas.height;
+            const samples = [
+              ctx.getImageData(w / 2, h / 2, 1, 1).data,
+              ctx.getImageData(w / 4, h / 4, 1, 1).data,
+              ctx.getImageData(3 * w / 4, 3 * h / 4, 1, 1).data,
+            ];
+            const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
+            return { ready: true, hash };
           });
-        }
 
-        if (!canvasReady) {
-          logger.warn('Canvas not ready after injection, proceeding with capture anyway');
-        }
-
-        // Additional wait for render to complete
-        await new Promise(done => setTimeout(done, 500));
-      } else {
-        // Injection failed - abort capture to avoid empty/misleading screenshots
-        logger.error('__injectScene not available after retries - aborting capture');
-        throw new Error('Scene injection failed: __injectScene not available in viewer');
-      }
-    } else {
-      // Wait for WebSocket connection and scene to load
-      // Instead of fixed timeout, wait for scene to have entities
-      let sceneLoaded = false;
-      const maxWaitTime = waitMs;
-      const checkInterval = 500;
-      let elapsed = 0;
-
-      while (elapsed < maxWaitTime && !sceneLoaded) {
-        await new Promise(done => setTimeout(done, checkInterval));
-        elapsed += checkInterval;
-
-        // Check if scene has entities
-        sceneLoaded = await page.evaluate(() => {
-          // Check if there are any rendered entities in the canvas
-          const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-          if (!canvas) return false;
-
-          // Check WebSocket connection state from window
-          type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
-          const win = window as WindowWithWS;
-
-          // If we have entity count exposed, use it
-          if (typeof win.__sceneEntityCount === 'number') {
-            return win.__sceneEntityCount > 0;
+          if (result.ready && result.hash === lastPixelHash && lastPixelHash !== '') {
+            // Canvas is stable (same content for 2 consecutive checks)
+            canvasStable = true;
           }
+          lastPixelHash = result.hash;
+        }
 
-          // Fallback: check if canvas has been drawn to (not just background)
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return false;
+        if (!canvasStable) {
+          logger.warn('Canvas not stable after injection, proceeding with capture anyway');
+        }
 
-          // Sample multiple pixels and check for variation (not uniform background)
-          const w = canvas.width;
-          const h = canvas.height;
-          const samplePoints = [
-            [w / 2, h / 2],
-            [w / 4, h / 4],
-            [3 * w / 4, h / 4],
-            [w / 4, 3 * h / 4],
-            [3 * w / 4, 3 * h / 4],
-          ];
-
-          const samples = samplePoints.map(([x, y]) => {
-            const data = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-            return [data[0], data[1], data[2]];
-          });
-
-          // Check if all samples are the same (uniform background)
-          const first = samples[0];
-          const tolerance = 5;
-          const allSame = samples.every(([r, g, b]) =>
-            Math.abs(r - first[0]) <= tolerance &&
-            Math.abs(g - first[1]) <= tolerance &&
-            Math.abs(b - first[2]) <= tolerance
-          );
-
-          // If not all same, something is drawn
-          return !allSame;
-        });
-
-        logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);
+        // Additional wait for any animations to settle
+        await new Promise(done => setTimeout(done, 300));
+      } else {
+        // Injection failed - fall back to WebSocket scene loading
+        logger.warn('__injectScene not available after retries, falling back to WebSocket loading');
+        // Continue to WebSocket waiting logic below
       }
+    }
+
+    // Wait for WebSocket connection and scene to load (common path for both injection fallback and no-injection)
+    // Use frame stability check to ensure rendering is complete
+    let sceneStable = false;
+    const maxWaitTime = waitMs;
+    const checkInterval = 300;
+    let elapsed = 0;
+    let lastPixelHash = '';
+    let stableCount = 0;
+    const requiredStableChecks = 2; // Require 2 consecutive stable frames
+
+    while (elapsed < maxWaitTime && !sceneStable) {
+      await new Promise(done => setTimeout(done, checkInterval));
+      elapsed += checkInterval;
+
+      // Check if scene is loaded and stable
+      const result = await page.evaluate(() => {
+        const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+        if (!canvas || canvas.width === 0 || canvas.height === 0) {
+          return { loaded: false, hash: '', entityCount: 0 };
+        }
+
+        // Check WebSocket connection state from window
+        type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
+        const win = window as WindowWithWS;
+        const entityCount = win.__sceneEntityCount ?? 0;
+
+        // Sample pixels for stability check
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return { loaded: false, hash: '', entityCount };
+
+        const w = canvas.width;
+        const h = canvas.height;
+        const samples = [
+          ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
+          ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
+          ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
+          ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
+          ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data,
+        ];
+        const hash = samples.map(d => `${d[0]},${d[1]},${d[2]}`).join('|');
+
+        // Check if content is not uniform background
+        const first = samples[0];
+        const tolerance = 5;
+        const hasContent = !samples.every(d =>
+          Math.abs(d[0] - first[0]) <= tolerance &&
+          Math.abs(d[1] - first[1]) <= tolerance &&
+          Math.abs(d[2] - first[2]) <= tolerance
+        );
+
+        return { loaded: hasContent || entityCount > 0, hash, entityCount };
+      });
+
+      if (result.loaded && result.hash === lastPixelHash && lastPixelHash !== '') {
+        stableCount++;
+        if (stableCount >= requiredStableChecks) {
+          sceneStable = true;
+        }
+      } else {
+        stableCount = 0; // Reset if content changed
+      }
+      lastPixelHash = result.hash;
+
+      logger.debug(`Scene stability check: loaded=${result.loaded}, stable=${sceneStable}, entities=${result.entityCount}, elapsed=${elapsed}ms`);
+    }
+
+    if (!sceneStable) {
+      logger.warn('Scene not stable after waiting, proceeding with capture anyway');
     }
 
     // Inject sketch data if provided or read from file (common for both paths)

@@ -107,18 +107,7 @@ jobs:
         run: pnpm install
 
       - name: Rebuild native modules (better-sqlite3)
-        run: |
-          # Find and rebuild better-sqlite3 in pnpm store
-          SQLITE_DIR=$(find node_modules/.pnpm -type d -name "better-sqlite3@*" | head -1)
-          if [ -n "$SQLITE_DIR" ]; then
-            cd "$SQLITE_DIR/node_modules/better-sqlite3"
-            echo "Building in: $(pwd)"
-            ls -la
-            npx prebuild-install || npx node-gyp rebuild --release
-          else
-            echo "better-sqlite3 not found in pnpm store"
-            exit 1
-          fi
+        run: pnpm rebuild better-sqlite3
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
