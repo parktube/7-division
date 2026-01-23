@@ -141,9 +141,14 @@ export function isFullFormat(topic: string): boolean {
  * @param domain - Domain name
  * @param entity - Entity name
  * @param aspect - Aspect name
- * @returns Formatted topic string
+ * @returns Formatted topic string or null if invalid
  */
 export function buildTopic(domain: string, entity: string, aspect: string): string | null {
+  // Type guards for non-string inputs
+  if (typeof domain !== 'string' || typeof entity !== 'string' || typeof aspect !== 'string') {
+    return null
+  }
+
   const d = domain.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
   const e = entity.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')
   const a = aspect.trim().toLowerCase().replace(/[^a-z0-9_]/g, '')

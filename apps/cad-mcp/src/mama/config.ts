@@ -159,15 +159,52 @@ export function getContextInjection(): 'none' | 'hint' | 'full' {
  * Update configuration
  *
  * @param updates - Partial configuration updates
+ * @returns true if update succeeded, false otherwise
  */
 export function updateConfig(updates: Partial<MAMAConfig>): boolean {
   try {
     ensureDataDirs()
     const currentConfig = loadConfig()
 
+    // Validate updates before applying
+    const validatedUpdates: Partial<MAMAConfig> = {}
+
+    if (updates.modelName !== undefined) {
+      if (typeof updates.modelName === 'string' && updates.modelName.trim()) {
+        validatedUpdates.modelName = updates.modelName
+      } else {
+        logger.warn('Invalid modelName in update, skipping')
+      }
+    }
+
+    if (updates.embeddingDim !== undefined) {
+      if (Number.isInteger(updates.embeddingDim) && updates.embeddingDim > 0) {
+        validatedUpdates.embeddingDim = updates.embeddingDim
+      } else {
+        logger.warn('Invalid embeddingDim in update, skipping')
+      }
+    }
+
+    if (updates.cacheDir !== undefined) {
+      if (typeof updates.cacheDir === 'string' && updates.cacheDir.trim()) {
+        validatedUpdates.cacheDir = updates.cacheDir
+      } else {
+        logger.warn('Invalid cacheDir in update, skipping')
+      }
+    }
+
+    if (updates.contextInjection !== undefined) {
+      const validModes = ['none', 'hint', 'full'] as const
+      if (validModes.includes(updates.contextInjection as typeof validModes[number])) {
+        validatedUpdates.contextInjection = updates.contextInjection
+      } else {
+        logger.warn(`Invalid contextInjection "${updates.contextInjection}" in update, skipping`)
+      }
+    }
+
     const newConfig: MAMAConfig = {
       ...currentConfig,
-      ...updates,
+      ...validatedUpdates,
     }
 
     writeFileSync(CONFIG_PATH, JSON.stringify(newConfig, null, 2), 'utf8')
