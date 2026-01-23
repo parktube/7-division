@@ -223,7 +223,13 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const isLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\b/.test(url);
     const isHttps = /^https:\/\//.test(url);
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-    const baseArgs = ['--disable-dev-shm-usage', '--disable-gpu'];
+    const baseArgs = [
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      // Disable Service Worker to avoid "InvalidStateError: Failed to register a ServiceWorker"
+      // Service Workers are not needed for capture-only headless sessions
+      '--disable-features=ServiceWorker',
+    ];
     // Security: --no-sandbox is required for Docker/CI but reduces security.
     // Only enable for local URLs or CI environments where the content is trusted.
     const sandboxArgs = (isLocalUrl || isCI)
@@ -238,15 +244,42 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       ? ['--allow-running-insecure-content', '--allow-insecure-localhost']
       : [];
 
-    // Try to find Chrome executable
+    // Try to find Chrome/Chromium executable
+    // Priority: Puppeteer's bundled Chromium > System browsers
     const chromePaths = [
+      // Windows - Chrome
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      // Windows - Edge (Chromium-based)
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      // Windows - Brave
+      `${process.env.LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\Application\\brave.exe`,
+      'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+      // macOS
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+      // Linux
       '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
       '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/snap/bin/chromium',
     ];
-    const executablePath = chromePaths.find(p => existsSync(p));
+
+    // First try system browsers, then fall back to Puppeteer's bundled Chromium
+    const systemBrowser = chromePaths.find(p => p && existsSync(p));
+
+    // If no system browser found, Puppeteer will use its bundled Chromium (executablePath: undefined)
+    // This is the most reliable cross-platform approach
+    const executablePath = systemBrowser || undefined;
+
+    if (!executablePath) {
+      logger.debug('No system browser found, using Puppeteer bundled Chromium');
+    } else {
+      logger.debug('Using system browser', { path: executablePath });
+    }
 
     browser = await puppeteer.launch({
       headless: true,
@@ -564,9 +597,22 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error('Viewport capture failed', { error: errorMessage });
 
+    // Provide helpful error message for common issues
+    let helpMessage = errorMessage;
+    if (errorMessage.includes('Could not find Chrome') || errorMessage.includes('No usable sandbox')) {
+      helpMessage = `${errorMessage}\n\nTroubleshooting:\n` +
+        '1. Install Chrome, Edge, or Brave browser\n' +
+        '2. Or run: npx puppeteer browsers install chrome\n' +
+        '3. On Windows, ensure browsers are in standard install paths';
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('net::ERR')) {
+      helpMessage = `${errorMessage}\n\nTroubleshooting:\n` +
+        '1. Check if viewer is running (pnpm --filter @ai-native-cad/viewer dev)\n' +
+        '2. Or use GitHub Pages viewer (default): set CAD_VIEWER_URL env var';
+    }
+
     return {
       success: false,
-      error: errorMessage,
+      error: helpMessage,
       method: 'puppeteer',
     };
   } finally {
