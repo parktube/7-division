@@ -335,6 +335,7 @@ function createChicken(name, x, y) {
   
   // 눈 위치 스케치에 맞춤
   const eyeNow = getEntity(n+'_eye_r').world.center;
-  const eyeTarget = [378, 263];  // 스케치 좌표
-  translate(n+'_eye_r', eyeTarget[0] - eyeNow[0], eyeTarget[1] - eyeNow[1]);
+  const eyeLocalTarget = [378, 263];  // 로컬 좌표 (원점 기준)
+  const eyeWorldTarget = [eyeLocalTarget[0] + x, eyeLocalTarget[1] + y];
+  translate(n+'_eye_r', eyeWorldTarget[0] - eyeNow[0], eyeWorldTarget[1] - eyeNow[1]);
 }
