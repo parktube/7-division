@@ -42,7 +42,8 @@
     "dist",
     "wasm",
     "assets",
-    "scripts"
+    "scripts",
+    "docs"
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
