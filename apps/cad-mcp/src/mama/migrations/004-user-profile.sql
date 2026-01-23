@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
 );
 
 -- Initialize with default user profile
--- Note: One-time seed for initial DB setup. App-layer profile updates use Date.now() via db.ts.
+-- Note: Timestamps set to 0 as placeholder. App-layer updates use Date.now() via db.ts.
+-- This maintains consistency with project convention (app-layer timestamp management).
 INSERT OR IGNORE INTO user_profile (id, global_skill_level, domain_skill_levels, action_counts, created_at, updated_at)
-VALUES (1, 'intermediate', '{}', '{}', strftime('%s', 'now') * 1000, strftime('%s', 'now') * 1000);
+VALUES (1, 'intermediate', '{}', '{}', 0, 0);
