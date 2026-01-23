@@ -246,9 +246,9 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
           type: 'applied',
           concept: args.concept,
           applied_count: newCount,
-          understanding_level: updated?.understanding_level || existing.understanding_level,
-          mastered: (updated?.understanding_level || 0) >= 4,
-          message: newCount >= 3 && (updated?.understanding_level || 0) >= 4
+          understanding_level: updated?.understanding_level ?? existing.understanding_level,
+          mastered: (updated?.understanding_level ?? 0) >= 4,
+          message: newCount >= 3 && (updated?.understanding_level ?? 0) >= 4
             ? `Concept "${args.concept}" applied ${newCount} times - MASTERED! 🎉`
             : `Concept "${args.concept}" applied (count: ${newCount})`,
         },

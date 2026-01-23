@@ -151,6 +151,11 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (!zOrder || typeof zOrder !== 'object') return false
   const zOrderObj = zOrder as Record<string, unknown>
   if (!('standard_order' in zOrderObj) || !('mezzanine_order' in zOrderObj)) return false
+  if (!Array.isArray(zOrderObj.standard_order) || !Array.isArray(zOrderObj.mezzanine_order)) return false
+
+  // Validate optional fields if present (tool_usage, checkpoints)
+  if ('tool_usage' in obj && obj.tool_usage !== null && typeof obj.tool_usage !== 'object') return false
+  if ('checkpoints' in obj && obj.checkpoints !== null && typeof obj.checkpoints !== 'object') return false
 
   return true
 }
