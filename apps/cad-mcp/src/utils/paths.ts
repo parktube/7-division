@@ -60,9 +60,12 @@ function getUserPathUnchecked(file: string): string {
 
 /**
  * Get builtin module path
- * @throws Error if file name is invalid
+ * @throws Error if file name is invalid or reserved
  */
 export function getBuiltinPath(file: string): string {
+  if (file === 'main') {
+    throw new Error('Invalid module name: "main" is reserved for scene.code.js');
+  }
   if (!isValidFileName(file)) {
     throw new Error(`Invalid module name: ${file}`);
   }
@@ -71,9 +74,12 @@ export function getBuiltinPath(file: string): string {
 
 /**
  * Get user module path
- * @throws Error if file name is invalid
+ * @throws Error if file name is invalid or reserved
  */
 export function getUserPath(file: string): string {
+  if (file === 'main') {
+    throw new Error('Invalid module name: "main" is reserved for scene.code.js');
+  }
   if (!isValidFileName(file)) {
     throw new Error(`Invalid module name: ${file}`);
   }

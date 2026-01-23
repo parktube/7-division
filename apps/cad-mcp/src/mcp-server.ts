@@ -126,6 +126,25 @@ function getExistingServerPid(): number | null {
  * Uses O_EXCL for atomic creation to prevent race conditions (TOCTOU)
  * If file exists, attempts to remove stale PID file and retry
  */
+/**
+ * Atomically create PID file with O_EXCL
+ * @returns file descriptor on success, null on EEXIST
+ * @throws on other errors
+ */
+function atomicCreatePidFile(pidContent: string): number | null {
+  try {
+    const fd = openSync(getPidFile(), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
+    writeFileSync(fd, pidContent, 'utf-8')
+    return fd
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EEXIST') {
+      return null
+    }
+    throw error
+  }
+}
+
 function writePidFile(): void {
   ensureCadDataDir()
   const pidContent = process.pid.toString()
@@ -133,25 +152,21 @@ function writePidFile(): void {
   let fd: number | null = null
   try {
     // Try atomic create with O_EXCL (fail if file exists)
-    fd = openSync(getPidFile(), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
-    writeFileSync(fd, pidContent, 'utf-8')
-  } catch (err: unknown) {
-    const error = err as NodeJS.ErrnoException
-    if (error.code === 'EEXIST') {
+    fd = atomicCreatePidFile(pidContent)
+
+    if (fd === null) {
       // File exists - check if process is running, clean up if stale
       const existingPid = getExistingServerPid()
       if (existingPid === null) {
-        // Stale file, remove and retry
+        // Stale file, remove and retry with atomic create
         try {
           unlinkSync(getPidFile())
-          writeFileSync(getPidFile(), pidContent, 'utf-8')
+          fd = atomicCreatePidFile(pidContent)
         } catch {
           // Ignore cleanup errors
         }
       }
       // If process is running, let the main startup logic handle it
-    } else {
-      throw error
     }
   } finally {
     // Close file descriptor if opened

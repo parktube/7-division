@@ -147,15 +147,15 @@ export function handleGlob(input: GlobInput): GlobOutput {
     const modules = getModuleList();
     const hasMain = mainExists();
 
+    // Always filter out 'main' from modules to prevent conflict with reserved scene.code.js
+    const filteredModules = modules.filter(m => m.name !== 'main');
+
     // Build full file list (main first if exists)
     let allFiles: FileInfo[] = [];
     if (hasMain) {
       allFiles.push({ name: 'main', source: 'user' });
-      // Filter out 'main' from modules only when main exists to avoid duplication
-      allFiles = allFiles.concat(modules.filter(m => m.name !== 'main'));
-    } else {
-      allFiles = allFiles.concat(modules);
     }
+    allFiles = allFiles.concat(filteredModules);
 
     // Apply pattern filter if provided
     let resultFiles: FileInfo[];

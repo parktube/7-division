@@ -125,6 +125,12 @@ export function loadConfig(reload = false): MAMAConfig {
       config.contextInjection = DEFAULT_CONFIG.contextInjection
     }
 
+    // Validate cacheDir
+    if (typeof config.cacheDir !== 'string' || config.cacheDir.trim() === '') {
+      logger.warn(`Invalid cacheDir, using default: ${DEFAULT_CONFIG.cacheDir}`)
+      config.cacheDir = DEFAULT_CONFIG.cacheDir
+    }
+
     cachedConfig = config
     return config
   } catch (error) {

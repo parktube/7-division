@@ -236,16 +236,28 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       logger.debug('Electron capture succeeded');
       return electronResult;
     }
+
+    // If electron was explicitly requested, return failure immediately
+    if (forceMethod === 'electron') {
+      logger.error('Electron capture failed (forceMethod=electron): is the Electron app running?');
+      return electronResult ?? {
+        success: false,
+        error: 'Electron capture not available (is the Electron app running?)',
+        method: 'electron',
+      };
+    }
+
     // Fall back to Puppeteer if Electron is not running
     // Note: tryElectronCapture logs specific failure reason (no port, connection error, etc.)
     logger.info('Electron capture unavailable, falling back to Puppeteer headless browser');
   }
 
-  // Skip Puppeteer if forced to use Electron
+  // Skip Puppeteer if forced to use Electron (non-Windows/Mac platforms)
   if (forceMethod === 'electron') {
+    logger.error('Electron capture not attempted on this platform (forceMethod=electron)');
     return {
       success: false,
-      error: 'Electron capture not available (is the Electron app running?)',
+      error: 'Electron capture not available on this platform',
       method: 'electron',
     };
   }
