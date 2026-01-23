@@ -38,11 +38,5 @@ reviews:
         - 에러 핸들링 검토
         - NFR (성능 요구사항) 검증 로직 확인
 
-    - path: "docs/sprint-artifacts/*.md"
-      instructions: |
-        스토리/에픽 문서입니다.
-        - AC (Acceptance Criteria) 명확성 확인
-        - Task 완료 상태 일관성 검토
-
 chat:
   auto_reply: true

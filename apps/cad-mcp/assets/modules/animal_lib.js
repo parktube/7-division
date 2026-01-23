@@ -315,7 +315,7 @@ function createChicken(name, x, y) {
   // 그룹화
   createGroup(n+'_feet', [n+'_toe_l1', n+'_toe_l2', n+'_toe_l3', n+'_toe_r1', n+'_toe_r2', n+'_toe_r3']);
   createGroup(n+'_legs', [n+'_leg_l', n+'_leg_r']);
-  createGroup(n+'_head', [n+'_comb', n+'_beak_top', n+'_beak_bot', n+'_wattle', n+'_eye_r_r']);
+  createGroup(n+'_head', [n+'_comb', n+'_beak_top', n+'_beak_bot', n+'_wattle', n+'_eye_r']);
   createGroup(n, [n+'_feet', n+'_legs', n+'_body', n+'_head']);
   
   // 스케일
@@ -333,7 +333,7 @@ function createChicken(name, x, y) {
   translate(n, x, y);
   
   // 눈 위치 스케치에 맞춤
-  const eyeNow = getEntity(n+'_eye_r_r').world.center;
+  const eyeNow = getEntity(n+'_eye_r').world.center;
   const eyeTarget = [378, 263];  // 스케치 좌표
   translate(n+'_eye_r', eyeTarget[0] - eyeNow[0], eyeTarget[1] - eyeNow[1]);
 }

@@ -107,8 +107,8 @@ function sortIsoGroups() {
     return;
   }
   
-  // 내림차순 정렬 (큰 depth부터)
-  _isoGroups.sort(function(a, b) { return b.depth - a.depth; });
+  // 오름차순 정렬 (작은 depth부터) → 큰 depth가 마지막에 front로 이동하여 최전면
+  _isoGroups.sort(function(a, b) { return a.depth - b.depth; });
   
   // front로 밀어서 마지막이 맨 앞
   for (let i = 0; i < _isoGroups.length; i++) {
