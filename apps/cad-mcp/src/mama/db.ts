@@ -657,8 +657,11 @@ export function setDomainSkillLevel(domain: string, level: SkillLevel): void {
 
 /**
  * Increment action count for adaptive mentoring
+ *
+ * @returns Object with newCount (incremented count) and allCounts (all action counts)
+ *          to avoid redundant DB read in trackAction()
  */
-export function incrementActionCount(action: string): number {
+export function incrementActionCount(action: string): { newCount: number; allCounts: Record<string, number> } {
   if (!db) {
     initDatabase()
   }
@@ -678,7 +681,7 @@ export function incrementActionCount(action: string): number {
     UPDATE user_profile SET action_counts = ?, updated_at = ? WHERE id = 1
   `).run(JSON.stringify(counts), now)
 
-  return counts[action]
+  return { newCount: counts[action], allCounts: counts }
 }
 
 /**

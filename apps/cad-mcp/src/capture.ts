@@ -376,6 +376,8 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           await new Promise(done => setTimeout(done, checkInterval));
           elapsed += checkInterval;
 
+          // NOTE: Pixel sampling logic is duplicated in WebSocket path below.
+          // Cannot extract to shared helper because page.evaluate() runs in browser context.
           const result = await page.evaluate(() => {
             try {
               const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
@@ -593,7 +595,10 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
             overlay.style.display = 'none';
             return selector;
           }
-        } catch { /* ignore invalid selector */ }
+        } catch {
+          // Intentionally ignored: querySelector with dynamic selector may fail
+          // on malformed patterns - we try multiple selectors as fallback
+        }
       }
       // Fallback: find by text content
       const allDivs = document.querySelectorAll('div');

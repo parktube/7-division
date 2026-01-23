@@ -93,9 +93,13 @@ async function main() {
     }
   }
 
-  for (const issue of issues) {
-    const prefix = criticalIssues.includes(issue) ? '❌ [CRITICAL]' : '⚠️  [WARNING]';
-    console.error(`  ${prefix} ${issue.module}: ${issue.error}`);
+  // Output critical issues first
+  for (const issue of criticalIssues) {
+    console.error(`  ❌ [CRITICAL] ${issue.module}: ${issue.error}`);
+  }
+  // Then non-critical issues
+  for (const issue of nonCriticalIssues) {
+    console.error(`  ⚠️  [WARNING] ${issue.module}: ${issue.error}`);
   }
 
   const instructions = PLATFORM_INSTRUCTIONS[os] || PLATFORM_INSTRUCTIONS.linux;

@@ -14,7 +14,6 @@ import {
   getDomainSkillLevel,
   setDomainSkillLevel,
   incrementActionCount,
-  getAllActionCounts,
   type SkillLevel,
 } from './db.js'
 import type { NextStep } from './types/action-hints.js'
@@ -99,18 +98,17 @@ export function trackAction(action: string): {
   levelChange: SkillLevel | null
 } {
   const domain = getActionDomain(action)
-  const newCount = incrementActionCount(action)
+
+  // incrementActionCount now returns allCounts to avoid redundant DB read
+  const { newCount, allCounts } = incrementActionCount(action)
 
   // Get current domain level
   const currentLevel = getDomainSkillLevel(domain)
 
-  // Calculate new level based on total domain actions
-  const counts = getAllActionCounts()
+  // Filter to domain counts (uses allCounts from increment, not separate DB query)
   const domainCounts: Record<string, number> = {}
-
-  for (const [act, count] of Object.entries(counts)) {
-    const actDomain = getActionDomain(act)
-    if (actDomain === domain) {
+  for (const [act, count] of Object.entries(allCounts)) {
+    if (getActionDomain(act) === domain) {
       domainCounts[act] = count
     }
   }
