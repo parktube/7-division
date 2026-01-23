@@ -218,6 +218,7 @@ export function recordEvolution(args: {
   domain?: string
   learningId?: string
   userId?: string
+  detectedAt?: number
 }): number {
   const userId = args.userId || DEFAULT_USER_ID
 
@@ -237,6 +238,7 @@ export function recordEvolution(args: {
     after_term: args.afterTerm,
     domain: args.domain,
     learning_id: learningId,
+    detected_at: args.detectedAt,
   })
 
   logger.info(`Terminology evolution: ${args.beforeTerm} → ${args.afterTerm}`)
@@ -277,6 +279,9 @@ export function detectEvolution(
   const learning = getLearning(userId, matchingSpecific.term)
   const learningId = learning?.id ?? null
 
+  // Use single timestamp for consistency between record and return value
+  const detectedAt = Date.now()
+
   // Record evolution
   const id = recordEvolution({
     beforeTerm: vagueInfo.vagueTerm,
@@ -284,6 +289,7 @@ export function detectEvolution(
     domain: vagueInfo.domain,
     learningId: learningId ?? undefined,
     userId,
+    detectedAt,
   })
 
   return {
@@ -292,7 +298,7 @@ export function detectEvolution(
     afterTerm: matchingSpecific.term,
     domain: vagueInfo.domain,
     learningId,
-    detectedAt: Date.now(),
+    detectedAt,
   }
 }
 

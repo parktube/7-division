@@ -185,13 +185,13 @@ function woodLatticeWall(name, x0, x1, y, z0, height, opts) {
 
   if (opts.frameT !== undefined || opts.outerT !== undefined || opts.capDepth !== undefined) {
     builder.setFrameThickness(
-      opts.frameT || 4,
-      opts.outerT || 10,
-      opts.capDepth || 10
+      opts.frameT ?? 4,
+      opts.outerT ?? 10,
+      opts.capDepth ?? 10
     );
   }
   if (opts.cols !== undefined || opts.rows !== undefined) {
-    builder.setGrid(opts.cols || 8, opts.rows || 16);
+    builder.setGrid(opts.cols ?? 8, opts.rows ?? 16);
   }
   if (opts.color) {
     builder.setColor(opts.color);

@@ -10,6 +10,7 @@
 
 import { promises as fs } from 'fs'
 import { join } from 'path'
+import { init as initLexer, parse as parseEsm } from 'es-module-lexer'
 import { logger } from '../logger.js'
 import {
   getAllModules,
@@ -20,6 +21,14 @@ import {
 } from './db.js'
 import { generateEmbedding, cosineSimilarity } from './embeddings.js'
 import { CAD_DATA_DIR } from './config.js'
+
+// Initialize es-module-lexer eagerly at module load
+let lexerReady = false
+initLexer.then(() => {
+  lexerReady = true
+}).catch(() => {
+  // Ignore init failure - will fall back to regex
+})
 
 // ============================================================
 // Types
@@ -74,6 +83,22 @@ function parseTagsSafe(tagsJson: string | null): string[] {
     return []
   } catch {
     return []
+  }
+}
+
+// ============================================================
+// Import Parser Helper
+// ============================================================
+
+/**
+ * Parse imports using regex (fallback for when es-module-lexer isn't ready or fails)
+ * Matches: import 'module', import { x } from 'module', import * as x from 'module', import x from 'module'
+ * LIMITATION: May match import-like strings in comments or string literals
+ */
+function parseImportsWithRegex(content: string, imports: string[]): void {
+  const importMatches = content.matchAll(/import\s+(?:\w+\s+from\s+|\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
+  for (const match of importMatches) {
+    imports.push(match[1])
   }
 }
 
@@ -139,15 +164,24 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
     result.example = exampleMatch[1].replace(/^\s*\*\s*/gm, '').trim()
   }
 
-  // Parse imports (consistent with trackImportsFromCode pattern)
-  // Matches: import 'module', import { x } from 'module', import * as x from 'module', import x from 'module'
-  // LIMITATION: May match import-like strings in comments or string literals
-  // For production use, consider es-module-lexer for precise parsing
-  const importMatches = content.matchAll(/import\s+(?:\w+\s+from\s+|\{[^}]*\}\s+from\s+|\*\s+as\s+\w+\s+from\s+)?['"]([^'"]+)['"]/g)
-  for (const match of importMatches) {
-    if (result.imports) {
-      result.imports.push(match[1])
+  // Parse imports using es-module-lexer for accurate AST-based parsing
+  // This avoids false positives from import-like strings in comments/literals
+  if (lexerReady) {
+    try {
+      const [imports] = parseEsm(content)
+      for (const imp of imports) {
+        // imp.n is the module specifier (may be undefined for dynamic imports)
+        if (imp.n && result.imports) {
+          result.imports.push(imp.n)
+        }
+      }
+    } catch {
+      // Fallback to regex for non-standard JS (e.g., CAD sandbox code with bare imports)
+      parseImportsWithRegex(content, result.imports ?? [])
     }
+  } else {
+    // Lexer not ready yet, use regex fallback
+    parseImportsWithRegex(content, result.imports ?? [])
   }
 
   return result
@@ -289,13 +323,20 @@ export async function recommendModules(
   // Score each module
   const scored: ModuleRecommendation[] = []
 
+  // Track embedding failures for threshold-based logging
+  let embeddingFailures = 0
+  const FAILURE_LOG_THRESHOLD = 3
+
   // TODO: 모듈 저장 시 임베딩 미리 계산하여 DB 캐싱 (확장성 개선)
   for (const module of modules) {
     // Generate module embedding from description + tags
     const moduleText = buildModuleText(module)
     const moduleEmbedding = await generateEmbedding(moduleText)
 
-    if (!moduleEmbedding) continue
+    if (!moduleEmbedding) {
+      embeddingFailures++
+      continue
+    }
 
     // Calculate component scores
     const semanticScore = cosineSimilarity(queryEmbedding, moduleEmbedding)
@@ -322,6 +363,11 @@ export async function recommendModules(
         example: module.example
       })
     }
+  }
+
+  // Log if many embeddings failed (indicates potential embedding service issues)
+  if (embeddingFailures >= FAILURE_LOG_THRESHOLD) {
+    logger.warn(`Module embedding failures: ${embeddingFailures}/${modules.length} modules skipped`)
   }
 
   // Sort by score descending

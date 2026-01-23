@@ -1152,12 +1152,13 @@ export function recordTerminologyEvolution(evolution: {
   after_term: string
   domain?: string
   learning_id?: string
+  detected_at?: number
 }): number {
   if (!db) {
     initDatabase()
   }
 
-  const now = Date.now()
+  const timestamp = evolution.detected_at ?? Date.now()
 
   const result = getDatabase().prepare(`
     INSERT INTO terminology_evolution (user_id, before_term, after_term, domain, learning_id, detected_at)
@@ -1168,7 +1169,7 @@ export function recordTerminologyEvolution(evolution: {
     evolution.after_term,
     evolution.domain || null,
     evolution.learning_id || null,
-    now
+    timestamp
   )
 
   logger.info(`Terminology evolution recorded: ${evolution.before_term} → ${evolution.after_term}`)

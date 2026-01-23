@@ -924,7 +924,7 @@ export async function handleMamaGrowthReport(args: GrowthReportArgs): Promise<To
   try {
     await initMAMA()
 
-    const periodDays = args.period_days || 30
+    const periodDays = args.period_days ?? 30
     const summary: GrowthSummary = getGrowthSummary(periodDays, 'manual')
     const report = formatGrowthReport(summary)
 

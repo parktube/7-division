@@ -92,6 +92,12 @@ class TVCabinetBuilder {
   }
 
   build() {
+    // Validate numeric inputs
+    const numericFields = [this.wx, this.wy, this.wz, this.w, this.d, this.h];
+    if (!numericFields.every(v => Number.isFinite(v))) {
+      throw new Error('TVCabinetBuilder: position and size must be finite numbers');
+    }
+
     const name = this.name;
     const frameT = this.drawFrame();
     this.drawDrawers(frameT);

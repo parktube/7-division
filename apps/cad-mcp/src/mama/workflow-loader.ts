@@ -106,26 +106,28 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (!data || typeof data !== 'object') return false
   const obj = data as Record<string, unknown>
 
-  // Check required top-level keys
-  if (!('cad_dimensions' in obj) || !('isometric_shading' in obj) || !('z_order' in obj)) {
+  // Check required top-level keys (furniture_sizes is at top level per interface)
+  if (!('cad_dimensions' in obj) || !('isometric_shading' in obj) || !('z_order' in obj) || !('furniture_sizes' in obj)) {
     return false
   }
 
-  // Validate nested structure to prevent runtime errors
+  // Validate cad_dimensions: space_sizes and mezzanine_ratios (per CADDimensions interface)
   const cad = obj.cad_dimensions
   if (!cad || typeof cad !== 'object') return false
   const cadObj = cad as Record<string, unknown>
-  if (!('space_sizes' in cadObj) || !('furniture_sizes' in cadObj)) return false
+  if (!('space_sizes' in cadObj) || !('mezzanine_ratios' in cadObj)) return false
 
+  // Validate isometric_shading: examples (per IsometricShading interface)
   const shading = obj.isometric_shading
   if (!shading || typeof shading !== 'object') return false
   const shadingObj = shading as Record<string, unknown>
-  if (!('light_direction' in shadingObj) || !('face_brightness' in shadingObj)) return false
+  if (!('examples' in shadingObj)) return false
 
+  // Validate z_order: standard_order and mezzanine_order (per DesignHintsData interface)
   const zOrder = obj.z_order
   if (!zOrder || typeof zOrder !== 'object') return false
   const zOrderObj = zOrder as Record<string, unknown>
-  if (!('layering_rules' in zOrderObj)) return false
+  if (!('standard_order' in zOrderObj) || !('mezzanine_order' in zOrderObj)) return false
 
   return true
 }

@@ -411,8 +411,9 @@ describe('Builtin Knowledge', () => {
     it('should return empty array for no query', () => {
       const results = searchBuiltinKnowledge(undefined);
 
-      // No query returns all (up to limit)
+      // No query returns all (up to default limit of 10)
       expect(Array.isArray(results)).toBe(true);
+      expect(results.length).toBeLessThanOrEqual(10);
     });
 
     it('should find decisions by keyword', () => {

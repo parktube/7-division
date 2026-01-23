@@ -142,6 +142,13 @@ export class CADOrchestrator {
   async handleInitialize(): Promise<SessionInitResult | null> {
     try {
       await this.init()
+
+      // Check if init failed (e.g., due to cooldown or persistent error)
+      if (this.initFailed) {
+        logger.warn('handleInitialize: init failed, returning null')
+        return null
+      }
+
       this.sessionContext = await hookRegistry.onSessionInit()
       logger.info(
         `Initialize: mode=${this.sessionContext.contextMode}, decisions=${this.sessionContext.recentDecisions.length}`
@@ -248,6 +255,7 @@ export class CADOrchestrator {
   reset(): void {
     this.initialized = false
     this.initFailed = false
+    this.lastInitAttempt = 0
     this.sessionContext = null
   }
 }
