@@ -253,7 +253,7 @@ export async function handleMamaSave(args: SaveArgs): Promise<ToolResponse> {
         },
       }
     } else {
-      return { success: false, error: "type must be 'decision', 'checkpoint', 'learning', 'understood', or 'applied'" }
+      return { success: false, error: 'type must be \'decision\', \'checkpoint\', \'learning\', \'understood\', or \'applied\'' }
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
@@ -308,7 +308,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
     // Search user decisions
     const userResults = await searchDecisions({
       query: args.query,
-      limit: args.limit || 10,
+      limit: args.limit ?? 10,
       type: args.type || 'all',
       domain: args.domain,
       group_by_topic: args.group_by_topic,
@@ -320,7 +320,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
     const builtinResults: BuiltinDecision[] = args.outcome_filter
       ? []
       : searchBuiltinKnowledge(args.query, {
-          limit: args.limit || 10,
+          limit: args.limit ?? 10,
           domain: args.domain,
         })
 
@@ -384,7 +384,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
     const allResults = [...formattedUserResults, ...mergedBuiltin]
 
     // Apply limit if needed
-    const limit = args.limit || 10
+    const limit = args.limit ?? 10
     const limitedResults = allResults.slice(0, limit)
 
     logger.info(
@@ -434,7 +434,7 @@ export async function handleMamaUpdate(args: UpdateArgs): Promise<ToolResponse> 
     if (!validOutcomes.includes(normalizedOutcome as typeof validOutcomes[number])) {
       return {
         success: false,
-        error: "outcome must be 'SUCCESS', 'FAILED', or 'PARTIAL'",
+        error: 'outcome must be \'SUCCESS\', \'FAILED\', or \'PARTIAL\'',
       }
     }
 
@@ -572,7 +572,7 @@ export async function handleMamaConfigure(args: ConfigureArgs): Promise<ToolResp
         if (!['none', 'hint', 'full'].includes(args.contextInjection)) {
           return {
             success: false,
-            error: "contextInjection must be 'none', 'hint', or 'full'",
+            error: 'contextInjection must be \'none\', \'hint\', or \'full\'',
           }
         }
         updates.contextInjection = args.contextInjection

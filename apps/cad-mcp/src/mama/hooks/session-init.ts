@@ -315,7 +315,6 @@ function getOutcomeIcon(outcome: string | null): string {
   }
 }
 
-
 /**
  * Truncate string with ellipsis
  */

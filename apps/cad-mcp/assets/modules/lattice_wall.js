@@ -88,6 +88,15 @@ class WoodLatticeWallBuilder {
 
   build() {
     const name = this.name;
+
+    // Validate numeric inputs - abort with empty group if invalid
+    if (!Number.isFinite(this.x0) || !Number.isFinite(this.x1) ||
+        !Number.isFinite(this.y) || !Number.isFinite(this.z0) ||
+        !Number.isFinite(this.height)) {
+      createGroup(name, []);
+      return this;
+    }
+
     let x0 = this.x0;
     let x1 = this.x1;
     const y = this.y;

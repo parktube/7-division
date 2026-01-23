@@ -233,6 +233,7 @@ export class CADOrchestrator {
    */
   reset(): void {
     this.initialized = false
+    this.initFailed = false
     this.sessionContext = null
   }
 }

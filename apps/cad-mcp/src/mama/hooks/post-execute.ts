@@ -21,14 +21,14 @@ import { trackImportsFromCode } from '../module-recommender.js'
 // Entity Name Extraction
 // ============================================================
 
-/** Pattern to extract entity names from CAD code */
-const ENTITY_NAME_PATTERNS = [
+/** Pattern sources to extract entity names from CAD code (without /g flag to create fresh instances) */
+const ENTITY_NAME_PATTERN_SOURCES = [
   // Named entities: name: 'entity_name' or name: "entity_name"
-  /name:\s*['"]([^'"]+)['"]/g,
+  { source: 'name:\\s*[\'"]([^\'"]+)[\'"]', flags: 'g' },
   // Group names: group('name', ...)
-  /group\s*\(\s*['"]([^'"]+)['"]/g,
+  { source: 'group\\s*\\(\\s*[\'"]([^\'"]+)[\'"]', flags: 'g' },
   // Variable assignments that look like entity names
-  /const\s+(\w+)\s*=\s*(?:draw|create|make)/g,
+  { source: 'const\\s+(\\w+)\\s*=\\s*(?:draw|create|make)', flags: 'g' },
 ]
 
 /** Pattern to extract CAD function calls for domain detection (without /g flag to avoid shared state) */
@@ -40,9 +40,9 @@ const CAD_FUNCTION_PATTERN_STR = '\\b(drawBox|drawCylinder|drawSphere|drawCircle
 export function extractEntityNames(code: string): string[] {
   const names: string[] = []
 
-  for (const pattern of ENTITY_NAME_PATTERNS) {
-    // Reset lastIndex for global patterns
-    pattern.lastIndex = 0
+  for (const patternDef of ENTITY_NAME_PATTERN_SOURCES) {
+    // Create fresh RegExp instance to avoid shared state issues
+    const pattern = new RegExp(patternDef.source, patternDef.flags)
     let match
     while ((match = pattern.exec(code)) !== null) {
       if (match[1]) {

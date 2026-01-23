@@ -19,11 +19,98 @@ const brightOak = {
 };
 
 // ============================================
-// TV 스탠드 (서랍장)
+// TV 스탠드 (서랍장) - Class-based Builder
 // ============================================
 
+class TVCabinetBuilder {
+  constructor(name) {
+    this.name = name;
+    this.wx = 0;
+    this.wy = 0;
+    this.wz = 0;
+    this.w = 60;
+    this.d = 20;
+    this.h = 25;
+    this.frameColor = brightOak;
+    this.drawerColor = J.white;
+  }
+
+  setPosition(wx, wy, wz) {
+    this.wx = wx;
+    this.wy = wy;
+    this.wz = wz;
+    return this;
+  }
+
+  setSize(w, d, h) {
+    this.w = w;
+    this.d = d;
+    this.h = h;
+    return this;
+  }
+
+  setFrameColor(color) {
+    this.frameColor = color;
+    return this;
+  }
+
+  setDrawerColor(color) {
+    this.drawerColor = color;
+    return this;
+  }
+
+  drawFrame() {
+    const name = this.name;
+    const { wx, wy, wz, w, d, h, frameColor } = this;
+    const frameT = 3;
+
+    // z-order: base(바닥) 먼저 → right(뒤) → top → left(앞)
+    box(name+'_base', wx, wy, wz, w, d, frameT, frameColor);
+    box(name+'_right', wx + w/2 - frameT/2, wy, wz + frameT, frameT, d, h - frameT*2, frameColor);
+    box(name+'_top', wx, wy, wz + h - frameT, w, d, frameT, frameColor);
+    box(name+'_left', wx - w/2 + frameT/2, wy, wz + frameT, frameT, d, h - frameT*2, frameColor);
+
+    return frameT;
+  }
+
+  drawDrawers(frameT) {
+    const name = this.name;
+    const { wx, wy, wz, w, d, h, drawerColor } = this;
+    const drawerGap = 3;
+
+    const drawerW = (w - frameT*2 - drawerGap*3) / 2;
+    const drawerH = h - frameT*2 - 4;
+    const drawerD = 2;
+
+    const drawerY = wy - d/2 + drawerD/2;
+
+    const leftX = wx - drawerW/2 - drawerGap/2;
+    box(name+'_drawer1', leftX, drawerY, wz + frameT + 2, drawerW, drawerD, drawerH, drawerColor);
+
+    const rightX = wx + drawerW/2 + drawerGap/2;
+    box(name+'_drawer2', rightX, drawerY, wz + frameT + 2, drawerW, drawerD, drawerH, drawerColor);
+  }
+
+  build() {
+    const name = this.name;
+    const frameT = this.drawFrame();
+    this.drawDrawers(frameT);
+
+    createGroup(name, [
+      name+'_drawer1', name+'_drawer2',
+      name+'_base', name+'_top', name+'_left', name+'_right'
+    ]);
+
+    return this;
+  }
+
+  getName() {
+    return this.name;
+  }
+}
+
 /**
- * TV 서랍장
+ * TV 서랍장 (레거시 함수 - 하위 호환)
  * @param {string} name - 이름
  * @param {number} wx, wy, wz - 중심 좌표
  * @param {number} w - 너비 (기본 60)
@@ -33,45 +120,14 @@ const brightOak = {
  * @param {object} drawerColor - 서랍 색상
  */
 function tvCabinet(name, wx, wy, wz, w, d, h, frameColor, drawerColor) {
-  w = w || 60;
-  d = d || 20;
-  h = h || 25;
-  frameColor = frameColor || brightOak;
-  drawerColor = drawerColor || J.white;
-  
-  const frameT = 3;  // 프레임 두께
-  const drawerGap = 3;  // 서랍 간 간격
-  
-  // 1. 프레임 (외곽) - z-order: base(바닥) 먼저 → right(뒤) → top → left(앞)
-  // 하단 (바닥 - 가장 먼저)
-  box(name+'_base', wx, wy, wz, w, d, frameT, frameColor);
-  // 우측 (X+ 방향, 뒤쪽)
-  box(name+'_right', wx + w/2 - frameT/2, wy, wz + frameT, frameT, d, h - frameT*2, frameColor);
-  // 상단
-  box(name+'_top', wx, wy, wz + h - frameT, w, d, frameT, frameColor);
-  // 좌측 (X- 방향, 앞쪽) - 마지막
-  box(name+'_left', wx - w/2 + frameT/2, wy, wz + frameT, frameT, d, h - frameT*2, frameColor);
-  
-  // 2. 서랍 2개 (나중에 그려서 앞에 배치 - Y좌표가 가장 낮으므로 isometric에서 맨 앞)
-  const drawerW = (w - frameT*2 - drawerGap*3) / 2;
-  const drawerH = h - frameT*2 - 4;
-  const drawerD = 2;  // 얇은 서랍문
-  
-  // 서랍 Y 위치: 프레임 앞면에 맞춤
-  const drawerY = wy - d/2 + drawerD/2;
-  
-  // 왼쪽 서랍
-  const leftX = wx - drawerW/2 - drawerGap/2;
-  box(name+'_drawer1', leftX, drawerY, wz + frameT + 2, drawerW, drawerD, drawerH, drawerColor);
-  
-  // 오른쪽 서랍
-  const rightX = wx + drawerW/2 + drawerGap/2;
-  box(name+'_drawer2', rightX, drawerY, wz + frameT + 2, drawerW, drawerD, drawerH, drawerColor);
-  
-  createGroup(name, [
-    name+'_drawer1', name+'_drawer2',
-    name+'_base', name+'_top', name+'_left', name+'_right'
-  ]);
+  const builder = new TVCabinetBuilder(name)
+    .setPosition(wx, wy, wz)
+    .setSize(w || 60, d || 20, h || 25);
+
+  if (frameColor) builder.setFrameColor(frameColor);
+  if (drawerColor) builder.setDrawerColor(drawerColor);
+
+  builder.build();
 }
 
 // ============================================

@@ -414,7 +414,7 @@ export function handleArtifact(input: WorkflowInput): WorkflowResult {
     success: true,
     data: {
       artifact_type: input.artifact_type,
-      content: artifacts[0].content || undefined,
+      content: artifacts[0].content ?? undefined,
       created_at: artifacts[0].created_at,
     },
   }

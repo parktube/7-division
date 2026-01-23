@@ -36,15 +36,21 @@ const SKETCH_FILE = join(homedir(), '.ai-native-cad', 'sketch.json');
  * Read sketch data from ~/.ai-native-cad/sketch.json
  * Handles both { strokes: [...] } and [...] array formats
  */
-async function readSketchData(): Promise<unknown | null> {
+async function readSketchData(): Promise<unknown[] | null> {
   try {
     const data = await fs.readFile(SKETCH_FILE, 'utf-8');
     const parsed = JSON.parse(data);
-    // Handle both object format { strokes: [...] } and direct array format [...]
+    // Handle direct array format [...]
     if (Array.isArray(parsed)) {
       return parsed;
     }
-    return parsed.strokes || [];
+    // Handle object format { strokes: [...] } - validate strokes is an array
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.strokes)) {
+      return parsed.strokes;
+    }
+    // Invalid format
+    logger.warn('Invalid sketch data format', { file: SKETCH_FILE, type: typeof parsed });
+    return null;
   } catch (error) {
     // Silently ignore ENOENT (file not found) - expected when no sketch exists
     if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
@@ -185,10 +191,12 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
   } = options;
 
   // Check if Puppeteer is preferred via environment variable
-  const preferPuppeteer = process.env.CAD_CAPTURE_METHOD === 'puppeteer';
+  // forceMethod takes precedence over env var
+  const preferPuppeteer = forceMethod === 'puppeteer' ||
+    (forceMethod !== 'electron' && process.env.CAD_CAPTURE_METHOD === 'puppeteer');
 
   // On Windows/Mac, try Electron capture first (unless Puppeteer is preferred)
-  if (!preferPuppeteer && forceMethod !== 'puppeteer' && (process.platform === 'win32' || process.platform === 'darwin')) {
+  if (!preferPuppeteer && (process.platform === 'win32' || process.platform === 'darwin')) {
     logger.debug('Trying Electron capture');
     const electronResult = await tryElectronCapture(outputPath);
     if (electronResult?.success) {
@@ -324,15 +332,19 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
           const win = window as WindowWithInject;
           const stateBefore = win.__getConnectionState?.() || 'no-func';
           if (win.__injectScene) {
-            // sceneJson이 문자열이면 파싱 (exportScene()은 string 반환)
-            const scene = typeof sceneJson === 'string' ? JSON.parse(sceneJson) : sceneJson;
-            win.__injectScene(scene);
-            const stateAfter = win.__getConnectionState?.() || 'no-func';
-            return {
-              injected: true,
-              stateBefore,
-              stateAfter
-            };
+            try {
+              // sceneJson이 문자열이면 파싱 (exportScene()은 string 반환)
+              const scene = typeof sceneJson === 'string' ? JSON.parse(sceneJson) : sceneJson;
+              win.__injectScene(scene);
+              const stateAfter = win.__getConnectionState?.() || 'no-func';
+              return {
+                injected: true,
+                stateBefore,
+                stateAfter
+              };
+            } catch (parseError) {
+              return { injected: false, stateBefore, stateAfter: 'parse-error', error: String(parseError) };
+            }
           }
           return { injected: false, stateBefore, stateAfter: 'n/a' };
         }, options.sceneData);
@@ -495,8 +507,21 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     }
 
     // Inject sketch data if provided or read from file (common for both paths)
-    const sketchData = options.sketchData ?? await readSketchData();
-    if (sketchData && Array.isArray(sketchData) && sketchData.length > 0) {
+    // Normalize sketchData: accept both array and { strokes: [...] } formats
+    let sketchData: unknown[] | null = null;
+    if (options.sketchData) {
+      if (Array.isArray(options.sketchData)) {
+        sketchData = options.sketchData;
+      } else if (options.sketchData && typeof options.sketchData === 'object' &&
+                 'strokes' in options.sketchData && Array.isArray((options.sketchData as { strokes: unknown[] }).strokes)) {
+        sketchData = (options.sketchData as { strokes: unknown[] }).strokes;
+      } else {
+        logger.warn('Invalid sketchData format, skipping injection', { type: typeof options.sketchData });
+      }
+    } else {
+      sketchData = await readSketchData();
+    }
+    if (sketchData && sketchData.length > 0) {
       logger.debug('Injecting sketch data', { strokeCount: sketchData.length });
 
       let sketchInjected = false;

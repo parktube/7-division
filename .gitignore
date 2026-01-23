@@ -60,6 +60,7 @@ cad-engine/*.svg
 
 # MCP config
 .mcp.json
+*.bak
 
 # macOS
 .DS_Store
