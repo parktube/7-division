@@ -324,7 +324,15 @@ function escapeRegex(str: string): string {
 export function findRelatedLearning(userMessage: string): LearningRow | null {
   const learnings = getUserLearnings(DEFAULT_USER_ID)
 
+  // Max concept length to prevent ReDoS with very long strings
+  const MAX_CONCEPT_LENGTH = 100
+
   for (const learning of learnings) {
+    // Skip concepts that are too long (potential ReDoS risk)
+    if (learning.concept.length > MAX_CONCEPT_LENGTH) {
+      continue
+    }
+
     // Use word boundary regex for accurate matching
     const escapedConcept = escapeRegex(learning.concept)
     const pattern = new RegExp(`\\b${escapedConcept}\\b`, 'i')

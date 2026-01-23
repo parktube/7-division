@@ -439,8 +439,10 @@ export async function searchDecisions(params: SearchParams): Promise<DecisionRes
   const filterParams: unknown[] = []
 
   if (domain) {
-    filterConditions.push('topic LIKE ?')
-    filterParams.push(`${domain.toLowerCase()}:%`)
+    // Escape LIKE wildcards (%, _) in domain to prevent unintended matching
+    const escapedDomain = domain.toLowerCase().replace(/[%_]/g, '\\$&')
+    filterConditions.push('topic LIKE ? ESCAPE \'\\\'')
+    filterParams.push(`${escapedDomain}:%`)
   }
 
   if (outcome_filter) {

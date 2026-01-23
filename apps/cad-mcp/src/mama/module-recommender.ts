@@ -31,7 +31,8 @@ export interface ModuleMetadata {
   tags: string[]
   example: string | null
   imports: string[]
-  exports: string[]
+  // Note: exports field removed - was parsing but never used,
+  // and mixed internal symbols with actual exports
 }
 
 export interface ModuleRecommendation {
@@ -94,7 +95,6 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
   const result: Partial<ModuleMetadata> = {
     tags: [],
     imports: [],
-    exports: []
   }
 
   // Extract JSDoc block (first /** ... */)
@@ -146,32 +146,6 @@ export function parseModuleJSDoc(content: string): Partial<ModuleMetadata> {
     if (result.imports) {
       result.imports.push(match[1])
     }
-  }
-
-  // Parse exports (function names, const/let/var declarations, classes)
-  // This regex-based approach captures common patterns; AST would be more robust
-  const exportPatterns = [
-    /function\s+(\w+)\s*\(/g,                           // function name(
-    /(?:const|let|var)\s+(\w+)\s*=/g,                   // const/let/var name =
-    /class\s+(\w+)/g,                                    // class Name
-    /export\s+function\s+(\w+)/g,                        // export function name
-    /export\s+(?:const|let|var)\s+(\w+)/g,              // export const name
-    /export\s+class\s+(\w+)/g,                           // export class Name
-    /export\s+default\s+(?:function\s+)?(\w+)/g,         // export default name
-  ]
-
-  const exportedNames = new Set<string>()
-  for (const pattern of exportPatterns) {
-    const matches = content.matchAll(pattern)
-    for (const match of matches) {
-      if (match[1]) {
-        exportedNames.add(match[1])
-      }
-    }
-  }
-
-  if (result.exports) {
-    result.exports.push(...exportedNames)
   }
 
   return result
