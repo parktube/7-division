@@ -30,6 +30,7 @@
     "build": "tsc",
     "build:wasm": "wasm-pack build ../../cad-engine --target nodejs --release && mkdir -p wasm && cp -r ../../cad-engine/pkg/* wasm/",
     "prepublishOnly": "npm run build:wasm && npm run build",
+    "postinstall": "node scripts/postinstall.js || true",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src --ext .ts,.tsx",
@@ -40,7 +41,8 @@
   "files": [
     "dist",
     "wasm",
-    "assets"
+    "assets",
+    "scripts"
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
