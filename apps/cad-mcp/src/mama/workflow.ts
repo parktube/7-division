@@ -244,16 +244,28 @@ export function handleNext(input: WorkflowInput): WorkflowResult {
   const nextPhase = PHASE_ORDER[currentIndex + 1]
 
   // Save artifact if content provided (allow empty string)
+  // Uses upsert pattern: update existing artifact or create new one
   let savedArtifact: string | undefined
   if (input.content !== undefined) {
     const artifactType = PHASE_ARTIFACTS[currentPhase]
     if (artifactType) {
-      addProjectArtifact({
-        project_id: project.id,
+      // Check for existing artifact to avoid duplicates
+      const existing = getProjectArtifacts(project.id, {
         phase: currentPhase,
         artifact_type: artifactType,
-        content: input.content,
       })
+      if (existing.length > 0) {
+        // Update existing artifact
+        updateArtifactContent(existing[0].id, input.content)
+      } else {
+        // Create new artifact
+        addProjectArtifact({
+          project_id: project.id,
+          phase: currentPhase,
+          artifact_type: artifactType,
+          content: input.content,
+        })
+      }
       savedArtifact = artifactType
     }
   }
