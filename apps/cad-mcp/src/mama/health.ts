@@ -37,7 +37,8 @@ export interface GraphHealth {
   }
   orphanCount: number
   orphanRatio: number
-  staleDecisions: Array<{
+  totalStaleCount: number  // Total count of stale decisions
+  staleDecisions: Array<{  // Sample (up to 10) for display
     id: string
     topic: string
     created_at: number
@@ -81,6 +82,7 @@ export function calculateGraphHealth(): GraphHealth {
       edgeTypeRatios: { supersedes: 0, builds_on: 0, debates: 0, synthesizes: 0 },
       orphanCount: 0,
       orphanRatio: 0,
+      totalStaleCount: 0,
       staleDecisions: [],
       warnings: [],
       healthScore: 100,
@@ -187,6 +189,7 @@ export function calculateGraphHealth(): GraphHealth {
     edgeTypeRatios: ratios,
     orphanCount,
     orphanRatio,
+    totalStaleCount,
     staleDecisions: staleWithAge,
     warnings,
     healthScore,
@@ -265,13 +268,13 @@ export function formatHealthReport(health: GraphHealth): string {
   }
 
   // Stale decisions
-  if (health.staleDecisions.length > 0) {
+  if (health.totalStaleCount > 0) {
     lines.push('**⏰ Stale Decisions (90+ days):**')
     for (const d of health.staleDecisions.slice(0, 5)) {
       lines.push(`├── ${d.topic} (${d.age_days}d old)`)
     }
-    if (health.staleDecisions.length > 5) {
-      lines.push(`└── ... and ${health.staleDecisions.length - 5} more`)
+    if (health.totalStaleCount > 5) {
+      lines.push(`└── ... and ${health.totalStaleCount - 5} more`)
     }
     lines.push('')
   }

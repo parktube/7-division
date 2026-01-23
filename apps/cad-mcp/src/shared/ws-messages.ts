@@ -101,6 +101,10 @@ export const SelectionUpdateDataSchema = z.object({
 });
 
 // Client → Server: Sketch update from viewer
+// NOTE: Sketch strokes use hex color (#RRGGBB) instead of RGBA tuple because:
+// 1. Sketch is a separate feature (user annotations) from CAD entity styles
+// 2. Viewer's sketch UI uses HTML color picker which returns hex format
+// 3. Simpler for human-readable sketch data export
 export const PointSchema = z.object({
   x: z.number(),
   y: z.number(),

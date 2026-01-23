@@ -169,20 +169,38 @@ describe('Dual-source 모듈 시스템', () => {
     });
 
     it('should prefer user module over builtin with same name', () => {
-      // 테스트를 위해 builtin과 같은 이름의 user 모듈이 있다고 가정
-      // 실제로는 crossy_lib와 같은 이름으로 user 모듈을 만들면 user가 우선됨
-      const testSameName = 'crossy_lib_override_test';
+      // Create user module with same name as actual builtin (crossy_lib)
+      // This tests the real collision scenario where user module shadows builtin
+      const builtinName = 'crossy_lib';
+      const userPath = resolve(MODULES_DIR, `${builtinName}.js`);
 
-      // 이 테스트는 resolveFile 함수의 동작을 검증
-      const userPath = resolve(MODULES_DIR, `${testSameName}.js`);
-      writeFileSync(userPath, 'user version', 'utf-8');
+      // Verify builtin exists first
+      const beforeResolve = resolveFile(builtinName);
+      const wasBuiltin = beforeResolve.source === 'builtin' && beforeResolve.exists;
 
-      const resolved = resolveFile(testSameName);
-      expect(resolved.source).toBe('user');
-      expect(resolved.exists).toBe(true);
+      // Create user version to shadow the builtin
+      writeFileSync(userPath, '// user override of crossy_lib', 'utf-8');
 
-      // Cleanup
-      rmSync(userPath);
+      try {
+        const resolved = resolveFile(builtinName);
+        expect(resolved.source).toBe('user');
+        expect(resolved.exists).toBe(true);
+
+        // Read should also return user version
+        const readResult = handleRead({ file: builtinName });
+        expect(readResult.success).toBe(true);
+        expect(readResult.data.source).toBe('user');
+        expect(readResult.data.content).toContain('user override');
+      } finally {
+        // Always cleanup to restore builtin access
+        rmSync(userPath);
+
+        // Verify builtin is accessible again after cleanup
+        if (wasBuiltin) {
+          const afterResolve = resolveFile(builtinName);
+          expect(afterResolve.source).toBe('builtin');
+        }
+      }
     });
   });
 

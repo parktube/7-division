@@ -158,6 +158,11 @@ export function buildTopic(domain: string, entity: string, aspect: string): stri
     return null
   }
 
+  // Validate each component starts with a letter (matches SIMPLE_TOPIC_PATTERN)
+  if (!/^[a-z]/.test(d) || !/^[a-z]/.test(e) || !/^[a-z]/.test(a)) {
+    return null
+  }
+
   return `${d}:${e}:${a}`
 }
 
