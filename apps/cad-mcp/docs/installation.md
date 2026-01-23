@@ -105,6 +105,7 @@ npm link
 
 > **Windows Git Bash 사용자**: pnpm과 Git Bash 호환성 문제로 빌드가 실패할 수 있습니다.
 > 이 경우 PowerShell 또는 cmd.exe를 사용하거나, `cmd //c "pnpm build"`로 실행하세요.
+> (참고: `//c`는 Git Bash의 POSIX 경로 변환을 방지하기 위한 형식입니다. 일반 cmd.exe에서는 `cmd /c "pnpm build"`를 사용하세요.)
 
 ### 로컬 설치 (프로젝트별)
 
@@ -205,21 +206,27 @@ PORT=3002 ai-native-cad-mcp start
 
 | Scope | 저장 위치 | 공유 | 용도 |
 |-------|-----------|------|------|
-| `local` | `~/.claude.json` (프로젝트별) | 나만 | 실험적 설정 |
-| `project` | `.mcp.json` | 팀 전체 | 팀 도구 공유 |
-| `user` | `~/.claude.json` | 나만 (전체 프로젝트) | 개인 도구 |
+| `local` | `~/.claude.json` (프로젝트 ID로 네임스페이스) | 나만 | 현재 프로젝트 (기본값) |
+| `project` | `.mcp.json` (프로젝트 루트) | 팀 전체 (Git 커밋) | 팀 도구 공유 |
+| `user` | `~/.claude.json` (전역 키) | 나만 | 모든 프로젝트 (전역) |
+
+> **참고**: `local`과 `user`는 모두 `~/.claude.json` 파일을 사용하지만 저장 방식이 다릅니다:
+> - `local`: 프로젝트 경로/ID로 네임스페이스가 구분되어 해당 프로젝트에서만 적용
+> - `user`: 전역 키로 저장되어 모든 프로젝트에서 적용
+>
+> `project` scope는 `.mcp.json` 파일을 프로젝트 루트에 생성하며, Git에 커밋하여 팀과 공유할 수 있습니다.
 
 ### Scope 사용 예시
 
 ```bash
-# 나만 사용 (모든 프로젝트)
+# 현재 프로젝트에서만 (기본값, local scope)
+claude mcp add ai-native-cad -- npx -y @ai-native-cad/mcp start
+
+# 나만 사용 (모든 프로젝트, user scope)
 claude mcp add ai-native-cad -s user -- npx -y @ai-native-cad/mcp start
 
-# 팀 공유 (프로젝트에 .mcp.json 생성)
+# 팀 공유 (프로젝트에 .mcp.json 생성, project scope)
 claude mcp add ai-native-cad -s project -- npx -y @ai-native-cad/mcp start
-
-# 현재 프로젝트에서만 (기본값)
-claude mcp add ai-native-cad -- npx -y @ai-native-cad/mcp start
 ```
 
 ### 우선순위
@@ -256,7 +263,11 @@ lsof -i :3001  # macOS/Linux
 netstat -ano | findstr :3001  # Windows
 
 # 다른 포트로 시작
+# macOS/Linux/PowerShell:
 PORT=3002 npx -y @ai-native-cad/mcp start
+
+# Windows cmd:
+set PORT=3002 && npx -y @ai-native-cad/mcp start
 ```
 
 ### npx 캐시 문제
@@ -294,6 +305,12 @@ npm run build
 | `LOG_LEVEL` | `info` | 로그 레벨 (debug/info/warn/error) |
 
 ```bash
-# 예시: 로컬 뷰어 + 디버그 로그
+# macOS/Linux:
 CAD_VIEWER_URL=http://localhost:5173 LOG_LEVEL=debug ai-native-cad-mcp start
+
+# Windows cmd:
+set CAD_VIEWER_URL=http://localhost:5173 && set LOG_LEVEL=debug && ai-native-cad-mcp start
+
+# Windows PowerShell:
+$env:CAD_VIEWER_URL="http://localhost:5173"; $env:LOG_LEVEL="debug"; ai-native-cad-mcp start
 ```
