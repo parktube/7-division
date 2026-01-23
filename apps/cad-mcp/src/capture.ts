@@ -281,6 +281,21 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
       }
 
       if (injected) {
+        // Wait for onboarding overlay to disappear (React re-render after connectionState change)
+        const maxOnboardingWait = 1000;
+        const onboardingCheckInterval = 100;
+        let onboardingElapsed = 0;
+        while (onboardingElapsed < maxOnboardingWait) {
+          const hasOverlay = await page.evaluate(() => {
+            // Check if onboarding modal overlay exists
+            const overlay = document.querySelector('.fixed.inset-0.z-40');
+            return overlay !== null;
+          });
+          if (!hasOverlay) break;
+          await new Promise(done => setTimeout(done, onboardingCheckInterval));
+          onboardingElapsed += onboardingCheckInterval;
+        }
+
         // Wait for Canvas component to mount and render with frame stability check
         let canvasStable = false;
         const maxWaitTime = waitMs;
