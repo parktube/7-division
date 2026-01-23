@@ -27,11 +27,7 @@ DXF 파일 → dxf 라이브러리 → Entity Mapper → Code Generator → Sand
 
 ### 구현 위치
 
-| 파일 | 역할 |
-|------|------|
-| `apps/cad-mcp/src/tools/import.ts` | [NEW] import_dxf 도구 |
-| `apps/cad-mcp/src/parsers/dxf-parser.ts` | [NEW] DXF → Entity 변환 |
-| `apps/cad-mcp/src/parsers/code-generator.ts` | [NEW] Entity → JS 코드 |
+구현 세부사항은 [Sprint 문서](../sprint-artifacts/dxf-import.md)에서 관리.
 
 ### Entity 매핑 (우선순위별)
 
