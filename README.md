@@ -84,6 +84,8 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 ## Quick Start
 
+> **상세 설치 가이드**: OS별 빌드/설정 방법은 [Installation Guide](docs/installation.md)를 참고하세요.
+
 ### 사용자 (npx로 바로 시작)
 
 ```bash
@@ -345,6 +347,7 @@ GitHub Pages (Viewer)          Local MCP Server
 
 | 문서 | 설명 |
 |------|------|
+| [Installation Guide](docs/installation.md) | OS별 빌드/설정 방법 |
 | [CHANGELOG](CHANGELOG.md) | 버전별 변경사항 |
 | [PRD](docs/prd.md) | 제품 요구사항 정의 |
 | [Architecture](docs/architecture.md) | 기술 아키텍처 설계 |
