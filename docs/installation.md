@@ -291,10 +291,16 @@ CAD_CAPTURE_METHOD=puppeteer
 |------|--------|------|
 | `CAD_VIEWER_URL` | `https://parktube.github.io/7-division/` | Puppeteer 캡처 시 사용할 뷰어 URL |
 | `CAD_CAPTURE_METHOD` | (자동 감지) | 캡처 방식: `puppeteer` 강제 사용 |
+| `CAD_WS_HOST` | `127.0.0.1` | WebSocket 바인딩 호스트. WSL2/LAN 접근 시 `0.0.0.0` 설정 |
 
 **로컬 개발 시:**
 ```bash
 CAD_VIEWER_URL=http://localhost:5173 pnpm --filter @ai-native-cad/mcp start
+```
+
+**WSL2에서 Windows 브라우저 연결 시:**
+```bash
+CAD_WS_HOST=0.0.0.0 pnpm --filter @ai-native-cad/mcp start
 ```
 
 ---

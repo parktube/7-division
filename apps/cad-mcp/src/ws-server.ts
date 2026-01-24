@@ -1,7 +1,8 @@
 /**
  * WebSocket Server for Viewer communication
  *
- * - Binds to 0.0.0.0:3002 (all interfaces for WSL2 support)
+ * - Binds to 127.0.0.1:3002 by default (localhost only for security)
+ * - Set CAD_WS_HOST=0.0.0.0 for WSL2 or LAN access
  * - Auto port discovery: 3002 → 3001 → 3003 (3002 first: Windows often has svchost on 3001)
  * - Broadcasts scene/selection updates to all connected clients
  * - Handles ping/pong heartbeat
@@ -9,8 +10,8 @@
 
 import { WebSocketServer, WebSocket } from 'ws'
 import type { IncomingMessage } from 'http'
-import { readFileSync, existsSync, mkdirSync } from 'fs'
-import { writeFile } from 'fs/promises'
+import { readFileSync } from 'fs'
+import { writeFile, mkdir } from 'fs/promises'
 import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { logger } from './logger.js'
@@ -31,12 +32,13 @@ function getSketchFile(): string {
   return resolve(getStateDir(), 'sketch.json')
 }
 
-function ensureDataDir(): void {
+async function ensureDataDir(): Promise<void> {
   const dataDir = getStateDir()
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true })
-  }
+  await mkdir(dataDir, { recursive: true })
 }
+
+// Host configuration: 127.0.0.1 (default, secure) or 0.0.0.0 (WSL2/LAN, opt-in)
+const WS_HOST = process.env.CAD_WS_HOST === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1'
 
 const DEFAULT_PORT = 3002  // 3002 first: Windows often has svchost on 3001
 const DEFAULT_MAX_PORT = 3003
@@ -81,6 +83,10 @@ export class CADWebSocketServer {
   private readonly startPort: number
   private readonly maxPort: number
 
+  // Write serialization to prevent race conditions (newer state overwritten by older)
+  private selectionWriteChain: Promise<void> = Promise.resolve()
+  private sketchWriteChain: Promise<void> = Promise.resolve()
+
   constructor(options?: CADWebSocketServerOptions) {
     this.startPort = options?.startPort ?? DEFAULT_PORT
     this.maxPort = options?.maxPort ?? DEFAULT_MAX_PORT
@@ -109,9 +115,9 @@ export class CADWebSocketServer {
 
   private tryPort(port: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      // Use 0.0.0.0 to allow WSL2 → Windows browser connections
+      // Default: 127.0.0.1 (secure), opt-in: 0.0.0.0 via CAD_WS_HOST env
       const wss = new WebSocketServer({
-        host: '0.0.0.0',
+        host: WS_HOST,
         port,
       })
 
@@ -231,12 +237,12 @@ export class CADWebSocketServer {
           })
           break
         case 'selection_update':
-          // Fire-and-forget async write (errors handled in method)
-          void this.handleSelectionUpdate(message.data)
+          // Serialized async write (errors handled in method)
+          this.handleSelectionUpdate(message.data)
           break
         case 'sketch_update':
-          // Fire-and-forget async write (errors handled in method)
-          void this.handleSketchUpdate(message.data)
+          // Serialized async write (errors handled in method)
+          this.handleSketchUpdate(message.data)
           break
         default:
           // Client shouldn't send scene_update, selection, etc.
@@ -250,39 +256,45 @@ export class CADWebSocketServer {
   /**
    * Handle selection update from viewer (Client → Server)
    * Saves selection data to ~/.ai-native-cad/selection.json
+   * Serialized to prevent race conditions on rapid updates
    */
-  private async handleSelectionUpdate(data: SelectionUpdateData): Promise<void> {
-    try {
-      ensureDataDir()
-      const selection = {
-        selected_entities: data.selected_entities,
-        locked_entities: data.locked_entities || [],
-        hidden_entities: data.hidden_entities || [],
-        timestamp: Date.now(),
+  private handleSelectionUpdate(data: SelectionUpdateData): void {
+    this.selectionWriteChain = this.selectionWriteChain.then(async () => {
+      try {
+        await ensureDataDir()
+        const selection = {
+          selected_entities: data.selected_entities,
+          locked_entities: data.locked_entities || [],
+          hidden_entities: data.hidden_entities || [],
+          timestamp: Date.now(),
+        }
+        await writeFile(getSelectionFile(), JSON.stringify(selection, null, 2), 'utf-8')
+        logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities?.length || 0} hidden, ${data.locked_entities?.length || 0} locked`)
+      } catch (e) {
+        logger.error(`Failed to save selection: ${e}`)
       }
-      await writeFile(getSelectionFile(), JSON.stringify(selection, null, 2), 'utf-8')
-      logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities?.length || 0} hidden, ${data.locked_entities?.length || 0} locked`)
-    } catch (e) {
-      logger.error(`Failed to save selection: ${e}`)
-    }
+    })
   }
 
   /**
    * Handle sketch update from viewer (Client → Server)
    * Saves sketch data to ~/.ai-native-cad/sketch.json
+   * Serialized to prevent race conditions on rapid updates
    */
-  private async handleSketchUpdate(data: SketchUpdateData): Promise<void> {
-    try {
-      ensureDataDir()
-      const sketch = {
-        strokes: data.strokes,
-        timestamp: Date.now(),
+  private handleSketchUpdate(data: SketchUpdateData): void {
+    this.sketchWriteChain = this.sketchWriteChain.then(async () => {
+      try {
+        await ensureDataDir()
+        const sketch = {
+          strokes: data.strokes,
+          timestamp: Date.now(),
+        }
+        await writeFile(getSketchFile(), JSON.stringify(sketch, null, 2), 'utf-8')
+        logger.debug(`Sketch saved: ${data.strokes.length} strokes`)
+      } catch (e) {
+        logger.error(`Failed to save sketch: ${e}`)
       }
-      await writeFile(getSketchFile(), JSON.stringify(sketch, null, 2), 'utf-8')
-      logger.debug(`Sketch saved: ${data.strokes.length} strokes`)
-    } catch (e) {
-      logger.error(`Failed to save sketch: ${e}`)
-    }
+    })
   }
 
   private sendConnectionMessage(ws: WebSocket): void {
