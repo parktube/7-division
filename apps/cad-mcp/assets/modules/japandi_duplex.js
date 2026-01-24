@@ -58,6 +58,14 @@ const SHADOW_EXPAND = 10;
 const SHELF_HEIGHT = 65;            // 선반 높이 (플랫폼 바닥 기준)
 const FRAME_HEIGHT = 95;            // 프레임 높이 (플랫폼 바닥 기준)
 
+// 거실 가구 배치 상수
+const LIVING = {
+  centerOffsetX: -80,               // 거실 중심 X 오프셋 (룸 중심 기준)
+  tv: { offsetY: 100, shadowOffsetY: 98, shadowW: 85, shadowD: 28, shadowH: 4 },
+  table: { offsetY: 20, shadowOffsetY: 18, shadowW: 65, shadowD: 38, shadowH: 4, w: 60, d: 35, h: 18 },
+  sofa: { offsetY: -40, shadowW: 105, shadowD: 55, shadowH: 4, w: 100, d: 50, h: 38 }
+};
+
 // ============================================
 // JapandiDuplexBuilder Class
 // ============================================
@@ -197,19 +205,19 @@ class JapandiDuplexBuilder {
     // ==========================================
     // 6. 거실 가구
     // ==========================================
-    const livingCX = wx - 80;
+    const livingCX = wx + LIVING.centerOffsetX;
 
     // TV 스탠드 + 그림자 (wz로 높이 동기화)
-    furnitureShadow(name + '_shadow_tv', livingCX, wy + 98, 85, 28, 4, wz);
-    tvStandSet(name + '_tv', livingCX, wy + 100, wz);
+    furnitureShadow(name + '_shadow_tv', livingCX, wy + LIVING.tv.shadowOffsetY, LIVING.tv.shadowW, LIVING.tv.shadowD, LIVING.tv.shadowH, wz);
+    tvStandSet(name + '_tv', livingCX, wy + LIVING.tv.offsetY, wz);
 
     // 커피 테이블 + 그림자 (wz로 높이 동기화)
-    furnitureShadow(name + '_shadow_table', livingCX, wy + 18, 65, 38, 4, wz);
-    coffeeTable(name + '_table', livingCX, wy + 20, wz, 60, 35, 18);
+    furnitureShadow(name + '_shadow_table', livingCX, wy + LIVING.table.shadowOffsetY, LIVING.table.shadowW, LIVING.table.shadowD, LIVING.table.shadowH, wz);
+    coffeeTable(name + '_table', livingCX, wy + LIVING.table.offsetY, wz, LIVING.table.w, LIVING.table.d, LIVING.table.h);
 
     // 소파 + 그림자 (wz로 높이 동기화)
-    furnitureShadow(name + '_shadow_sofa', livingCX, wy - 40, 105, 55, 4, wz);
-    sofa(name + '_sofa', livingCX, wy - 40, wz, 100, 50, 38, J.white);
+    furnitureShadow(name + '_shadow_sofa', livingCX, wy + LIVING.sofa.offsetY, LIVING.sofa.shadowW, LIVING.sofa.shadowD, LIVING.sofa.shadowH, wz);
+    sofa(name + '_sofa', livingCX, wy + LIVING.sofa.offsetY, wz, LIVING.sofa.w, LIVING.sofa.d, LIVING.sofa.h, J.white);
 
     createGroup(name + '_living', [
       name + '_shadow_tv', name + '_tv',
