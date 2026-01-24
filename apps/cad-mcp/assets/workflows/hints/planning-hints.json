@@ -1,0 +1,27 @@
+{
+  "phase": "planning",
+  "design_hints": {
+    "next_concepts": [
+      {
+        "concept": "60-30-10 법칙",
+        "relevance": "색상 비율의 기본"
+      },
+      {
+        "concept": "재료 선택",
+        "relevance": "질감과 분위기 결정"
+      }
+    ],
+    "questions": [
+      {
+        "question": "따뜻한 분위기 vs 차가운 분위기 중 어떤 것을 선호하세요?",
+        "purpose": "색온도 결정"
+      },
+      {
+        "question": "관리 편의성과 고급스러움 중 우선순위는?",
+        "purpose": "재료 트레이드오프"
+      }
+    ],
+    "options": [],
+    "principle": "60-30-10 법칙: 주색 60%, 보조색 30%, 강조색 10%"
+  }
+}

@@ -93,8 +93,39 @@ export const ErrorDataSchema = z.object({
   code: z.string().optional(),
 });
 
+// Client → Server: Selection update from viewer
+export const SelectionUpdateDataSchema = z.object({
+  selected_entities: z.array(z.string()),
+  locked_entities: z.array(z.string()).optional(),
+  hidden_entities: z.array(z.string()).optional(),
+});
+
+// Client → Server: Sketch update from viewer
+export const PointSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+
+// Color formats: CSS color string (#fff, #ffffff, rgb(), rgba(), named colors)
+const CSSColorSchema = z.string().refine(
+  (val) => /^(#[0-9a-fA-F]{3,8}|rgb\(|rgba\(|[a-zA-Z]+)/.test(val),
+  { message: 'Invalid CSS color format' }
+);
+
+export const StrokeSchema = z.object({
+  id: z.string(),
+  points: z.array(PointSchema),
+  color: CSSColorSchema,
+  width: z.number().positive(),
+});
+
+export const SketchUpdateDataSchema = z.object({
+  strokes: z.array(StrokeSchema),
+});
+
 // WebSocket Message Schema (Discriminated Union)
 export const WSMessageSchema = z.discriminatedUnion('type', [
+  // Server → Client messages
   z.object({
     type: z.literal('scene_update'),
     data: SceneUpdateDataSchema,
@@ -115,6 +146,7 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     data: ErrorDataSchema,
     timestamp: z.number().int().positive(),
   }),
+  // Bidirectional messages
   z.object({
     type: z.literal('ping'),
     data: z.object({}),
@@ -123,6 +155,17 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('pong'),
     data: z.object({}),
+    timestamp: z.number().int().positive(),
+  }),
+  // Client → Server messages (viewer to MCP)
+  z.object({
+    type: z.literal('selection_update'),
+    data: SelectionUpdateDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('sketch_update'),
+    data: SketchUpdateDataSchema,
     timestamp: z.number().int().positive(),
   }),
 ]);
@@ -135,6 +178,10 @@ export type SceneUpdateData = z.infer<typeof SceneUpdateDataSchema>;
 export type SelectionData = z.infer<typeof SelectionDataSchema>;
 export type ConnectionData = z.infer<typeof ConnectionDataSchema>;
 export type ErrorData = z.infer<typeof ErrorDataSchema>;
+export type SelectionUpdateData = z.infer<typeof SelectionUpdateDataSchema>;
+export type SketchUpdateData = z.infer<typeof SketchUpdateDataSchema>;
+export type Point = z.infer<typeof PointSchema>;
+export type Stroke = z.infer<typeof StrokeSchema>;
 
 // Internal schema types (exported for reusability)
 export type Transform = z.infer<typeof TransformSchema>;

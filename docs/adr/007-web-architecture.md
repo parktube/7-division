@@ -29,7 +29,7 @@ Electron을 제거하고 **Web + Local MCP** 아키텍처를 채택합니다.
 | 배포 | GitHub Pages + npm | 앱 설치 없이 즉시 시작 가능 |
 | 보안 | localhost-only (127.0.0.1) | 로컬 개발 도구, 원격 접근 불필요 |
 | MCP | stdio + WebSocket 듀얼 | Claude Code + Viewer 동시 지원 |
-| 포트 | 3001 (fallback: 3002, 3003) | React dev server 3000 충돌 회피 |
+| 포트 | 3002 (fallback: 3001, 3003) | Windows svchost가 3001 사용하는 경우 대비 |
 | 공유 타입 | 하이브리드 전략 | DRY vs npx 원클릭 트레이드오프 |
 
 ### 공유 타입 전략
@@ -46,12 +46,12 @@ Electron을 제거하고 **Web + Local MCP** 아키텍처를 채택합니다.
 ### 포트 Fallback 메커니즘
 
 ```
-시도 순서: 3001 → 3002 → 3003
+시도 순서: 3002 → 3001 → 3003
 실패 시: "All ports in use" 에러
 ```
 
-- **3001**: 기본 포트 (React dev server 3000과 충돌 회피)
-- **3002-3003**: 다중 인스턴스 지원
+- **3002**: 기본 포트 (Windows svchost가 3001 사용하는 경우 대비)
+- **3001, 3003**: fallback 포트
 
 ### Heartbeat
 

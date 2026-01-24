@@ -15,8 +15,8 @@ import { homedir } from 'os';
 import { handleWrite, rollbackWrite, getOriginalContent } from '../src/tools/write.js';
 import { handleRead, clearReadHistory } from '../src/tools/read.js';
 
-// 테스트용 디렉토리 경로 (실제 환경과 동일)
-const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad');
+// 테스트용 디렉토리 경로 (setup.ts에서 CAD_DATA_DIR 환경 변수로 임시 디렉토리 설정)
+const CAD_DATA_DIR = process.env.CAD_DATA_DIR || resolve(homedir(), '.ai-native-cad');
 const MODULES_DIR = resolve(CAD_DATA_DIR, 'modules');
 
 describe('write 도구', () => {

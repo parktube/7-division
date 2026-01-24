@@ -1,0 +1,33 @@
+# Planning Phase
+# Goal: 디자인 원리와 구체적 방향 결정
+
+name: Planning
+description: 색상/재료 결정
+order: 2
+
+ai_actions:
+  - explain_color_theory
+  - present_material_options
+  - define_mood_keywords
+
+outputs:
+  - style-prd
+
+questions:
+  - 60-30-10 색상 법칙 알고 계신가요?
+  - 선호하는 재료가 있으신가요? (나무/금속/패브릭)
+  - 따뜻한 분위기 vs 차가운 분위기 어느 쪽이 좋으세요?
+
+concepts_to_introduce:
+  - 60-30-10 법칙
+  - 색온도와 분위기
+  - 재료와 질감 대비
+
+learning_to_track:
+  - 60-30-10 법칙
+  - 색온도 개념
+
+completion_criteria:
+  - 색상 팔레트 정의됨
+  - 재료 선택 완료
+  - style-prd 문서 생성됨

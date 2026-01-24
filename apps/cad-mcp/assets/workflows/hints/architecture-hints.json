@@ -1,0 +1,27 @@
+{
+  "phase": "architecture",
+  "design_hints": {
+    "next_concepts": [
+      {
+        "concept": "동선",
+        "relevance": "공간의 실용성"
+      },
+      {
+        "concept": "z-order",
+        "relevance": "시각적 깊이감"
+      }
+    ],
+    "questions": [
+      {
+        "question": "이 공간에서 가장 많이 이동하는 경로는?",
+        "purpose": "동선 파악"
+      },
+      {
+        "question": "어떤 요소가 먼저 눈에 들어오면 좋겠어요?",
+        "purpose": "시선 유도 계획"
+      }
+    ],
+    "options": [],
+    "principle": "동선은 공간의 스토리를 만듭니다"
+  }
+}

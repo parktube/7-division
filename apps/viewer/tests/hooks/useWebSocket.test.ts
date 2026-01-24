@@ -6,7 +6,7 @@ import { MockWebSocket } from '../setup'
 // Helper to get the main connection WebSocket (last one after port discovery)
 function getMainWebSocket(): MockWebSocket | undefined {
   const instances = MockWebSocket.getAllInstances()
-  // Port discovery creates 1 WebSocket (port 3001 succeeds), then main connection creates another
+  // Port discovery creates 1 WebSocket (port 3002 succeeds), then main connection creates another
   // So main WebSocket is typically the 2nd instance
   return instances.length >= 2 ? instances[instances.length - 1] : instances[0]
 }
@@ -30,7 +30,7 @@ describe('useWebSocket', () => {
   })
 
   describe('connection management', () => {
-    it('should connect to ws://localhost:3001 (port discovery)', async () => {
+    it('should connect to ws://localhost:3002 (port discovery)', async () => {
       renderHook(() => useWebSocket())
 
       // Wait for port discovery and connection setup
@@ -38,7 +38,7 @@ describe('useWebSocket', () => {
 
       // Main WebSocket should be the last instance after port discovery
       const ws = getMainWebSocket()
-      expect(ws?.url).toBe('ws://localhost:3001')
+      expect(ws?.url).toBe('ws://localhost:3002')
     })
 
     it('should transition to connected when WebSocket opens', async () => {

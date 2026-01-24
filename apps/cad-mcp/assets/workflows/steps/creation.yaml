@@ -1,0 +1,31 @@
+# Creation Phase
+# Goal: 실제 CAD 작업 수행
+
+name: Creation
+description: 실제 제작
+order: 4
+
+ai_actions:
+  - implement_stepwise
+  - recognize_concept_application
+  - explain_tradeoffs
+
+outputs:
+  - cad_files
+
+questions:
+  - 어디서부터 시작할까요?
+  - 가장 중요한 요소는 무엇인가요?
+  - 점진적으로 디테일을 추가할까요?
+
+concepts_to_apply:
+  - 모든 이전 단계에서 배운 개념들
+
+learning_to_track:
+  - 독립적 결정 감지
+  - 개념 적용 횟수
+
+completion_criteria:
+  - CAD 작업 완료
+  - 최종 검토 완료
+  - 학습 기록 저장됨

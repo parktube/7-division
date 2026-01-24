@@ -1,0 +1,102 @@
+{
+  "version": "1.0.0",
+  "description": "AI-Native CAD 베스트 프랙티스 - Crossy Road 스타일 복셀 아트",
+  "decisions": [
+    {
+      "id": "builtin_voxel_color_001",
+      "topic": "voxel:best_practice:color",
+      "decision": "Crossy Road 스타일은 60-30-10 컬러 비율 권장",
+      "reasoning": "60% 주색(배경/베이스), 30% 보조색(주요 오브젝트), 10% 강조색(디테일)으로 시각적 균형 유지. 이 비율은 인테리어 디자인에서 검증된 원칙으로, 복셀 아트에도 적용 가능.",
+      "confidence": 0.9,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_voxel_color_002",
+      "topic": "voxel:best_practice:color_palette",
+      "decision": "복셀 박스의 3면(top/left/right)은 같은 색의 명도 변화로 표현",
+      "reasoning": "top=밝음(100%), left=중간(90%), right=어두움(82%) 비율로 자연스러운 입체감. crossy_lib.js의 C.white 예시: t=[1,1,1], l=[0.9,0.9,0.9], r=[0.82,0.82,0.82]",
+      "confidence": 0.95,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_voxel_zorder_001",
+      "topic": "voxel:best_practice:z_order",
+      "decision": "이소메트릭 뷰에서 z-order는 depth = x + y로 계산",
+      "reasoning": "화면 위쪽(depth 작음)이 뒤로, 아래쪽(depth 큼)이 앞으로 배치. sortByDepth() 함수 사용 또는 drawOrder('front')로 순서대로 정렬.",
+      "confidence": 0.95,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_voxel_zorder_002",
+      "topic": "voxel:best_practice:z_order_groups",
+      "decision": "캐릭터 그룹은 registerIsoGroup()으로 등록 후 sortIsoGroups()로 정렬",
+      "reasoning": "여러 캐릭터가 있을 때 개별 박스가 아닌 그룹 단위로 깊이 정렬. 그룹 내부 파츠는 sortByDepth()로 별도 정렬.",
+      "confidence": 0.9,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_voxel_structure_001",
+      "topic": "voxel:best_practice:character_structure",
+      "decision": "캐릭터는 다리→몸통→머리 순서로 빌드 (아래에서 위로)",
+      "reasoning": "stackZ() 함수로 이전 파츠 위에 다음 파츠 배치. 예: const bodyZ = stackZ(n+'_leg_fl', -U*0.2) - 다리 위에 몸통 배치.",
+      "confidence": 0.9,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_voxel_structure_002",
+      "topic": "voxel:best_practice:naming_convention",
+      "decision": "파츠 이름은 prefix_part_position 형식 사용",
+      "reasoning": "예: chicken1_leg_front, pig_ear_l. 그룹화와 z-order 관리에 용이. createGroup()으로 관련 파츠 묶기.",
+      "confidence": 0.85,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_voxel_module_001",
+      "topic": "voxel:best_practice:module_import",
+      "decision": "공통 유틸리티는 import 'crossy_lib'로 불러오기",
+      "reasoning": "box3d, C(컬러 팔레트), stackZ, sortByDepth 등 핵심 함수 재사용. 모듈 간 의존성 명확화.",
+      "confidence": 0.95,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_cad_coord_001",
+      "topic": "cad:best_practice:coordinate",
+      "decision": "rect()의 x, y는 CENTER 좌표 (좌상단 아님)",
+      "reasoning": "CAD 엔진의 rect는 중심 좌표 기준. 좌상단 기준 배치 시 x + width/2, y + height/2 계산 필요.",
+      "confidence": 1.0,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_cad_coord_002",
+      "topic": "cad:best_practice:transform",
+      "decision": "변환 순서는 Scale → Rotate → Translate (SRT)",
+      "reasoning": "피봇 기준 변환 시 순서 중요. translate 후 rotate 하면 예상과 다른 결과. 엔진 내부에서 SRT 순서로 적용됨.",
+      "confidence": 0.95,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_cad_angle_001",
+      "topic": "cad:best_practice:angle",
+      "decision": "회전 각도는 라디안 단위 사용",
+      "reasoning": "rotate(name, Math.PI/4)로 45도 회전. 도(degree)→라디안 변환: rad = deg * Math.PI / 180",
+      "confidence": 1.0,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_workflow_001",
+      "topic": "workflow:best_practice:iteration",
+      "decision": "복잡한 캐릭터는 스케치 → 좌표 추출 → 코드화 순서로 작업",
+      "reasoning": "스케치 모드에서 대략적 위치 그린 후, capture로 좌표 확인, 코드로 정밀 조정. 반복 수정 최소화.",
+      "confidence": 0.85,
+      "source": "builtin"
+    },
+    {
+      "id": "builtin_workflow_002",
+      "topic": "workflow:best_practice:module",
+      "decision": "3번 이상 반복되는 패턴은 모듈로 추출",
+      "reasoning": "재사용 가능한 함수/클래스로 만들어 모듈 파일에 저장. 예: Animal 클래스로 돼지/개/고양이 모두 생성 가능.",
+      "confidence": 0.9,
+      "source": "builtin"
+    }
+  ]
+}

@@ -4,14 +4,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
-import { MODULES_DIR, SCENE_CODE_FILE } from './constants.js';
+import { getModulesDir, getSceneCodeFile } from './constants.js';
+import { resolveFile } from '../utils/paths.js';
 
 /**
  * 모듈 목록 조회
  */
 export function getModuleList(): string[] {
-  if (!existsSync(MODULES_DIR)) return [];
-  return readdirSync(MODULES_DIR)
+  const modulesDir = getModulesDir();
+  if (!existsSync(modulesDir)) return [];
+  return readdirSync(modulesDir)
     .filter(f => f.endsWith('.js'))
     .map(f => f.replace(/\.js$/, ''));
 }
@@ -50,8 +52,9 @@ export function ensureParentDir(filePath: string): void {
  * 모듈 디렉토리 생성
  */
 export function ensureModulesDir(): void {
-  if (!existsSync(MODULES_DIR)) {
-    mkdirSync(MODULES_DIR, { recursive: true });
+  const modulesDir = getModulesDir();
+  if (!existsSync(modulesDir)) {
+    mkdirSync(modulesDir, { recursive: true });
   }
 }
 
@@ -66,14 +69,14 @@ export function readFileOrEmpty(filePath: string): string {
  * 모듈 경로 조회
  */
 export function getModulePath(moduleName: string): string {
-  return resolve(MODULES_DIR, `${moduleName}.js`);
+  return resolve(getModulesDir(), `${moduleName}.js`);
 }
 
 /**
  * main 코드 읽기
  */
 export function readMainCode(): string {
-  return readFileOrEmpty(SCENE_CODE_FILE);
+  return readFileOrEmpty(getSceneCodeFile());
 }
 
 /**
@@ -155,14 +158,30 @@ export function preprocessCode(
       return `// [import] '${moduleName}' already loaded`;
     }
 
-    const modulePath = getModulePath(moduleName);
+    // Dual-source: user modules 우선, 없으면 builtin 확인
+    let resolved;
+    try {
+      resolved = resolveFile(moduleName);
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      errors.push(`could not resolve module '${moduleName}': ${errMsg}`);
+      return `// [import] ERROR: '${moduleName}' resolve failed`;
+    }
 
-    if (!existsSync(modulePath)) {
+    if (!resolved.exists) {
       errors.push(`could not load module '${moduleName}'`);
       return `// [import] ERROR: '${moduleName}' not found`;
     }
 
-    const moduleCode = readFileSync(modulePath, 'utf-8');
+    // Wrap readFileSync in try/catch to handle race condition (file deleted after exists check)
+    let moduleCode: string;
+    try {
+      moduleCode = readFileSync(resolved.path, 'utf-8');
+    } catch (readError) {
+      const errMsg = readError instanceof Error ? readError.message : String(readError);
+      errors.push(`could not read module '${moduleName}': ${errMsg}`);
+      return `// [import] ERROR: '${moduleName}' read failed`;
+    }
     importedModules.add(moduleName);
     newlyImported.push(moduleName);
 

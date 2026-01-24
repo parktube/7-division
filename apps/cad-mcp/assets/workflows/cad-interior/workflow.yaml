@@ -1,0 +1,66 @@
+# CAD Interior Design Workflow
+# BMAD-inspired conversational workflow for complex interior design
+#
+# Key Principles:
+# 1. Elicit-based interaction: Always wait for user response
+# 2. Context-aware follow-ups: Questions adapt to previous answers
+# 3. Progressive disclosure: Start broad, narrow down
+# 4. Visual checkpoints: Verify at each major step
+
+name: cad-interior-design
+description: "대화형 인테리어 디자인 워크플로우 - 복층/원룸/오피스 등"
+version: "1.0.0"
+
+# Workflow configuration
+config:
+  require_reference_image: false
+  enable_checkpoints: true
+  save_decisions: true  # mama_save로 결정 저장
+
+# Phase definitions
+phases:
+  - id: discovery
+    name: "Discovery"
+    description: "비전과 스타일 탐색"
+    artifact: design-brief
+
+  - id: planning
+    name: "Planning"
+    description: "색상/재료/분위기 결정"
+    artifact: style-prd
+
+  - id: architecture
+    name: "Architecture"
+    description: "공간 구조와 영역 설계"
+    artifact: space-architecture
+
+  - id: creation
+    name: "Creation"
+    description: "단계별 CAD 제작"
+    artifact: cad-output
+
+# Instructions file (BMAD-style XML)
+instructions: "{workflow_path}/instructions.md"
+
+# Design hints data (externalized)
+design_hints: "{workflow_path}/design-hints.yaml"
+
+# Validation checklist
+checklist: "{workflow_path}/checklist.md"
+
+# Interaction patterns
+interaction:
+  # Always wait for user response
+  default_elicit: true
+
+  # Response handling
+  on_response:
+    - record_context    # 맥락에 기록
+    - generate_followup # 후속 질문 생성
+    - update_decisions  # 결정사항 업데이트
+
+  # Checkpoint behavior
+  checkpoint:
+    show_summary: true
+    require_confirmation: true
+    allow_revision: true

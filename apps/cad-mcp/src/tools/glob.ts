@@ -4,19 +4,34 @@
  * Story 10.1: Claude Code Glob 패턴 준수
  * - main 파일 + 모듈 목록 반환
  * - 패턴 매칭 지원 (와일드카드)
+ *
+ * Story 11.20: Dual-source 지원
+ * - builtin/user source 구분 표시
+ * - 동일 이름 시 user가 builtin 오버라이드
  */
 
 import { existsSync, readdirSync } from 'fs';
-import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
+import {
+  getModulesDir,
+  getSceneCodeFile,
+  BUILTIN_MODULES_DIR,
+} from '../run-cad-code/constants.js';
+import { type ModuleSource } from '../utils/paths.js';
 
 export interface GlobInput {
   pattern?: string;
 }
 
+/** 파일 정보 (source 포함) */
+export interface FileInfo {
+  name: string;
+  source: ModuleSource;
+}
+
 export interface GlobOutput {
   success: boolean;
   data: {
-    files: string[];
+    files: FileInfo[];
   };
   error?: string;
 }
@@ -71,16 +86,16 @@ function matchPattern(pattern: string, filename: string): boolean {
 }
 
 /**
- * Get list of module files
+ * Get list of module files from a directory
  */
-function getModuleList(): string[] {
-  if (!existsSync(MODULES_DIR)) {
+function getModulesFromDir(dir: string): string[] {
+  if (!existsSync(dir)) {
     return [];
   }
   try {
-    return readdirSync(MODULES_DIR)
+    return readdirSync(dir)
       .filter(f => f.endsWith('.js'))
-      .map(f => f.replace('.js', ''));
+      .map(f => f.replace(/\.js$/, ''));
   } catch {
     // 디렉토리 읽기 실패 시 빈 배열 반환 (권한 문제, 경로 오류 등)
     // 에러 전파 대신 graceful degradation 선택
@@ -89,10 +104,39 @@ function getModuleList(): string[] {
 }
 
 /**
+ * Get list of module files with source information
+ * User modules override builtin modules with the same name
+ */
+function getModuleList(): FileInfo[] {
+  const builtinModules = getModulesFromDir(BUILTIN_MODULES_DIR);
+  const userModules = getModulesFromDir(getModulesDir());
+
+  // Build result with source info
+  const result: FileInfo[] = [];
+  const seen = new Set<string>();
+
+  // User modules first (they override builtin)
+  for (const name of userModules) {
+    result.push({ name, source: 'user' });
+    seen.add(name);
+  }
+
+  // Builtin modules (skip if user has same name)
+  for (const name of builtinModules) {
+    if (!seen.has(name)) {
+      result.push({ name, source: 'builtin' });
+    }
+  }
+
+  // Sort by name for consistent output
+  return result.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
  * Check if main file exists
  */
 function mainExists(): boolean {
-  return existsSync(SCENE_CODE_FILE);
+  return existsSync(getSceneCodeFile());
 }
 
 /**
@@ -103,17 +147,21 @@ export function handleGlob(input: GlobInput): GlobOutput {
     const modules = getModuleList();
     const hasMain = mainExists();
 
+    // Always filter out 'main' from modules to prevent conflict with reserved scene.code.js
+    const filteredModules = modules.filter(m => m.name !== 'main');
+
     // Build full file list (main first if exists)
-    let allFiles: string[] = [];
+    let allFiles: FileInfo[] = [];
     if (hasMain) {
-      allFiles.push('main');
+      allFiles.push({ name: 'main', source: 'user' });
     }
-    allFiles = allFiles.concat(modules);
+    allFiles = allFiles.concat(filteredModules);
 
     // Apply pattern filter if provided
-    let resultFiles: string[];
-    if (input.pattern) {
-      resultFiles = allFiles.filter(f => matchPattern(input.pattern!, f));
+    let resultFiles: FileInfo[];
+    const pattern = input.pattern;
+    if (pattern) {
+      resultFiles = allFiles.filter(f => matchPattern(pattern, f.name));
     } else {
       resultFiles = allFiles;
     }

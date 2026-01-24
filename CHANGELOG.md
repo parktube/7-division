@@ -4,6 +4,61 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.5.0] - 2026-01-22
+
+### Added
+
+#### Epic 11: MAMA Integration (Memory-Augmented Meta Agent)
+
+AI 에이전트의 세션 간 컨텍스트 유지, 결정 추적, 학습 관리를 위한 통합 시스템입니다.
+
+- **Reasoning Graph**: 결정 간 관계를 추적하는 지식 그래프
+  - `mama_save` - 결정/체크포인트/학습 저장
+  - `mama_search` - 시맨틱 검색 (임베딩 기반)
+  - `mama_update` - 결정 결과 업데이트 (success/failed/partial)
+  - 엣지 타입: `supersedes`, `builds_on`, `debates`, `synthesizes`
+
+- **Session Continuity**: 세션 간 컨텍스트 복원
+  - `mama_load_checkpoint` - 마지막 체크포인트 로드
+  - 자동 세션 초기화 훅 (contextInjection: none/hint/full)
+  - 프로액티브 인사 지침 (새 세션 시작 시)
+
+- **Learning Tracker**: 사용자 학습 진행 추적
+  - `learning` → `understood` → `applied` → `mastered` 단계
+  - `mama_growth_report` - 사용자 성장 리포트
+  - 스킬 레벨 기반 적응형 멘토링
+
+- **Design Workflow**: 4단계 디자인 프로세스
+  - `mama_workflow` - 프로젝트 생성/상태/단계 전환
+  - Discovery → Planning → Architecture → Creation
+  - 단계별 디자인 힌트 자동 주입
+
+- **Module Recommendation**: 시맨틱 모듈 추천
+  - `mama_recommend_modules` - 쿼리 기반 모듈 검색
+  - Score = (semantic × 0.6) + (usage × 0.3) + (recency × 0.1)
+
+- **Graph Health**: 추론 그래프 품질 모니터링
+  - `mama_health` - 건강도 점수 (0-100)
+  - 에코챔버 경고, 고아 결정 탐지, 오래된 결정 알림
+
+- **Builtin Modules**: 내장 모듈 시스템
+  - `~/.ai-native-cad/builtin/` 디렉토리
+  - user 모듈이 builtin 오버라이드
+  - `glob` 출력에 source 표시 (user/builtin)
+  - 기본 제공: isometric 인테리어, Crossy Road 스타일
+
+### Changed
+
+- **Session Init Hook**: MAMA 컨텍스트 자동 주입
+- **glob/read/edit/write**: dual-source 지원 (user + builtin)
+
+### Documentation
+
+- [ADR-027](docs/adr/0027-builtin-assets.md): Builtin Assets 결정
+- 21개 Sprint Artifact 문서 (11-1 ~ 11-21)
+
+---
+
 ## [0.4.1] - 2026-01-19
 
 ### Fixed
@@ -247,4 +302,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-*작성: 2026-01-09 | 최종 업데이트: 2026-01-19*
+*작성: 2026-01-09 | 최종 업데이트: 2026-01-22*
