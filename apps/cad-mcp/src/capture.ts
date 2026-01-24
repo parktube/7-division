@@ -419,11 +419,14 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         });
 
         // Wait for Canvas component to mount and render with frame stability check
+        // Uses same stableCount logic as WebSocket path for consistency
         let canvasStable = false;
         const maxWaitTime = waitMs;
         const checkInterval = 200;
         let elapsed = 0;
         let lastPixelHash = '';
+        let stableCount = 0;
+        const requiredStableChecks = 2;
 
         while (elapsed < maxWaitTime && !canvasStable) {
           await new Promise(done => setTimeout(done, checkInterval));
@@ -448,9 +451,22 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
             }
           });
 
-          if (result.ready && result.hash === lastPixelHash && lastPixelHash !== '') {
-            // Canvas is stable (same content for 2 consecutive checks)
-            canvasStable = true;
+          if (result.ready) {
+            if (result.hash === lastPixelHash && lastPixelHash !== '') {
+              // Consecutive identical frame
+              stableCount++;
+              if (stableCount >= requiredStableChecks) {
+                canvasStable = true;
+              }
+            } else if (result.hash !== '' && lastPixelHash === '') {
+              // First valid frame - count as first stable check
+              stableCount = 1;
+            } else {
+              // Content changed - reset
+              stableCount = 0;
+            }
+          } else {
+            stableCount = 0; // Not ready - reset
           }
           lastPixelHash = result.hash;
         }
