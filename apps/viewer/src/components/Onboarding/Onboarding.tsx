@@ -13,6 +13,12 @@ interface OnboardingProps {
 const COMMAND = 'npx @ai-native-cad/mcp start'
 const SHOW_DELAY_MS = 1500 // 1.5 seconds before showing onboarding
 
+// Check if running in Puppeteer capture mode
+function isCaptureMode(): boolean {
+  if (typeof window === 'undefined') return false
+  return !!(window as unknown as { __captureMode?: boolean }).__captureMode
+}
+
 export function Onboarding({
   connectionState,
   versionStatus,
@@ -26,6 +32,12 @@ export function Onboarding({
 
   // Show onboarding after delay if not connected
   useEffect(() => {
+    // Skip onboarding in Puppeteer capture mode
+    if (isCaptureMode()) {
+      setShowOnboarding(false)
+      return
+    }
+
     if (connectionState === 'connected') {
       setShowOnboarding(false)
       setDismissed(false) // Reset dismissed state on successful connection
