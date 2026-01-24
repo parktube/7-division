@@ -204,7 +204,7 @@ VS Code Claude 확장은 프로젝트 루트의 `.mcp.json` 파일을 자동으�
 **문제:**
 - 글로벌 설정(`~/.claude/mcp.json`)과 프로젝트 설정(`.mcp.json`)이 **동시에 활성화**되면
 - 동일한 MCP 서버가 **두 번 시작**되어
-- WebSocket 포트(3001) **충돌** 발생
+- WebSocket 포트(3002) **충돌** 발생
 
 **해결책:**
 
@@ -252,7 +252,7 @@ powershell.exe -Command "pnpm --filter @ai-native-cad/mcp build"
 
 **증상:**
 ```
-Error: listen EADDRINUSE: address already in use :::3001
+Error: listen EADDRINUSE: address already in use :::3002
 ```
 
 **원인:** 다른 MCP 서버 인스턴스가 이미 실행 중
@@ -260,11 +260,11 @@ Error: listen EADDRINUSE: address already in use :::3001
 **해결:**
 ```bash
 # Windows
-netstat -ano | findstr :3001
+netstat -ano | findstr :3002
 taskkill /PID <PID> /F
 
 # macOS / Linux
-lsof -i :3001
+lsof -i :3002
 kill -9 <PID>
 ```
 
@@ -273,7 +273,7 @@ kill -9 <PID>
 **확인사항:**
 1. MCP 서버가 실행 중인지 확인
 2. 웹 Viewer 콘솔에서 WebSocket 연결 상태 확인
-3. 방화벽이 `localhost:3001` 차단하는지 확인
+3. 방화벽이 `localhost:3002` 차단하는지 확인
 
 ### 캡처 실패 (Puppeteer)
 

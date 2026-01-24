@@ -1,8 +1,8 @@
 /**
  * WebSocket Server for Viewer communication
  *
- * - Binds to 0.0.0.0:3001 (all interfaces for WSL2 support)
- * - Auto port discovery: 3001 → 3002 → 3003
+ * - Binds to 0.0.0.0:3002 (all interfaces for WSL2 support)
+ * - Auto port discovery: 3002 → 3001 → 3003 (3002 first: Windows often has svchost on 3001)
  * - Broadcasts scene/selection updates to all connected clients
  * - Handles ping/pong heartbeat
  */
@@ -38,14 +38,14 @@ function ensureDataDir(): void {
   }
 }
 
-const DEFAULT_PORT = 3001
+const DEFAULT_PORT = 3002  // 3002 first: Windows often has svchost on 3001
 const DEFAULT_MAX_PORT = 3003
 const PROTOCOL_VERSION = 1
 const HEARTBEAT_INTERVAL_MS = 15000 // 15 seconds
 const MAX_CLIENTS = 10 // Maximum concurrent connections (local tool, low risk)
 
 export interface CADWebSocketServerOptions {
-  /** Starting port (default: 3001) */
+  /** Starting port (default: 3002) */
   startPort?: number
   /** Maximum port to try (default: 3003) */
   maxPort?: number
