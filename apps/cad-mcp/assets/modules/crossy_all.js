@@ -121,7 +121,7 @@ function crossyDemo() {
   tree('demo_t4', -480, 180, 1);
 
   // 바위
-  rock('demo_r1', -240, 100, 1);
+  rock('demo_rock1', -240, 100, 1);
 
   // 자동차
   car('demo_c1', -80, -120, 'red');

@@ -805,7 +805,9 @@ export async function handleMamaEditHint(args: EditHintArgs): Promise<ToolRespon
               let parsedTags: string[] = [];
               if (h.tags) {
                 try {
-                  parsedTags = JSON.parse(h.tags);
+                  const parsed = JSON.parse(h.tags);
+                  // Ensure parsed result is actually an array
+                  parsedTags = Array.isArray(parsed) ? parsed : [];
                 } catch {
                   // Invalid JSON tags - use empty array
                 }

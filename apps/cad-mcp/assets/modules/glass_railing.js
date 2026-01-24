@@ -69,8 +69,8 @@ class GlassRailingBuilder {
   }
 
   setStairSize(w, d) {
-    this.stairW = w;
-    this.stairD = d;
+    if (w !== undefined) this.stairW = w;
+    if (d !== undefined) this.stairD = d;
     return this;
   }
 

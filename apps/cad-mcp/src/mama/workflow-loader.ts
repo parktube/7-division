@@ -55,12 +55,13 @@ export interface DesignHintsData {
     mezzanine_order: string[]
   }
   furniture_sizes: Record<string, Record<string, { w: number; d: number; h: number }>>
-  tool_usage: {
+  // Optional fields - may not be present in all workflow YAML files
+  tool_usage?: {
     creation: Array<{ tool: string; when: string; example: string }>
     feedback: Array<{ tool: string; when: string }>
     recording: Array<{ tool: string; when: string; topics: string[] }>
   }
-  checkpoints: Record<string, {
+  checkpoints?: Record<string, {
     condition: string
     record?: string
     options?: string[]

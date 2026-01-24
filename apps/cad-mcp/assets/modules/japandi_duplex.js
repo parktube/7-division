@@ -197,23 +197,20 @@ class JapandiDuplexBuilder {
     topLevelGroups.push(name + '_living');
 
     // ==========================================
-    // 7. 복층 침실
+    // 7. 복층 침실 (모듈 레벨 상수 사용)
     // ==========================================
     const mezzZ = wz + platform.h;
-    const bedW = 95;
-    const bedD = 120;
-    const headW = 148;
     const mezzCX = wallInnerX - platform.w/2;
-    const mezzCY = wallInnerY - bedD/2 - 4;
+    const mezzCY = wallInnerY - BED_DEPTH/2 - 4;
 
     // 침대 + 그림자 (복층 레벨)
-    box(name + '_shadow_bed', mezzCX - 4, mezzCY, mezzZ + 0.5, bedW + 10, bedD + 10, 1, japandiShadow);
-    bed(name + '_bed', mezzCX, mezzCY, mezzZ, bedW, bedD, J.oak, J.white, headW);
+    box(name + '_shadow_bed', mezzCX + SHADOW_OFFSET_X, mezzCY, mezzZ + SHADOW_OFFSET_Z, BED_WIDTH + SHADOW_EXPAND, BED_DEPTH + SHADOW_EXPAND, 1, japandiShadow);
+    bed(name + '_bed', mezzCX, mezzCY, mezzZ, BED_WIDTH, BED_DEPTH, J.oak, J.white, BED_HEAD_WIDTH);
 
     // 벽 장식
     const decoY = wallInnerY - 1;
-    floatingShelf(name + '_shelf', mezzCX, decoY, mezzZ + 65, { w: 100 });
-    wallFrameSet(name + '_frames', mezzCX, decoY, mezzZ + 95);
+    floatingShelf(name + '_shelf', mezzCX, decoY, mezzZ + SHELF_HEIGHT, { w: 100 });
+    wallFrameSet(name + '_frames', mezzCX, decoY, mezzZ + FRAME_HEIGHT);
 
     createGroup(name + '_mezzanine', [
       name + '_shadow_bed', name + '_bed',
