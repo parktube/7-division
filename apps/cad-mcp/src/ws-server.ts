@@ -101,7 +101,7 @@ export class CADWebSocketServer {
       try {
         await this.tryPort(port)
         this.port = port
-        logger.info(`WebSocket server started on ws://127.0.0.1:${port}`)
+        logger.info(`WebSocket server started on ws://${WS_HOST}:${port}`)
         return port
       } catch {
         if (port === this.maxPort) {
