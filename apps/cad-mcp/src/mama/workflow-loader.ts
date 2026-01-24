@@ -140,6 +140,9 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (!cad || typeof cad !== 'object') return false
   const cadObj = cad as Record<string, unknown>
   if (!('space_sizes' in cadObj) || !('mezzanine_ratios' in cadObj)) return false
+  // Ensure space_sizes is object and mezzanine_ratios is array
+  if (typeof cadObj.space_sizes !== 'object' || cadObj.space_sizes === null) return false
+  if (!Array.isArray(cadObj.mezzanine_ratios)) return false
 
   // Validate isometric_shading: examples (per IsometricShading interface)
   const shading = obj.isometric_shading
@@ -297,6 +300,9 @@ export function listAvailableWorkflows(): string[] {
     const workflows: string[] = []
 
     for (const entry of entries) {
+      // Filter entries that would fail validateWorkflowId (consistency with loader)
+      if (!validateWorkflowId(entry)) continue
+
       const entryPath = resolve(WORKFLOWS_DIR, entry)
       if (statSync(entryPath).isDirectory()) {
         const instructionsPath = resolve(entryPath, 'instructions.md')

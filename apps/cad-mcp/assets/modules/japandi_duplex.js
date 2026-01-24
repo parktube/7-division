@@ -105,11 +105,33 @@ class JapandiDuplexBuilder {
 
   build() {
     const name = this.name;
-    const wx = this.wx;
-    const wy = this.wy;
-    const wz = this.wz;
-    const room = this.room;
-    const platform = this.platform;
+
+    // 입력값 검증 - NaN/Infinity 방지
+    const wx = Number.isFinite(this.wx) ? this.wx : 0;
+    const wy = Number.isFinite(this.wy) ? this.wy : 0;
+    const wz = Number.isFinite(this.wz) ? this.wz : 0;
+
+    // room 치수 검증 (음수 방지)
+    const room = {
+      w: Math.max(0, Number.isFinite(this.room.w) ? this.room.w : 300),
+      d: Math.max(0, Number.isFinite(this.room.d) ? this.room.d : 300),
+      h: Math.max(0, Number.isFinite(this.room.h) ? this.room.h : 280),
+      floorT: Math.max(0, Number.isFinite(this.room.floorT) ? this.room.floorT : 15),
+      wallT: Math.max(0, Number.isFinite(this.room.wallT) ? this.room.wallT : 10),
+    };
+
+    // platform 치수 검증 (음수 방지)
+    const platform = {
+      w: Math.max(0, Number.isFinite(this.platform.w) ? this.platform.w : 150),
+      d: Math.max(0, Number.isFinite(this.platform.d) ? this.platform.d : 290),
+      h: Math.max(0, Number.isFinite(this.platform.h) ? this.platform.h : 50),
+    };
+
+    // 치수가 0이면 빈 그룹 반환
+    if (room.w === 0 || room.d === 0 || room.h === 0) {
+      createGroup(name, []);
+      return this;
+    }
 
     // 벽 내부 면 좌표
     const wallInnerX = wx + room.w/2 - room.wallT;
@@ -271,12 +293,20 @@ class JapandiLivingRoomBuilder {
 
   build() {
     const name = this.name;
-    const wx = this.wx;
-    const wy = this.wy;
-    const wz = this.wz;
-    const w = this.w;
-    const d = this.d;
-    const h = this.h;
+
+    // 입력값 검증 - NaN/Infinity 방지
+    const wx = Number.isFinite(this.wx) ? this.wx : 0;
+    const wy = Number.isFinite(this.wy) ? this.wy : 0;
+    const wz = Number.isFinite(this.wz) ? this.wz : 0;
+    const w = Math.max(0, Number.isFinite(this.w) ? this.w : 140);
+    const d = Math.max(0, Number.isFinite(this.d) ? this.d : 280);
+    const h = Math.max(0, Number.isFinite(this.h) ? this.h : 280);
+
+    // 치수가 0이면 빈 그룹 반환
+    if (w === 0 || d === 0 || h === 0) {
+      createGroup(name, []);
+      return this;
+    }
 
     // 격자벽
     woodLatticeWall(name + '_wall', wx - w/2, wx + w/2, wy + d/2, wz, h);
@@ -327,12 +357,20 @@ class JapandiMezzanineBuilder {
 
   build() {
     const name = this.name;
-    const wx = this.wx;
-    const wy = this.wy;
-    const wz = this.wz;
-    const platformW = this.platformW;
-    const platformD = this.platformD;
-    const platformH = this.platformH;
+
+    // 입력값 검증 - NaN/Infinity 방지
+    const wx = Number.isFinite(this.wx) ? this.wx : 0;
+    const wy = Number.isFinite(this.wy) ? this.wy : 0;
+    const wz = Number.isFinite(this.wz) ? this.wz : 0;
+    const platformW = Math.max(0, Number.isFinite(this.platformW) ? this.platformW : 150);
+    const platformD = Math.max(0, Number.isFinite(this.platformD) ? this.platformD : 150);
+    const platformH = Math.max(0, Number.isFinite(this.platformH) ? this.platformH : 50);
+
+    // 치수가 0이면 빈 그룹 반환
+    if (platformW === 0 || platformD === 0 || platformH === 0) {
+      createGroup(name, []);
+      return this;
+    }
 
     // 플랫폼
     sunkenPlatformWithStairs(
