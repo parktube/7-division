@@ -280,9 +280,6 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const baseArgs = [
       '--disable-dev-shm-usage',
       '--disable-gpu',
-      // Disable Service Worker to avoid "InvalidStateError: Failed to register a ServiceWorker"
-      // Service Workers are not needed for capture-only headless sessions
-      '--disable-features=ServiceWorker',
     ];
     // Security: --no-sandbox is required for Docker/CI but reduces security.
     // Only enable for local URLs or CI environments where the content is trusted.
@@ -343,6 +340,13 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
 
     const page = await browser.newPage();
     await page.setViewport({ width, height });
+
+    // Disable Service Worker via CDP to avoid "InvalidStateError: Failed to register a ServiceWorker"
+    // Note: Command-line flags like --disable-features=ServiceWorker are unreliable.
+    // CDP is the official Puppeteer-supported method for this.
+    const cdp = await page.createCDPSession();
+    await cdp.send('Network.enable');
+    await cdp.send('Network.setBypassServiceWorker', { bypass: true });
 
     // Inject pixel sampling helper function (reused in both stability check paths)
     await page.evaluate(SAMPLE_PIXELS_SCRIPT);
