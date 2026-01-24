@@ -77,40 +77,40 @@ DuckBuilder.prototype.build = function() {
   var DC = DUCK_COLORS;
 
   // 뒷 날개 (먼저 그려서 뒤에 배치)
-  box3d(n + 'wing_back', wx + P.wing_back.x * s, wy + P.wing_back.y * s, P.wing_back.z * s,
+  box3d(n + 'wing_back', P.wing_back.x * s, P.wing_back.y * s, P.wing_back.z * s,
         P.wing_back.w * s, P.wing_back.d * s, P.wing_back.h * s,
         DC.body.t, DC.body.l, DC.body.r);
 
   // 꼬리
-  box3d(n + 'tail', wx + P.tail.x * s, wy + P.tail.y * s, P.tail.z * s,
+  box3d(n + 'tail', P.tail.x * s, P.tail.y * s, P.tail.z * s,
         P.tail.w * s, P.tail.d * s, P.tail.h * s,
         DC.body.t, DC.body.l, DC.body.r);
 
   // 몸통
-  box3d(n + 'body', wx + P.body.x * s, wy + P.body.y * s, P.body.z * s,
+  box3d(n + 'body', P.body.x * s, P.body.y * s, P.body.z * s,
         P.body.w * s, P.body.d * s, P.body.h * s,
         DC.body.t, DC.body.l, DC.body.r);
 
   // 앞 날개
-  box3d(n + 'wing_front', wx + P.wing_front.x * s, wy + P.wing_front.y * s, P.wing_front.z * s,
+  box3d(n + 'wing_front', P.wing_front.x * s, P.wing_front.y * s, P.wing_front.z * s,
         P.wing_front.w * s, P.wing_front.d * s, P.wing_front.h * s,
         DC.body.t, DC.body.l, DC.body.r);
 
   // 머리
-  box3d(n + 'head', wx + P.head.x * s, wy + P.head.y * s, P.head.z * s,
+  box3d(n + 'head', P.head.x * s, P.head.y * s, P.head.z * s,
         P.head.w * s, P.head.d * s, P.head.h * s,
         DC.body.t, DC.body.l, DC.body.r);
 
   // 부리
-  box3d(n + 'beak_bottom', wx + P.beak_bottom.x * s, wy + P.beak_bottom.y * s, P.beak_bottom.z * s,
+  box3d(n + 'beak_bottom', P.beak_bottom.x * s, P.beak_bottom.y * s, P.beak_bottom.z * s,
         P.beak_bottom.w * s, P.beak_bottom.d * s, P.beak_bottom.h * s,
         DC.beak.t, DC.beak.l, DC.beak.r);
-  box3d(n + 'beak_top', wx + P.beak_top.x * s, wy + P.beak_top.y * s, P.beak_top.z * s,
+  box3d(n + 'beak_top', P.beak_top.x * s, P.beak_top.y * s, P.beak_top.z * s,
         P.beak_top.w * s, P.beak_top.d * s, P.beak_top.h * s,
         DC.beak.t, DC.beak.l, DC.beak.r);
 
   // 눈
-  box3d(n + 'eye', wx + P.eye.x * s, wy + P.eye.y * s, P.eye.z * s,
+  box3d(n + 'eye', P.eye.x * s, P.eye.y * s, P.eye.z * s,
         P.eye.w * s, P.eye.d * s, P.eye.h * s,
         DC.eye.t, DC.eye.l, DC.eye.r);
 
@@ -123,8 +123,9 @@ DuckBuilder.prototype.build = function() {
     drawOrder(zOrder[i], 'front');
   }
 
-  // 그룹화
+  // 그룹화 후 월드 좌표로 이동
   createGroup(name, zOrder);
+  translate(name, wx, wy);
   registerIsoGroup(name, wx, wy);
   return this;
 };
