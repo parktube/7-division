@@ -11,7 +11,8 @@ import {
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected'
 
 // WebSocket configuration - try ports in order until one works
-const WS_PORTS = [3001, 3002, 3003]
+// 3002 first: Windows often has svchost on 3001
+const WS_PORTS = [3002, 3001, 3003]
 const INITIAL_RETRY_DELAY = 1000 // 1s
 const MAX_RETRY_ATTEMPTS = 5 // 1s→2s→4s→8s→16s, then stop
 const HEARTBEAT_INTERVAL = 10000 // 10s (server times out at 30s, so send more frequently)
