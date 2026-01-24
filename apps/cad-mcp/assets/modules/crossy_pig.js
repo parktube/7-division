@@ -54,6 +54,22 @@ var PIG_PARTS = {
   leg_br:     { x: 10, y: 9, z: -8, w: 6, d: 6, h: 8 }
 };
 
+// z-order 키 배열 (뒤→앞, sortByDepth용)
+var PIG_Z_ORDER_KEYS = [
+  'leg_bl', 'leg_br', 'ear_l', 'ear_r', 'body',
+  'leg_fl', 'leg_fr',
+  'snout', 'nostril_l', 'nostril_r',
+  'eye_w_l', 'eye_p_l', 'eye_w_r', 'eye_p_r'
+];
+
+// 그룹 키 배열 (createGroup용)
+var PIG_GROUP_KEYS = [
+  'body', 'snout', 'nostril_l', 'nostril_r',
+  'eye_w_l', 'eye_p_l', 'eye_w_r', 'eye_p_r',
+  'ear_l', 'ear_r',
+  'leg_fl', 'leg_fr', 'leg_bl', 'leg_br'
+];
+
 // ============================================
 // PigBuilder Class
 // ============================================
@@ -137,21 +153,13 @@ PigBuilder.prototype.build = function() {
         P.leg_br.w * s, P.leg_br.d * s, P.leg_br.h * s,
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
 
-  // z-order
-  sortByDepth(
-    n + 'leg_bl', n + 'leg_br', n + 'ear_l', n + 'ear_r', n + 'body',
-    n + 'leg_fl', n + 'leg_fr',
-    n + 'snout', n + 'nostril_l', n + 'nostril_r',
-    n + 'eye_w_l', n + 'eye_p_l', n + 'eye_w_r', n + 'eye_p_r'
-  );
+  // z-order - PIG_Z_ORDER_KEYS 상수 사용
+  var zOrderNames = PIG_Z_ORDER_KEYS.map(function(key) { return n + key; });
+  sortByDepth.apply(null, zOrderNames);
 
-  // 그룹화 후 월드 좌표로 이동
-  createGroup(name, [
-    n + 'body', n + 'snout', n + 'nostril_l', n + 'nostril_r',
-    n + 'eye_w_l', n + 'eye_p_l', n + 'eye_w_r', n + 'eye_p_r',
-    n + 'ear_l', n + 'ear_r',
-    n + 'leg_fl', n + 'leg_fr', n + 'leg_bl', n + 'leg_br'
-  ]);
+  // 그룹화 후 월드 좌표로 이동 - PIG_GROUP_KEYS 상수 사용
+  var groupNames = PIG_GROUP_KEYS.map(function(key) { return n + key; });
+  createGroup(name, groupNames);
   translate(name, wx, wy);
 
   registerIsoGroup(name, wx, wy);

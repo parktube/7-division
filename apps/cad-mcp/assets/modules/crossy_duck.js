@@ -45,6 +45,12 @@ var DUCK_PARTS = {
   wing_front:  { x: 2, y: -11, z: 10, w: 10, d: 5, h: 4 }
 };
 
+// z-order 키 배열 (뒤→앞, 단일 소스로 관리)
+var DUCK_Z_ORDER_KEYS = [
+  'wing_back', 'tail', 'body', 'wing_front',
+  'head', 'beak_bottom', 'beak_top', 'eye'
+];
+
 // ============================================
 // DuckBuilder Class
 // ============================================
@@ -114,11 +120,8 @@ DuckBuilder.prototype.build = function() {
         P.eye.w * s, P.eye.d * s, P.eye.h * s,
         DC.eye.t, DC.eye.l, DC.eye.r);
 
-  // z-order (뒤→앞)
-  var zOrder = [
-    n + 'wing_back', n + 'tail', n + 'body', n + 'wing_front',
-    n + 'head', n + 'beak_bottom', n + 'beak_top', n + 'eye'
-  ];
+  // z-order (뒤→앞) - DUCK_Z_ORDER_KEYS 상수 사용
+  var zOrder = DUCK_Z_ORDER_KEYS.map(function(key) { return n + key; });
   for (var i = 0; i < zOrder.length; i++) {
     drawOrder(zOrder[i], 'front');
   }

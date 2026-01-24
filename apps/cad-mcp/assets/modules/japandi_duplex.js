@@ -57,6 +57,7 @@ const SHADOW_OFFSET_Z = 0.5;
 const SHADOW_EXPAND = 10;
 const SHELF_HEIGHT = 65;            // 선반 높이 (플랫폼 바닥 기준)
 const FRAME_HEIGHT = 95;            // 프레임 높이 (플랫폼 바닥 기준)
+const BED_WALL_GAP = 4;             // 침대와 벽 사이 간격 (복층용)
 
 // 거실 가구 배치 상수
 const LIVING = {
@@ -231,7 +232,7 @@ class JapandiDuplexBuilder {
     // ==========================================
     const mezzZ = wz + platform.h;
     const mezzCX = wallInnerX - platform.w/2;
-    const mezzCY = wallInnerY - BED_DEPTH/2 - 4;
+    const mezzCY = wallInnerY - BED_DEPTH/2 - BED_WALL_GAP;
 
     // 침대 + 그림자 (복층 레벨)
     box(name + '_shadow_bed', mezzCX + SHADOW_OFFSET_X, mezzCY, mezzZ + SHADOW_OFFSET_Z, BED_WIDTH + SHADOW_EXPAND, BED_DEPTH + SHADOW_EXPAND, 1, japandiShadow);
