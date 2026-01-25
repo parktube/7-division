@@ -3,6 +3,8 @@
 > **협업 리더**: @parktube
 > **Repository**: https://github.com/parktube/7-division
 
+**[Live Demo](https://parktube.github.io/7-division/)** | **[npm Package](https://www.npmjs.com/package/@ai-native-cad/mcp)**
+
 **현재 상태**: Epic 1~10 완료 (MVP + 웹 아키텍처 + AX 개선)
 
 ## Quick Start
@@ -409,6 +411,31 @@ Root에서 `pnpm install` 실행 시 husky가 자동 설정됩니다.
     ↓
 [integration] → WASM 통합 테스트
 ```
+
+### npm 패키지 배포
+
+`@ai-native-cad/mcp` 패키지는 GitHub Actions + OIDC Trusted Publishing으로 배포됩니다.
+
+**배포 방법:**
+
+```bash
+# 1. 버전 업데이트
+cd apps/cad-mcp
+npm version patch  # 0.1.0 → 0.1.1 (또는 minor, major)
+
+# 2. 커밋 & 푸시
+git add .
+git commit -m "chore: bump @ai-native-cad/mcp to 0.1.1"
+git push origin main
+
+# 3. 배포 트리거 (택1)
+# - GitHub Release 생성 (권장)
+# - Actions 탭에서 "Publish to npm" 수동 실행
+```
+
+**참고:**
+- 토큰 불필요 (OIDC Trusted Publishing 사용)
+- 워크플로우: `.github/workflows/npm-publish.yml`
 
 ---
 

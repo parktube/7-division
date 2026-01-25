@@ -2,6 +2,8 @@
 
 > **AI-Native CAD** - "AI가 만들고, AI가 사용한다"
 
+**[Live Demo](https://parktube.github.io/7-division/)** | **[npm Package](https://www.npmjs.com/package/@ai-native-cad/mcp)**
+
 AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증하는 새로운 CAD 패러다임.
 
 ## Project Status
