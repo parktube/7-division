@@ -91,6 +91,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Cache node_modules (including native bindings)
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+            **/node_modules/.bin
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ runner.arch }}
+          restore-keys: |
+            ${{ runner.os }}-node-modules-${{ hashFiles('**/pnpm-lock.yaml') }}-
+            ${{ runner.os }}-node-modules-
+
       - name: Download WASM Artifacts
         uses: actions/download-artifact@v4
         with:
@@ -111,7 +124,18 @@ jobs:
           # Force rebuild better-sqlite3 native bindings for current platform
           cd apps/cad-mcp && pnpm rebuild better-sqlite3
           # Verify the native module was built correctly
-          node -e "require('better-sqlite3')" || echo "better-sqlite3 rebuild failed"
+          echo "Testing better-sqlite3 import..."
+          node -e "
+            try {
+              const Database = require('better-sqlite3');
+              const db = new Database(':memory:');
+              console.log('✅ better-sqlite3 works correctly');
+              db.close();
+            } catch (err) {
+              console.error('❌ better-sqlite3 failed:', err.message);
+              process.exit(1);
+            }
+          "
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build

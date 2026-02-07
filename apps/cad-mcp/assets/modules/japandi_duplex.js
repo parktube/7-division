@@ -307,9 +307,9 @@ class JapandiLivingRoomBuilder {
     const wx = Number.isFinite(this.wx) ? this.wx : 0;
     const wy = Number.isFinite(this.wy) ? this.wy : 0;
     const wz = Number.isFinite(this.wz) ? this.wz : 0;
-    const w = Math.max(0, Number.isFinite(this.w) ? this.w : this.w);
-    const d = Math.max(0, Number.isFinite(this.d) ? this.d : this.d);
-    const h = Math.max(0, Number.isFinite(this.h) ? this.h : this.h);
+    const w = Math.max(0, Number.isFinite(this.w) ? this.w : 100);
+    const d = Math.max(0, Number.isFinite(this.d) ? this.d : 80);
+    const h = Math.max(0, Number.isFinite(this.h) ? this.h : 250);
 
     // 치수가 0이면 빈 그룹 반환
     if (w === 0 || d === 0 || h === 0) {
