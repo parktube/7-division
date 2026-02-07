@@ -17,7 +17,10 @@ import {
   getModule,
   ModuleRow,
   recordModuleUsage,
-  upsertModule
+  upsertModule,
+  updateModuleEmbedding,
+  getModuleEmbeddings,
+  needsEmbeddingRefresh
 } from './db.js'
 import { generateEmbedding, cosineSimilarity } from './embeddings.js'
 import { CAD_DATA_DIR } from './config.js'
@@ -220,12 +223,22 @@ export async function syncModulesFromFiles(moduleDir?: string): Promise<number> 
       // Use filename if @module not specified
       const name = metadata.name || file.replace(/\.[^.]+$/, '')
 
-      upsertModule({
+      const moduleData = {
         name,
         description: metadata.description || `Module: ${name}`,
         tags: metadata.tags,
         example: metadata.example || undefined
-      })
+      }
+
+      upsertModule(moduleData)
+
+      // Generate and store embedding for the module
+      try {
+        await updateModuleEmbeddingAsync(moduleData)
+      } catch (embErr) {
+        logger.warn(`Failed to generate embedding for module ${name}: ${embErr}`)
+        // Continue syncing even if embedding fails
+      }
 
       synced++
     } catch (err) {
@@ -327,11 +340,35 @@ export async function recommendModules(
   let embeddingFailures = 0
   const FAILURE_LOG_THRESHOLD = 3
 
-  // TODO: 모듈 저장 시 임베딩 미리 계산하여 DB 캐싱 (확장성 개선)
+  // Get all module names for bulk fetch
+  const moduleNames = modules.map(m => m.name)
+
+  // Bulk fetch cached embeddings from DB
+  const cachedEmbeddings = getModuleEmbeddings(moduleNames)
+
+  // Process modules with cached embeddings first
   for (const module of modules) {
-    // Generate module embedding from description + tags
-    const moduleText = buildModuleText(module)
-    const moduleEmbedding = await generateEmbedding(moduleText)
+    let moduleEmbedding: Float32Array | undefined = cachedEmbeddings.get(module.name)
+
+    // If no cached embedding, generate and cache it
+    if (!moduleEmbedding) {
+      const metadataHash = await calculateMetadataHash(module)
+
+      // Double-check if refresh needed (in case of race condition)
+      if (needsEmbeddingRefresh(module.name, metadataHash)) {
+        const moduleText = buildModuleText(module)
+        const generated = await generateEmbedding(moduleText)
+        moduleEmbedding = generated || undefined
+
+        if (moduleEmbedding) {
+          // Cache for future use (non-blocking)
+          updateModuleEmbedding(module.name, moduleEmbedding, metadataHash)
+        } else {
+          embeddingFailures++
+          continue
+        }
+      }
+    }
 
     if (!moduleEmbedding) {
       embeddingFailures++
@@ -390,7 +427,27 @@ function buildModuleText(module: ModuleRow): string {
     parts.push(`Tags: ${tags.join(', ')}`)
   }
 
+  // Include example code for better semantic matching
+  if (module.example) {
+    parts.push(`Example: ${module.example}`)
+  }
+
   return parts.join('\n')
+}
+
+/**
+ * Calculate SHA256 hash of module metadata for change detection
+ */
+async function calculateMetadataHash(module: ModuleRow): Promise<string> {
+  const content = [
+    module.description,
+    module.tags || '',
+    module.example || ''
+  ].join('|')
+
+  // Simple hash using Node.js crypto
+  const { createHash } = await import('crypto')
+  return createHash('sha256').update(content).digest('hex')
 }
 
 /**
@@ -434,6 +491,53 @@ function keywordFallback(
     .filter(s => s.score > 0 && s.score >= minScore)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
+}
+
+// ============================================================
+// Embedding Management
+// ============================================================
+
+/**
+ * Update module embedding asynchronously
+ * Called after module upsert to generate and cache embedding
+ */
+async function updateModuleEmbeddingAsync(module: ModuleRow | {
+  name: string
+  description: string
+  tags?: string[]
+  example?: string
+}): Promise<void> {
+  // Convert plain object to ModuleRow format if needed
+  const moduleRow: ModuleRow = 'usage_count' in module ? module : {
+    name: module.name,
+    description: module.description,
+    tags: module.tags ? JSON.stringify(module.tags) : null,
+    example: module.example || null,
+    usage_count: 0,
+    last_used_at: null,
+    created_at: Date.now(),
+    updated_at: null
+  }
+
+  // Calculate metadata hash
+  const metadataHash = await calculateMetadataHash(moduleRow)
+
+  // Check if embedding needs update
+  if (!needsEmbeddingRefresh(moduleRow.name, metadataHash)) {
+    return // Embedding is up-to-date
+  }
+
+  // Generate text for embedding
+  const moduleText = buildModuleText(moduleRow)
+
+  // Generate embedding
+  const embedding = await generateEmbedding(moduleText)
+  if (!embedding) {
+    throw new Error(`Failed to generate embedding for module ${moduleRow.name}`)
+  }
+
+  // Store in database
+  updateModuleEmbedding(moduleRow.name, embedding, metadataHash)
 }
 
 // ============================================================

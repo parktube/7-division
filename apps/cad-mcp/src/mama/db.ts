@@ -117,6 +117,17 @@ export interface ModuleRow {
   updated_at: number | null
 }
 
+// Module embedding cache (Story 11.19 - Performance optimization)
+export interface ModuleEmbeddingRow {
+  module_name: string                // Primary key, references modules(name)
+  embedding: string                  // JSON array of floats
+  embedding_dim: number              // Vector dimension (384)
+  embedding_model: string            // Model name for versioning
+  metadata_hash: string              // SHA256 for change detection
+  created_at: number                 // Unix timestamp (ms)
+  updated_at: number | null          // Unix timestamp (ms)
+}
+
 // Design Workflow phases (Story 11.21)
 export type WorkflowPhase = 'discovery' | 'planning' | 'architecture' | 'creation' | 'completed'
 
@@ -1421,6 +1432,143 @@ export function deleteModule(name: string): boolean {
   `).run(name)
 
   return result.changes > 0
+}
+
+// ============================================================
+// Module Embeddings Cache (Story 11.19 - Performance)
+// ============================================================
+
+/**
+ * Update or insert module embedding
+ *
+ * @param moduleName - Module name
+ * @param embedding - Float32Array of embedding values
+ * @param metadataHash - Hash of module metadata for change detection
+ */
+export function updateModuleEmbedding(
+  moduleName: string,
+  embedding: Float32Array,
+  metadataHash: string
+): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  const embeddingJson = JSON.stringify(Array.from(embedding))
+  const modelName = getModelName()
+  const embeddingDim = getEmbeddingDim()
+
+  getDatabase().prepare(`
+    INSERT INTO module_embeddings
+      (module_name, embedding, embedding_dim, embedding_model, metadata_hash, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(module_name) DO UPDATE SET
+      embedding = excluded.embedding,
+      embedding_model = excluded.embedding_model,
+      metadata_hash = excluded.metadata_hash,
+      updated_at = excluded.updated_at
+  `).run(
+    moduleName,
+    embeddingJson,
+    embeddingDim,
+    modelName,
+    metadataHash,
+    now,
+    now
+  )
+}
+
+/**
+ * Get module embedding from cache
+ *
+ * @param moduleName - Module name
+ * @returns Float32Array or null if not found
+ */
+export function getModuleEmbedding(moduleName: string): Float32Array | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = getDatabase().prepare(`
+    SELECT embedding FROM module_embeddings
+    WHERE module_name = ? AND embedding_model = ?
+  `).get(moduleName, getModelName()) as { embedding: string } | undefined
+
+  if (!row) {
+    return null
+  }
+
+  try {
+    return new Float32Array(JSON.parse(row.embedding))
+  } catch (err) {
+    logger.error(`Failed to parse embedding for module ${moduleName}: ${err}`)
+    return null
+  }
+}
+
+/**
+ * Get multiple module embeddings (bulk fetch for performance)
+ *
+ * @param moduleNames - Array of module names
+ * @returns Map of module name to Float32Array
+ */
+export function getModuleEmbeddings(moduleNames: string[]): Map<string, Float32Array> {
+  if (!db || moduleNames.length === 0) {
+    return new Map()
+  }
+
+  const placeholders = moduleNames.map(() => '?').join(',')
+  const rows = getDatabase().prepare(`
+    SELECT module_name, embedding
+    FROM module_embeddings
+    WHERE module_name IN (${placeholders})
+    AND embedding_model = ?
+  `).all(...moduleNames, getModelName()) as Array<{ module_name: string; embedding: string }>
+
+  const embeddingMap = new Map<string, Float32Array>()
+
+  for (const row of rows) {
+    try {
+      embeddingMap.set(row.module_name, new Float32Array(JSON.parse(row.embedding)))
+    } catch (err) {
+      logger.error(`Failed to parse embedding for module ${row.module_name}: ${err}`)
+    }
+  }
+
+  return embeddingMap
+}
+
+/**
+ * Check if module embedding needs refresh based on metadata hash
+ *
+ * @param moduleName - Module name
+ * @param currentMetadataHash - Current metadata hash
+ * @returns true if refresh needed
+ */
+export function needsEmbeddingRefresh(
+  moduleName: string,
+  currentMetadataHash: string
+): boolean {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = getDatabase().prepare(`
+    SELECT metadata_hash FROM module_embeddings
+    WHERE module_name = ? AND embedding_model = ?
+  `).get(moduleName, getModelName()) as { metadata_hash: string } | undefined
+
+  return !row || row.metadata_hash !== currentMetadataHash
+}
+
+/**
+ * Get model name from config
+ * Helper to avoid circular dependency with config.ts
+ */
+function getModelName(): string {
+  // Using the same model as configured for embeddings
+  return 'Xenova/multilingual-e5-small'
 }
 
 // ============================================================
