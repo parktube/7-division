@@ -375,7 +375,13 @@ export function insertEmbedding(rowid: number, embedding: Float32Array): void {
 
   try {
     // Use transaction for embedding insertion to ensure consistency
+    if (!db) {
+      throw new Error('Database not initialized')
+    }
     const transaction = db.transaction((rowid: number, embeddingJson: string) => {
+      if (!db) {
+        throw new Error('Database not initialized')
+      }
       db.prepare(`INSERT INTO vss_memories(rowid, embedding) VALUES (${rowid}, ?)`).run(embeddingJson)
     })
 
@@ -734,6 +740,9 @@ export function incrementActionCount(action: string): { newCount: number; allCou
 
   try {
     // Use transaction to ensure atomic operation
+    if (!db) {
+      throw new Error('Database not initialized')
+    }
     const transaction = db.transaction(() => {
       const profile = getUserProfile()
       let counts: Record<string, number>
