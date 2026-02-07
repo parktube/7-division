@@ -338,9 +338,14 @@ function createVectorTable(database: Database.Database): void {
     .all()
 
   if (tables.length === 0) {
-    // Validate embeddingDim is a safe positive integer
+    // Security: Validate embeddingDim is a safe positive integer (SQL injection prevention)
     if (!Number.isInteger(embeddingDim) || embeddingDim <= 0 || embeddingDim > 10000) {
       throw new Error(`Invalid embedding dimension: ${embeddingDim}. Must be a positive integer <= 10000`)
+    }
+
+    // Additional validation: Ensure dimension is within safe range for database operations
+    if (embeddingDim < 1 || embeddingDim > 4096) {
+      throw new Error(`Embedding dimension ${embeddingDim} outside safe range [1, 4096]`)
     }
 
     // Additional SQL injection protection - ensure dimension is safe for direct insertion

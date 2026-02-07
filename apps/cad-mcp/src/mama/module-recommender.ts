@@ -219,7 +219,18 @@ export async function syncModulesFromFiles(moduleDir?: string): Promise<number> 
   }
 
   const allFiles = await fs.readdir(dir)
-  const files = allFiles.filter(f => !f.startsWith('.'))
+  // Security: Only allow JS/TS/CAD file extensions to prevent loading arbitrary files
+  const allowedExtensions = ['.js', '.ts', '.cad', '.mjs', '.jsx', '.tsx']
+  const files = allFiles.filter(f => {
+    // Filter out hidden files
+    if (f.startsWith('.')) return false
+    // Filter out files without allowed extensions
+    const hasValidExtension = allowedExtensions.some(ext => f.toLowerCase().endsWith(ext))
+    if (!hasValidExtension) {
+      logger.debug(`Skipping file with disallowed extension: ${f}`)
+    }
+    return hasValidExtension
+  })
   let synced = 0
 
   for (const file of files) {
@@ -327,9 +338,10 @@ export async function recommendModules(
     return keywordFallback(query, modules, limit, minScore)
   }
 
-  // Calculate max usage for normalization - use spread for ESLint compliance
-  const usageCounts = modules.map(m => m.usage_count)
-  const maxUsage = usageCounts.length > 0 ? Math.max(...usageCounts) : 1
+  // Calculate max usage for normalization - avoid spread overflow for large arrays
+  const maxUsage = modules.length > 0
+    ? modules.reduce((max, m) => Math.max(max, m.usage_count), 0)
+    : 1
 
   // Score each module
   const scored: ModuleRecommendation[] = []

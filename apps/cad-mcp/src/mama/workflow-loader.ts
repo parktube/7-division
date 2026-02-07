@@ -193,7 +193,6 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   const furnitureSizes = obj.furniture_sizes
   if (!furnitureSizes || typeof furnitureSizes !== 'object') return false
 
-  const furnitureSizesObj = furnitureSizes as Record<string, unknown>
   for (const [, category] of Object.entries(furnitureSizes)) {
     if (!category || typeof category !== 'object') return false
     const categoryObj = category as Record<string, unknown>
