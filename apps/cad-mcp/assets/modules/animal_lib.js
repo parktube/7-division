@@ -213,8 +213,9 @@ function createDog(name, x, y) {
   deleteEntity(name+'_nostril_r');
   // 주둥이 위치 조정 (스케치 기준)
   const snoutNow = getEntity(name+'_snout').world.center;
-  const snoutLocalTarget = [-82, 5];  // 로컬 좌표 (원점 기준)
-  const snoutWorldTarget = [snoutLocalTarget[0] + x, snoutLocalTarget[1] + y];
+  const ratio = 5.5 / 6.5;  // 강아지 스케일 / 기본 Animal 스케일
+  const snoutLocalTarget = [-82 * ratio, 5 * ratio];  // 스케일 비율 적용된 로컬 좌표
+  const snoutWorldTarget = [x + snoutLocalTarget[0], y + snoutLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
   translate(name+'_snout', snoutWorldTarget[0] - snoutNow[0], snoutWorldTarget[1] - snoutNow[1]);
   // 귀 위치 아래로 (축 늘어진 귀)
   translate(name+'_ear_l', 0, -5);
@@ -335,7 +336,8 @@ function createChicken(name, x, y) {
   
   // 눈 위치 스케치에 맞춤
   const eyeNow = getEntity(n+'_eye_r').world.center;
-  const eyeLocalTarget = [378, 263];  // 로컬 좌표 (원점 기준)
-  const eyeWorldTarget = [eyeLocalTarget[0] + x, eyeLocalTarget[1] + y];
+  const chickenScale = 5;  // 닭의 스케일 (scale(n, 5, 5)에서 확인)
+  const eyeLocalTarget = [378 * chickenScale / 100, 263 * chickenScale / 100];  // 스케일 비율 적용된 로컬 좌표
+  const eyeWorldTarget = [x + eyeLocalTarget[0], y + eyeLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
   translate(n+'_eye_r', eyeWorldTarget[0] - eyeNow[0], eyeWorldTarget[1] - eyeNow[1]);
 }

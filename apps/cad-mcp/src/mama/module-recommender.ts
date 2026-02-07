@@ -227,8 +227,8 @@ export async function syncModulesFromFiles(moduleDir?: string): Promise<number> 
       const content = await fs.readFile(join(dir, file), 'utf-8')
       const metadata = parseModuleJSDoc(content)
 
-      // Use filename if @module not specified
-      const name = metadata.name || file.replace(/\.[^.]+$/, '')
+      // Use filename if @module not specified, properly handle file extensions
+      const name = metadata.name || file.replace(/\.\w+$/, '')
 
       upsertModule({
         name,
@@ -327,8 +327,9 @@ export async function recommendModules(
     return keywordFallback(query, modules, limit, minScore)
   }
 
-  // Calculate max usage for normalization
-  const maxUsage = Math.max(...modules.map(m => m.usage_count), 1)
+  // Calculate max usage for normalization - use spread for ESLint compliance
+  const usageCounts = modules.map(m => m.usage_count)
+  const maxUsage = usageCounts.length > 0 ? Math.max(...usageCounts) : 1
 
   // Score each module
   const scored: ModuleRecommendation[] = []
@@ -355,7 +356,10 @@ export async function recommendModules(
       return { module, embedding: moduleEmbedding, text: moduleText }
     })
 
-    embeddingPromises.push(...batchPromises)
+    // Add batch promises individually to avoid large spread operations
+    for (const promise of batchPromises) {
+      embeddingPromises.push(promise)
+    }
 
     // Wait for current batch before starting next (rate limiting)
     await Promise.all(batchPromises)

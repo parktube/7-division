@@ -262,6 +262,14 @@ export class CADWebSocketServer {
     this.selectionWriteChain = this.selectionWriteChain.then(async () => {
       try {
         await ensureDataDir()
+
+        // Validate data structure before processing
+        if (!Array.isArray(data.selected_entities) ||
+            !Array.isArray(data.locked_entities) ||
+            !Array.isArray(data.hidden_entities)) {
+          throw new Error('Invalid selection data: arrays required for entity lists')
+        }
+
         const selection = {
           selected_entities: data.selected_entities,
           locked_entities: data.locked_entities,
@@ -271,7 +279,8 @@ export class CADWebSocketServer {
         await writeFile(getSelectionFile(), JSON.stringify(selection, null, 2), 'utf-8')
         logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities.length} hidden, ${data.locked_entities.length} locked`)
       } catch (e) {
-        logger.error(`Failed to save selection: ${e}`)
+        const errorMsg = e instanceof Error ? e.message : String(e)
+        logger.error(`Failed to save selection: ${errorMsg}`)
       }
     })
   }
@@ -392,8 +401,7 @@ export class CADWebSocketServer {
     return new Promise((resolve) => {
       this.stopHeartbeat()
 
-      // Wait for ongoing write operations to complete before shutting down
-      Promise.all([this.selectionWriteChain, this.sketchWriteChain]).then(() => {
+      const shutdownServer = () => {
         if (this.wss) {
           // Close all client connections
           for (const client of this.clients) {
@@ -409,24 +417,16 @@ export class CADWebSocketServer {
         } else {
           resolve()
         }
-      }).catch((error) => {
-        logger.warn(`Error waiting for write chains during shutdown: ${error}`)
-        // Still proceed with shutdown even if write operations failed
-        if (this.wss) {
-          for (const client of this.clients) {
-            client.close()
-          }
-          this.clients.clear()
+      }
 
-          this.wss.close(() => {
-            this.wss = null
-            logger.info('WebSocket server stopped')
-            resolve()
-          })
-        } else {
-          resolve()
-        }
-      })
+      // Wait for ongoing write operations to complete before shutting down
+      Promise.all([this.selectionWriteChain, this.sketchWriteChain])
+        .then(shutdownServer)
+        .catch((error) => {
+          logger.warn(`Error waiting for write chains during shutdown: ${error}`)
+          // Still proceed with shutdown even if write operations failed
+          shutdownServer()
+        })
     })
   }
 

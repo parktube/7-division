@@ -166,9 +166,13 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   const shadingObj = shading as Record<string, unknown>
   if (!('examples' in shadingObj)) return false
 
+  // Validate examples field is an object
+  const examples = shadingObj.examples
+  if (!examples || typeof examples !== 'object') return false
+
   // Validate examples structure: Record<string, { top: string; left: string; right: string }>
-  const examples = shadingObj.examples as Record<string, unknown>
-  for (const [, value] of Object.entries(examples)) {
+  const examplesObj = examples as Record<string, unknown>
+  for (const [, value] of Object.entries(examplesObj)) {
     if (!value || typeof value !== 'object') return false
     const exampleObj = value as Record<string, unknown>
     if (typeof exampleObj.top !== 'string' || typeof exampleObj.left !== 'string' || typeof exampleObj.right !== 'string') return false
@@ -186,7 +190,10 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (!zOrderObj.mezzanine_order.every((item: unknown) => typeof item === 'string')) return false
 
   // Validate furniture_sizes: Record<string, Record<string, { w: number; d: number; h: number }>>
-  const furnitureSizes = obj.furniture_sizes as Record<string, unknown>
+  const furnitureSizes = obj.furniture_sizes
+  if (!furnitureSizes || typeof furnitureSizes !== 'object') return false
+
+  const furnitureSizesObj = furnitureSizes as Record<string, unknown>
   for (const [, category] of Object.entries(furnitureSizes)) {
     if (!category || typeof category !== 'object') return false
     const categoryObj = category as Record<string, unknown>

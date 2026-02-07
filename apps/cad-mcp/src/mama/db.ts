@@ -304,9 +304,19 @@ function runMigrations(database: Database.Database): void {
       // Handle duplicate column errors (idempotent)
       if (err instanceof Error && err.message.includes('duplicate column')) {
         logger.warn(`Migration ${file} skipped (duplicate column - already applied)`)
-        database
-          .prepare('INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)')
-          .run(version, Date.now())
+
+        // Insert schema version in separate transaction to maintain integrity
+        database.exec('BEGIN')
+        try {
+          database
+            .prepare('INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)')
+            .run(version, Date.now())
+          database.exec('COMMIT')
+        } catch (insertErr) {
+          database.exec('ROLLBACK')
+          const errorMsg = insertErr instanceof Error ? insertErr.message : String(insertErr)
+          logger.warn(`Failed to update schema_version for ${file}: ${errorMsg}`)
+        }
         continue
       }
 
@@ -328,10 +338,21 @@ function createVectorTable(database: Database.Database): void {
     .all()
 
   if (tables.length === 0) {
-    logger.info(`Creating vss_memories virtual table (${embeddingDim}-dim)`)
+    // Validate embeddingDim is a safe positive integer
+    if (!Number.isInteger(embeddingDim) || embeddingDim <= 0 || embeddingDim > 10000) {
+      throw new Error(`Invalid embedding dimension: ${embeddingDim}. Must be a positive integer <= 10000`)
+    }
+
+    // Additional SQL injection protection - ensure dimension is safe for direct insertion
+    const safeDimension = Math.floor(embeddingDim)
+    if (safeDimension !== embeddingDim) {
+      throw new Error(`Embedding dimension must be an exact integer, got: ${embeddingDim}`)
+    }
+
+    logger.info(`Creating vss_memories virtual table (${safeDimension}-dim)`)
     database.exec(`
       CREATE VIRTUAL TABLE vss_memories USING vec0(
-        embedding float[${embeddingDim}]
+        embedding float[${safeDimension}]
       )
     `)
   }
@@ -1138,9 +1159,10 @@ export function countGrowthMetricsByType(
     terminology_used: 0,
   }
 
-  for (const row of rows) {
+  // Map database results to counts object
+  rows.forEach(row => {
     counts[row.metric_type] = row.count
-  }
+  })
 
   return counts
 }
@@ -1816,4 +1838,87 @@ export function isPhaseCompleted(projectId: string, phase: WorkflowPhase): boole
   `).get(projectId, phase) as { completed_at: number | null } | undefined
 
   return row?.completed_at !== null && row?.completed_at !== undefined
+}
+
+// ============================================================
+// Module Embeddings (Story 11.22)
+// ============================================================
+
+/**
+ * Update or insert module embedding
+ *
+ * @param moduleName - Module name
+ * @param embedding - Embedding vector as Float32Array
+ * @param metadataHash - Content hash for invalidation
+ */
+export function updateModuleEmbedding(moduleName: string, embedding: Float32Array, metadataHash: string): void {
+  if (!db) {
+    initDatabase()
+  }
+
+  const now = Date.now()
+  const embeddingDim = getEmbeddingDim()
+  const embeddingJson = JSON.stringify(Array.from(embedding))
+
+  getDatabase().prepare(`
+    INSERT OR REPLACE INTO module_embeddings
+    (module_name, embedding, embedding_dim, embedding_model, metadata_hash, created_at, updated_at)
+    VALUES (?, ?, ?, 'all-MiniLM-L6-v2', ?, ?, ?)
+  `).run(moduleName, embeddingJson, embeddingDim, metadataHash, now, now)
+}
+
+/**
+ * Get module embedding by name
+ *
+ * @param moduleName - Module name
+ * @returns Module embedding or null
+ */
+export function getModuleEmbedding(moduleName: string): {
+  embedding: Float32Array
+  metadataHash: string
+  updatedAt: number
+} | null {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = getDatabase().prepare(`
+    SELECT embedding, metadata_hash, updated_at
+    FROM module_embeddings
+    WHERE module_name = ?
+  `).get(moduleName) as {
+    embedding: string
+    metadata_hash: string
+    updated_at: number
+  } | undefined
+
+  if (!row) {
+    return null
+  }
+
+  const embeddingArray = JSON.parse(row.embedding) as number[]
+  return {
+    embedding: new Float32Array(embeddingArray),
+    metadataHash: row.metadata_hash,
+    updatedAt: row.updated_at
+  }
+}
+
+/**
+ * Check if module embedding needs refresh based on metadata hash
+ *
+ * @param moduleName - Module name
+ * @param currentMetadataHash - Current content hash
+ * @returns true if refresh needed
+ */
+export function needsEmbeddingRefresh(moduleName: string, currentMetadataHash: string): boolean {
+  if (!db) {
+    initDatabase()
+  }
+
+  const row = getDatabase().prepare(`
+    SELECT metadata_hash FROM module_embeddings WHERE module_name = ?
+  `).get(moduleName) as { metadata_hash: string } | undefined
+
+  return !row || row.metadata_hash !== currentMetadataHash
 }
