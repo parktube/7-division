@@ -11,8 +11,9 @@ reviews:
   review_status: true
   collapse_walkthrough: false
   path_filters:
-    - "!**/docs/**"
-    - "!**/*.md"
+    - "docs/sprint-artifacts/**"  # 스프린트 문서는 리뷰 대상
+    - "!**/docs/**"  # 나머지 docs 디렉토리 제외
+    - "!**/*.md"  # 일반 마크다운 파일 제외
     - "!assets/modules/**"
 
   tools:
@@ -22,6 +23,14 @@ reviews:
       enabled: false  # 설계 문서 프로젝트 - 형식보다 내용 중심
 
   path_instructions:
+    - path: "docs/sprint-artifacts/**/*.md"
+      instructions: |
+        스프린트 산출물 문서입니다.
+        - 스프린트 목표와 성과 일치성 확인
+        - 문서 구조 및 완성도 검토
+        - 기술적 내용의 정확성 확인
+        - 다음 스프린트 연계성 검토
+
     - path: "cad-engine/**/*.rs"
       instructions: |
         Rust WASM 엔진 코드입니다.
