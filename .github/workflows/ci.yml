@@ -72,7 +72,7 @@ jobs:
           node-version: '22'
 
       - name: Install build tools for native modules
-        run: sudo apt-get update && sudo apt-get install -y python3 build-essential
+        run: sudo apt-get update && sudo apt-get install -y python3 build-essential make g++
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -108,14 +108,8 @@ jobs:
 
       - name: Rebuild native modules (better-sqlite3)
         run: |
-          # better-sqlite3 requires platform-specific native binaries
-          # pnpm store caches may have binaries from different platforms
-          cd node_modules/better-sqlite3 2>/dev/null || cd $(pnpm why better-sqlite3 --json | jq -r '.[0].dependencies["better-sqlite3"].path' 2>/dev/null) || {
-            echo "::warning::better-sqlite3 not found, skipping rebuild"
-            exit 0
-          }
-          echo "Rebuilding better-sqlite3 in: $(pwd)"
-          npm run build-release 2>/dev/null || npx prebuild-install || npx node-gyp rebuild --release
+          # Force rebuild better-sqlite3 native bindings for current platform
+          pnpm rebuild better-sqlite3
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
