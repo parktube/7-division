@@ -24,9 +24,8 @@ import {
 } from '../src/mama/db.js'
 
 // Mock config to use test database
-const testDbPath = join(mkdtempSync(join(tmpdir(), 'mama-test-')), 'test.db')
 vi.mock('../src/mama/config.js', () => ({
-  DB_PATH: testDbPath,
+  DB_PATH: join(mkdtempSync(join(tmpdir(), 'mama-test-')), 'test.db'),
   CAD_DATA_DIR: '/tmp/test-cad-data',
   ensureDataDirs: vi.fn(),
   getEmbeddingDim: () => 384,

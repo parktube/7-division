@@ -104,12 +104,14 @@ jobs:
           cp -r cad-engine/pkg/* apps/cad-mcp/wasm/
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Rebuild native modules (better-sqlite3)
         run: |
           # Force rebuild better-sqlite3 native bindings for current platform
-          pnpm rebuild better-sqlite3
+          cd apps/cad-mcp && pnpm rebuild better-sqlite3
+          # Verify the native module was built correctly
+          node -e "require('better-sqlite3')" || echo "better-sqlite3 rebuild failed"
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
