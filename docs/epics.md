@@ -32,7 +32,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | 8 | Manifold 기하 엔진 + 텍스트 렌더링 | ✅ 완료 |
 | 9 | 웹 아키텍처 전환 | ✅ 완료 |
 | 10 | AX 개선 - MCP 도구 재설계 | ✅ 완료 |
-| 11 | MAMA Integration | ✅ 완료 |
+| 11 | MAMA Integration | 📋 계획됨 |
 
 ---
 
@@ -117,15 +117,6 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 | FR85 | MCP 내부 통합 | Platform | - | npm install 시 MAMA 포함 |
 | FR86 | 도메인 폴더 구조 | Platform | - | domains/ 폴더 기본 제공 |
 | FR87 | LLM Adapter Pattern | Platform | ADR-0023 | Claude, OpenAI, Ollama 교체 가능 |
-| FR88 | Built-in 모듈 | Platform | ADR-0027 | npm 패키지에 기본 CAD 모듈 포함 |
-| FR89 | Built-in Knowledge | Platform | ADR-0027 | npm 패키지에 베스트 프랙티스 포함 |
-| FR90 | Dual-source 조회 | Platform | ADR-0027 | glob/read/mama_search에서 builtin+user 반환 |
-| FR91 | Builtin 보호 | Platform | ADR-0027 | builtin 모듈 수정 시 에러 반환 |
-| FR92 | Workflow 초기화 | Platform | - | mama_workflow start 명령 |
-| FR93 | 단계별 진행 | Platform | - | next/goto로 단계 전환 |
-| FR94 | DesignHints 자동 활성화 | Platform | - | 단계별 DesignHints 주입 |
-| FR95 | 프로젝트 상태 저장/복원 | Platform | - | 세션 간 워크플로우 상태 유지 |
-| FR96 | Built-in 워크플로우 템플릿 | Platform | - | 기본 워크플로우 템플릿 제공 |
 
 ### Non-Functional Requirements
 
@@ -289,7 +280,7 @@ AI-Native CAD 프로젝트의 에픽 목록입니다.
 
 ---
 
-## Epic 11: MAMA Integration ✅ 완료
+## Epic 11: MAMA Integration - 계획됨
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
@@ -314,35 +305,29 @@ Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함�
 5. 기존 테스트 100% 통과
 6. 검색 응답 < 100ms (1000개 결정 기준)
 
-### FR Coverage Map (실제 구현 매핑)
+### FR Coverage Map
 
-> **스토리 번호**: sprint-artifacts 파일명과 일치 (예: Story 11.1 = `11-1-*.md`)
-
-| Phase | FR | Story | 제목 | 상태 |
-|-------|-----|-------|------|------|
-| Core | FR67 | 11.1 | MAMA Core 4 Tools MCP 통합 | ✅ |
-| Core | FR68 | 11.2 | 결정 저장 + Reasoning Graph | ✅ |
-| Core | FR69 | 11.3 | 단일 DB + topic prefix 구조 | ✅ |
-| Core | FR70 | 11.4 | Outcome Tracking | ✅ |
-| Hook | FR71 | 11.5 | SessionStart Hook (onSessionInit) | ✅ |
-| Hook | FR72 | 11.6 | Dynamic Hint Injection (preToolList) | ✅ |
-| Hook | FR73 | 11.7 | ActionHints (postExecute) | ✅ |
-| Hook | FR74 | 11.8 | CADOrchestrator Hook Owner | ✅ |
-| Intelligence | FR75 | 11.9 | Configurable Context | ✅ |
-| Intelligence | FR76 | 11.10 | Adaptive Mentoring | ✅ |
-| Intelligence | FR77 | 11.11 | Graph Health Metrics | ✅ |
-| Intelligence | FR78 | 11.12 | Anti-Echo Chamber | ✅ |
-| Learning | FR81 | 11.13 | Learning Progress Storage | ✅ |
-| Learning | FR82 | 11.14 | User Growth Metrics | ✅ |
-| Learning | FR83 | 11.15 | DesignHints System | ✅ |
-| Learning | FR84 | 11.16 | Terminology Evolution | ✅ |
-| Learning | - | 11.17 | Learning LLM Integration | ✅ |
-| ~~Platform~~ | ~~FR87~~ | ~~11.18~~ | ~~LLM Adapter Pattern~~ | ❌ 제외 |
-| Platform | FR80 | 11.19 | Module Library Recommendation | ✅ |
-| Platform | FR88-91 | 11.20 | Built-in Assets Distribution | 📋 계획됨 |
-| Platform | FR92-96 | 11.21 | Design Workflow System | 📋 계획됨 |
-
-> **Note**: FR85 (MCP 내부 통합)은 Story 11.1에 포함. FR86 (도메인 폴더 구조)은 선택적 대기.
+| Phase | FR | Story | 설명 |
+|-------|-----|-------|------|
+| Core | FR67 | 11.1.1 | 4 Core Tools MCP 통합 |
+| Core | FR68 | 11.1.2 | 결정 저장 + Reasoning Graph |
+| Core | FR69 | 11.1.3 | 단일 DB + topic prefix |
+| Core | FR70 | 11.1.4 | Outcome Tracking |
+| Hook | FR71 | 11.2.1 | SessionStart Hook |
+| Hook | FR72 | 11.2.2 | Dynamic Hint Injection |
+| Hook | FR73 | 11.2.3 | ActionHints (next_steps) |
+| Hook | FR74 | 11.2.4 | LLM-Agnostic Hook Owner |
+| Intelligence | FR75 | 11.3.1 | Configurable Context |
+| Intelligence | FR76 | 11.3.2 | Adaptive Mentoring |
+| Intelligence | FR77 | 11.3.3 | Graph Health Metrics |
+| Intelligence | FR78 | 11.3.4 | Anti-Echo Chamber |
+| Learning Track | FR81 | 11.4.1 | Learning Progress Storage |
+| Learning Track | FR82 | 11.4.2 | User Growth Metrics |
+| Learning Track | FR83 | 11.4.3 | DesignHints System |
+| Learning Track | FR84 | 11.4.4 | Terminology Evolution |
+| Platform | FR85 | 11.5.1 | MCP 내부 통합 |
+| Platform | FR86 | 11.5.2 | 도메인 폴더 구조 |
+| Platform | FR87 | 11.5.3 | LLM Adapter Pattern |
 
 ### Implementation Phases
 
@@ -356,27 +341,27 @@ Claude가 자동화 도구가 아닌 **설계 마스터**로서, 인간과 함�
 | mama_update | `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 |
 | mama_checkpoint | `mcp__ai-native-cad__mama_checkpoint` | 체크포인트 로드 |
 
-#### Phase 11.1: Core (FR67-70) ✅ 완료
+#### Phase 11.1: Core (FR67-70)
 
-| Story | 제목 | FR | ADR | 상태 |
-|-------|------|-----|-----|------|
-| 11.1 | MAMA Core 4 Tools MCP 통합 | FR67 | ADR-0011 | ✅ |
-| 11.2 | 결정 저장 + Reasoning Graph | FR68 | ADR-0013 | ✅ |
-| 11.3 | 단일 DB + topic prefix 구조 | FR69 | ADR-0016 | ✅ |
-| 11.4 | Outcome Tracking | FR70 | ADR-0011 | ✅ |
+| Story | 제목 | FR | ADR |
+|-------|------|-----|-----|
+| 11.1.1 | MAMA Core 4 Tools MCP 통합 | FR67 | ADR-0011 |
+| 11.1.2 | 결정 저장 + Reasoning Graph | FR68 | ADR-0013 |
+| 11.1.3 | 단일 DB + topic prefix 구조 | FR69 | ADR-0016 |
+| 11.1.4 | Outcome Tracking | FR70 | ADR-0011 |
 
-**품질 게이트**: ✅ mama_save/mama_search/mama_update/mama_load_checkpoint MCP 도구 동작, DB 스키마 완성
+**품질 게이트**: mama_save/mama_search/mama_update/mama_checkpoint MCP 도구 동작, DB 스키마 완성
 
-#### Phase 11.2: Hook System (FR71-74) ✅ 완료
+#### Phase 11.2: Hook System (FR71-74) ⭐ 핵심
 
-| Story | 제목 | FR | ADR | 상태 |
-|-------|------|-----|-----|------|
-| 11.5 | SessionStart Hook (onSessionInit) | FR71 | ADR-0017 | ✅ |
-| 11.6 | Dynamic Hint Injection (preToolList) | FR72 | ADR-0015 | ✅ |
-| 11.7 | ActionHints (postExecute) | FR73 | ADR-0014 | ✅ |
-| 11.8 | CADOrchestrator Hook Owner | FR74 | ADR-0018 | ✅ |
+| Story | 제목 | FR | ADR |
+|-------|------|-----|-----|
+| 11.2.1 | SessionStart Hook (onSessionInit) | FR71 | ADR-0017 |
+| 11.2.2 | Dynamic Hint Injection (preToolList) | FR72 | ADR-0015 |
+| 11.2.3 | ActionHints (postExecute) | FR73 | ADR-0014 |
+| 11.2.4 | CADOrchestrator Hook Owner | FR74 | ADR-0018 |
 
-**품질 게이트**: ✅ Hook System 동작, MCP instructions 필드로 컨텍스트 자동 주입
+**품질 게이트**: Hook System 동작, 모든 LLM에서 동일하게 작동
 
 ```
 Hook Flow:
@@ -387,114 +372,39 @@ Hook Flow:
            최근 결정 요약       DB 힌트 주입              module_hints 반환
 ```
 
-#### Phase 11.3: Intelligence (FR75-78) ✅ 완료
+#### Phase 11.3: Intelligence (FR75-78)
 
-| Story | 제목 | FR | ADR | 상태 |
-|-------|------|-----|-----|------|
-| 11.9 | Configurable Context | FR75 | ADR-0017 | ✅ |
-| 11.10 | Adaptive Mentoring | FR76 | ADR-0020 | ✅ |
-| 11.11 | Graph Health Metrics | FR77 | ADR-0019 | ✅ |
-| 11.12 | Anti-Echo Chamber | FR78 | ADR-0021 | ✅ |
+| Story | 제목 | FR | ADR |
+|-------|------|-----|-----|
+| 11.3.1 | Configurable Context | FR75 | ADR-0017 |
+| 11.3.2 | Adaptive Mentoring | FR76 | ADR-0020 |
+| 11.3.3 | Graph Health Metrics | FR77 | ADR-0019 |
+| 11.3.4 | Anti-Echo Chamber | FR78 | ADR-0021 |
 
-**품질 게이트**: ✅ none/hint/full 모드 동작, 90일 이상 결정 경고, debates < 10% 에코챔버 경고
+**품질 게이트**: none/hint/full 모드 동작, 90일 이상 결정 경고
 
-#### Phase 11.4: Learning Track (FR81-84) ✅ 완료
+#### Phase 11.4: Learning Track (FR81-84) ⭐ 신규
 
 > "만들고 싶은 것을 만들면서, 만드는 법을 배운다"
 
-| Story | 제목 | FR | ADR | 상태 |
-|-------|------|-----|-----|------|
-| 11.13 | Learning Progress Storage | FR81 | ADR-0025 | ✅ |
-| 11.14 | User Growth Metrics | FR82 | ADR-0025 | ✅ |
-| 11.15 | DesignHints System | FR83 | ADR-0025 | ✅ |
-| 11.16 | Terminology Evolution | FR84 | ADR-0025 | ✅ |
-| 11.17 | Learning LLM Integration | - | ADR-0025 | ✅ |
+| Story | 제목 | FR | ADR |
+|-------|------|-----|-----|
+| 11.4.1 | Learning Progress Storage | FR81 | ADR-0025 |
+| 11.4.2 | User Growth Metrics | FR82 | ADR-0025 |
+| 11.4.3 | DesignHints System | FR83 | ADR-0025 |
+| 11.4.4 | Terminology Evolution | FR84 | ADR-0025 |
 
-**품질 게이트**: ✅ 개념 학습 기록, 성장 지표 추적, Human CoT 유도 동작, type='understood'/'applied' 지원
+**품질 게이트**: 개념 학습 기록, 성장 지표 추적, Human CoT 유도 동작
 
-#### Phase 11.5: Platform (FR80, FR85-86) ✅ 완료
+#### Phase 11.5: Platform (FR85-87)
 
-| Story | 제목 | FR | ADR | 상태 |
-|-------|------|-----|-----|------|
-| (11.1) | MCP 내부 통합 | FR85 | - | ✅ (Phase 11.1에서 완료) |
-| - | 도메인 폴더 구조 | FR86 | - | 📋 대기 (선택적) |
-| ~~11.18~~ | ~~LLM Adapter Pattern~~ | ~~FR87~~ | ~~ADR-0023~~ | ❌ 제외 |
-| 11.19 | Module Library Recommendation | FR80 | ADR-0024 | ✅ |
-| 11.20 | Built-in Assets Distribution | FR88-91 | ADR-0027 | 📋 계획됨 |
-| 11.21 | Design Workflow System | FR92-96 | - | 📋 계획됨 |
+| Story | 제목 | FR | ADR |
+|-------|------|-----|-----|
+| 11.5.1 | MCP 내부 통합 | FR85 | - |
+| 11.5.2 | 도메인 폴더 구조 | FR86 | - |
+| 11.5.3 | LLM Adapter Pattern | FR87 | ADR-0023 |
 
-**Story 11.18 제외 사유**: MCP 프로토콜 기반 아키텍처에서 LLM 선택은 클라이언트 레벨에서 처리됨. LLMAdapter 패턴은 Direct API 방식용으로 설계되어 현재 아키텍처에 불필요.
-
-**품질 게이트**: ✅ FR85 완료 (MCP 통합), FR80 완료 (모듈 추천). FR86은 선택적. FR87 MCP로 대체됨.
-
----
-
-### Story 11.20: Built-in Assets Distribution
-
-As a **개발자/사용자**,
-I want **npm 패키지에 기본 모듈과 지식이 포함되기를**,
-So that **설치 즉시 유용한 에셋을 사용할 수 있다** (FR88-91).
-
-**Acceptance Criteria:**
-
-**Given** npm install @ai-native-cad/mcp를 실행할 때
-**When** 패키지가 설치되면
-**Then** assets/modules/, assets/knowledge/ 디렉토리가 포함된다
-
-**Given** glob 또는 mama_search를 호출할 때
-**When** 결과가 반환되면
-**Then** builtin(읽기전용) + user(읽기/쓰기) 모두 포함된다
-
-**Given** builtin 모듈을 수정하려 할 때
-**When** edit/write를 호출하면
-**Then** 에러와 함께 사용자 모듈로 복사 안내가 반환된다
-
-**Technical Notes:**
-- Dual-source 아키텍처: builtin (npm package) + user (~/.ai-native-cad/)
-- ADR-0027 참조
-
----
-
-### Story 11.21: Design Workflow System
-
-As a **CAD 사용자**,
-I want **디자인 프로젝트를 단계별 워크플로우로 진행하기를**,
-So that **AI와 대화하며 체계적으로 디자인을 배우고 결과물을 만들 수 있다** (FR92-96).
-
-**Acceptance Criteria:**
-
-**Given** 사용자가 새 디자인 프로젝트를 시작할 때
-**When** "복층 인테리어를 만들고 싶어"라고 말하면
-**Then** AI가 워크플로우 시작을 제안하고 프로젝트를 초기화한다
-
-**Given** 워크플로우가 진행 중일 때
-**When** 현재 단계(예: Discovery)가 완료되면
-**Then** 다음 단계로 전환을 제안하고 이전 단계 산출물을 저장한다
-
-**Given** 특정 워크플로우 단계에 있을 때
-**When** AI가 응답을 생성하면
-**Then** 해당 단계에 맞는 DesignHints가 자동으로 포함된다
-
-**Workflow Phases:**
-```
-Discovery → Planning → Architecture → Creation
-(발견)       (계획)      (설계)        (제작)
-```
-
-**MCP Tool:**
-```typescript
-mama_workflow({
-  command: 'start' | 'status' | 'next' | 'goto' | 'list' | 'artifact',
-  project_name?: string,  // start용
-  phase?: string,         // goto용
-  content?: string,       // next/artifact용
-  artifact_type?: string  // artifact용
-})
-```
-
-**Technical Notes:**
-- 단일 도구, command 파라미터로 동작 구분 (lsp/bash 패턴)
-- 상세: [docs/sprint-artifacts/11-21-design-workflow.md]
+**품질 게이트**: Claude/OpenAI/Ollama 어댑터 동작, 모듈 추천 검증
 
 ### 성공 기준
 
@@ -514,7 +424,7 @@ architecture.md Part 4 참조
 
 ---
 
-### Story 11.1: MAMA Core 4 Tools MCP 통합
+### Story 11.1.1: MAMA Core 4 Tools MCP 통합
 
 As a **LLM 에이전트**,
 I want **MAMA Core 4 Tools가 MCP로 통합되기를**,
@@ -550,7 +460,7 @@ So that **설계 결정을 저장하고 검색할 수 있다** (FR67).
 
 ---
 
-### Story 11.2: 결정 저장 + Reasoning Graph
+### Story 11.1.2: 결정 저장 + Reasoning Graph
 
 As a **LLM 에이전트**,
 I want **결정 간의 관계를 그래프로 표현하기를**,
@@ -581,7 +491,7 @@ So that **지식의 진화를 추적할 수 있다** (FR68).
 
 ---
 
-### Story 11.3: 단일 DB + topic prefix 구조
+### Story 11.1.3: 단일 DB + topic prefix 구조
 
 As a **개발자**,
 I want **단일 DB에 topic prefix로 도메인을 구분하기를**,
@@ -608,7 +518,7 @@ So that **크로스 도메인 검색이 용이하다** (FR69).
 
 ---
 
-### Story 11.4: Outcome Tracking
+### Story 11.1.4: Outcome Tracking
 
 As a **LLM 에이전트**,
 I want **결정의 성공/실패를 추적하기를**,
@@ -635,7 +545,7 @@ So that **실패한 접근법을 피할 수 있다** (FR70).
 
 ---
 
-### Story 11.5: SessionStart Hook (onSessionInit)
+### Story 11.2.1: SessionStart Hook (onSessionInit)
 
 As a **LLM 에이전트**,
 I want **세션 시작 시 자동으로 컨텍스트가 로드되기를**,
@@ -666,7 +576,7 @@ So that **이전 작업을 이어서 할 수 있다** (FR71).
 
 ---
 
-### Story 11.6: Dynamic Hint Injection (preToolList)
+### Story 11.2.2: Dynamic Hint Injection (preToolList)
 
 As a **LLM 에이전트**,
 I want **Tool Definition에 DB 힌트가 자동 주입되기를**,
@@ -694,7 +604,7 @@ So that **몰랐던 규칙도 자연스럽게 적용한다** (FR72).
 
 ---
 
-### Story 11.7: ActionHints (postExecute)
+### Story 11.2.3: ActionHints (postExecute)
 
 As a **LLM 에이전트**,
 I want **도구 실행 후 다음 작업 제안을 받기를**,
@@ -723,7 +633,7 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
 
 ---
 
-### Story 11.8: CADOrchestrator Hook Owner
+### Story 11.2.4: CADOrchestrator Hook Owner
 
 As a **개발자**,
 I want **CADOrchestrator가 Hook을 관리하기를**,
@@ -750,7 +660,7 @@ So that **모든 LLM에서 동일하게 동작한다** (FR74).
 
 ---
 
-### Story 11.9: Configurable Context
+### Story 11.3.1: Configurable Context
 
 As a **사용자**,
 I want **컨텍스트 주입 수준을 설정할 수 있기를**,
@@ -777,7 +687,7 @@ So that **토큰 사용량을 조절할 수 있다** (FR75).
 
 ---
 
-### Story 11.10: Adaptive Mentoring
+### Story 11.3.2: Adaptive Mentoring
 
 As a **사용자**,
 I want **내 수준에 맞는 힌트를 받기를**,
@@ -803,7 +713,7 @@ So that **점진적으로 학습할 수 있다** (FR76).
 
 ---
 
-### Story 11.11: Graph Health Metrics
+### Story 11.3.3: Graph Health Metrics
 
 As a **개발자**,
 I want **Reasoning Graph의 건강도를 측정하기를**,
@@ -828,7 +738,7 @@ So that **지식 품질을 모니터링할 수 있다** (FR77).
 
 ---
 
-### Story 11.12: Anti-Echo Chamber
+### Story 11.3.4: Anti-Echo Chamber
 
 As a **LLM 에이전트**,
 I want **에코챔버 위험이 경고되기를**,
@@ -854,9 +764,9 @@ So that **다양한 관점을 유지한다** (FR78).
 
 ---
 
-## Stories 11.13-11.17: Learning Track
+## Phase 11.4: Learning Track Stories
 
-### Story 11.13: Learning Progress Storage
+### Story 11.4.1: Learning Progress Storage
 
 As a **LLM 에이전트**,
 I want **사용자가 배운 개념을 저장하기를**,
@@ -883,7 +793,7 @@ So that **성장 여정을 추적할 수 있다** (FR81).
 
 ---
 
-### Story 11.14: User Growth Metrics
+### Story 11.4.2: User Growth Metrics
 
 As a **시스템**,
 I want **사용자의 성장 지표를 자동 추적하기를**,
@@ -911,7 +821,7 @@ So that **멘토링 수준을 조절할 수 있다** (FR82).
 
 ---
 
-### Story 11.15: DesignHints System
+### Story 11.4.3: DesignHints System
 
 As a **LLM 에이전트**,
 I want **DesignHints로 Human CoT를 유도하기를**,
@@ -944,7 +854,7 @@ So that **사용자가 스스로 생각하며 배운다** (FR83).
 
 ---
 
-### Story 11.16: Terminology Evolution
+### Story 11.4.4: Terminology Evolution
 
 As a **시스템**,
 I want **사용자의 언어 변화를 추적하기를**,
@@ -971,9 +881,9 @@ So that **성장을 가시화할 수 있다** (FR84).
 
 ---
 
-## Stories 11.18-11.21: Platform
+## Phase 11.5: Platform Stories
 
-### Story 11.1 부록: MCP 내부 통합 (FR85)
+### Story 11.5.1: MCP 내부 통합
 
 As a **개발자**,
 I want **MAMA가 MCP 서버에 내장되기를**,
@@ -996,7 +906,7 @@ So that **별도 설치 없이 사용할 수 있다** (FR85).
 
 ---
 
-### Story (대기): 도메인 폴더 구조 (FR86)
+### Story 11.5.2: 도메인 폴더 구조
 
 As a **개발자**,
 I want **도메인별 지식이 폴더로 제공되기를**,
@@ -1019,17 +929,25 @@ So that **도메인 확장이 용이하다** (FR86).
 
 ---
 
-### ~~Story 11.18: LLM Adapter Pattern~~ ❌ 제외됨
+### Story 11.5.3: LLM Adapter Pattern
 
-> **제외 사유**: MCP 프로토콜이 이미 LLM-agnostic 인터페이스를 제공합니다.
-> 클라이언트(Claude Code, Cursor, Windsurf 등)가 LLM 선택을 담당하므로,
-> 서버 내 LLMAdapter 패턴은 불필요합니다. ADR-0023 참조.
+As a **개발자**,
+I want **LLMAdapter 인터페이스로 LLM을 교체할 수 있기를**,
+So that **Claude 외 LLM도 사용할 수 있다** (FR87).
 
-~~As a **개발자**,~~
-~~I want **LLMAdapter 인터페이스로 LLM을 교체할 수 있기를**,~~
-~~So that **Claude 외 LLM도 사용할 수 있다** (FR87).~~
+**Acceptance Criteria:**
 
-**대안**: MCP 프로토콜 기반 아키텍처 (architecture.md 4.7절 참조)
+**Given** LLMAdapter 인터페이스가 정의되었을 때
+**When** ClaudeAdapter를 구현하면
+**Then** Claude API로 chat, toolCalling이 동작한다
+
+**Given** OllamaAdapter를 구현했을 때
+**When** 로컬 Ollama 서버에 연결하면
+**Then** 로컬 LLM으로 CAD 작업이 가능하다
+
+**Technical Notes:**
+- LLMAdapter 인터페이스: chat(), supportsStreaming(), supportsToolCalling()
+- ADR-0023 참조 (PoC 검증 완료)
 
 ---
 

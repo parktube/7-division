@@ -67,7 +67,7 @@ jobs:
           version: 10
 
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@11
+        run: npm install -g npm@latest
 
       - name: Download WASM Artifacts
         uses: actions/download-artifact@v4

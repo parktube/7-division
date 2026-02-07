@@ -1,55 +1,12 @@
 # ADR 0023: LLM-Agnostic Agent Architecture
 
-**Status:** ⚠️ **Deprecated** (Superseded by MCP Architecture)
-**Date:** 2026-01-10 (Deprecated: 2026-01-21)
+**Status:** Accepted (PoC Validated)
+**Date:** 2026-01-10
 **Context:** Epic 11 MAMA Integration
 
 ---
 
-## ⚠️ Deprecation Notice
-
-**이 ADR은 더 이상 유효하지 않습니다.**
-
-### 사유
-
-이 ADR은 **Direct API 방식**을 전제로 설계되었으나, 실제 구현은 **MCP(Model Context Protocol) 기반 아키텍처**를 채택했습니다.
-
-| 항목 | ADR-0023 설계 | 실제 구현 |
-|------|--------------|----------|
-| LLM 인터페이스 | LLMAdapter 패턴 | MCP 프로토콜 |
-| LLM 선택 | 서버 내부에서 교체 | 클라이언트(Claude Code, Cursor 등)가 선택 |
-| Agent Loop | 개발자가 직접 구현 | MCP 클라이언트가 관리 |
-| 도구 호출 | Direct API Function Calling | MCP tool call |
-
-### 현재 아키텍처 (MCP 기반)
-
-```
-┌─────────────────────┐     MCP Protocol     ┌─────────────────────┐
-│  Claude Code        │◄───────────────────►│  CAD MCP Server     │
-│  (또는 다른 MCP     │   tools/call         │  (도구만 제공)       │
-│   클라이언트)        │   tools/list         │                     │
-└─────────────────────┘                      └─────────────────────┘
-```
-
-**MCP가 이미 LLM-Agnostic 인터페이스를 제공**합니다:
-- 어떤 MCP 클라이언트(Claude Code, Cursor, 기타 IDE)든 동일한 도구 사용 가능
-- LLM 선택은 클라이언트 레벨에서 결정
-- 서버는 LLM에 대해 알 필요 없음
-
-### 관련 Story
-
-- ~~Story 11.18 (LLM Adapter Pattern)~~: **제외됨** - MCP로 대체
-- 이 ADR의 PoC 결과(로컬 LLM 테스트)는 참고 자료로만 유지
-
----
-
-## [아래는 기존 문서 - 참고용으로 보존]
-
----
-
 ## 1. 요약
-
-> ⚠️ **참고**: 아래 내용은 Direct API 방식 기준으로 작성됨. 현재 MCP 기반 아키텍처에는 적용되지 않음.
 
 CAD 도구는 **어떤 LLM에서도 동작**해야 합니다. Claude Code CLI 뿐만 아니라, API 기반 LLM(Claude API, OpenAI, Ollama 등)에서도 동일한 도구를 사용할 수 있어야 합니다.
 

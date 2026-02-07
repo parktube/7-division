@@ -1,6 +1,6 @@
 # Story 11.9: Configurable Context
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -39,24 +39,24 @@ So that **토큰 사용량을 조절할 수 있다** (FR75).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: 설정 UI 안내 (AC: #1-3)
-  - [x] 1.1 config.json 예시 문서화 (mama_configure 도구로 대체)
-  - [x] 1.2 각 모드의 효과 설명 추가
+- [ ] Task 1: 설정 UI 안내 (AC: #1-3)
+  - [ ] 1.1 config.json 예시 문서화
+  - [ ] 1.2 각 모드의 효과 설명 추가
 
-- [x] Task 2: set_context_mode 도구 구현 (AC: #4)
-  - [x] 2.1 mama_configure 도구에 통합 (별도 파일 대신)
-  - [x] 2.2 런타임 설정 변경 로직
-  - [x] 2.3 변경 확인 응답 반환
+- [ ] Task 2: set_context_mode 도구 구현 (AC: #4)
+  - [ ] 2.1 `apps/cad-mcp/src/mama/tools/set-context-mode.ts` 생성
+  - [ ] 2.2 런타임 설정 변경 로직
+  - [ ] 2.3 변경 확인 응답 반환
 
-- [x] Task 3: 모드별 출력 최적화 (AC: #5)
-  - [x] 3.1 none 모드: 빈 문자열
-  - [x] 3.2 hint 모드: 한 줄 요약
-  - [x] 3.3 full 모드: 상세 내용
+- [ ] Task 3: 모드별 출력 최적화 (AC: #5)
+  - [ ] 3.1 none 모드: 빈 문자열
+  - [ ] 3.2 hint 모드: 한 줄 요약
+  - [ ] 3.3 full 모드: 상세 내용
 
-- [x] Task 4: 테스트 작성
-  - [x] 4.1 각 모드 설정 테스트
-  - [x] 4.2 런타임 변경 테스트
-  - [x] 4.3 토큰 사용량 비교 (session-init 테스트에서 검증)
+- [ ] Task 4: 테스트 작성
+  - [ ] 4.1 각 모드 설정 테스트
+  - [ ] 4.2 런타임 변경 테스트
+  - [ ] 4.3 토큰 사용량 비교 (로깅)
 
 ## Dev Notes
 
@@ -91,20 +91,7 @@ interface SetContextModeInput {
 
 - **선행**: Story 11.5 (SessionStart Hook) - 컨텍스트 주입 기반
 
-### Completion Notes List
+### File List
 
-- Implementation completed: 2026-01-21
-- set_context_mode를 별도 도구 대신 mama_configure에 통합
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/mama/config.ts` - MAMAConfig 타입 + 기본값 (contextInjection: none/hint/full)
-- `apps/cad-mcp/src/mama/tools/handlers.ts` - handleMamaConfigure (contextInjection 설정 변경)
-- `apps/cad-mcp/src/mama/tools/schema.ts` - mama_configure 스키마
-- `apps/cad-mcp/src/mama/hooks/session-init.ts` - 모드별 출력 (executeSessionInit)
-- `apps/cad-mcp/tests/mama.test.ts` - session init 모드별 테스트
-
-### Review Follow-ups (AI)
-
-- [ ] [AI-Review][LOW] AC4 도구명 불일치 - 명세: `set_context_mode`, 실제: `mama_configure`로 통합 (기능 동일)
-- [ ] [AI-Review][LOW] 설정 파일 경로 불일치 - 명세: `config.json`, 실제: `mama-config.json`
+- `apps/cad-mcp/src/mama/tools/set-context-mode.ts` (신규)
+- `apps/cad-mcp/src/mama/config.ts` (수정)

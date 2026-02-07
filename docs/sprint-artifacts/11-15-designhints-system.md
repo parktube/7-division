@@ -1,6 +1,6 @@
 # Story 11.15: DesignHints System
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -43,37 +43,35 @@ So that **사용자가 스스로 생각하며 배운다** (FR83).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: DesignHints 타입 정의 (AC: #3)
-  - [x] 1.1 DesignHints 인터페이스 정의
-  - [x] 1.2 next_concepts, questions, options 필드
-  - [x] 1.3 ActionHints와 구분 (types/action-hints.ts에 통합)
+- [ ] Task 1: DesignHints 타입 정의 (AC: #3)
+  - [ ] 1.1 DesignHints 인터페이스 정의
+  - [ ] 1.2 next_concepts, questions, options 필드
+  - [ ] 1.3 ActionHints와 구분
 
-- [x] Task 2: DesignHints 생성 로직 (AC: #1, #4)
-  - [x] 2.1 스타일 관련 질문 감지 (detectDomain)
-  - [x] 2.2 색상 관련 질문 감지 (DOMAIN_KEYWORDS)
-  - [x] 2.3 도메인별 DesignHints 템플릿 (PRINCIPLES, STYLE_OPTIONS, THINKING_QUESTIONS)
+- [ ] Task 2: DesignHints 생성 로직 (AC: #1, #4)
+  - [ ] 2.1 스타일 관련 질문 감지
+  - [ ] 2.2 색상 관련 질문 감지
+  - [ ] 2.3 도메인별 DesignHints 템플릿
 
-- [x] Task 3: 도구 결과에 DesignHints 포함 (AC: #3)
-  - [x] 3.1 generateDesignHints() - 컨텍스트 기반 힌트 생성
-  - [x] 3.2 ActionHints.designHints 필드 추가
-  - [x] 3.3 formatDesignHints() - 결과 포맷팅
+- [ ] Task 3: 도구 결과에 DesignHints 포함 (AC: #3)
+  - [ ] 3.1 postExecute Hook에서 DesignHints 생성
+  - [ ] 3.2 도구 결과 객체에 design_hints 추가
+  - [ ] 3.3 ActionHints와 함께 반환
 
-- [x] Task 4: 선택 이유 학습 기록 (AC: #2)
-  - [x] 4.1 recordStyleChoice() - 선택 감지 및 기록
-  - [x] 4.2 learning-tracker와 연동 (saveLearning, recordApplication)
-  - [x] 4.3 growth-tracker와 연동 (recordIndependentDecision)
+- [ ] Task 4: 선택 이유 학습 기록 (AC: #2)
+  - [ ] 4.1 사용자 선택 감지
+  - [ ] 4.2 이유 추출 및 저장
+  - [ ] 4.3 learnings 테이블에 기록
 
-- [x] Task 5: AI 행동 가이드라인 (AC: #5)
-  - [x] 5.1 Human CoT 유도 원칙 (PRINCIPLES 상수)
-  - [x] 5.2 ThinkingQuestion 패턴 (도메인별 질문)
-  - [x] 5.3 DesignOption 트레이드오프 (pros/cons)
+- [ ] Task 5: AI 행동 가이드라인 문서화 (AC: #5)
+  - [ ] 5.1 Human CoT 유도 원칙 문서
+  - [ ] 5.2 System Prompt 템플릿
+  - [ ] 5.3 예시 대화 패턴
 
-- [x] Task 6: 테스트 작성 (9개 테스트)
-  - [x] 6.1 도메인 감지 테스트 (detectDomain)
-  - [x] 6.2 DesignHints 생성 테스트 (generateDesignHints)
-  - [x] 6.3 스타일 옵션 테스트 (minimal/modern)
-  - [x] 6.4 포맷팅 테스트 (formatDesignHints)
-  - [x] 6.5 선택 기록 테스트 (recordStyleChoice)
+- [ ] Task 6: 테스트 작성
+  - [ ] 6.1 DesignHints 생성 테스트
+  - [ ] 6.2 선택 이유 기록 테스트
+  - [ ] 6.3 AI 행동 검증 테스트
 
 ## Dev Notes
 
@@ -130,22 +128,11 @@ DesignHints (UX): 인간의 다음 생각 유도
 
 - **선행**: Story 11.7 (ActionHints) - postExecute Hook 기반
 - **선행**: Story 11.13 (Learning Progress) - 학습 기록 연동
-- **선행**: Story 11.14 (User Growth Metrics) - 성장 추적 연동
 
-### Completion Notes
+### File List
 
-- Implementation completed: 2026-01-21
-- DesignHints를 별도 타입 파일 대신 design-hints.ts에 직접 정의 (모듈 응집도)
-- ActionHints와 통합을 위해 types/action-hints.ts에도 DesignHints 타입 추가
-- 템플릿 디렉토리 대신 상수(PRINCIPLES, STYLE_OPTIONS 등)로 간결하게 구현
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/mama/design-hints.ts` (신규 - 핵심 모듈)
-- `apps/cad-mcp/src/mama/types/action-hints.ts` (수정 - DesignHints 타입 추가)
-- `apps/cad-mcp/src/mama/index.ts` (수정 - design-hints export 추가)
-- `apps/cad-mcp/tests/mama.test.ts` (수정 - DesignHints 테스트 9개)
-
-### Review Follow-ups (AI)
-
-- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)
+- `apps/cad-mcp/src/mama/schema.ts` (수정 - DesignHints 타입)
+- `apps/cad-mcp/src/mama/design-hints.ts` (신규)
+- `apps/cad-mcp/src/mama/hooks/post-execute.ts` (수정 - DesignHints 추가)
+- `apps/cad-mcp/src/mama/templates/design-hints/` (신규 - 도메인별 템플릿)
+- `docs/ax-design-guide.md` (수정 - Human CoT 가이드라인)

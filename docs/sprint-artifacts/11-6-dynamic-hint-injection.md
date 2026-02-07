@@ -1,6 +1,6 @@
 # Story 11.6: Dynamic Hint Injection (preToolList)
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -43,39 +43,39 @@ So that **몰랐던 규칙도 자연스럽게 적용한다** (FR72).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: hints 테이블 구현 (AC: #2)
-  - [x] 1.1 `apps/cad-mcp/src/mama/migrations/003-hints.sql` 생성
-  - [x] 1.2 인덱스 추가 (tool_name, priority)
-  - [x] 1.3 시드 데이터: 기본 CAD 힌트 삽입
+- [ ] Task 1: hints 테이블 구현 (AC: #2)
+  - [ ] 1.1 `apps/cad-mcp/src/mama/db.ts` 수정 - hints 테이블 생성
+  - [ ] 1.2 인덱스 추가 (tool_name)
+  - [ ] 1.3 시드 데이터: 기본 CAD 힌트 삽입
 
-- [x] Task 2: preToolList Hook 구현 (AC: #1, #3, #4)
-  - [x] 2.1 `apps/cad-mcp/src/mama/hooks/pre-tool-list.ts` 생성
-  - [x] 2.2 도구별 힌트 DB 조회 로직
-  - [x] 2.3 description + 힌트 조합 로직
-  - [x] 2.4 priority 순 정렬, 최대 3개 제한
-  - [x] 2.5 HookRegistry에 preToolList 등록
+- [ ] Task 2: preToolList Hook 구현 (AC: #1, #3, #4)
+  - [ ] 2.1 `apps/cad-mcp/src/mama/hooks/pre-tool-list.ts` 생성
+  - [ ] 2.2 도구별 힌트 DB 조회 로직
+  - [ ] 2.3 description + 힌트 조합 로직
+  - [ ] 2.4 priority 순 정렬, 최대 3개 제한
+  - [ ] 2.5 HookRegistry에 preToolList 등록
 
-- [x] Task 3: mama_edit_hint 도구 구현 (AC: #5)
-  - [x] 3.1 `apps/cad-mcp/src/mama/hooks/pre-tool-list.ts`에 CRUD 함수
-  - [x] 3.2 TypeScript 인터페이스로 정의
-  - [x] 3.3 힌트 추가/수정/삭제 로직
-  - [x] 3.4 tools/handlers.ts에 mama_edit_hint 핸들러 등록
+- [ ] Task 3: edit_hint 도구 구현 (AC: #5)
+  - [ ] 3.1 `apps/cad-mcp/src/mama/tools/edit-hint.ts` 생성
+  - [ ] 3.2 EditHintInput Zod 스키마 정의
+  - [ ] 3.3 힌트 추가/수정/삭제 로직
+  - [ ] 3.4 tool-registry.ts에 edit_hint 등록
 
-- [x] Task 4: MCP 서버 통합 (AC: #1)
-  - [x] 4.1 orchestrator를 통해 통합
-  - [x] 4.2 tools/list 핸들러에서 preToolList Hook 호출
-  - [x] 4.3 힌트가 주입된 도구 목록 반환
+- [ ] Task 4: MCP 서버 통합 (AC: #1)
+  - [ ] 4.1 `apps/cad-mcp/src/server.ts` 수정
+  - [ ] 4.2 tools/list 핸들러에서 preToolList Hook 호출
+  - [ ] 4.3 힌트가 주입된 도구 목록 반환
 
-- [x] Task 5: 힌트 캐싱 (AC: #6)
-  - [x] 5.1 세션 내 힌트 캐시 구현 (hintCache Map)
-  - [x] 5.2 edit_hint 호출 시 캐시 무효화
+- [ ] Task 5: 힌트 캐싱 (AC: #6)
+  - [ ] 5.1 세션 내 힌트 캐시 구현
+  - [ ] 5.2 edit_hint 호출 시 캐시 무효화
 
-- [x] Task 6: 테스트 작성
-  - [x] 6.1 힌트 있는 도구 테스트
-  - [x] 6.2 힌트 없는 도구 테스트
-  - [x] 6.3 우선순위 정렬 테스트
-  - [x] 6.4 edit_hint CRUD 테스트
-  - [x] 6.5 캐싱 테스트
+- [ ] Task 6: 테스트 작성
+  - [ ] 6.1 힌트 있는 도구 테스트
+  - [ ] 6.2 힌트 없는 도구 테스트
+  - [ ] 6.3 우선순위 정렬 테스트
+  - [ ] 6.4 edit_hint CRUD 테스트
+  - [ ] 6.5 캐싱 테스트
 
 ## Dev Notes
 
@@ -173,19 +173,11 @@ apps/cad-mcp/src/
 - **선행**: Story 11.5 (SessionStart Hook) - HookRegistry
 - **후속**: Story 11.7 (ActionHints) - postExecute Hook
 
-### Completion Notes List
+### File List
 
-- Implementation completed: 2026-01-21
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/mama/migrations/003-hints.sql` - hints 테이블 + 시드 데이터
-- `apps/cad-mcp/src/mama/hooks/pre-tool-list.ts` - preToolList Hook + CRUD
+- `apps/cad-mcp/src/mama/db.ts` (수정 - hints 테이블)
+- `apps/cad-mcp/src/mama/hooks/pre-tool-list.ts` (신규)
 - `apps/cad-mcp/src/mama/hooks/registry.ts` (수정)
-- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - mama_edit_hint)
-- `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - mama_edit_hint 스키마)
-- `apps/cad-mcp/tests/mama.test.ts` - hint 테스트
-
-### Review Follow-ups (AI)
-
-- [ ] [AI-Review][LOW] AC5 도구명 불일치 - 명세: `edit_hint`, 실제: `mama_edit_hint` (기능 동일, 네이밍만 다름)
+- `apps/cad-mcp/src/mama/tools/edit-hint.ts` (신규)
+- `apps/cad-mcp/src/server.ts` (수정)
+- `packages/shared/src/schemas/mama.ts` (수정 - EditHintInput)

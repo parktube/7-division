@@ -1,6 +1,6 @@
 # Story 11.16: Terminology Evolution
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -46,37 +46,35 @@ So that **성장을 가시화할 수 있다** (FR84).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: terminology_evolution 테이블 생성 (AC: #1, #2)
-  - [x] 1.1 스키마 정의 (user_id, before_term, after_term, domain, learning_id, detected_at)
-  - [x] 1.2 SQLite 마이그레이션 (007-terminology-evolution.sql)
-  - [x] 1.3 TypeScript 타입 정의 (TerminologyEvolutionRow)
+- [ ] Task 1: terminology_evolution 테이블 생성 (AC: #1, #2)
+  - [ ] 1.1 스키마 정의 (user_id, before_term, after_term, learning_id, detected_at, idx_terminology_user 인덱스)
+  - [ ] 1.2 SQLite 마이그레이션
+  - [ ] 1.3 TypeScript 타입 정의
 
-- [x] Task 2: 용어 변화 감지 로직 (AC: #1, #5)
-  - [x] 2.1 용어 매핑 사전 (TERM_MAPPING: style, color, spatial, quality)
-  - [x] 2.2 extractSpecificTerms() - 메시지에서 전문 용어 추출
-  - [x] 2.3 detectEvolution() - 이전/현재 메시지 비교
+- [ ] Task 2: 용어 변화 감지 로직 (AC: #1, #5)
+  - [ ] 2.1 용어 매핑 사전 (미니멀 → Japandi/Bauhaus/Muji)
+  - [ ] 2.2 사용자 메시지에서 전문 용어 추출
+  - [ ] 2.3 이전 용어 사용 이력 비교
 
-- [x] Task 3: 학습 연결 (AC: #2)
-  - [x] 3.1 recordEvolution() - 용어 변화와 learning 자동 매칭
-  - [x] 3.2 getLearning() 연동으로 learning_id 자동 연결
-  - [x] 3.3 formatTerminologySection에서 "(관련 학습 후)" 표시
+- [ ] Task 3: 학습 연결 (AC: #2)
+  - [ ] 3.1 용어 변화와 관련 learning 매칭
+  - [ ] 3.2 learning_id 자동 연결
+  - [ ] 3.3 "이 용어는 X 개념 학습 후 사용 시작"
 
-- [x] Task 4: 질문 품질 감지 (AC: #3)
-  - [x] 4.1 calculateQuestionQuality() - 구체성/전문성 점수
-  - [x] 4.2 hasQuestionQualityImproved() - +10% 또는 +5점 판정
-  - [x] 4.3 recordQuestionQualityImprovement() - growth_metrics 연동
+- [ ] Task 4: 질문 품질 감지 (AC: #3)
+  - [ ] 4.1 질문 패턴 분석
+  - [ ] 4.2 구체성/전문성 점수 계산
+  - [ ] 4.3 향상 시 growth_metrics에도 기록
 
-- [x] Task 5: 성장 리포트 통합 (AC: #4)
-  - [x] 5.1 getEvolutionsForReport() - terminology_evolution 조회
-  - [x] 5.2 formatTerminologySection() - "💬 언어의 변화" 섹션
-  - [x] 5.3 GrowthSummary에 terminologyEvolutions 추가
+- [ ] Task 5: 성장 리포트 통합 (AC: #4)
+  - [ ] 5.1 terminology_evolution 조회
+  - [ ] 5.2 "💬 언어의 변화" 섹션 포맷
+  - [ ] 5.3 Story 11.14 성장 리포트와 통합
 
-- [x] Task 6: 테스트 작성 (11개 테스트)
-  - [x] 6.1 도메인 감지 테스트 (detectTermDomain)
-  - [x] 6.2 vague/specific 용어 감지 테스트
-  - [x] 6.3 용어 추출 및 진화 감지 테스트
-  - [x] 6.4 질문 품질 점수 테스트
-  - [x] 6.5 성장 리포트 통합 테스트
+- [ ] Task 6: 테스트 작성
+  - [ ] 6.1 용어 변화 감지 테스트
+  - [ ] 6.2 학습 연결 테스트
+  - [ ] 6.3 성장 리포트 포함 테스트
 
 ## Dev Notes
 
@@ -139,21 +137,10 @@ const termMapping = {
 - **선행**: Story 11.13 (Learning Progress) - learnings 테이블 참조
 - **선행**: Story 11.14 (Growth Metrics) - 성장 리포트 통합
 
-### Completion Notes
+### File List
 
-- Implementation completed: 2026-01-21
-- term-mapping.ts를 별도 파일로 분리하지 않고 terminology-tracker.ts에 TERM_MAPPING 상수로 통합 (모듈 응집도)
-- growth-report.ts 대신 growth-tracker.ts에서 직접 terminology 통합
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/mama/migrations/007-terminology-evolution.sql` (신규 - 테이블 DDL)
-- `apps/cad-mcp/src/mama/db.ts` (수정 - TerminologyEvolutionRow 타입, CRUD 함수)
-- `apps/cad-mcp/src/mama/terminology-tracker.ts` (신규 - 핵심 모듈)
-- `apps/cad-mcp/src/mama/growth-tracker.ts` (수정 - GrowthSummary에 terminologyEvolutions 추가)
-- `apps/cad-mcp/src/mama/index.ts` (수정 - terminology-tracker export)
-- `apps/cad-mcp/tests/mama.test.ts` (수정 - Terminology Evolution 테스트 11개)
-
-### Review Follow-ups (AI)
-
-- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)
+- `apps/cad-mcp/src/mama/db.ts` (수정 - terminology_evolution 테이블)
+- `apps/cad-mcp/src/mama/schema.ts` (수정 - TerminologyEvolution 타입)
+- `apps/cad-mcp/src/mama/terminology-tracker.ts` (신규)
+- `apps/cad-mcp/src/mama/term-mapping.ts` (신규 - 용어 매핑 사전)
+- `apps/cad-mcp/src/mama/growth-report.ts` (수정 - 언어 변화 섹션)

@@ -1,6 +1,6 @@
 # Story 11.7: ActionHints (postExecute)
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -45,36 +45,36 @@ So that **워크플로우가 자연스럽게 진행된다** (FR73).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: CADToolResult 인터페이스 정의 (AC: #1)
-  - [x] 1.1 `apps/cad-mcp/src/mama/types/action-hints.ts` 생성
-  - [x] 1.2 CADToolResult, ActionHints 타입 정의
-  - [x] 1.3 NextStep, ModuleHint, SaveSuggestion 타입 정의
+- [ ] Task 1: CADToolResult 인터페이스 정의 (AC: #1)
+  - [ ] 1.1 `packages/shared/src/schemas/tool-result.ts` 생성
+  - [ ] 1.2 CADToolResult, ActionHints 타입 정의
+  - [ ] 1.3 NextStep, ModuleHint, SaveSuggestion 타입 정의
 
-- [x] Task 2: postExecute Hook 구현 (AC: #1-6)
-  - [x] 2.1 `apps/cad-mcp/src/mama/hooks/post-execute.ts` 생성
-  - [x] 2.2 도구 실행 결과 분석 로직
-  - [x] 2.3 nextSteps 생성 로직
-  - [x] 2.4 moduleHints 생성 로직
-  - [x] 2.5 saveSuggestion 생성 로직
-  - [x] 2.6 HookRegistry에 postExecute 등록
+- [ ] Task 2: postExecute Hook 구현 (AC: #1-6)
+  - [ ] 2.1 `apps/cad-mcp/src/mama/hooks/post-execute.ts` 생성
+  - [ ] 2.2 도구 실행 결과 분석 로직
+  - [ ] 2.3 nextSteps 생성 로직
+  - [ ] 2.4 moduleHints 생성 로직 (MAMA 검색 기반)
+  - [ ] 2.5 saveSuggestion 생성 로직
+  - [ ] 2.6 HookRegistry에 postExecute 등록
 
-- [x] Task 3: 컨텍스트 분석기 구현 (AC: #2)
-  - [x] 3.1 `apps/cad-mcp/src/mama/rules/next-steps.ts` 생성
-  - [x] 3.2 코드 실행 결과에서 엔티티 타입 추출
-  - [x] 3.3 도메인별 다음 작업 규칙 정의
-  - [x] 3.4 room → door/window 등 패턴 매핑
+- [ ] Task 3: 컨텍스트 분석기 구현 (AC: #2)
+  - [ ] 3.1 `apps/cad-mcp/src/mama/context-analyzer.ts` 생성
+  - [ ] 3.2 코드 실행 결과에서 엔티티 타입 추출
+  - [ ] 3.3 도메인별 다음 작업 규칙 정의
+  - [ ] 3.4 room → door/window 등 패턴 매핑
 
-- [x] Task 4: 도구 실행 래퍼 수정 (AC: #1)
-  - [x] 4.1 orchestrator에서 postExecute Hook 호출
-  - [x] 4.2 결과에 actionHints 병합
-  - [x] 4.3 빈 actionHints 처리
+- [ ] Task 4: 도구 실행 래퍼 수정 (AC: #1)
+  - [ ] 4.1 도구 실행 후 postExecute Hook 호출
+  - [ ] 4.2 결과에 actionHints 병합
+  - [ ] 4.3 빈 actionHints 처리
 
-- [x] Task 5: 테스트 작성
-  - [x] 5.1 nextSteps 생성 테스트
-  - [x] 5.2 moduleHints 추천 테스트
-  - [x] 5.3 saveSuggestion 테스트
-  - [x] 5.4 optional 플래그 테스트
-  - [x] 5.5 빈 ActionHints 테스트
+- [ ] Task 5: 테스트 작성
+  - [ ] 5.1 nextSteps 생성 테스트
+  - [ ] 5.2 moduleHints 추천 테스트
+  - [ ] 5.3 saveSuggestion 테스트
+  - [ ] 5.4 optional 플래그 테스트
+  - [ ] 5.5 빈 ActionHints 테스트
 
 ## Dev Notes
 
@@ -173,17 +173,10 @@ packages/shared/src/schemas/
 - **선행**: Story 11.6 (Dynamic Hint) - preToolList 패턴
 - **후속**: Story 11.8 (CADOrchestrator) - Hook 통합
 
-### Completion Notes List
+### File List
 
-- Implementation completed: 2026-01-21
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/mama/hooks/post-execute.ts` - postExecute Hook + ActionHints 생성
-- `apps/cad-mcp/src/mama/hooks/registry.ts` (수정 - postExecute 등록)
-- `apps/cad-mcp/src/orchestrator.ts` (수정 - handleToolCall에서 postExecute 호출)
-- `apps/cad-mcp/tests/orchestrator.test.ts` - postExecute Hook 테스트
-
-### Review Follow-ups (AI)
-
-- [ ] [AI-Review][LOW] context-analyzer.ts 미구현 - next-steps.ts에 통합됨 (구조 문서화 불일치)
+- `packages/shared/src/schemas/tool-result.ts` (신규)
+- `apps/cad-mcp/src/mama/hooks/post-execute.ts` (신규)
+- `apps/cad-mcp/src/mama/hooks/registry.ts` (수정)
+- `apps/cad-mcp/src/mama/context-analyzer.ts` (신규)
+- `apps/cad-mcp/src/mama/rules/next-steps.ts` (신규)

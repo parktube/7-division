@@ -20,8 +20,8 @@ date: '2025-12-14'
 
 **Author:** Hoons
 **Date:** 2025-01-06
-**Last Updated:** 2026-01-21
-**Status:** Epic 1~11 완료 (MAMA Integration 포함)
+**Last Updated:** 2026-01-16
+**Status:** Epic 1~10 완료, Epic 11 (MAMA Integration) 계획 중
 
 ---
 
@@ -48,7 +48,7 @@ AI는 자동 생성기가 아닌 협업적 창작 파트너로서, 질문하고 
 **Technical Type:** Web App (브라우저 + Local MCP)
 **Domain:** Design Tools / Creative
 **Complexity:** High (새로운 패러다임)
-**Project Context:** Epic 1~11 완료
+**Project Context:** Epic 1~10 완료, MAMA Integration 계획 중
 
 ---
 
@@ -211,7 +211,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 
 상세: [epics.md](./epics.md), [ADR-007](./adr/007-web-architecture.md), [ADR-008](./adr/008-tool-pattern-alignment.md) 참조
 
-### ✅ 완료 + 📋 계획: Epic 11 - MAMA Integration (FR67~FR91)
+### 계획 중: Epic 11 - MAMA Integration (FR67~FR87)
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
@@ -283,54 +283,7 @@ Claude Code ──stdio──▶ MCP Server ──WebSocket──▶ Viewer (Web
 |----|---------|-----|----------|
 | FR85 | MCP 내부 통합 | - | npm install 시 MAMA 포함. 별도 설정 불필요 |
 | FR86 | 도메인 폴더 구조 | - | domains/ 폴더에 voxel/, furniture/, interior/ 기본 제공 |
-| ~~FR87~~ | ~~LLM Adapter Pattern~~ | ~~ADR-0023~~ | ❌ **제외**: MCP 프로토콜이 LLM-agnostic 인터페이스 제공 |
-
-#### Phase 11.6: Built-in Assets Distribution (📋 계획됨)
-
-| ID | 요구사항 | ADR | 수용 기준 |
-|----|---------|-----|----------|
-| FR88 | Built-in 모듈 | ADR-0027 | npm 패키지에 기본 CAD 모듈(animal_lib, chicken 등) 포함 |
-| FR89 | Built-in Knowledge | ADR-0027 | npm 패키지에 기본 decisions(베스트 프랙티스) 포함 |
-| FR90 | Dual-source 조회 | ADR-0027 | glob/read/mama_search에서 builtin + user 모두 반환 |
-| FR91 | Builtin 보호 | ADR-0027 | builtin 모듈 수정 시 에러 반환, 사용자 모듈로 복사 안내 |
-
-#### Phase 11.7: Design Workflow System (📋 계획됨)
-
-> "만들고 싶은 것을 만들면서, 만드는 법을 배운다" - 구조화된 워크플로우
-
-| ID | 요구사항 | ADR | 수용 기준 |
-|----|---------|-----|----------|
-| FR92 | Workflow 초기화 | - | mama_workflow start로 프로젝트 생성 및 Discovery 단계 시작 |
-| FR93 | 단계별 진행 | - | next/goto 명령으로 Discovery→Planning→Architecture→Creation 전환 |
-| FR94 | DesignHints 자동 활성화 | - | 각 단계에 맞는 DesignHints 자동 주입 |
-| FR95 | 프로젝트 상태 저장/복원 | - | 세션 간 워크플로우 상태/산출물 유지 |
-| FR96 | Built-in 워크플로우 템플릿 | - | design-brief, style-prd, design-architecture 템플릿 제공 |
-
-**Design Workflow 핵심 철학:**
-
-```
-BMAD:  Analysis → Plan → Solutioning → Implementation
-CAD:   Discovery → Planning → Architecture → Creation
-       (발견)       (계획)      (설계)        (제작)
-```
-
-| Phase | 목표 | 산출물 | 학습 추적 |
-|-------|------|--------|----------|
-| Discovery | 비전/취향 파악 | design-brief.md | 스타일 선택 |
-| Planning | 디자인 원리 결정 | style-prd.md | 60-30-10, 재료 |
-| Architecture | 구조/동선 설계 | design-architecture.md | 동선, z-order |
-| Creation | 실제 CAD 작업 | CAD 파일 | 독립 결정, 개념 적용 |
-
-**MCP Tool (단일):**
-```typescript
-mama_workflow({
-  command: 'start' | 'status' | 'next' | 'goto' | 'list' | 'artifact',
-  project_name?: string,   // start용
-  phase?: string,          // goto용
-  content?: string,        // next/artifact용
-  artifact_type?: string   // artifact용
-})
-```
+| FR87 | LLM Adapter Pattern | ADR-0023 | Claude, OpenAI, Ollama 교체 가능 |
 
 #### Hook 시스템 상세 (ADR-0015 + ADR-0018)
 
@@ -477,7 +430,7 @@ CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 | NFR21~NFR23 | 웹 아키텍처 (WebSocket RTT < 15ms, 온보딩 < 1분) |
 | NFR24~NFR26 | AX 개선 (Read-first > 95%, 모듈 재사용 > 90%) |
 
-### ✅ 완료: Epic 11 - MAMA (NFR27~NFR31)
+### 계획 중: Epic 11 - MAMA (NFR27~NFR31)
 
 | ID | 요구사항 | 목표 |
 |----|---------|------|
@@ -491,7 +444,7 @@ CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 
 ## Product Scope
 
-### 완료 (Epic 1~11) ✅
+### 완료 (Epic 1~10) ✅
 
 | Epic | 산출물 |
 |------|--------|
@@ -501,9 +454,8 @@ CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 | 8 | Manifold Boolean, 텍스트 렌더링 |
 | 9 | 웹 아키텍처 (모노레포, WebSocket, GitHub Pages) |
 | 10 | AX 개선 (Claude Code 패턴 MCP 도구) |
-| 11 | MAMA Integration (Memory-Augmented Meta Agent) |
 
-### ✅ 완료: Epic 11 - MAMA Integration
+### 계획 중: Epic 11 - MAMA Integration
 
 > AI 파트너십 강화를 위한 Memory-Augmented Meta Agent 통합
 
@@ -513,7 +465,7 @@ CREATE INDEX idx_terminology_user ON terminology_evolution(user_id);
 | **11.2 Hook System** | SessionStart, Dynamic Hint, ActionHints, LLM-Agnostic | FR71~FR74 | 4개 |
 | **11.3 Intelligence** | Graph Health, Anti-Echo, Adaptive Mentoring, Module Rec | FR75~FR78 | 4개 |
 | **11.4 Learning Track** | Learning Progress, Growth Metrics, DesignHints, Terminology | FR81~FR84 | 4개 |
-| **11.5 Platform** | MCP 통합, 도메인 폴더, Module Library (~~LLM Adapter 제외~~) | FR80, FR85~FR86 | 3개 |
+| **11.5 Platform** | MCP 통합, 도메인 폴더, LLM Adapter | FR85~FR87 | 3개 |
 
 **성공 기준:**
 - 30일 후 맥락 기억, "이 AI는 나를 안다" 체감

@@ -1,6 +1,6 @@
 # Story 11.2: 결정 저장 + Reasoning Graph
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -44,40 +44,40 @@ So that **지식의 진화를 추적할 수 있다** (FR68).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: decision_edges 테이블 추가 (AC: #1-4)
-  - [x] 1.1 `apps/cad-mcp/src/mama/migrations/002-decision-edges.sql` 생성
-  - [x] 1.2 인덱스 추가 (from_id, to_id)
-  - [x] 1.3 외래키 제약 조건 설정
+- [ ] Task 1: decision_edges 테이블 추가 (AC: #1-4)
+  - [ ] 1.1 `apps/cad-mcp/src/mama/db.ts` 수정 - decision_edges 테이블 생성
+  - [ ] 1.2 인덱스 추가 (from_id, to_id)
+  - [ ] 1.3 외래키 제약 조건 설정
 
-- [x] Task 2: 관계 파싱 모듈 구현 (AC: #2-4, #6)
-  - [x] 2.1 `apps/cad-mcp/src/mama/reasoning-parser.ts` 생성
-  - [x] 2.2 `builds_on: decision_xxx` 패턴 파싱
-  - [x] 2.3 `debates: decision_xxx` 패턴 파싱
-  - [x] 2.4 `synthesizes: [id1, id2]` 패턴 파싱
-  - [x] 2.5 잘못된 패턴 무시 + 경고 로깅
+- [ ] Task 2: 관계 파싱 모듈 구현 (AC: #2-4, #6)
+  - [ ] 2.1 `apps/cad-mcp/src/mama/reasoning-parser.ts` 생성
+  - [ ] 2.2 `builds_on: decision_xxx` 패턴 파싱
+  - [ ] 2.3 `debates: decision_xxx` 패턴 파싱
+  - [ ] 2.4 `synthesizes: [id1, id2]` 패턴 파싱
+  - [ ] 2.5 잘못된 패턴 무시 + 경고 로깅
 
-- [x] Task 3: supersedes 자동 관계 구현 (AC: #1)
-  - [x] 3.1 `mama_save` 로직 수정 - 같은 topic 결정 조회
-  - [x] 3.2 이전 결정 존재 시 supersedes edge 자동 생성
-  - [x] 3.3 시간순 체인 유지 (A supersedes B supersedes C)
+- [ ] Task 3: supersedes 자동 관계 구현 (AC: #1)
+  - [ ] 3.1 `mama_save` 로직 수정 - 같은 topic 결정 조회
+  - [ ] 3.2 이전 결정 존재 시 supersedes edge 자동 생성
+  - [ ] 3.3 시간순 체인 유지 (A supersedes B supersedes C)
 
-- [x] Task 4: mama_save 도구 확장 (AC: #1-4)
-  - [x] 4.1 save 후 reasoning 필드 파싱 호출
-  - [x] 4.2 파싱된 관계들 decision_edges에 저장
-  - [x] 4.3 트랜잭션으로 원자성 보장
+- [ ] Task 4: mama_save 도구 확장 (AC: #1-4)
+  - [ ] 4.1 save 후 reasoning 필드 파싱 호출
+  - [ ] 4.2 파싱된 관계들 decision_edges에 저장
+  - [ ] 4.3 트랜잭션으로 원자성 보장
 
-- [x] Task 5: mama_search 결과 확장 (AC: #5)
-  - [x] 5.1 검색 결과에 edges 정보 추가
-  - [x] 5.2 supersedes_count, builds_on[], debates[] 필드 추가
-  - [x] 5.3 TypeScript 인터페이스로 정의
+- [ ] Task 5: mama_search 결과 확장 (AC: #5)
+  - [ ] 5.1 검색 결과에 edges 정보 추가
+  - [ ] 5.2 supersedes_count, builds_on[], debates[] 필드 추가
+  - [ ] 5.3 MamaSearchOutput 스키마 업데이트
 
-- [x] Task 6: 테스트 작성
-  - [x] 6.1 supersedes 자동 관계 테스트
-  - [x] 6.2 builds_on 파싱 테스트
-  - [x] 6.3 debates 파싱 테스트
-  - [x] 6.4 synthesizes 다중 관계 테스트
-  - [x] 6.5 잘못된 패턴 무시 테스트
-  - [x] 6.6 검색 결과 edges 포함 테스트
+- [ ] Task 6: 테스트 작성
+  - [ ] 6.1 supersedes 자동 관계 테스트
+  - [ ] 6.2 builds_on 파싱 테스트
+  - [ ] 6.3 debates 파싱 테스트
+  - [ ] 6.4 synthesizes 다중 관계 테스트
+  - [ ] 6.5 잘못된 패턴 무시 테스트
+  - [ ] 6.6 검색 결과 edges 포함 테스트
 
 ## Dev Notes
 
@@ -224,12 +224,12 @@ Claude Opus 4.5
 
 - Story created: 2026-01-20
 - Dependencies: Story 11.1 (MAMA Core 4 Tools)
-- Implementation completed: 2026-01-21
 
-### File List (Actual Implementation)
+### File List
 
-- `apps/cad-mcp/src/mama/reasoning-parser.ts` - 관계 패턴 파싱
-- `apps/cad-mcp/src/mama/migrations/002-decision-edges.sql` - decision_edges 테이블
-- `apps/cad-mcp/src/mama/db.ts` (수정 - edge operations)
-- `apps/cad-mcp/src/mama/index.ts` (수정 - saveDecision에 파싱 통합)
-- `apps/cad-mcp/tests/mama.test.ts` - reasoning graph 테스트
+- `apps/cad-mcp/src/mama/reasoning-parser.ts` (신규)
+- `apps/cad-mcp/src/mama/db.ts` (수정 - decision_edges 테이블)
+- `apps/cad-mcp/src/mama/tools/save.ts` (수정 - 관계 파싱 통합)
+- `apps/cad-mcp/src/mama/tools/search.ts` (수정 - edges 정보 추가)
+- `packages/shared/src/schemas/mama.ts` (수정 - MamaSearchOutput 확장)
+- `apps/cad-mcp/src/mama/__tests__/reasoning-parser.test.ts` (신규)

@@ -1,6 +1,6 @@
 # Story 11.8: CADOrchestrator Hook Owner
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -47,34 +47,34 @@ So that **모든 LLM에서 동일하게 동작한다** (FR74).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: CADOrchestrator 클래스 구현 (AC: #3, #4)
-  - [x] 1.1 `apps/cad-mcp/src/orchestrator.ts` 생성
-  - [x] 1.2 MAMAModule 및 HookRegistry 통합
-  - [x] 1.3 handleMCPRequest 메서드 구현 (handleInitialize, handleToolsList, handleToolCall)
-  - [x] 1.4 요청 유형별 Hook 라우팅
+- [ ] Task 1: CADOrchestrator 클래스 구현 (AC: #3, #4)
+  - [ ] 1.1 `apps/cad-mcp/src/orchestrator.ts` 생성
+  - [ ] 1.2 MAMAModule 및 HookRegistry 통합
+  - [ ] 1.3 handleMCPRequest 메서드 구현
+  - [ ] 1.4 요청 유형별 Hook 라우팅
 
-- [x] Task 2: MCP 서버 리팩토링 (AC: #3)
-  - [x] 2.1 기존 핸들러를 CADOrchestrator로 위임
-  - [x] 2.2 initialize 핸들러 → onSessionInit
-  - [x] 2.3 tools/list 핸들러 → preToolList
-  - [x] 2.4 tools/call 핸들러 → 실행 + postExecute
+- [ ] Task 2: MCP 서버 리팩토링 (AC: #3)
+  - [ ] 2.1 기존 핸들러를 CADOrchestrator로 위임
+  - [ ] 2.2 initialize 핸들러 → onSessionInit
+  - [ ] 2.3 tools/list 핸들러 → preToolList
+  - [ ] 2.4 tools/call 핸들러 → 실행 + postExecute
 
-- [x] Task 3: LLM 독립성 검증 (AC: #1, #2, #5)
-  - [x] 3.1 Claude Code 테스트 시나리오 작성
-  - [x] 3.2 범용 MCP 클라이언트 테스트 시나리오 작성 (mock 클라이언트)
-  - [x] 3.3 동일 출력 검증 테스트
+- [ ] Task 3: LLM 독립성 검증 (AC: #1, #2, #5)
+  - [ ] 3.1 Claude Code 테스트 시나리오 작성
+  - [ ] 3.2 범용 MCP 클라이언트 테스트 시나리오 작성 (stub 클라이언트 또는 Ollama 모킹)
+  - [ ] 3.3 동일 출력 검증 테스트
 
-- [x] Task 4: 에러 처리 (AC: #6)
-  - [x] 4.1 Hook 실행 try-catch 래핑
-  - [x] 4.2 에러 시 기본값 반환 로직
-  - [x] 4.3 에러 로깅
+- [ ] Task 4: 에러 처리 (AC: #6)
+  - [ ] 4.1 Hook 실행 try-catch 래핑
+  - [ ] 4.2 에러 시 기본값 반환 로직
+  - [ ] 4.3 에러 로깅
 
-- [x] Task 5: 테스트 작성
-  - [x] 5.1 initialize → onSessionInit 테스트
-  - [x] 5.2 tools/list → preToolList 테스트
-  - [x] 5.3 tools/call → postExecute 테스트
-  - [x] 5.4 에러 격리 테스트
-  - [x] 5.5 통합 테스트
+- [ ] Task 5: 테스트 작성
+  - [ ] 5.1 initialize → onSessionInit 테스트
+  - [ ] 5.2 tools/list → preToolList 테스트
+  - [ ] 5.3 tools/call → postExecute 테스트
+  - [ ] 5.4 에러 격리 테스트
+  - [ ] 5.5 통합 테스트
 
 ## Dev Notes
 
@@ -191,18 +191,10 @@ apps/cad-mcp/src/
 - LLMAdapter 인터페이스 (Story 11.13)
 - 실제 Ollama 통합 (Story 11.13)
 
-### Completion Notes List
+### File List
 
-- Implementation completed: 2026-01-21
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/orchestrator.ts` - CADOrchestrator 클래스 (handleInitialize, handleToolsList, handleToolCall, formatHints)
-- `apps/cad-mcp/src/server.ts` (수정 - orchestrator 통합)
-- `apps/cad-mcp/src/mama/index.ts` (수정 - hooks 통합)
-- `apps/cad-mcp/src/mama/hooks/registry.ts` - HookRegistry 타입 정의
-- `apps/cad-mcp/tests/orchestrator.test.ts` - 21개 테스트 케이스
-
-### Review Follow-ups (AI)
-
-- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)
+- `apps/cad-mcp/src/orchestrator.ts` (신규)
+- `apps/cad-mcp/src/server.ts` (수정)
+- `apps/cad-mcp/src/mama/index.ts` (수정)
+- `apps/cad-mcp/src/mama/hooks/registry.ts` (수정)
+- `apps/cad-mcp/src/mama/__tests__/orchestrator.test.ts` (신규)

@@ -1,6 +1,6 @@
 # Story 11.11: Graph Health Metrics
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -40,30 +40,25 @@ So that **지식 품질을 모니터링할 수 있다** (FR77).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: 건강도 계산 모듈 (AC: #1, #2, #3)
-  - [x] 1.1 `apps/cad-mcp/src/mama/health.ts` 생성
-  - [x] 1.2 관계 유형별 카운트 쿼리
-  - [x] 1.3 고아 결정 감지 쿼리
-  - [x] 1.4 Stale 결정 감지 (90일)
+- [ ] Task 1: 건강도 계산 모듈 (AC: #1, #2, #3)
+  - [ ] 1.1 `apps/cad-mcp/src/mama/health.ts` 생성
+  - [ ] 1.2 관계 유형별 카운트 쿼리
+  - [ ] 1.3 고아 결정 감지 쿼리
+  - [ ] 1.4 Stale 결정 감지 (90일)
 
-- [x] Task 2: 경고 시스템 (AC: #2)
-  - [x] 2.1 debates < 10% 경고
-  - [x] 2.2 경고 메시지 포맷팅
+- [ ] Task 2: 경고 시스템 (AC: #2)
+  - [ ] 2.1 debates < 10% 경고
+  - [ ] 2.2 경고 메시지 포맷팅
 
-- [x] Task 3: onSessionInit 통합 (AC: #4)
-  - [x] 3.1 건강도 체크 호출
-  - [x] 3.2 경고 주입
+- [ ] Task 3: onSessionInit 통합 (AC: #4)
+  - [ ] 3.1 건강도 체크 호출
+  - [ ] 3.2 경고 주입
 
-- [x] Task 4: mama_health 도구 (AC: #5)
-  - [x] 4.1 도구 구현
-  - [x] 4.2 상세 리포트 포맷
+- [ ] Task 4: mama_health 도구 (AC: #5)
+  - [ ] 4.1 도구 구현
+  - [ ] 4.2 상세 리포트 포맷
 
-- [x] Task 5: 테스트 작성
-  - [x] 5.1 빈 그래프 건강도 테스트
-  - [x] 5.2 고아 결정 감지 테스트
-  - [x] 5.3 Edge 타입 카운트 테스트
-  - [x] 5.4 mama_health 도구 테스트
-  - [x] 5.5 verbose 리포트 테스트
+- [ ] Task 5: 테스트 작성
 
 ## Dev Notes
 
@@ -101,22 +96,8 @@ interface GraphHealth {
 
 - **선행**: Story 11.2 (Reasoning Graph) - decision_edges 테이블
 
-### Completion Notes List
+### File List
 
-- Implementation completed: 2026-01-21
-
-### File List (Actual Implementation)
-
-- `apps/cad-mcp/src/mama/health.ts` - calculateGraphHealth, formatHealthReport, getHealthSummary
-- `apps/cad-mcp/src/mama/tools/schema.ts` (수정 - mama_health 스키마)
-- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - handleMamaHealth)
-- `apps/cad-mcp/src/mama/tools/index.ts` (수정 - export)
-- `apps/cad-mcp/src/mama/index.ts` (수정 - health 모듈 export)
-- `apps/cad-mcp/src/mama/hooks/session-init.ts` (수정 - healthWarning 통합)
-- `apps/cad-mcp/src/mama/hooks/registry.ts` (수정 - healthWarning 필드)
-- `apps/cad-mcp/src/mcp-server.ts` (수정 - mama_health 도구 등록)
-- `apps/cad-mcp/tests/mama.test.ts` (수정 - Graph Health Metrics 테스트 5개)
-
-### Review Follow-ups (AI)
-
-- (이슈 없음 - 모든 AC 및 Tasks 검증 완료)
+- `apps/cad-mcp/src/mama/health.ts` (신규)
+- `apps/cad-mcp/src/mama/tools/mama-health.ts` (신규)
+- `apps/cad-mcp/src/mama/hooks/session-init.ts` (수정)

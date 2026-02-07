@@ -1,6 +1,6 @@
 # Story 11.3: 단일 DB + Topic Prefix 구조
 
-Status: Done
+Status: ready-for-dev
 
 ## Story
 
@@ -43,39 +43,39 @@ So that **크로스 도메인 검색이 용이하다** (FR69).
 
 ## Tasks / Subtasks
 
-- [x] Task 1: 설정 및 경로 관리 (AC: #1)
-  - [x] 1.1 `apps/cad-mcp/src/mama/config.ts` 생성
-  - [x] 1.2 DB 경로 상수 정의 (`~/.ai-native-cad/data/mama.db`)
-  - [x] 1.3 디렉토리 자동 생성 로직 (ensureDataDirs)
+- [ ] Task 1: 설정 및 경로 관리 (AC: #1)
+  - [ ] 1.1 `apps/cad-mcp/src/mama/config.ts` 생성
+  - [ ] 1.2 DB 경로 상수 정의 (`~/.ai-native-cad/data/mama.db`)
+  - [ ] 1.3 디렉토리 자동 생성 로직
 
-- [x] Task 2: Topic Prefix 유틸리티 (AC: #2)
-  - [x] 2.1 `apps/cad-mcp/src/mama/topic-utils.ts` 생성
-  - [x] 2.2 Topic 파싱 함수 (`parseTopic` → domain, entity, aspect)
-  - [x] 2.3 Topic 검증 함수 (`validateTopic`)
-  - [x] 2.4 도메인 추출 함수 (`extractDomain`)
+- [ ] Task 2: Topic Prefix 유틸리티 (AC: #2)
+  - [ ] 2.1 `apps/cad-mcp/src/mama/topic-utils.ts` 생성
+  - [ ] 2.2 Topic 파싱 함수 (`parseTopic` → domain, entity, aspect)
+  - [ ] 2.3 Topic 검증 함수 (`validateTopic`)
+  - [ ] 2.4 도메인 추출 함수 (`extractDomain`)
 
-- [x] Task 3: mama_search 도메인 필터 확장 (AC: #3, #4)
-  - [x] 3.1 SearchArgs에 `domain?: string` 파라미터 추가
-  - [x] 3.2 SQL WHERE 절에 `topic LIKE '{domain}:%'` 조건 추가
-  - [x] 3.3 domain 없으면 전체 검색 (크로스 도메인)
+- [ ] Task 3: mama_search 도메인 필터 확장 (AC: #3, #4)
+  - [ ] 3.1 MamaSearchInput에 `domain?: string` 파라미터 추가
+  - [ ] 3.2 SQL WHERE 절에 `topic LIKE '{domain}:%'` 조건 추가
+  - [ ] 3.3 domain 없으면 전체 검색 (크로스 도메인)
 
-- [x] Task 4: Topic 그룹화 기능 (AC: #5)
-  - [x] 4.1 SearchArgs에 `group_by_topic?: boolean` 추가
-  - [x] 4.2 같은 topic 중 최신 결정만 필터링 로직
-  - [x] 4.3 supersedes 체인 고려한 최신 결정 조회
+- [ ] Task 4: Topic 그룹화 기능 (AC: #5)
+  - [ ] 4.1 MamaSearchInput에 `group_by_topic?: boolean` 추가
+  - [ ] 4.2 같은 topic 중 최신 결정만 필터링 로직
+  - [ ] 4.3 supersedes 체인 고려한 최신 결정 조회
 
-- [x] Task 5: 도메인 목록 조회 (AC: #6)
-  - [x] 5.1 SearchArgs에 `list_domains?: boolean` 추가
-  - [x] 5.2 `listDomains()` 함수로 도메인 추출
-  - [x] 5.3 handler에서 domains 배열 반환
+- [ ] Task 5: 도메인 목록 조회 (AC: #6)
+  - [ ] 5.1 MamaSearchInput에 `list_domains?: boolean` 추가
+  - [ ] 5.2 `SELECT DISTINCT` 쿼리로 도메인 추출
+  - [ ] 5.3 MamaSearchOutput에 `domains?: string[]` 추가
 
-- [x] Task 6: 테스트 작성
-  - [x] 6.1 DB 자동 생성 테스트
-  - [x] 6.2 Topic 파싱/검증 테스트
-  - [x] 6.3 도메인 필터 검색 테스트
-  - [x] 6.4 크로스 도메인 검색 테스트
-  - [x] 6.5 Topic 그룹화 테스트
-  - [x] 6.6 도메인 목록 조회 테스트
+- [ ] Task 6: 테스트 작성
+  - [ ] 6.1 DB 자동 생성 테스트
+  - [ ] 6.2 Topic 파싱/검증 테스트
+  - [ ] 6.3 도메인 필터 검색 테스트
+  - [ ] 6.4 크로스 도메인 검색 테스트
+  - [ ] 6.5 Topic 그룹화 테스트
+  - [ ] 6.6 도메인 목록 조회 테스트
 
 ## Dev Notes
 
@@ -216,18 +216,12 @@ Claude Opus 4.5
 
 - Story created: 2026-01-20
 - Dependencies: Story 11.1, 11.2
-- Implementation completed: 2026-01-21
 
-### File List (Actual Implementation)
+### File List
 
-- `apps/cad-mcp/src/mama/config.ts` - DB 경로, 설정 로더
-- `apps/cad-mcp/src/mama/topic-utils.ts` - Topic 파싱/검증
-- `apps/cad-mcp/src/mama/index.ts` (수정 - listDomains, domain filter)
-- `apps/cad-mcp/src/mama/tools/handlers.ts` (수정 - list_domains, group_by_topic)
-- `apps/cad-mcp/tests/mama.test.ts` - topic utils 테스트
-
-### Review Follow-ups (AI)
-
-- [ ] [AI-Review][CRITICAL] SQL Injection 취약점 수정 - domain 파라미터가 직접 SQL 문자열에 삽입됨 [index.ts:397]
-  - 현재: `AND topic LIKE '${domain.toLowerCase()}:%'`
-  - 수정: parameterized query 사용 필요
+- `apps/cad-mcp/src/mama/config.ts` (신규)
+- `apps/cad-mcp/src/mama/topic-utils.ts` (신규)
+- `apps/cad-mcp/src/mama/db.ts` (수정)
+- `apps/cad-mcp/src/mama/tools/search.ts` (수정)
+- `packages/shared/src/schemas/mama.ts` (수정)
+- `apps/cad-mcp/src/mama/__tests__/topic-utils.test.ts` (신규)
