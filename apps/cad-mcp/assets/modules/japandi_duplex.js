@@ -122,18 +122,18 @@ class JapandiDuplexBuilder {
 
     // room 치수 검증 (음수 방지)
     const room = {
-      w: Math.max(0, Number.isFinite(this.room.w) ? this.room.w : 300),
-      d: Math.max(0, Number.isFinite(this.room.d) ? this.room.d : 300),
-      h: Math.max(0, Number.isFinite(this.room.h) ? this.room.h : 280),
-      floorT: Math.max(0, Number.isFinite(this.room.floorT) ? this.room.floorT : 15),
-      wallT: Math.max(0, Number.isFinite(this.room.wallT) ? this.room.wallT : 10),
+      w: Math.max(0, Number.isFinite(this.room.w) ? this.room.w : DEFAULT_ROOM.w),
+      d: Math.max(0, Number.isFinite(this.room.d) ? this.room.d : DEFAULT_ROOM.d),
+      h: Math.max(0, Number.isFinite(this.room.h) ? this.room.h : DEFAULT_ROOM.h),
+      floorT: Math.max(0, Number.isFinite(this.room.floorT) ? this.room.floorT : DEFAULT_ROOM.floorT),
+      wallT: Math.max(0, Number.isFinite(this.room.wallT) ? this.room.wallT : DEFAULT_ROOM.wallT),
     };
 
     // platform 치수 검증 (음수 방지)
     const platform = {
-      w: Math.max(0, Number.isFinite(this.platform.w) ? this.platform.w : 150),
-      d: Math.max(0, Number.isFinite(this.platform.d) ? this.platform.d : 290),
-      h: Math.max(0, Number.isFinite(this.platform.h) ? this.platform.h : 50),
+      w: Math.max(0, Number.isFinite(this.platform.w) ? this.platform.w : DEFAULT_PLATFORM.w),
+      d: Math.max(0, Number.isFinite(this.platform.d) ? this.platform.d : DEFAULT_PLATFORM.d),
+      h: Math.max(0, Number.isFinite(this.platform.h) ? this.platform.h : DEFAULT_PLATFORM.h),
     };
 
     // 치수가 0이면 빈 그룹 반환
@@ -307,9 +307,9 @@ class JapandiLivingRoomBuilder {
     const wx = Number.isFinite(this.wx) ? this.wx : 0;
     const wy = Number.isFinite(this.wy) ? this.wy : 0;
     const wz = Number.isFinite(this.wz) ? this.wz : 0;
-    const w = Math.max(0, Number.isFinite(this.w) ? this.w : 140);
-    const d = Math.max(0, Number.isFinite(this.d) ? this.d : 280);
-    const h = Math.max(0, Number.isFinite(this.h) ? this.h : 280);
+    const w = Math.max(0, Number.isFinite(this.w) ? this.w : this.w);
+    const d = Math.max(0, Number.isFinite(this.d) ? this.d : this.d);
+    const h = Math.max(0, Number.isFinite(this.h) ? this.h : this.h);
 
     // 치수가 0이면 빈 그룹 반환
     if (w === 0 || d === 0 || h === 0) {
@@ -371,9 +371,9 @@ class JapandiMezzanineBuilder {
     const wx = Number.isFinite(this.wx) ? this.wx : 0;
     const wy = Number.isFinite(this.wy) ? this.wy : 0;
     const wz = Number.isFinite(this.wz) ? this.wz : 0;
-    const platformW = Math.max(0, Number.isFinite(this.platformW) ? this.platformW : 150);
-    const platformD = Math.max(0, Number.isFinite(this.platformD) ? this.platformD : 150);
-    const platformH = Math.max(0, Number.isFinite(this.platformH) ? this.platformH : 50);
+    const platformW = Math.max(0, Number.isFinite(this.platformW) ? this.platformW : DEFAULT_PLATFORM.w);
+    const platformD = Math.max(0, Number.isFinite(this.platformD) ? this.platformD : DEFAULT_PLATFORM.d);
+    const platformH = Math.max(0, Number.isFinite(this.platformH) ? this.platformH : DEFAULT_PLATFORM.h);
 
     // 치수가 0이면 빈 그룹 반환
     if (platformW === 0 || platformD === 0 || platformH === 0) {

@@ -1,8 +1,8 @@
 -- Story 11.13: Learning Progress Storage
 -- FR81: Track user learning progress for concepts
 
--- Track schema version
-INSERT OR IGNORE INTO schema_version (version) VALUES (5);
+-- Record version
+INSERT OR IGNORE INTO schema_version (version, description) VALUES (5, 'Learning Progress Storage for concept tracking');
 
 -- User learning progress table
 CREATE TABLE IF NOT EXISTS learnings (
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS learnings (
   last_applied INTEGER,                     -- Unix timestamp (ms)
   applied_count INTEGER DEFAULT 0,
   user_explanation TEXT,                    -- User's own explanation of the concept
-  created_at INTEGER                        -- Unix timestamp (ms)
+  created_at INTEGER NOT NULL              -- Unix timestamp (ms)
 );
 
 -- Indexes for common queries

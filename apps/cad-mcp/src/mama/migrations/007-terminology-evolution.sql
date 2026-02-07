@@ -24,3 +24,6 @@ CREATE INDEX IF NOT EXISTS idx_terminology_domain ON terminology_evolution(domai
 
 -- Index for time-based queries
 CREATE INDEX IF NOT EXISTS idx_terminology_time ON terminology_evolution(detected_at);
+
+-- Record version
+INSERT OR IGNORE INTO schema_version (version, description) VALUES (7, 'Terminology Evolution tracking for user language development');

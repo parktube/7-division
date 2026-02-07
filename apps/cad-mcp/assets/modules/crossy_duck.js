@@ -144,7 +144,7 @@ DuckBuilder.prototype.getName = function() {
 // 오리 생성
 // name: 이름, wx/wy: 월드 좌표, scale: 스케일(1)
 function makeDuck(name, wx, wy, scale) {
-  new DuckBuilder(name)
+  return new DuckBuilder(name)
     .setPosition(wx ?? 0, wy ?? 0)
     .setScale(scale ?? 1)
     .build();

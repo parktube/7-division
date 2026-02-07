@@ -144,11 +144,35 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (typeof cadObj.space_sizes !== 'object' || cadObj.space_sizes === null) return false
   if (!Array.isArray(cadObj.mezzanine_ratios)) return false
 
+  // Validate space_sizes structure: Record<string, { pixels: string; feel: string }>
+  const spaceSizes = cadObj.space_sizes as Record<string, unknown>
+  for (const [, value] of Object.entries(spaceSizes)) {
+    if (!value || typeof value !== 'object') return false
+    const sizeObj = value as Record<string, unknown>
+    if (typeof sizeObj.pixels !== 'string' || typeof sizeObj.feel !== 'string') return false
+  }
+
+  // Validate mezzanine_ratios array: Array<{ ratio: string; usage: string; height_px: number }>
+  const mezzanineRatios = cadObj.mezzanine_ratios as unknown[]
+  for (const ratio of mezzanineRatios) {
+    if (!ratio || typeof ratio !== 'object') return false
+    const ratioObj = ratio as Record<string, unknown>
+    if (typeof ratioObj.ratio !== 'string' || typeof ratioObj.usage !== 'string' || typeof ratioObj.height_px !== 'number') return false
+  }
+
   // Validate isometric_shading: examples (per IsometricShading interface)
   const shading = obj.isometric_shading
   if (!shading || typeof shading !== 'object') return false
   const shadingObj = shading as Record<string, unknown>
   if (!('examples' in shadingObj)) return false
+
+  // Validate examples structure: Record<string, { top: string; left: string; right: string }>
+  const examples = shadingObj.examples as Record<string, unknown>
+  for (const [, value] of Object.entries(examples)) {
+    if (!value || typeof value !== 'object') return false
+    const exampleObj = value as Record<string, unknown>
+    if (typeof exampleObj.top !== 'string' || typeof exampleObj.left !== 'string' || typeof exampleObj.right !== 'string') return false
+  }
 
   // Validate z_order: standard_order and mezzanine_order (per DesignHintsData interface)
   const zOrder = obj.z_order
@@ -157,9 +181,71 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   if (!('standard_order' in zOrderObj) || !('mezzanine_order' in zOrderObj)) return false
   if (!Array.isArray(zOrderObj.standard_order) || !Array.isArray(zOrderObj.mezzanine_order)) return false
 
+  // Validate string arrays
+  if (!zOrderObj.standard_order.every((item: unknown) => typeof item === 'string')) return false
+  if (!zOrderObj.mezzanine_order.every((item: unknown) => typeof item === 'string')) return false
+
+  // Validate furniture_sizes: Record<string, Record<string, { w: number; d: number; h: number }>>
+  const furnitureSizes = obj.furniture_sizes as Record<string, unknown>
+  for (const [, category] of Object.entries(furnitureSizes)) {
+    if (!category || typeof category !== 'object') return false
+    const categoryObj = category as Record<string, unknown>
+    for (const [, furniture] of Object.entries(categoryObj)) {
+      if (!furniture || typeof furniture !== 'object') return false
+      const furnitureObj = furniture as Record<string, unknown>
+      if (typeof furnitureObj.w !== 'number' || typeof furnitureObj.d !== 'number' || typeof furnitureObj.h !== 'number') return false
+    }
+  }
+
   // Validate optional fields if present (tool_usage, checkpoints)
-  if ('tool_usage' in obj && obj.tool_usage !== null && typeof obj.tool_usage !== 'object') return false
-  if ('checkpoints' in obj && obj.checkpoints !== null && typeof obj.checkpoints !== 'object') return false
+  if ('tool_usage' in obj && obj.tool_usage !== null) {
+    if (typeof obj.tool_usage !== 'object') return false
+    const toolUsage = obj.tool_usage as Record<string, unknown>
+
+    // Validate tool_usage structure if present
+    if ('creation' in toolUsage && toolUsage.creation !== null) {
+      if (!Array.isArray(toolUsage.creation)) return false
+      for (const item of toolUsage.creation) {
+        if (!item || typeof item !== 'object') return false
+        const itemObj = item as Record<string, unknown>
+        if (typeof itemObj.tool !== 'string' || typeof itemObj.when !== 'string' || typeof itemObj.example !== 'string') return false
+      }
+    }
+
+    if ('feedback' in toolUsage && toolUsage.feedback !== null) {
+      if (!Array.isArray(toolUsage.feedback)) return false
+      for (const item of toolUsage.feedback) {
+        if (!item || typeof item !== 'object') return false
+        const itemObj = item as Record<string, unknown>
+        if (typeof itemObj.tool !== 'string' || typeof itemObj.when !== 'string') return false
+      }
+    }
+
+    if ('recording' in toolUsage && toolUsage.recording !== null) {
+      if (!Array.isArray(toolUsage.recording)) return false
+      for (const item of toolUsage.recording) {
+        if (!item || typeof item !== 'object') return false
+        const itemObj = item as Record<string, unknown>
+        if (typeof itemObj.tool !== 'string' || typeof itemObj.when !== 'string' || !Array.isArray(itemObj.topics)) return false
+        if (!itemObj.topics.every((topic: unknown) => typeof topic === 'string')) return false
+      }
+    }
+  }
+
+  if ('checkpoints' in obj && obj.checkpoints !== null) {
+    if (typeof obj.checkpoints !== 'object') return false
+    const checkpoints = obj.checkpoints as Record<string, unknown>
+    for (const [, checkpoint] of Object.entries(checkpoints)) {
+      if (!checkpoint || typeof checkpoint !== 'object') return false
+      const checkpointObj = checkpoint as Record<string, unknown>
+      if (typeof checkpointObj.condition !== 'string') return false
+      if ('record' in checkpointObj && checkpointObj.record !== null && typeof checkpointObj.record !== 'string') return false
+      if ('options' in checkpointObj && checkpointObj.options !== null) {
+        if (!Array.isArray(checkpointObj.options)) return false
+        if (!checkpointObj.options.every((option: unknown) => typeof option === 'string')) return false
+      }
+    }
+  }
 
   return true
 }

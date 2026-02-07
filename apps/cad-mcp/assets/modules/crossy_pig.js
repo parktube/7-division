@@ -177,7 +177,7 @@ PigBuilder.prototype.getName = function() {
 // 돼지 생성
 // name: 이름, wx/wy: 월드 좌표, scale: 스케일(1)
 function makePig(name, wx, wy, scale) {
-  new PigBuilder(name)
+  return new PigBuilder(name)
     .setPosition(wx ?? 0, wy ?? 0)
     .setScale(scale ?? 1)
     .build();

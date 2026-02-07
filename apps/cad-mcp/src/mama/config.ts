@@ -7,7 +7,7 @@
  * Reference: ~/MAMA/packages/claude-code-plugin/src/core/config-loader.js
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'fs'
 import { homedir } from 'os'
 import { join } from 'path'
 import { logger } from '../logger.js'
@@ -213,8 +213,23 @@ export function updateConfig(updates: Partial<MAMAConfig>): boolean {
       ...validatedUpdates,
     }
 
-    writeFileSync(CONFIG_PATH, JSON.stringify(newConfig, null, 2), 'utf8')
-    cachedConfig = newConfig
+    // Atomic file write using temporary file + rename for transaction safety
+    const tempPath = `${CONFIG_PATH}.tmp`
+    try {
+      writeFileSync(tempPath, JSON.stringify(newConfig, null, 2), 'utf8')
+      renameSync(tempPath, CONFIG_PATH)
+      cachedConfig = newConfig
+    } catch (error) {
+      // Clean up temporary file if it exists
+      if (existsSync(tempPath)) {
+        try {
+          unlinkSync(tempPath)
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      throw error
+    }
 
     logger.info(`MAMA config updated: ${CONFIG_PATH}`)
     return true

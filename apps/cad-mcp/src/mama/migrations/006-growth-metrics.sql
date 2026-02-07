@@ -21,5 +21,5 @@ CREATE INDEX IF NOT EXISTS idx_growth_metrics_type ON growth_metrics(metric_type
 -- Composite index for user + type queries
 CREATE INDEX IF NOT EXISTS idx_growth_metrics_user_type ON growth_metrics(user_id, metric_type);
 
--- Note: Version is recorded by db.ts with Date.now() timestamp
--- INSERT OR IGNORE INTO schema_version (version) VALUES (6);
+-- Record version
+INSERT OR IGNORE INTO schema_version (version, description) VALUES (6, 'User Growth Metrics for adaptive mentoring');

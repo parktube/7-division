@@ -117,17 +117,6 @@ export interface ModuleRow {
   updated_at: number | null
 }
 
-// Module embedding cache (Story 11.19 - Performance optimization)
-export interface ModuleEmbeddingRow {
-  module_name: string                // Primary key, references modules(name)
-  embedding: string                  // JSON array of floats
-  embedding_dim: number              // Vector dimension (384)
-  embedding_model: string            // Model name for versioning
-  metadata_hash: string              // SHA256 for change detection
-  created_at: number                 // Unix timestamp (ms)
-  updated_at: number | null          // Unix timestamp (ms)
-}
-
 // Design Workflow phases (Story 11.21)
 export type WorkflowPhase = 'discovery' | 'planning' | 'architecture' | 'creation' | 'completed'
 
@@ -363,6 +352,17 @@ export function insertEmbedding(rowid: number, embedding: Float32Array): void {
     return
   }
 
+  // Validate embedding input
+  if (!embedding || embedding.length === 0) {
+    throw new Error('Invalid embedding: empty or null')
+  }
+
+  // Check embedding dimension matches expected
+  const expectedDim = getEmbeddingDim()
+  if (embedding.length !== expectedDim) {
+    throw new Error(`Embedding dimension mismatch: expected ${expectedDim}, got ${embedding.length}`)
+  }
+
   const embeddingJson = JSON.stringify(Array.from(embedding))
 
   // SECURITY: sqlite-vec requires rowid as literal (not placeholder)
@@ -373,10 +373,17 @@ export function insertEmbedding(rowid: number, embedding: Float32Array): void {
     throw new Error(`Invalid rowid: ${rowid}`)
   }
 
-  // Safe: safeRowid is validated integer from trusted internal source
-  db.prepare(`INSERT INTO vss_memories(rowid, embedding) VALUES (${safeRowid}, ?)`).run(
-    embeddingJson
-  )
+  try {
+    // Use transaction for embedding insertion to ensure consistency
+    const transaction = db.transaction((rowid: number, embeddingJson: string) => {
+      db.prepare(`INSERT INTO vss_memories(rowid, embedding) VALUES (${rowid}, ?)`).run(embeddingJson)
+    })
+
+    transaction(safeRowid, embeddingJson)
+  } catch (error) {
+    logger.error(`Failed to insert embedding for rowid ${safeRowid}: ${error}`)
+    throw error
+  }
 }
 
 /**
@@ -394,23 +401,54 @@ export function searchEmbeddings(
     return []
   }
 
+  // Validate embedding input
+  if (!embedding || embedding.length === 0) {
+    logger.warn('Empty embedding provided to searchEmbeddings')
+    return []
+  }
+
+  // Validate limit parameter
+  const safeLimit = Math.max(1, Math.min(limit, 1000)) // Cap at 1000 results
+  if (safeLimit !== limit) {
+    logger.warn(`Limit clamped from ${limit} to ${safeLimit}`)
+  }
+
   const embeddingJson = JSON.stringify(Array.from(embedding))
 
-  const results = db
-    .prepare(
+  try {
+    const results = db
+      .prepare(
+        `
+        SELECT
+          rowid,
+          distance
+        FROM vss_memories
+        WHERE embedding MATCH ?
+        ORDER BY distance
+        LIMIT ?
       `
-      SELECT
-        rowid,
-        distance
-      FROM vss_memories
-      WHERE embedding MATCH ?
-      ORDER BY distance
-      LIMIT ?
-    `
-    )
-    .all(embeddingJson, limit) as Array<{ rowid: number; distance: number }>
+      )
+      .all(embeddingJson, safeLimit) as Array<{ rowid: number; distance: number }>
 
-  return results
+    // Validate results structure
+    const validResults = results.filter(result => {
+      return (
+        typeof result.rowid === 'number' &&
+        typeof result.distance === 'number' &&
+        !isNaN(result.distance) &&
+        isFinite(result.distance)
+      )
+    })
+
+    if (validResults.length !== results.length) {
+      logger.warn(`Filtered out ${results.length - validResults.length} invalid search results`)
+    }
+
+    return validResults
+  } catch (error) {
+    logger.error(`Embedding search failed: ${error}`)
+    return []
+  }
 }
 
 /**
@@ -638,7 +676,12 @@ export function setGlobalSkillLevel(level: SkillLevel): void {
 export function getDomainSkillLevel(domain: string): SkillLevel {
   const profile = getUserProfile()
   try {
-    const levels = JSON.parse(profile.domain_skill_levels) as Record<string, SkillLevel>
+    const parsedLevels = JSON.parse(profile.domain_skill_levels)
+    // Validate parsed result is a proper object (not array or null)
+    if (typeof parsedLevels !== 'object' || parsedLevels === null || Array.isArray(parsedLevels)) {
+      throw new Error('Invalid domain_skill_levels format')
+    }
+    const levels = parsedLevels as Record<string, SkillLevel>
     return levels[domain] || profile.global_skill_level
   } catch {
     return profile.global_skill_level
@@ -682,22 +725,44 @@ export function incrementActionCount(action: string): { newCount: number; allCou
     initDatabase()
   }
 
-  const profile = getUserProfile()
-  let counts: Record<string, number>
-  try {
-    counts = JSON.parse(profile.action_counts)
-  } catch {
-    counts = {}
+  // Validate action parameter
+  if (!action || typeof action !== 'string' || action.trim().length === 0) {
+    throw new Error('Invalid action: must be non-empty string')
   }
 
-  counts[action] = (counts[action] || 0) + 1
+  const safeAction = action.trim()
 
-  const now = Date.now()
-  getDatabase().prepare(`
-    UPDATE user_profile SET action_counts = ?, updated_at = ? WHERE id = 1
-  `).run(JSON.stringify(counts), now)
+  try {
+    // Use transaction to ensure atomic operation
+    const transaction = db.transaction(() => {
+      const profile = getUserProfile()
+      let counts: Record<string, number>
+      try {
+        const parsedCounts = JSON.parse(profile.action_counts)
+        // Validate parsed result is an object
+        if (typeof parsedCounts !== 'object' || parsedCounts === null || Array.isArray(parsedCounts)) {
+          throw new Error('Invalid action_counts format')
+        }
+        counts = parsedCounts
+      } catch {
+        counts = {}
+      }
 
-  return { newCount: counts[action], allCounts: counts }
+      counts[safeAction] = (counts[safeAction] || 0) + 1
+
+      const now = Date.now()
+      getDatabase().prepare(`
+        UPDATE user_profile SET action_counts = ?, updated_at = ? WHERE id = 1
+      `).run(JSON.stringify(counts), now)
+
+      return { newCount: counts[safeAction], allCounts: counts }
+    })
+
+    return transaction()
+  } catch (error) {
+    logger.error(`Failed to increment action count for ${safeAction}: ${error}`)
+    throw error
+  }
 }
 
 /**
@@ -1432,143 +1497,6 @@ export function deleteModule(name: string): boolean {
   `).run(name)
 
   return result.changes > 0
-}
-
-// ============================================================
-// Module Embeddings Cache (Story 11.19 - Performance)
-// ============================================================
-
-/**
- * Update or insert module embedding
- *
- * @param moduleName - Module name
- * @param embedding - Float32Array of embedding values
- * @param metadataHash - Hash of module metadata for change detection
- */
-export function updateModuleEmbedding(
-  moduleName: string,
-  embedding: Float32Array,
-  metadataHash: string
-): void {
-  if (!db) {
-    initDatabase()
-  }
-
-  const now = Date.now()
-  const embeddingJson = JSON.stringify(Array.from(embedding))
-  const modelName = getModelName()
-  const embeddingDim = getEmbeddingDim()
-
-  getDatabase().prepare(`
-    INSERT INTO module_embeddings
-      (module_name, embedding, embedding_dim, embedding_model, metadata_hash, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(module_name) DO UPDATE SET
-      embedding = excluded.embedding,
-      embedding_model = excluded.embedding_model,
-      metadata_hash = excluded.metadata_hash,
-      updated_at = excluded.updated_at
-  `).run(
-    moduleName,
-    embeddingJson,
-    embeddingDim,
-    modelName,
-    metadataHash,
-    now,
-    now
-  )
-}
-
-/**
- * Get module embedding from cache
- *
- * @param moduleName - Module name
- * @returns Float32Array or null if not found
- */
-export function getModuleEmbedding(moduleName: string): Float32Array | null {
-  if (!db) {
-    initDatabase()
-  }
-
-  const row = getDatabase().prepare(`
-    SELECT embedding FROM module_embeddings
-    WHERE module_name = ? AND embedding_model = ?
-  `).get(moduleName, getModelName()) as { embedding: string } | undefined
-
-  if (!row) {
-    return null
-  }
-
-  try {
-    return new Float32Array(JSON.parse(row.embedding))
-  } catch (err) {
-    logger.error(`Failed to parse embedding for module ${moduleName}: ${err}`)
-    return null
-  }
-}
-
-/**
- * Get multiple module embeddings (bulk fetch for performance)
- *
- * @param moduleNames - Array of module names
- * @returns Map of module name to Float32Array
- */
-export function getModuleEmbeddings(moduleNames: string[]): Map<string, Float32Array> {
-  if (!db || moduleNames.length === 0) {
-    return new Map()
-  }
-
-  const placeholders = moduleNames.map(() => '?').join(',')
-  const rows = getDatabase().prepare(`
-    SELECT module_name, embedding
-    FROM module_embeddings
-    WHERE module_name IN (${placeholders})
-    AND embedding_model = ?
-  `).all(...moduleNames, getModelName()) as Array<{ module_name: string; embedding: string }>
-
-  const embeddingMap = new Map<string, Float32Array>()
-
-  for (const row of rows) {
-    try {
-      embeddingMap.set(row.module_name, new Float32Array(JSON.parse(row.embedding)))
-    } catch (err) {
-      logger.error(`Failed to parse embedding for module ${row.module_name}: ${err}`)
-    }
-  }
-
-  return embeddingMap
-}
-
-/**
- * Check if module embedding needs refresh based on metadata hash
- *
- * @param moduleName - Module name
- * @param currentMetadataHash - Current metadata hash
- * @returns true if refresh needed
- */
-export function needsEmbeddingRefresh(
-  moduleName: string,
-  currentMetadataHash: string
-): boolean {
-  if (!db) {
-    initDatabase()
-  }
-
-  const row = getDatabase().prepare(`
-    SELECT metadata_hash FROM module_embeddings
-    WHERE module_name = ? AND embedding_model = ?
-  `).get(moduleName, getModelName()) as { metadata_hash: string } | undefined
-
-  return !row || row.metadata_hash !== currentMetadataHash
-}
-
-/**
- * Get model name from config
- * Helper to avoid circular dependency with config.ts
- */
-function getModelName(): string {
-  // Using the same model as configured for embeddings
-  return 'Xenova/multilingual-e5-small'
 }
 
 // ============================================================

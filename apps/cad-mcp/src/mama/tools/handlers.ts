@@ -1050,7 +1050,7 @@ export async function handleMamaWorkflow(args: WorkflowArgs): Promise<ToolRespon
       }
     }
 
-    // phase 검증 (goto 명령에서 사용)
+    // phase 검증 (모든 명령에서 args.phase 사용 시 검증)
     const validPhases = ['discovery', 'planning', 'architecture', 'creation', 'completed'] as const
     if (args.phase !== undefined && !validPhases.includes(args.phase as typeof validPhases[number])) {
       return {

@@ -17,4 +17,4 @@ CREATE TABLE IF NOT EXISTS modules (
 CREATE INDEX IF NOT EXISTS idx_modules_usage ON modules(usage_count DESC);
 
 -- Record version
-INSERT OR IGNORE INTO schema_version (version) VALUES (8);
+INSERT OR IGNORE INTO schema_version (version, description) VALUES (8, 'Module Library for semantic recommendation system');
