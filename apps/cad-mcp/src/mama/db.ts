@@ -1205,24 +1205,25 @@ export function calculateIndependentRatio(
   const start = now - periodDays * 24 * 60 * 60 * 1000
 
   // Get totals and independent counts for each half
+  // Use < midpoint for first half to avoid double-counting at boundary
   const firstHalfTotal = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
-    WHERE user_id = ? AND created_at BETWEEN ? AND ?
+    WHERE user_id = ? AND created_at >= ? AND created_at < ?
   `).get(userId, start, midpoint) as { count: number }
 
   const firstHalfIndependent = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
-    WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at BETWEEN ? AND ?
+    WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at >= ? AND created_at < ?
   `).get(userId, start, midpoint) as { count: number }
 
   const secondHalfTotal = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
-    WHERE user_id = ? AND created_at BETWEEN ? AND ?
+    WHERE user_id = ? AND created_at >= ? AND created_at <= ?
   `).get(userId, midpoint, now) as { count: number }
 
   const secondHalfIndependent = getDatabase().prepare(`
     SELECT COUNT(*) as count FROM growth_metrics
-    WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at BETWEEN ? AND ?
+    WHERE user_id = ? AND metric_type = 'independent_decision' AND created_at >= ? AND created_at <= ?
   `).get(userId, midpoint, now) as { count: number }
 
   const firstHalfRatio = firstHalfTotal.count > 0
@@ -1500,7 +1501,9 @@ export function searchModules(options: {
     // Match any tag with LIKE escape
     const tagConditions = options.tags.map(() => "tags LIKE ? ESCAPE '\\'").join(' OR ')
     query += ` AND (${tagConditions})`
-    options.tags.forEach(tag => params.push(`%"${escapeLike(tag)}"%`))
+    for (const tag of options.tags) {
+      params.push(`%"${escapeLike(tag)}"%`)
+    }
   }
 
   query += ' ORDER BY usage_count DESC, name ASC'
