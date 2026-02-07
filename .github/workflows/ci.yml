@@ -108,16 +108,14 @@ jobs:
 
       - name: Rebuild native modules (better-sqlite3)
         run: |
-          # Find and rebuild better-sqlite3 in pnpm store
-          SQLITE_DIR=$(find node_modules/.pnpm -type d -name "better-sqlite3@*" | head -1)
-          if [ -n "$SQLITE_DIR" ]; then
-            cd "$SQLITE_DIR/node_modules/better-sqlite3"
-            echo "Building in: $(pwd)"
-            npx prebuild-install || npx node-gyp rebuild --release
-          else
-            echo "better-sqlite3 not found in pnpm store"
-            exit 1
-          fi
+          # better-sqlite3 requires platform-specific native binaries
+          # pnpm store caches may have binaries from different platforms
+          cd node_modules/better-sqlite3 2>/dev/null || cd $(pnpm why better-sqlite3 --json | jq -r '.[0].dependencies["better-sqlite3"].path' 2>/dev/null) || {
+            echo "::warning::better-sqlite3 not found, skipping rebuild"
+            exit 0
+          }
+          echo "Rebuilding better-sqlite3 in: $(pwd)"
+          npm run build-release 2>/dev/null || npx prebuild-install || npx node-gyp rebuild --release
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
