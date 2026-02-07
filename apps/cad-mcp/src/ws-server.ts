@@ -264,12 +264,12 @@ export class CADWebSocketServer {
         await ensureDataDir()
         const selection = {
           selected_entities: data.selected_entities,
-          locked_entities: data.locked_entities || [],
-          hidden_entities: data.hidden_entities || [],
+          locked_entities: data.locked_entities,
+          hidden_entities: data.hidden_entities,
           timestamp: Date.now(),
         }
         await writeFile(getSelectionFile(), JSON.stringify(selection, null, 2), 'utf-8')
-        logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities?.length || 0} hidden, ${data.locked_entities?.length || 0} locked`)
+        logger.debug(`Selection saved: ${data.selected_entities.length} selected, ${data.hidden_entities.length} hidden, ${data.locked_entities.length} locked`)
       } catch (e) {
         logger.error(`Failed to save selection: ${e}`)
       }
@@ -392,21 +392,41 @@ export class CADWebSocketServer {
     return new Promise((resolve) => {
       this.stopHeartbeat()
 
-      if (this.wss) {
-        // Close all client connections
-        for (const client of this.clients) {
-          client.close()
-        }
-        this.clients.clear()
+      // Wait for ongoing write operations to complete before shutting down
+      Promise.all([this.selectionWriteChain, this.sketchWriteChain]).then(() => {
+        if (this.wss) {
+          // Close all client connections
+          for (const client of this.clients) {
+            client.close()
+          }
+          this.clients.clear()
 
-        this.wss.close(() => {
-          this.wss = null
-          logger.info('WebSocket server stopped')
+          this.wss.close(() => {
+            this.wss = null
+            logger.info('WebSocket server stopped')
+            resolve()
+          })
+        } else {
           resolve()
-        })
-      } else {
-        resolve()
-      }
+        }
+      }).catch((error) => {
+        logger.warn(`Error waiting for write chains during shutdown: ${error}`)
+        // Still proceed with shutdown even if write operations failed
+        if (this.wss) {
+          for (const client of this.clients) {
+            client.close()
+          }
+          this.clients.clear()
+
+          this.wss.close(() => {
+            this.wss = null
+            logger.info('WebSocket server stopped')
+            resolve()
+          })
+        } else {
+          resolve()
+        }
+      })
     })
   }
 

@@ -96,8 +96,8 @@ export const ErrorDataSchema = z.object({
 // Client → Server: Selection update from viewer
 export const SelectionUpdateDataSchema = z.object({
   selected_entities: z.array(z.string()),
-  locked_entities: z.array(z.string()).optional(),
-  hidden_entities: z.array(z.string()).optional(),
+  locked_entities: z.array(z.string()).default([]),
+  hidden_entities: z.array(z.string()).default([]),
 });
 
 // Client → Server: Sketch update from viewer
