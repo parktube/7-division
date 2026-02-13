@@ -87,7 +87,7 @@ class Animal {
     
     // 4. 코 (snout) - snoutDepthRatio로 홀쭉하게 조절 가능
     const sc = this.snoutColor;
-    const snoutD = this.snoutDepthRatio || 1.0;  // 1.0=기본, 0.5=홀쭉
+    const snoutD = this.snoutDepthRatio;  // 1.0=기본, 0.5=홀쭉
     box3d(n+'_snout', -U*2.6, 0, headZ + U*0.3, U*0.6*this.snoutRatio, U*0.8*this.snoutRatio*snoutD, U*0.6*this.snoutRatio, sc.t, sc.l, sc.r);
     
     // 5. 콧구멍 (2개)
@@ -227,19 +227,37 @@ function createDog(name, x, y) {
   deleteBox3d(name+'_nostril_r');
   // 주둥이 위치 조정 (스케치 기준)
   const snoutNow = getWorldCenter(name+'_snout');
+  let snoutDx = 0;
+  let snoutDy = 0;
   if (snoutNow) {
     const ratio = a.scale / 6.5;  // 강아지 스케일 / 기본 Animal 스케일
     const snoutLocalTarget = [-82 * ratio, 5 * ratio];  // 스케일 비율 적용된 로컬 좌표
     const snoutWorldTarget = [x + snoutLocalTarget[0], y + snoutLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
-    translate(name+'_snout', snoutWorldTarget[0] - snoutNow[0], snoutWorldTarget[1] - snoutNow[1]);
+    snoutDx = snoutWorldTarget[0] - snoutNow[0];
+    snoutDy = snoutWorldTarget[1] - snoutNow[1];
+    translate(name+'_snout', snoutDx, snoutDy);
   }
   // 귀 위치 아래로 (축 늘어진 귀)
   translate(name+'_ear_l', 0, -5);
   translate(name+'_ear_r', 0, -5);
   // 코 하나로 (주둥이 끝에 검은 코)
-  const snoutPos = getWorldCenter(name+'_snout');
-  if (snoutPos && Number.isFinite(snoutPos[2])) {
-    box3d(name+'_nose', snoutPos[0] - 6, snoutPos[1], snoutPos[2], 4, 5, 4, C.black.t, C.black.l, C.black.r);
+  const snoutPart = getPartInfo(name+'_snout');
+  if (snoutPart) {
+    const noseW = Math.max(1, snoutPart.w * 0.35);
+    const noseD = Math.max(1, snoutPart.d * 0.55);
+    const noseH = Math.max(1, snoutPart.h * 0.35);
+    const noseWx = snoutPart.wx - snoutPart.w / 2 - noseW / 2;
+    const noseWy = snoutPart.wy;
+    const noseWz = snoutPart.wz + snoutPart.h * 0.35;
+
+    box3d(name+'_nose', noseWx, noseWy, noseWz, noseW, noseD, noseH, C.black.t, C.black.l, C.black.r);
+    // Animal.build()에서 그룹에 적용한 변환(스케일/이동)을 동일하게 반영
+    scale(name+'_nose', a.scale, a.scale);
+    translate(name+'_nose', x, y);
+    // snout를 개별 이동한 경우, nose도 동일 오프셋 적용 (시각적으로 주둥이에 고정)
+    if (snoutDx !== 0 || snoutDy !== 0) {
+      translate(name+'_nose', snoutDx, snoutDy);
+    }
     addToGroup(name+'_headGroup', name+'_nose');
     drawOrder(name+'_nose', 'front');
   }
@@ -270,10 +288,19 @@ function createCat(name, x, y) {
   translate(name+'_ear_l', 0, 8);
   translate(name+'_ear_r', 0, 8);
   
-  // 고양이 코 (작은 삼각형 분홍색)
-  const headPos = getWorldCenter(name+'_head');
-  if (headPos && Number.isFinite(headPos[2])) {
-    box3d(name+'_nose', headPos[0] - 22, headPos[1], headPos[2] + 8, 3, 4, 3, C.pink.t, C.pink.l, C.pink.r);
+  // 고양이 코 (작은 분홍색 박스)
+  const headPart = getPartInfo(name+'_head');
+  if (headPart) {
+    const noseW = Math.max(1, headPart.w * 0.18);
+    const noseD = Math.max(1, headPart.d * 0.22);
+    const noseH = Math.max(1, headPart.h * 0.18);
+    const noseWx = headPart.wx - headPart.w / 2 - noseW / 3;
+    const noseWy = headPart.wy;
+    const noseWz = headPart.wz + headPart.h * 0.55;
+
+    box3d(name+'_nose', noseWx, noseWy, noseWz, noseW, noseD, noseH, C.pink.t, C.pink.l, C.pink.r);
+    scale(name+'_nose', a.scale, a.scale);
+    translate(name+'_nose', x, y);
     addToGroup(name+'_headGroup', name+'_nose');
     drawOrder(name+'_nose', 'front');
   }
@@ -308,19 +335,19 @@ function createChicken(name, x, y) {
   const bodyZ = U*0.56;
   box3d(n+'_body', 0, 0, bodyZ, U*1.8, U*1.6, U*2.2, w.t, w.l, w.r);
   
-  // 4. 벼슬 (comb) - 핑크색
+  // 5. 벼슬 (comb) - 핑크색
   box3d(n+'_comb', -U*0.3, 0, bodyZ + U*2.2, U*0.6, U*0.5, U*0.5, p.t, p.l, p.r);
   
-  // 5. 부리 상단 - 주황색 (앞으로 길게)
+  // 6. 부리 상단 - 주황색 (앞으로 길게)
   box3d(n+'_beak_top', -U*1.4, 0, bodyZ + U*1.3, U*0.6, U*0.25, U*0.25, o.t, o.l, o.r);
   
-  // 6. 부리 하단 - 주황색 (약간 작게)
+  // 7. 부리 하단 - 주황색 (약간 작게)
   box3d(n+'_beak_bot', -U*1.35, 0, bodyZ + U*1.0, U*0.5, U*0.3, U*0.2, o.t, o.l, o.r);
   
-  // 7. 꼬물 (wattle) - 핑크색 (부리 아래로 늘어짐)
+  // 8. 꼬물 (wattle) - 핑크색 (부리 아래로 늘어짐)
   box3d(n+'_wattle', -U*1.35, 0, bodyZ + U*0.5, U*0.25, U*0.2, U*0.5, p.t, p.l, p.r);
   
-  // 8. 눈 - 검정색 (평면, 한쪽만)
+  // 9. 눈 - 검정색 (평면, 한쪽만)
   box3d(n+'_eye_r', -U*0.95, -U*0.65, bodyZ + U*1.4, U*0.3, U*0.3, U*0.3, b.t, b.l, b.r);
   deleteEntity(n+'_eye_r_t');
   deleteEntity(n+'_eye_r_l');

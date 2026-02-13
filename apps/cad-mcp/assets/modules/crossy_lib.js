@@ -31,6 +31,18 @@ function clearParts() {
   }
 }
 
+// 파츠 정보 조회 (파생 모듈/디버깅용)
+function getPartInfo(name) {
+  var p = _parts[name];
+  if (!p) return null;
+  // 얕은 복사로 내부 상태 변조 방지
+  return {
+    wx: p.wx, wy: p.wy, wz: p.wz,
+    w: p.w, d: p.d, h: p.h,
+    tC: p.tC, lC: p.lC, rC: p.rC
+  };
+}
+
 // ============================================
 // 함수 API
 // ============================================
@@ -49,7 +61,7 @@ function box(name, wx, wy, wz, width, depth, height, tC, lC, rC) {
     bf: toIso(wx-hw, wy-hd, wz), br: toIso(wx+hw, wy-hd, wz),
     bb: toIso(wx+hw, wy+hd, wz), bl: toIso(wx-hw, wy+hd, wz),
     tf: toIso(wx-hw, wy-hd, wz+height), tr: toIso(wx+hw, wy-hd, wz+height),
-    tb: toIso(wx+hw, wy+hd, wz+height), tl: toIso(wx-hw, wy+hd, wz+height),
+    tb: toIso(wx+hw, wy+hd, wz+height), tl: toIso(wx-hw, wy+hd, wz+height)
   };
 
   drawPolygon(name+'_t', [p.tf[0],p.tf[1], p.tr[0],p.tr[1], p.tb[0],p.tb[1], p.tl[0],p.tl[1]]);
