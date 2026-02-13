@@ -1,9 +1,6 @@
 -- Story 11.13: Learning Progress Storage
 -- FR81: Track user learning progress for concepts
 
--- Record version
-INSERT OR IGNORE INTO schema_version (version, description) VALUES (5, 'Learning Progress Storage for concept tracking');
-
 -- User learning progress table
 CREATE TABLE IF NOT EXISTS learnings (
   id TEXT PRIMARY KEY,
@@ -24,3 +21,6 @@ CREATE INDEX IF NOT EXISTS idx_learnings_concept ON learnings(concept);
 CREATE INDEX IF NOT EXISTS idx_learnings_domain ON learnings(domain);
 -- Unique constraint: one concept per user
 CREATE UNIQUE INDEX IF NOT EXISTS idx_learnings_user_concept ON learnings(user_id, concept);
+
+-- Record version
+INSERT OR IGNORE INTO schema_version (version, description) VALUES (5, 'Learning Progress Storage for concept tracking');

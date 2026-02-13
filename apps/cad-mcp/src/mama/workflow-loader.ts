@@ -137,17 +137,17 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
 
   // Validate cad_dimensions: space_sizes and mezzanine_ratios (per CADDimensions interface)
   const cad = obj.cad_dimensions
-  if (!cad || typeof cad !== 'object') return false
+  if (!cad || typeof cad !== 'object' || Array.isArray(cad)) return false
   const cadObj = cad as Record<string, unknown>
   if (!('space_sizes' in cadObj) || !('mezzanine_ratios' in cadObj)) return false
   // Ensure space_sizes is object and mezzanine_ratios is array
-  if (typeof cadObj.space_sizes !== 'object' || cadObj.space_sizes === null) return false
+  if (typeof cadObj.space_sizes !== 'object' || cadObj.space_sizes === null || Array.isArray(cadObj.space_sizes)) return false
   if (!Array.isArray(cadObj.mezzanine_ratios)) return false
 
   // Validate space_sizes structure: Record<string, { pixels: string; feel: string }>
   const spaceSizes = cadObj.space_sizes as Record<string, unknown>
   for (const [, value] of Object.entries(spaceSizes)) {
-    if (!value || typeof value !== 'object') return false
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false
     const sizeObj = value as Record<string, unknown>
     if (typeof sizeObj.pixels !== 'string' || typeof sizeObj.feel !== 'string') return false
   }
@@ -155,32 +155,41 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   // Validate mezzanine_ratios array: Array<{ ratio: string; usage: string; height_px: number }>
   const mezzanineRatios = cadObj.mezzanine_ratios as unknown[]
   for (const ratio of mezzanineRatios) {
-    if (!ratio || typeof ratio !== 'object') return false
+    if (!ratio || typeof ratio !== 'object' || Array.isArray(ratio)) return false
     const ratioObj = ratio as Record<string, unknown>
-    if (typeof ratioObj.ratio !== 'string' || typeof ratioObj.usage !== 'string' || typeof ratioObj.height_px !== 'number') return false
+    const heightPx = ratioObj.height_px
+    if (
+      typeof ratioObj.ratio !== 'string' ||
+      typeof ratioObj.usage !== 'string' ||
+      typeof heightPx !== 'number' ||
+      !Number.isFinite(heightPx) ||
+      heightPx < 0
+    ) {
+      return false
+    }
   }
 
   // Validate isometric_shading: examples (per IsometricShading interface)
   const shading = obj.isometric_shading
-  if (!shading || typeof shading !== 'object') return false
+  if (!shading || typeof shading !== 'object' || Array.isArray(shading)) return false
   const shadingObj = shading as Record<string, unknown>
   if (!('examples' in shadingObj)) return false
 
   // Validate examples field is an object
   const examples = shadingObj.examples
-  if (!examples || typeof examples !== 'object') return false
+  if (!examples || typeof examples !== 'object' || Array.isArray(examples)) return false
 
   // Validate examples structure: Record<string, { top: string; left: string; right: string }>
   const examplesObj = examples as Record<string, unknown>
   for (const [, value] of Object.entries(examplesObj)) {
-    if (!value || typeof value !== 'object') return false
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false
     const exampleObj = value as Record<string, unknown>
     if (typeof exampleObj.top !== 'string' || typeof exampleObj.left !== 'string' || typeof exampleObj.right !== 'string') return false
   }
 
   // Validate z_order: standard_order and mezzanine_order (per DesignHintsData interface)
   const zOrder = obj.z_order
-  if (!zOrder || typeof zOrder !== 'object') return false
+  if (!zOrder || typeof zOrder !== 'object' || Array.isArray(zOrder)) return false
   const zOrderObj = zOrder as Record<string, unknown>
   if (!('standard_order' in zOrderObj) || !('mezzanine_order' in zOrderObj)) return false
   if (!Array.isArray(zOrderObj.standard_order) || !Array.isArray(zOrderObj.mezzanine_order)) return false
@@ -191,21 +200,36 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
 
   // Validate furniture_sizes: Record<string, Record<string, { w: number; d: number; h: number }>>
   const furnitureSizes = obj.furniture_sizes
-  if (!furnitureSizes || typeof furnitureSizes !== 'object') return false
+  if (!furnitureSizes || typeof furnitureSizes !== 'object' || Array.isArray(furnitureSizes)) return false
 
   for (const [, category] of Object.entries(furnitureSizes)) {
-    if (!category || typeof category !== 'object') return false
+    if (!category || typeof category !== 'object' || Array.isArray(category)) return false
     const categoryObj = category as Record<string, unknown>
     for (const [, furniture] of Object.entries(categoryObj)) {
-      if (!furniture || typeof furniture !== 'object') return false
+      if (!furniture || typeof furniture !== 'object' || Array.isArray(furniture)) return false
       const furnitureObj = furniture as Record<string, unknown>
-      if (typeof furnitureObj.w !== 'number' || typeof furnitureObj.d !== 'number' || typeof furnitureObj.h !== 'number') return false
+      const w = furnitureObj.w
+      const d = furnitureObj.d
+      const h = furnitureObj.h
+      if (
+        typeof w !== 'number' ||
+        !Number.isFinite(w) ||
+        w < 0 ||
+        typeof d !== 'number' ||
+        !Number.isFinite(d) ||
+        d < 0 ||
+        typeof h !== 'number' ||
+        !Number.isFinite(h) ||
+        h < 0
+      ) {
+        return false
+      }
     }
   }
 
   // Validate optional fields if present (tool_usage, checkpoints)
   if ('tool_usage' in obj && obj.tool_usage !== null) {
-    if (typeof obj.tool_usage !== 'object') return false
+    if (typeof obj.tool_usage !== 'object' || Array.isArray(obj.tool_usage)) return false
     const toolUsage = obj.tool_usage as Record<string, unknown>
 
     // Validate tool_usage structure if present

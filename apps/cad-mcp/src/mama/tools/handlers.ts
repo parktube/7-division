@@ -59,6 +59,8 @@ import {
 // ============================================================
 
 const DEFAULT_BUILTIN_SIMILARITY = 0.8
+const WORKFLOW_COMMANDS = ['start', 'status', 'next', 'goto', 'list', 'artifact'] as const
+const WORKFLOW_PHASES = ['discovery', 'planning', 'architecture', 'creation', 'completed'] as const
 
 // ============================================================
 // Response Types
@@ -310,7 +312,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
     const userResults = await searchDecisions({
       query: args.query,
       limit: args.limit ?? 10,
-      type: args.type || 'all',
+      type: args.type ?? 'all',
       domain: args.domain,
       group_by_topic: args.group_by_topic,
       outcome_filter: args.outcome_filter,
@@ -399,7 +401,7 @@ export async function handleMamaSearch(args: SearchArgs): Promise<ToolResponse> 
       data: {
         query: args.query || null,
         domain: args.domain || null,
-        group_by_topic: args.group_by_topic || false,
+        group_by_topic: args.group_by_topic ?? false,
         count: limitedResults.length,
         results: limitedResults,
       },
@@ -527,7 +529,7 @@ export interface ConfigureArgs {
 export async function handleMamaConfigure(args: ConfigureArgs): Promise<ToolResponse> {
   try {
     await initMAMA()
-    const action = args.action || 'get'
+    const action = args.action ?? 'get'
 
     // Debug: Show current tool descriptions with injected hints
     if (action === 'debug') {
@@ -584,7 +586,10 @@ export async function handleMamaConfigure(args: ConfigureArgs): Promise<ToolResp
         return { success: false, error: 'No valid settings to update' }
       }
 
-      updateConfig(updates as Parameters<typeof updateConfig>[0])
+      const updated = updateConfig(updates as Parameters<typeof updateConfig>[0])
+      if (!updated) {
+        return { success: false, error: 'No valid or effective settings to update' }
+      }
       logger.info(`mama_configure: Settings updated`)
     }
 
@@ -1042,20 +1047,18 @@ export async function handleMamaWorkflow(args: WorkflowArgs): Promise<ToolRespon
     await initMAMA()
 
     // Validate command
-    const validCommands = ['start', 'status', 'next', 'goto', 'list', 'artifact'] as const
-    if (!validCommands.includes(args.command as typeof validCommands[number])) {
+    if (!WORKFLOW_COMMANDS.includes(args.command as typeof WORKFLOW_COMMANDS[number])) {
       return {
         success: false,
-        error: `Invalid command: ${args.command}. Use one of: ${validCommands.join(', ')}`,
+        error: `Invalid command: ${args.command}. Use one of: ${WORKFLOW_COMMANDS.join(', ')}`,
       }
     }
 
     // phase 검증 (모든 명령에서 args.phase 사용 시 검증)
-    const validPhases = ['discovery', 'planning', 'architecture', 'creation', 'completed'] as const
-    if (args.phase !== undefined && !validPhases.includes(args.phase as typeof validPhases[number])) {
+    if (args.phase !== undefined && !WORKFLOW_PHASES.includes(args.phase as typeof WORKFLOW_PHASES[number])) {
       return {
         success: false,
-        error: `Invalid phase: ${args.phase}. Use one of: ${validPhases.join(', ')}`,
+        error: `Invalid phase: ${args.phase}. Use one of: ${WORKFLOW_PHASES.join(', ')}`,
       }
     }
 

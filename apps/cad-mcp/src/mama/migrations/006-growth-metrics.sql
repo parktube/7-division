@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS growth_metrics (
   related_learning_id TEXT,                 -- FK to learnings table
   related_decision_id TEXT,                 -- FK to decisions table
   context TEXT,                             -- Situation context
-  created_at INTEGER,                       -- Unix timestamp (ms)
+  created_at INTEGER NOT NULL,              -- Unix timestamp (ms)
   FOREIGN KEY (related_learning_id) REFERENCES learnings(id),
   FOREIGN KEY (related_decision_id) REFERENCES decisions(id)
 );

@@ -1537,6 +1537,20 @@ export function deleteModule(name: string): boolean {
 // Design Workflow Projects (Story 11.21)
 // ============================================================
 
+function sanitizeProjectNameForId(name: string): string {
+  const sanitized = name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_')
+    // Keep Unicode letters/numbers; replace anything else with underscore for filesystem/URL safety
+    .replace(/[^\p{L}\p{N}_-]+/gu, '_')
+    .replace(/_+/g, '_')
+    .replace(/^[_-]+|[_-]+$/g, '')
+    .substring(0, 50)
+
+  return sanitized || 'unnamed'
+}
+
 /**
  * Create a new project
  *
@@ -1552,7 +1566,7 @@ export function createProject(project: {
   }
 
   const now = Date.now()
-  const id = `project_${project.name.toLowerCase().replace(/\s+/g, '_')}_${now.toString(36)}`
+  const id = `project_${sanitizeProjectNameForId(project.name)}_${now.toString(36)}`
 
   getDatabase().prepare(`
     INSERT INTO projects (id, name, description, current_phase, created_at, updated_at)

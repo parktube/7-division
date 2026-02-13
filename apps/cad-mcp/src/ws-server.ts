@@ -39,7 +39,7 @@ async function ensureDataDir(): Promise<void> {
   }
 
   ensuredDataDirPath = dataDir
-  ensuredDataDirPromise = mkdir(dataDir, { recursive: true })
+  ensuredDataDirPromise = mkdir(dataDir, { recursive: true }).then(() => undefined)
   try {
     await ensuredDataDirPromise
   } catch (error) {

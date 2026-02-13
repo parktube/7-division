@@ -208,6 +208,18 @@ export function updateConfig(updates: Partial<MAMAConfig>): boolean {
       }
     }
 
+    const updatedKeys = Object.keys(validatedUpdates) as Array<keyof MAMAConfig>
+    if (updatedKeys.length === 0) {
+      logger.warn('No valid MAMA config updates to apply')
+      return false
+    }
+
+    const hasEffectiveChange = updatedKeys.some((key) => currentConfig[key] !== validatedUpdates[key])
+    if (!hasEffectiveChange) {
+      logger.info('MAMA config unchanged: all values already set')
+      return false
+    }
+
     const newConfig: MAMAConfig = {
       ...currentConfig,
       ...validatedUpdates,
