@@ -54,7 +54,7 @@ var PIG_PARTS = {
   leg_br:     { x: 10, y: 9, z: -8, w: 6, d: 6, h: 8 }
 };
 
-// z-order 키 배열 (뒤→앞, sortByDepth용)
+// z-order 키 배열 (뒤→앞, drawOrder 순회용)
 var PIG_Z_ORDER_KEYS = [
   'leg_bl', 'leg_br', 'ear_l', 'ear_r', 'body',
   'leg_fl', 'leg_fr',
@@ -153,9 +153,11 @@ PigBuilder.prototype.build = function() {
         P.leg_br.w * s, P.leg_br.d * s, P.leg_br.h * s,
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
 
-  // z-order - PIG_Z_ORDER_KEYS 상수 사용
+  // z-order (뒤→앞) - Duck/Chicken과 동일한 정적 순회 방식 사용
   var zOrderNames = PIG_Z_ORDER_KEYS.map(function(key) { return n + key; });
-  sortByDepth.apply(null, zOrderNames);
+  for (var i = 0; i < zOrderNames.length; i++) {
+    drawOrder(zOrderNames[i], 'front');
+  }
 
   // 그룹화 후 월드 좌표로 이동 - PIG_GROUP_KEYS 상수 사용
   var groupNames = PIG_GROUP_KEYS.map(function(key) { return n + key; });
