@@ -42,7 +42,7 @@
     "dist",
     "wasm",
     "assets",
-    "scripts",
+    "scripts/postinstall.js",
     "docs"
   ],
   "dependencies": {

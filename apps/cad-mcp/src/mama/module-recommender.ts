@@ -457,12 +457,16 @@ function buildModuleText(module: ModuleRow): string {
  * Generate deterministic metadata hash for embedding cache invalidation.
  */
 function getModuleMetadataHash(module: ModuleRow): string {
-  const fingerprint = JSON.stringify({
-    name: module.name,
-    description: module.description,
-    tags: module.tags,
-    example: module.example
-  })
+  const metadata: Record<string, string> = {
+    name: module.name ?? '',
+    description: module.description ?? '',
+    tags: module.tags ?? '',
+    example: module.example ?? '',
+  }
+  const fingerprint = Object.keys(metadata)
+    .sort()
+    .map(key => `${key}:${JSON.stringify(metadata[key])}`)
+    .join('|')
   return createHash('sha256').update(fingerprint).digest('hex')
 }
 

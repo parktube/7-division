@@ -1539,13 +1539,13 @@ export function deleteModule(name: string): boolean {
 
 function sanitizeProjectNameForId(name: string): string {
   const sanitized = name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '_')
-    // Keep Unicode letters/numbers; replace anything else with underscore for filesystem/URL safety
-    .replace(/[^\p{L}\p{N}_-]+/gu, '_')
+    .replace(/[^a-z0-9]+/g, '_')
     .replace(/_+/g, '_')
-    .replace(/^[_-]+|[_-]+$/g, '')
+    .replace(/^_+|_+$/g, '')
     .substring(0, 50)
 
   return sanitized || 'unnamed'

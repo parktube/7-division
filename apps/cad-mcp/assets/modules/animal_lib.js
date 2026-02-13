@@ -310,6 +310,7 @@ function createCat(name, x, y) {
 }
 
 // 치킨 (Crossy Road 오리지널)
+// NOTE: Chicken is intentionally standalone because Animal is tuned for quadruped body plans.
 function createChicken(name, x, y) {
   const U = 8;  // 기본 단위
   const w = C.white;
