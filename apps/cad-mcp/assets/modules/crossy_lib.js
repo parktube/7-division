@@ -64,21 +64,18 @@ function box(name, wx, wy, wz, width, depth, height, tC, lC, rC) {
     tb: toIso(wx+hw, wy+hd, wz+height), tl: toIso(wx-hw, wy+hd, wz+height)
   };
 
-  drawPolygon(name+'_t', [p.tf[0],p.tf[1], p.tr[0],p.tr[1], p.tb[0],p.tb[1], p.tl[0],p.tl[1]]);
-  setFill(name+'_t', tC); setStroke(name+'_t', [0,0,0,0], 0);
-
   drawPolygon(name+'_l', [p.tf[0],p.tf[1], p.tl[0],p.tl[1], p.bl[0],p.bl[1], p.bf[0],p.bf[1]]);
   setFill(name+'_l', lC); setStroke(name+'_l', [0,0,0,0], 0);
 
   drawPolygon(name+'_r', [p.tr[0],p.tr[1], p.tb[0],p.tb[1], p.bb[0],p.bb[1], p.br[0],p.br[1]]);
   setFill(name+'_r', rC); setStroke(name+'_r', [0,0,0,0], 0);
 
-  // 그룹 내부 z-order (뒤→앞): 측면(_l) → 앞면(_r) → 윗면(_t, 최상단)
-  // NOTE: createGroup()의 children 배열 순서만으로 z-order가 보장되지 않으므로 drawOrder로 명시적으로 정렬한다.
+  // 그룹 내부 z-order는 createGroup() 시점의 z_index(생성 순서)에 의해 정렬된다.
+  // 따라서 뒤→앞 렌더링을 보장하려면 면을 뒤→앞 순서로 생성해야 한다: _l/_r → _t(최상단)
+  drawPolygon(name+'_t', [p.tf[0],p.tf[1], p.tr[0],p.tr[1], p.tb[0],p.tb[1], p.tl[0],p.tl[1]]);
+  setFill(name+'_t', tC); setStroke(name+'_t', [0,0,0,0], 0);
+
   createGroup(name, [name+'_l', name+'_r', name+'_t']);
-  drawOrder(name+'_l', 'front');
-  drawOrder(name+'_r', 'front');
-  drawOrder(name+'_t', 'front');
 }
 
 // 박스 생성 + 좌표 저장 (스태킹용)
