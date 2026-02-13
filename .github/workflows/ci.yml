@@ -108,10 +108,11 @@ jobs:
           # Force rebuild better-sqlite3 native bindings for current platform.
           # Use npm rebuild here because pnpm v10 may skip native build scripts
           # unless explicitly approved in pnpm.onlyBuiltDependencies.
-          npm rebuild better-sqlite3 --prefix apps/cad-mcp
+          cd apps/cad-mcp
+          npm rebuild better-sqlite3
           # Verify the native module was built correctly
           echo "Testing better-sqlite3 import..."
-          (cd apps/cad-mcp && node -e "
+          node -e "
             try {
               const Database = require('better-sqlite3');
               const db = new Database(':memory:');
@@ -121,7 +122,7 @@ jobs:
               console.error('❌ better-sqlite3 failed:', err.message);
               process.exit(1);
             }
-          ")
+          "
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build
