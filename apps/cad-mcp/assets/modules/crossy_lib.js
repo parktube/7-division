@@ -73,8 +73,12 @@ function box(name, wx, wy, wz, width, depth, height, tC, lC, rC) {
   drawPolygon(name+'_r', [p.tr[0],p.tr[1], p.tb[0],p.tb[1], p.bb[0],p.bb[1], p.br[0],p.br[1]]);
   setFill(name+'_r', rC); setStroke(name+'_r', [0,0,0,0], 0);
 
-  // z-order (뒤→앞): 측면(_l) → 앞면(_r) → 윗면(_t, 최상단)
+  // 그룹 내부 z-order (뒤→앞): 측면(_l) → 앞면(_r) → 윗면(_t, 최상단)
+  // NOTE: createGroup()의 children 배열 순서만으로 z-order가 보장되지 않으므로 drawOrder로 명시적으로 정렬한다.
   createGroup(name, [name+'_l', name+'_r', name+'_t']);
+  drawOrder(name+'_l', 'front');
+  drawOrder(name+'_r', 'front');
+  drawOrder(name+'_t', 'front');
 }
 
 // 박스 생성 + 좌표 저장 (스태킹용)
