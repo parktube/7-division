@@ -62,14 +62,6 @@ var PIG_Z_ORDER_KEYS = [
   'eye_w_l', 'eye_p_l', 'eye_w_r', 'eye_p_r'
 ];
 
-// 그룹 키 배열 (createGroup용)
-var PIG_GROUP_KEYS = [
-  'body', 'snout', 'nostril_l', 'nostril_r',
-  'eye_w_l', 'eye_p_l', 'eye_w_r', 'eye_p_r',
-  'ear_l', 'ear_r',
-  'leg_fl', 'leg_fr', 'leg_bl', 'leg_br'
-];
-
 // ============================================
 // PigBuilder Class
 // ============================================
@@ -159,14 +151,11 @@ PigBuilder.prototype.build = function() {
     drawOrder(zOrderNames[i], 'front');
   }
 
-  // 그룹화 후 월드 좌표로 이동 - PIG_GROUP_KEYS 상수 사용
-  var groupNames = PIG_GROUP_KEYS.map(function(key) { return n + key; });
-  createGroup(name, groupNames);
+  // 그룹화 후 월드 좌표로 이동 - z-order 배열을 그대로 사용
+  createGroup(name, zOrderNames);
   translate(name, wx, wy);
 
-  if (typeof registerIsoGroup === 'function') {
-    registerIsoGroup(name, wx, wy);
-  }
+  registerIsoGroup(name, wx, wy);
   return this;
 };
 
