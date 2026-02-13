@@ -12,7 +12,7 @@ import { existsSync, readFileSync, readdirSync } from 'fs'
 import { createRequire } from 'module'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { DB_PATH, ensureDataDirs, getEmbeddingDim } from './config.js'
+import { DB_PATH, ensureDataDirs, getEmbeddingDim, getModelName } from './config.js'
 import { logger } from '../logger.js'
 
 // ESM에서 CommonJS 모듈 로드를 위한 require 함수 생성
@@ -1866,13 +1866,14 @@ export function updateModuleEmbedding(moduleName: string, embedding: Float32Arra
 
   const now = Date.now()
   const embeddingDim = getEmbeddingDim()
+  const embeddingModel = getModelName()
   const embeddingJson = JSON.stringify(Array.from(embedding))
 
   getDatabase().prepare(`
     INSERT OR REPLACE INTO module_embeddings
     (module_name, embedding, embedding_dim, embedding_model, metadata_hash, created_at, updated_at)
-    VALUES (?, ?, ?, 'all-MiniLM-L6-v2', ?, ?, ?)
-  `).run(moduleName, embeddingJson, embeddingDim, metadataHash, now, now)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(moduleName, embeddingJson, embeddingDim, embeddingModel, metadataHash, now, now)
 }
 
 /**
@@ -1904,7 +1905,35 @@ export function getModuleEmbedding(moduleName: string): {
     return null
   }
 
-  const embeddingArray = JSON.parse(row.embedding) as number[]
+  let parsedEmbedding: unknown
+  try {
+    parsedEmbedding = JSON.parse(row.embedding)
+  } catch (error) {
+    logger.warn(`Invalid embedding JSON for module ${moduleName}: ${error}`)
+    return null
+  }
+
+  if (!Array.isArray(parsedEmbedding)) {
+    logger.warn(`Embedding payload is not an array for module ${moduleName}`)
+    return null
+  }
+
+  const embeddingArray = parsedEmbedding
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+
+  if (embeddingArray.length !== parsedEmbedding.length) {
+    logger.warn(`Embedding array contains non-numeric values for module ${moduleName}`)
+    return null
+  }
+
+  const expectedDim = getEmbeddingDim()
+  if (embeddingArray.length !== expectedDim) {
+    logger.warn(
+      `Embedding dimension mismatch for module ${moduleName}: expected ${expectedDim}, got ${embeddingArray.length}`
+    )
+    return null
+  }
+
   return {
     embedding: new Float32Array(embeddingArray),
     metadataHash: row.metadata_hash,

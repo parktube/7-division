@@ -9,6 +9,7 @@
  */
 
 import { promises as fs } from 'fs'
+import { createHash } from 'crypto'
 import { join } from 'path'
 import { init as initLexer, parse as parseEsm } from 'es-module-lexer'
 import { logger } from '../logger.js'
@@ -17,7 +18,10 @@ import {
   getModule,
   ModuleRow,
   recordModuleUsage,
-  upsertModule
+  upsertModule,
+  getModuleEmbedding,
+  updateModuleEmbedding,
+  needsEmbeddingRefresh
 } from './db.js'
 import { generateEmbedding, cosineSimilarity } from './embeddings.js'
 import { CAD_DATA_DIR } from './config.js'
@@ -352,11 +356,6 @@ export async function recommendModules(
 
   // Performance optimization: limit concurrent embedding requests
   const MAX_CONCURRENT_EMBEDDINGS = 5
-  const embeddingPromises: Promise<{
-    module: ModuleRow
-    embedding: Float32Array | null
-    text: string
-  }>[] = []
 
   // Process modules in batches to avoid overwhelming embedding service
   for (let i = 0; i < modules.length; i += MAX_CONCURRENT_EMBEDDINGS) {
@@ -364,53 +363,62 @@ export async function recommendModules(
 
     const batchPromises = batch.map(async (module) => {
       const moduleText = buildModuleText(module)
-      const moduleEmbedding = await generateEmbedding(moduleText)
-      return { module, embedding: moduleEmbedding, text: moduleText }
+      const metadataHash = getModuleMetadataHash(module)
+
+      // Reuse cached embedding when module metadata has not changed.
+      let moduleEmbedding: Float32Array | null = null
+      if (!needsEmbeddingRefresh(module.name, metadataHash)) {
+        const cached = getModuleEmbedding(module.name)
+        if (cached) {
+          moduleEmbedding = cached.embedding
+        }
+      }
+
+      if (!moduleEmbedding) {
+        moduleEmbedding = await generateEmbedding(moduleText)
+        if (moduleEmbedding) {
+          updateModuleEmbedding(module.name, moduleEmbedding, metadataHash)
+        }
+      }
+
+      return { module, embedding: moduleEmbedding }
     })
 
-    // Add batch promises individually to avoid large spread operations
-    for (const promise of batchPromises) {
-      embeddingPromises.push(promise)
-    }
+    // Wait for current batch before starting next (rate limiting) and score immediately.
+    const batchResults = await Promise.all(batchPromises)
 
-    // Wait for current batch before starting next (rate limiting)
-    await Promise.all(batchPromises)
-  }
+    for (const { module, embedding: moduleEmbedding } of batchResults) {
+      if (!moduleEmbedding) {
+        embeddingFailures++
+        logger.debug(`Failed to generate embedding for module: ${module.name}`)
+        continue
+      }
 
-  // Process all results
-  const embeddingResults = await Promise.all(embeddingPromises)
+      // Calculate component scores
+      const semanticScore = cosineSimilarity(queryEmbedding, moduleEmbedding)
+      const usageScore = calculateUsageScore(module.usage_count, maxUsage)
+      const recencyScore = calculateRecencyScore(module.last_used_at)
 
-  for (const { module, embedding: moduleEmbedding } of embeddingResults) {
-    if (!moduleEmbedding) {
-      embeddingFailures++
-      logger.debug(`Failed to generate embedding for module: ${module.name}`)
-      continue
-    }
+      // Weighted total
+      const totalScore =
+        WEIGHTS.semantic * semanticScore +
+        WEIGHTS.usage * usageScore +
+        WEIGHTS.recency * recencyScore
 
-    // Calculate component scores
-    const semanticScore = cosineSimilarity(queryEmbedding, moduleEmbedding)
-    const usageScore = calculateUsageScore(module.usage_count, maxUsage)
-    const recencyScore = calculateRecencyScore(module.last_used_at)
-
-    // Weighted total
-    const totalScore =
-      WEIGHTS.semantic * semanticScore +
-      WEIGHTS.usage * usageScore +
-      WEIGHTS.recency * recencyScore
-
-    if (totalScore >= minScore) {
-      scored.push({
-        name: module.name,
-        description: module.description,
-        tags: parseTagsSafe(module.tags),
-        score: totalScore,
-        scoreBreakdown: {
-          semantic: semanticScore,
-          usage: usageScore,
-          recency: recencyScore
-        },
-        example: module.example
-      })
+      if (totalScore >= minScore) {
+        scored.push({
+          name: module.name,
+          description: module.description,
+          tags: parseTagsSafe(module.tags),
+          score: totalScore,
+          scoreBreakdown: {
+            semantic: semanticScore,
+            usage: usageScore,
+            recency: recencyScore
+          },
+          example: module.example
+        })
+      }
     }
   }
 
@@ -440,6 +448,19 @@ function buildModuleText(module: ModuleRow): string {
   }
 
   return parts.join('\n')
+}
+
+/**
+ * Generate deterministic metadata hash for embedding cache invalidation.
+ */
+function getModuleMetadataHash(module: ModuleRow): string {
+  const fingerprint = JSON.stringify({
+    name: module.name,
+    description: module.description,
+    tags: module.tags,
+    example: module.example
+  })
+  return createHash('sha256').update(fingerprint).digest('hex')
 }
 
 /**

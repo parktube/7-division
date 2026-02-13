@@ -17,6 +17,13 @@ function scaleLocal(name, sx, sy) {
   translate(name, before[0] - after[0], before[1] - after[1]);
 }
 
+// world center 안전 조회 헬퍼
+function getWorldCenter(name) {
+  const entity = getEntity(name);
+  if (!entity || !entity.world || !Array.isArray(entity.world.center)) return null;
+  return entity.world.center;
+}
+
 // 동물 클래스 (돼지 기반)
 class Animal {
   constructor(name, x, y, config) {
@@ -154,20 +161,26 @@ class Animal {
     const targetNostrilR = [pigNostrilR[0] * ratio, pigNostrilR[1] * ratio];
     
     // 눈 이동
-    const eyeL = getEntity(n+'_eye_l').world.center;
-    const eyeR = getEntity(n+'_eye_r').world.center;
-    translate(n+'_eye_l', targetEyeL[0] - eyeL[0], targetEyeL[1] - eyeL[1]);
-    translate(n+'_eye_r', targetEyeR[0] - eyeR[0], targetEyeR[1] - eyeR[1]);
+    const eyeL = getWorldCenter(n+'_eye_l');
+    const eyeR = getWorldCenter(n+'_eye_r');
+    if (eyeL && eyeR) {
+      translate(n+'_eye_l', targetEyeL[0] - eyeL[0], targetEyeL[1] - eyeL[1]);
+      translate(n+'_eye_r', targetEyeR[0] - eyeR[0], targetEyeR[1] - eyeR[1]);
+    }
     
     // 코 이동
-    const snout = getEntity(n+'_snout').world.center;
-    translate(n+'_snout', targetSnout[0] - snout[0], targetSnout[1] - snout[1]);
+    const snout = getWorldCenter(n+'_snout');
+    if (snout) {
+      translate(n+'_snout', targetSnout[0] - snout[0], targetSnout[1] - snout[1]);
+    }
     
     // 콧구멍 이동
-    const nostrilL = getEntity(n+'_nostril_l').world.center;
-    const nostrilR = getEntity(n+'_nostril_r').world.center;
-    translate(n+'_nostril_l', targetNostrilL[0] - nostrilL[0], targetNostrilL[1] - nostrilL[1]);
-    translate(n+'_nostril_r', targetNostrilR[0] - nostrilR[0], targetNostrilR[1] - nostrilR[1]);
+    const nostrilL = getWorldCenter(n+'_nostril_l');
+    const nostrilR = getWorldCenter(n+'_nostril_r');
+    if (nostrilL && nostrilR) {
+      translate(n+'_nostril_l', targetNostrilL[0] - nostrilL[0], targetNostrilL[1] - nostrilL[1]);
+      translate(n+'_nostril_r', targetNostrilR[0] - nostrilR[0], targetNostrilR[1] - nostrilR[1]);
+    }
   }
 }
 
@@ -212,19 +225,23 @@ function createDog(name, x, y) {
   deleteEntity(name+'_nostril_r_r');
   deleteEntity(name+'_nostril_r');
   // 주둥이 위치 조정 (스케치 기준)
-  const snoutNow = getEntity(name+'_snout').world.center;
-  const ratio = 5.5 / 6.5;  // 강아지 스케일 / 기본 Animal 스케일
-  const snoutLocalTarget = [-82 * ratio, 5 * ratio];  // 스케일 비율 적용된 로컬 좌표
-  const snoutWorldTarget = [x + snoutLocalTarget[0], y + snoutLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
-  translate(name+'_snout', snoutWorldTarget[0] - snoutNow[0], snoutWorldTarget[1] - snoutNow[1]);
+  const snoutNow = getWorldCenter(name+'_snout');
+  if (snoutNow) {
+    const ratio = 5.5 / 6.5;  // 강아지 스케일 / 기본 Animal 스케일
+    const snoutLocalTarget = [-82 * ratio, 5 * ratio];  // 스케일 비율 적용된 로컬 좌표
+    const snoutWorldTarget = [x + snoutLocalTarget[0], y + snoutLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
+    translate(name+'_snout', snoutWorldTarget[0] - snoutNow[0], snoutWorldTarget[1] - snoutNow[1]);
+  }
   // 귀 위치 아래로 (축 늘어진 귀)
   translate(name+'_ear_l', 0, -5);
   translate(name+'_ear_r', 0, -5);
   // 코 하나로 (주둥이 끝에 검은 코)
-  const snoutPos = getEntity(name+'_snout').world.center;
-  box3d(name+'_nose', snoutPos[0] - 6, snoutPos[1], 55, 4, 5, 4, C.black.t, C.black.l, C.black.r);
-  addToGroup(name+'_headGroup', name+'_nose');
-  drawOrder(name+'_nose', 'front');
+  const snoutPos = getWorldCenter(name+'_snout');
+  if (snoutPos && Number.isFinite(snoutPos[2])) {
+    box3d(name+'_nose', snoutPos[0] - 6, snoutPos[1], snoutPos[2], 4, 5, 4, C.black.t, C.black.l, C.black.r);
+    addToGroup(name+'_headGroup', name+'_nose');
+    drawOrder(name+'_nose', 'front');
+  }
 }
 
 function createCat(name, x, y) {
@@ -262,10 +279,12 @@ function createCat(name, x, y) {
   translate(name+'_ear_r', 0, 8);
   
   // 고양이 코 (작은 삼각형 분홍색)
-  const headPos = getEntity(name+'_head').world.center;
-  box3d(name+'_nose', headPos[0] - 22, headPos[1], headPos[2] + 8, 3, 4, 3, C.pink.t, C.pink.l, C.pink.r);
-  addToGroup(name+'_headGroup', name+'_nose');
-  drawOrder(name+'_nose', 'front');
+  const headPos = getWorldCenter(name+'_head');
+  if (headPos && Number.isFinite(headPos[2])) {
+    box3d(name+'_nose', headPos[0] - 22, headPos[1], headPos[2] + 8, 3, 4, 3, C.pink.t, C.pink.l, C.pink.r);
+    addToGroup(name+'_headGroup', name+'_nose');
+    drawOrder(name+'_nose', 'front');
+  }
   
   // 꼬리 drawOrder - 몸통 뒤에 배치
   drawOrder(name+'_tail', 'back');
@@ -335,9 +354,11 @@ function createChicken(name, x, y) {
   translate(n, x, y);
   
   // 눈 위치 스케치에 맞춤
-  const eyeNow = getEntity(n+'_eye_r').world.center;
-  const chickenScale = 5;  // 닭의 스케일 (scale(n, 5, 5)에서 확인)
-  const eyeLocalTarget = [378 * chickenScale / 100, 263 * chickenScale / 100];  // 스케일 비율 적용된 로컬 좌표
-  const eyeWorldTarget = [x + eyeLocalTarget[0], y + eyeLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
-  translate(n+'_eye_r', eyeWorldTarget[0] - eyeNow[0], eyeWorldTarget[1] - eyeNow[1]);
+  const eyeNow = getWorldCenter(n+'_eye_r');
+  if (eyeNow) {
+    const chickenScale = 5;  // 닭의 스케일 (scale(n, 5, 5)에서 확인)
+    const eyeLocalTarget = [378 * chickenScale / 100, 263 * chickenScale / 100];  // 스케일 비율 적용된 로컬 좌표
+    const eyeWorldTarget = [x + eyeLocalTarget[0], y + eyeLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
+    translate(n+'_eye_r', eyeWorldTarget[0] - eyeNow[0], eyeWorldTarget[1] - eyeNow[1]);
+  }
 }

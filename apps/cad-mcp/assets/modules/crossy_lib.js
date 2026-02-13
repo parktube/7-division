@@ -25,6 +25,12 @@ var C = {
 var _parts = {};
 var _isoGroups = [];
 
+function clearParts() {
+  for (var key in _parts) {
+    delete _parts[key];
+  }
+}
+
 // ============================================
 // 함수 API
 // ============================================
@@ -94,6 +100,7 @@ function registerIsoGroup(groupName, x, y) {
 // 등록된 그룹들을 이소메트릭 깊이로 정렬
 function sortIsoGroups() {
   if (_isoGroups.length < 2) {
+    clearParts();
     _isoGroups.length = 0;
     return;
   }
@@ -105,5 +112,6 @@ function sortIsoGroups() {
     drawOrder(_isoGroups[i].name, 'front');
   }
 
+  clearParts();
   _isoGroups.length = 0;
 }
