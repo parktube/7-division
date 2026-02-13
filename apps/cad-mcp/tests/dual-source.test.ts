@@ -166,6 +166,29 @@ describe('Dual-source 모듈 시스템', () => {
       }
     });
 
+    it('should keep crossy_lib box face z-order contract (l/r before t)', () => {
+      const builtinPath = resolve(BUILTIN_MODULES_DIR, 'crossy_lib.js');
+      expect(existsSync(builtinPath)).toBe(true);
+
+      const code = readFileSync(builtinPath, 'utf-8');
+
+      // Contract: faces are created in back→front order before grouping.
+      // createGroup() uses z_index (creation order) when normalizing child order.
+      const idxL = code.indexOf("drawPolygon(name+'_l'");
+      const idxR = code.indexOf("drawPolygon(name+'_r'");
+      const idxT = code.indexOf("drawPolygon(name+'_t'");
+      const idxGroup = code.indexOf("createGroup(name, [name+'_l', name+'_r', name+'_t']);");
+
+      expect(idxL).toBeGreaterThan(-1);
+      expect(idxR).toBeGreaterThan(-1);
+      expect(idxT).toBeGreaterThan(-1);
+      expect(idxGroup).toBeGreaterThan(-1);
+
+      expect(idxL).toBeLessThan(idxR);
+      expect(idxR).toBeLessThan(idxT);
+      expect(idxT).toBeLessThan(idxGroup);
+    });
+
     it('should prefer user module over builtin with same name', () => {
       // Create user module with same name as actual builtin (crossy_lib)
       // This tests the real collision scenario where user module shadows builtin
