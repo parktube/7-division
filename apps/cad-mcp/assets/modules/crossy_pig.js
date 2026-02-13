@@ -94,9 +94,9 @@ PigBuilder.prototype.setScale = function(scale) {
 
 PigBuilder.prototype.build = function() {
   var name = this.name;
-  var wx = this.wx;
-  var wy = this.wy;
-  var s = this.scale;
+  var wx = Number.isFinite(this.wx) ? this.wx : 0;
+  var wy = Number.isFinite(this.wy) ? this.wy : 0;
+  var s = Number.isFinite(this.scale) && this.scale > 0 ? this.scale : 1;
   var n = name + '_';
   var P = PIG_PARTS;
   var COL = PIG_COLORS;
@@ -164,7 +164,9 @@ PigBuilder.prototype.build = function() {
   createGroup(name, groupNames);
   translate(name, wx, wy);
 
-  registerIsoGroup(name, wx, wy);
+  if (typeof registerIsoGroup === 'function') {
+    registerIsoGroup(name, wx, wy);
+  }
   return this;
 };
 
