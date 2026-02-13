@@ -146,13 +146,14 @@ PigBuilder.prototype.build = function() {
         COL.hoof.t, COL.hoof.l, COL.hoof.r);
 
   // z-order (뒤→앞) - Duck/Chicken과 동일한 정적 순회 방식 사용
+  // NOTE: 먼저 그룹화하여 drawOrder가 그룹 내부에서만 적용되도록 (일시적인 root-level 순서 교란 방지)
   var zOrderNames = PIG_Z_ORDER_KEYS.map(function(key) { return n + key; });
+  createGroup(name, zOrderNames);
   for (var i = 0; i < zOrderNames.length; i++) {
     drawOrder(zOrderNames[i], 'front');
   }
 
-  // 그룹화 후 월드 좌표로 이동 - z-order 배열을 그대로 사용
-  createGroup(name, zOrderNames);
+  // 월드 좌표로 이동
   translate(name, wx, wy);
 
   registerIsoGroup(name, wx, wy);

@@ -73,7 +73,8 @@ function box(name, wx, wy, wz, width, depth, height, tC, lC, rC) {
   drawPolygon(name+'_r', [p.tr[0],p.tr[1], p.tb[0],p.tb[1], p.bb[0],p.bb[1], p.br[0],p.br[1]]);
   setFill(name+'_r', rC); setStroke(name+'_r', [0,0,0,0], 0);
 
-  createGroup(name, [name+'_r', name+'_t', name+'_l']);
+  // z-order (뒤→앞): 왼쪽면 → 오른쪽면 → 윗면(최상단)
+  createGroup(name, [name+'_l', name+'_r', name+'_t']);
 }
 
 // 박스 생성 + 좌표 저장 (스태킹용)

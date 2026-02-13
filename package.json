@@ -12,13 +12,18 @@
     "test": "pnpm -r test",
     "test:wasm": "npm run build:wasm:release && node test-wasm.mjs",
     "test:rust": "cargo test --manifest-path cad-engine/Cargo.toml",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm --filter @ai-native-cad/shared build && pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "lint:rs": "cargo fmt --manifest-path cad-engine/Cargo.toml -- --check && cargo clippy --manifest-path cad-engine/Cargo.toml -- -D warnings",
     "prepare": "husky"
   },
   "engines": {
     "node": ">=22.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "devDependencies": {
     "husky": "^9.1.7",

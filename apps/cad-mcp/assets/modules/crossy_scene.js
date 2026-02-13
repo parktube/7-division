@@ -258,11 +258,12 @@ function car(id, x, y, color) {
     n + '_body', n + '_cabin', n + '_window',
     n + '_wheel1', n + '_wheel2'
   ];
+  // NOTE: 먼저 그룹화하여 drawOrder가 그룹 내부에서만 적용되도록 (일시적인 root-level 순서 교란 방지)
+  createGroup(n, zOrder);
   for (var i = 0; i < zOrder.length; i++) {
     drawOrder(zOrder[i], 'front');
   }
 
-  createGroup(n, zOrder);
   registerIsoGroup(n, x, y);
   return n;
 }
@@ -301,11 +302,12 @@ function train(id, x, y, color, cars) {
   zOrder.push(n + '_front');
 
   // z-order
+  // NOTE: 먼저 그룹화하여 drawOrder가 그룹 내부에서만 적용되도록 (일시적인 root-level 순서 교란 방지)
+  createGroup(n, zOrder);
   for (var j = 0; j < zOrder.length; j++) {
     drawOrder(zOrder[j], 'front');
   }
 
-  createGroup(n, zOrder);
   registerIsoGroup(n, x, y);
   return n;
 }

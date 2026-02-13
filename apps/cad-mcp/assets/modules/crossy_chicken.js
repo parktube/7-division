@@ -155,12 +155,13 @@ ChickenBuilder.prototype.build = function() {
     n + 'eye',
     n + 'comb'
   ];
+  // NOTE: 먼저 그룹화하여 drawOrder가 그룹 내부에서만 적용되도록 (일시적인 root-level 순서 교란 방지)
+  createGroup(name, zOrder);
   for (var i = 0; i < zOrder.length; i++) {
     drawOrder(zOrder[i], 'front');
   }
 
-  // 그룹화 후 월드 좌표로 이동
-  createGroup(name, zOrder);
+  // 월드 좌표로 이동
   translate(name, wx, wy);
   registerIsoGroup(name, wx, wy);
   return this;

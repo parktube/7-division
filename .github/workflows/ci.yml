@@ -105,8 +105,10 @@ jobs:
 
       - name: Rebuild native modules (better-sqlite3)
         run: |
-          # Force rebuild better-sqlite3 native bindings for current platform
-          cd apps/cad-mcp && pnpm rebuild better-sqlite3
+          # Force rebuild better-sqlite3 native bindings for current platform.
+          # Use npm rebuild here because pnpm v10 may skip native build scripts
+          # unless explicitly approved in pnpm.onlyBuiltDependencies.
+          npm rebuild better-sqlite3 --prefix apps/cad-mcp
           # Verify the native module was built correctly
           echo "Testing better-sqlite3 import..."
           node -e "
