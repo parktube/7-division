@@ -339,20 +339,11 @@ function createVectorTable(database: Database.Database): void {
 
   if (tables.length === 0) {
     // Security: Validate embeddingDim is a safe positive integer (SQL injection prevention)
-    if (!Number.isInteger(embeddingDim) || embeddingDim <= 0 || embeddingDim > 10000) {
-      throw new Error(`Invalid embedding dimension: ${embeddingDim}. Must be a positive integer <= 10000`)
-    }
-
-    // Additional validation: Ensure dimension is within safe range for database operations
-    if (embeddingDim < 1 || embeddingDim > 4096) {
+    if (!Number.isInteger(embeddingDim) || embeddingDim < 1 || embeddingDim > 4096) {
       throw new Error(`Embedding dimension ${embeddingDim} outside safe range [1, 4096]`)
     }
 
-    // Additional SQL injection protection - ensure dimension is safe for direct insertion
-    const safeDimension = Math.floor(embeddingDim)
-    if (safeDimension !== embeddingDim) {
-      throw new Error(`Embedding dimension must be an exact integer, got: ${embeddingDim}`)
-    }
+    const safeDimension = embeddingDim
 
     logger.info(`Creating vss_memories virtual table (${safeDimension}-dim)`)
     database.exec(`
@@ -731,7 +722,11 @@ export function setDomainSkillLevel(domain: string, level: SkillLevel): void {
   const profile = getUserProfile()
   let levels: Record<string, SkillLevel>
   try {
-    levels = JSON.parse(profile.domain_skill_levels)
+    const parsed = JSON.parse(profile.domain_skill_levels)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('Invalid domain_skill_levels format')
+    }
+    levels = parsed as Record<string, SkillLevel>
   } catch {
     levels = {}
   }

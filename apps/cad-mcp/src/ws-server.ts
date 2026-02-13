@@ -34,8 +34,23 @@ function getSketchFile(): string {
 
 async function ensureDataDir(): Promise<void> {
   const dataDir = getStateDir()
-  await mkdir(dataDir, { recursive: true })
+  if (ensuredDataDirPath === dataDir && ensuredDataDirPromise) {
+    return ensuredDataDirPromise
+  }
+
+  ensuredDataDirPath = dataDir
+  ensuredDataDirPromise = mkdir(dataDir, { recursive: true })
+  try {
+    await ensuredDataDirPromise
+  } catch (error) {
+    ensuredDataDirPath = null
+    ensuredDataDirPromise = null
+    throw error
+  }
 }
+
+let ensuredDataDirPath: string | null = null
+let ensuredDataDirPromise: Promise<void> | null = null
 
 // Host configuration: 127.0.0.1 (default, secure) or 0.0.0.0 (WSL2/LAN, opt-in)
 const WS_HOST = process.env.CAD_WS_HOST === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1'

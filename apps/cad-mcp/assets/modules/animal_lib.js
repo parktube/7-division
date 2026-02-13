@@ -24,6 +24,13 @@ function getWorldCenter(name) {
   return entity.world.center;
 }
 
+function deleteBox3d(name) {
+  deleteEntity(name + '_t');
+  deleteEntity(name + '_l');
+  deleteEntity(name + '_r');
+  deleteEntity(name);
+}
+
 // 동물 클래스 (돼지 기반)
 class Animal {
   constructor(name, x, y, config) {
@@ -124,9 +131,9 @@ class Animal {
     drawOrder(n+'_ear_r', 'above:'+n+'_head');
     
     // 얼굴 요소 축소 (config에서 가져오기)
-    const eyeS = this.eyeScale || 0.12;
-    const snoutS = this.snoutScale || 0.68;
-    const nostrilS = this.nostrilScale || 0.34;
+    const eyeS = this.eyeScale;
+    const snoutS = this.snoutScale;
+    const nostrilS = this.nostrilScale;
     scaleLocal(n+'_eye_l', eyeS, eyeS);
     scaleLocal(n+'_eye_r', eyeS, eyeS);
     scaleLocal(n+'_snout', snoutS, snoutS);
@@ -216,18 +223,12 @@ function createDog(name, x, y) {
   });
   a.build();
   // 콧구멍 삭제 (box3d가 만드는 _t, _l, _r 폴리곤까지 완전 삭제)
-  deleteEntity(name+'_nostril_l_t');
-  deleteEntity(name+'_nostril_l_l');
-  deleteEntity(name+'_nostril_l_r');
-  deleteEntity(name+'_nostril_l');
-  deleteEntity(name+'_nostril_r_t');
-  deleteEntity(name+'_nostril_r_l');
-  deleteEntity(name+'_nostril_r_r');
-  deleteEntity(name+'_nostril_r');
+  deleteBox3d(name+'_nostril_l');
+  deleteBox3d(name+'_nostril_r');
   // 주둥이 위치 조정 (스케치 기준)
   const snoutNow = getWorldCenter(name+'_snout');
   if (snoutNow) {
-    const ratio = 5.5 / 6.5;  // 강아지 스케일 / 기본 Animal 스케일
+    const ratio = a.scale / 6.5;  // 강아지 스케일 / 기본 Animal 스케일
     const snoutLocalTarget = [-82 * ratio, 5 * ratio];  // 스케일 비율 적용된 로컬 좌표
     const snoutWorldTarget = [x + snoutLocalTarget[0], y + snoutLocalTarget[1]];  // 월드 좌표 = 엔티티 위치 + 로컬 오프셋
     translate(name+'_snout', snoutWorldTarget[0] - snoutNow[0], snoutWorldTarget[1] - snoutNow[1]);
@@ -261,18 +262,9 @@ function createCat(name, x, y) {
   a.build();
   
   // 기존 주둥이/콧구멍 삭제 (폴리곤까지 완전 삭제)
-  deleteEntity(name+'_snout_t');
-  deleteEntity(name+'_snout_l');
-  deleteEntity(name+'_snout_r');
-  deleteEntity(name+'_snout');
-  deleteEntity(name+'_nostril_l_t');
-  deleteEntity(name+'_nostril_l_l');
-  deleteEntity(name+'_nostril_l_r');
-  deleteEntity(name+'_nostril_l');
-  deleteEntity(name+'_nostril_r_t');
-  deleteEntity(name+'_nostril_r_l');
-  deleteEntity(name+'_nostril_r_r');
-  deleteEntity(name+'_nostril_r');
+  deleteBox3d(name+'_snout');
+  deleteBox3d(name+'_nostril_l');
+  deleteBox3d(name+'_nostril_r');
   
   // 귀 위치 조정 (뾰족하게 솟은 귀)
   translate(name+'_ear_l', 0, 8);

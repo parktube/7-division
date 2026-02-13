@@ -127,7 +127,7 @@ export function loadWorkflowInstructions(workflowId: string = 'cad-interior'): s
  * Type guard for DesignHintsData
  */
 function isValidDesignHintsData(data: unknown): data is DesignHintsData {
-  if (!data || typeof data !== 'object') return false
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false
   const obj = data as Record<string, unknown>
 
   // Check required top-level keys (furniture_sizes is at top level per interface)
@@ -212,7 +212,7 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
     if ('creation' in toolUsage && toolUsage.creation !== null) {
       if (!Array.isArray(toolUsage.creation)) return false
       for (const item of toolUsage.creation) {
-        if (!item || typeof item !== 'object') return false
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return false
         const itemObj = item as Record<string, unknown>
         if (typeof itemObj.tool !== 'string' || typeof itemObj.when !== 'string' || typeof itemObj.example !== 'string') return false
       }
@@ -221,7 +221,7 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
     if ('feedback' in toolUsage && toolUsage.feedback !== null) {
       if (!Array.isArray(toolUsage.feedback)) return false
       for (const item of toolUsage.feedback) {
-        if (!item || typeof item !== 'object') return false
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return false
         const itemObj = item as Record<string, unknown>
         if (typeof itemObj.tool !== 'string' || typeof itemObj.when !== 'string') return false
       }
@@ -230,7 +230,7 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
     if ('recording' in toolUsage && toolUsage.recording !== null) {
       if (!Array.isArray(toolUsage.recording)) return false
       for (const item of toolUsage.recording) {
-        if (!item || typeof item !== 'object') return false
+        if (!item || typeof item !== 'object' || Array.isArray(item)) return false
         const itemObj = item as Record<string, unknown>
         if (typeof itemObj.tool !== 'string' || typeof itemObj.when !== 'string' || !Array.isArray(itemObj.topics)) return false
         if (!itemObj.topics.every((topic: unknown) => typeof topic === 'string')) return false
@@ -239,10 +239,10 @@ function isValidDesignHintsData(data: unknown): data is DesignHintsData {
   }
 
   if ('checkpoints' in obj && obj.checkpoints !== null) {
-    if (typeof obj.checkpoints !== 'object') return false
+    if (typeof obj.checkpoints !== 'object' || Array.isArray(obj.checkpoints)) return false
     const checkpoints = obj.checkpoints as Record<string, unknown>
     for (const [, checkpoint] of Object.entries(checkpoints)) {
-      if (!checkpoint || typeof checkpoint !== 'object') return false
+      if (!checkpoint || typeof checkpoint !== 'object' || Array.isArray(checkpoint)) return false
       const checkpointObj = checkpoint as Record<string, unknown>
       if (typeof checkpointObj.condition !== 'string') return false
       if ('record' in checkpointObj && checkpointObj.record !== null && typeof checkpointObj.record !== 'string') return false

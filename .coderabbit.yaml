@@ -11,10 +11,10 @@ reviews:
   review_status: true
   collapse_walkthrough: false
   path_filters:
+    - "!apps/cad-mcp/assets/modules/**"
+    - "!**/docs/**"  # docs 디렉토리 제외 (sprint-artifacts는 아래에서 재포함)
+    - "!**/*.md"  # 일반 마크다운 파일 제외 (sprint-artifacts는 아래에서 재포함)
     - "docs/sprint-artifacts/**"  # 스프린트 문서는 리뷰 대상
-    - "!**/docs/**"  # 나머지 docs 디렉토리 제외
-    - "!**/*.md"  # 일반 마크다운 파일 제외
-    - "!assets/modules/**"
 
   tools:
     clippy:
