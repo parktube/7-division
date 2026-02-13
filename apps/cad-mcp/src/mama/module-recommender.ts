@@ -20,8 +20,7 @@ import {
   recordModuleUsage,
   upsertModule,
   getModuleEmbedding,
-  updateModuleEmbedding,
-  needsEmbeddingRefresh
+  updateModuleEmbedding
 } from './db.js'
 import { generateEmbedding, cosineSimilarity } from './embeddings.js'
 import { CAD_DATA_DIR } from './config.js'
@@ -365,13 +364,17 @@ export async function recommendModules(
       const moduleText = buildModuleText(module)
       const metadataHash = getModuleMetadataHash(module)
 
-      // Reuse cached embedding when module metadata has not changed.
+      // Reuse cached embedding only when hash matches.
+      // If cache is missing/corrupt despite matching metadata, regenerate to avoid skipping modules.
       let moduleEmbedding: Float32Array | null = null
-      if (!needsEmbeddingRefresh(module.name, metadataHash)) {
+      try {
         const cached = getModuleEmbedding(module.name)
-        if (cached) {
+        if (cached && cached.metadataHash === metadataHash) {
           moduleEmbedding = cached.embedding
         }
+      } catch (error) {
+        logger.warn(`Failed to parse cached embedding for module ${module.name}: ${error}`)
+        moduleEmbedding = null
       }
 
       if (!moduleEmbedding) {
