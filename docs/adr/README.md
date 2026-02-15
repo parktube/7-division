@@ -16,6 +16,7 @@ AI-Native CAD 프로젝트의 아키텍처 결정 기록.
 | [ADR-006](006-geometry-engine.md) | Manifold Geometry Engine | Accepted |
 | [ADR-007](007-web-architecture.md) | Web Architecture | Accepted |
 | [ADR-008](008-tool-pattern-alignment.md) | Tool Pattern Alignment | Accepted |
+| [ADR-009](009-webmcp-integration.md) | WebMCP Integration (Viewer) | Proposed |
 
 ### Epic 11: MAMA Integration (계획 중)
 
