@@ -101,7 +101,28 @@ jobs:
           cp -r cad-engine/pkg/* apps/cad-mcp/wasm/
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Rebuild native modules (better-sqlite3)
+        run: |
+          # Force rebuild better-sqlite3 native bindings for current platform.
+          # Use npm rebuild here because pnpm v10 may skip native build scripts
+          # unless explicitly approved in pnpm.onlyBuiltDependencies.
+          cd apps/cad-mcp
+          npm rebuild better-sqlite3
+          # Verify the native module was built correctly
+          echo "Testing better-sqlite3 import..."
+          node -e "
+            try {
+              const Database = require('better-sqlite3');
+              const db = new Database(':memory:');
+              console.log('✅ better-sqlite3 works correctly');
+              db.close();
+            } catch (err) {
+              console.error('❌ better-sqlite3 failed:', err.message);
+              process.exit(1);
+            }
+          "
 
       - name: Build shared package
         run: pnpm --filter @ai-native-cad/shared build

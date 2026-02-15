@@ -93,6 +93,34 @@ export const ErrorDataSchema = z.object({
   code: z.string().optional(),
 });
 
+// Client → Server: Selection update from viewer
+export const SelectionUpdateDataSchema = z.object({
+  selected_entities: z.array(z.string()),
+  locked_entities: z.array(z.string()).default([]),
+  hidden_entities: z.array(z.string()).default([]),
+});
+
+// Client → Server: Sketch update from viewer
+// NOTE: Sketch strokes use hex color (#RRGGBB) instead of RGBA tuple because:
+// 1. Sketch is a separate feature (user annotations) from CAD entity styles
+// 2. Viewer's sketch UI uses HTML color picker which returns hex format
+// 3. Simpler for human-readable sketch data export
+export const PointSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+
+export const StrokeSchema = z.object({
+  id: z.string(),
+  points: z.array(PointSchema),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex string (#RRGGBB)'),
+  width: z.number().positive(),
+});
+
+export const SketchUpdateDataSchema = z.object({
+  strokes: z.array(StrokeSchema),
+});
+
 // WebSocket Message Schema (Discriminated Union)
 export const WSMessageSchema = z.discriminatedUnion('type', [
   z.object({
@@ -125,6 +153,17 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     data: z.object({}),
     timestamp: z.number().int().positive(),
   }),
+  // Client → Server messages (viewer to MCP)
+  z.object({
+    type: z.literal('selection_update'),
+    data: SelectionUpdateDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('sketch_update'),
+    data: SketchUpdateDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
 ]);
 
 // Type exports
@@ -135,6 +174,10 @@ export type SceneUpdateData = z.infer<typeof SceneUpdateDataSchema>;
 export type SelectionData = z.infer<typeof SelectionDataSchema>;
 export type ConnectionData = z.infer<typeof ConnectionDataSchema>;
 export type ErrorData = z.infer<typeof ErrorDataSchema>;
+export type SelectionUpdateData = z.infer<typeof SelectionUpdateDataSchema>;
+export type SketchUpdateData = z.infer<typeof SketchUpdateDataSchema>;
+export type Point = z.infer<typeof PointSchema>;
+export type Stroke = z.infer<typeof StrokeSchema>;
 
 // Internal schema types (exported for reusability)
 export type Transform = z.infer<typeof TransformSchema>;

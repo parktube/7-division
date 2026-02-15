@@ -4,14 +4,33 @@
  * DRY 원칙: glob, read, edit, write, lsp 도구에서 공유
  * - getFilePath: 파일명 → 실제 경로 변환
  * - isValidFileName: Path Traversal 방지
+ *
+ * Story 11.20: Dual-source 지원
+ * - builtin: 패키지 내장 모듈 (읽기 전용)
+ * - user: 사용자 모듈 (읽기/쓰기)
  */
 
 import { resolve } from 'path';
-import { MODULES_DIR, SCENE_CODE_FILE } from '../run-cad-code/constants.js';
+import { existsSync } from 'fs';
+import {
+  getModulesDir,
+  getSceneCodeFile,
+  BUILTIN_MODULES_DIR,
+} from '../run-cad-code/constants.js';
 
 // 파일명 허용 패턴 (Path Traversal 방지)
 // 영문, 숫자, 언더스코어, 하이픈만 허용
 const SAFE_FILENAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
+
+/** 모듈 소스 타입 */
+export type ModuleSource = 'builtin' | 'user';
+
+/** 파일 해석 결과 */
+export interface ResolvedFile {
+  path: string;
+  source: ModuleSource;
+  exists: boolean;
+}
 
 /**
  * Validate file name to prevent path traversal attacks
@@ -24,9 +43,115 @@ export function isValidFileName(file: string): boolean {
 }
 
 /**
- * Get file path for given file name
+ * Internal: Get builtin module path without validation
+ * Used by resolveFile after initial validation
+ */
+function getBuiltinPathUnchecked(file: string): string {
+  return resolve(BUILTIN_MODULES_DIR, `${file}.js`);
+}
+
+/**
+ * Internal: Get user module path without validation
+ * Used by resolveFile after initial validation
+ */
+function getUserPathUnchecked(file: string): string {
+  return resolve(getModulesDir(), `${file}.js`);
+}
+
+/**
+ * Get builtin module path
+ * @throws Error if file name is invalid or reserved
+ */
+export function getBuiltinPath(file: string): string {
+  if (file === 'main') {
+    throw new Error('Invalid module name: "main" is reserved for scene.code.js');
+  }
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid module name: ${file}`);
+  }
+  return getBuiltinPathUnchecked(file);
+}
+
+/**
+ * Get user module path
+ * @throws Error if file name is invalid or reserved
+ */
+export function getUserPath(file: string): string {
+  if (file === 'main') {
+    throw new Error('Invalid module name: "main" is reserved for scene.code.js');
+  }
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid module name: ${file}`);
+  }
+  return getUserPathUnchecked(file);
+}
+
+/**
+ * Check if a module exists as builtin
+ */
+export function isBuiltinModule(file: string): boolean {
+  if (file === 'main') return false;
+  if (!isValidFileName(file)) return false;
+  // Use unchecked version since we already validated above
+  const builtinPath = getBuiltinPathUnchecked(file);
+  return existsSync(builtinPath);
+}
+
+/**
+ * Resolve file to its actual path with source information
+ * Priority: user > builtin (사용자 모듈이 builtin을 오버라이드 가능)
+ *
+ * @returns ResolvedFile with path, source, and exists flag
+ */
+export function resolveFile(file: string): ResolvedFile {
+  if (!isValidFileName(file)) {
+    throw new Error(`Invalid file name: '${file}'. Only alphanumeric, underscore, and hyphen characters allowed.`);
+  }
+
+  // main은 항상 user source
+  if (file === 'main') {
+    const sceneCodeFile = getSceneCodeFile();
+    return {
+      path: sceneCodeFile,
+      source: 'user',
+      exists: existsSync(sceneCodeFile),
+    };
+  }
+
+  // Use unchecked versions since we already validated above
+  const userPath = getUserPathUnchecked(file);
+  const builtinPath = getBuiltinPathUnchecked(file);
+
+  // 사용자 모듈이 있으면 우선
+  if (existsSync(userPath)) {
+    return {
+      path: userPath,
+      source: 'user',
+      exists: true,
+    };
+  }
+
+  // builtin 모듈 확인
+  if (existsSync(builtinPath)) {
+    return {
+      path: builtinPath,
+      source: 'builtin',
+      exists: true,
+    };
+  }
+
+  // 둘 다 없으면 user 경로 반환 (쓰기용)
+  return {
+    path: userPath,
+    source: 'user',
+    exists: false,
+  };
+}
+
+/**
+ * Get file path for given file name (backward compatibility)
  * - 'main' → scene.code.js
- * - other → modules/{name}.js
+ * - other → user modules/{name}.js (쓰기용)
  *
  * @throws Error if file name is invalid (Path Traversal prevention)
  */
@@ -37,7 +162,7 @@ export function getFilePath(file: string): string {
   }
 
   if (file === 'main') {
-    return SCENE_CODE_FILE;
+    return getSceneCodeFile();
   }
-  return resolve(MODULES_DIR, `${file}.js`);
+  return resolve(getModulesDir(), `${file}.js`);
 }

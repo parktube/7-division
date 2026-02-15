@@ -9,10 +9,14 @@
  * Story 10.3: Read-first 추적
  * - 세션 내 read 호출 기록
  * - edit 시 경고 메시지 생성용
+ *
+ * Story 11.20: Dual-source 지원
+ * - builtin/user 모듈 모두 읽기 가능
+ * - 결과에 source 정보 포함
  */
 
-import { existsSync, readFileSync } from 'fs';
-import { getFilePath, isValidFileName } from '../utils/paths.js';
+import { readFileSync } from 'fs';
+import { resolveFile, isValidFileName, type ModuleSource } from '../utils/paths.js';
 
 // Re-export for backward compatibility (edit.ts, write.ts, lsp.ts에서 import)
 export { isValidFileName } from '../utils/paths.js';
@@ -57,6 +61,7 @@ export interface ReadOutput {
   data: {
     file: string;
     content: string;
+    source: ModuleSource;
   };
   error?: string;
 }
@@ -65,13 +70,16 @@ export interface ReadOutput {
  * Execute read operation
  */
 export function handleRead(input: ReadInput): ReadOutput {
+  // Track resolved source for error responses
+  let resolvedSource: 'user' | 'builtin' = 'user';
+
   try {
     const { file } = input;
 
     if (!file) {
       return {
         success: false,
-        data: { file: '', content: '' },
+        data: { file: '', content: '', source: 'user' },
         error: 'file parameter is required',
       };
     }
@@ -80,24 +88,26 @@ export function handleRead(input: ReadInput): ReadOutput {
     if (!isValidFileName(file)) {
       return {
         success: false,
-        data: { file, content: '' },
+        data: { file, content: '', source: 'user' },
         error: `Invalid file name: ${file}. Only alphanumeric, underscore, and hyphen allowed.`,
       };
     }
 
-    const filePath = getFilePath(file);
+    // Resolve file with dual-source support
+    const resolved = resolveFile(file);
+    resolvedSource = resolved.source;
 
     // Check file existence
-    if (!existsSync(filePath)) {
+    if (!resolved.exists) {
       return {
         success: false,
-        data: { file, content: '' },
+        data: { file, content: '', source: resolvedSource },
         error: `File not found: ${file}`,
       };
     }
 
     // Read file content (UTF-8)
-    const content = readFileSync(filePath, 'utf-8');
+    const content = readFileSync(resolved.path, 'utf-8');
 
     // Track read for Read-first pattern
     trackRead(file);
@@ -107,12 +117,13 @@ export function handleRead(input: ReadInput): ReadOutput {
       data: {
         file,
         content,
+        source: resolved.source,
       },
     };
   } catch (e) {
     return {
       success: false,
-      data: { file: input?.file ?? '', content: '' },
+      data: { file: input?.file ?? '', content: '', source: resolvedSource },
       error: e instanceof Error ? e.message : String(e),
     };
   }

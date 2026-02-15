@@ -8,7 +8,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 ## Project Status
 
-**현재 단계**: MVP + 기하 엔진 + AX 개선 (Epic 1~10)
+**현재 단계**: MVP + 기하 엔진 + AX 개선 + MAMA Integration (Epic 1~11)
 
 | Epic | 상태 | 설명 |
 |------|------|------|
@@ -22,6 +22,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 | Epic 8 | ✅ 완료 | LLM DX 개선 (트랜잭션, 스케치 클리어, 자동 스케일) |
 | Epic 9 | ✅ 완료 | 웹 아키텍처 전환 (GitHub Pages + npm MCP) |
 | Epic 10 | ✅ 완료 | AX 문서화 + Claude Code 도구 패턴 정렬 |
+| Epic 11 | ✅ 완료 | MAMA Integration (Memory-Augmented Meta Agent) |
 
 ### 주요 성과
 
@@ -35,6 +36,7 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 - **Dual Coordinate API**: local/world 좌표계 동시 지원
 - **웹 아키텍처**: GitHub Pages + 로컬 MCP 서버
 - **씬 영속성**: scene.json 자동 저장/복원
+- **MAMA Integration**: 추론 그래프, 세션 체크포인트, 학습 추적
 
 ## Viewer 사용법
 
@@ -82,6 +84,8 @@ AI가 도구를 조작하고, 인간은 의도를 전달하고 결과를 검증�
 
 ## Quick Start
 
+> **상세 설치 가이드**: OS별 빌드/설정 방법은 [Installation Guide](docs/installation.md)를 참고하세요.
+
 ### 사용자 (npx로 바로 시작)
 
 ```bash
@@ -93,6 +97,23 @@ npx @ai-native-cad/mcp start
 ```
 
 > MCP 서버가 로컬에서 실행되면 웹 Viewer와 자동 연결됩니다.
+
+### Claude Code와 함께 사용 (권장)
+
+Claude Code에서 AI-Native CAD를 사용하려면 `~/.claude/mcp.json` 파일을 생성하세요:
+
+```json
+{
+  "mcpServers": {
+    "ai-native-cad": {
+      "command": "npx",
+      "args": ["@ai-native-cad/mcp", "start"]
+    }
+  }
+}
+```
+
+설정 후 Claude Code 재시작하면 MCP 도구가 자동으로 활성화됩니다.
 
 ### 개발자 (로컬 개발 환경)
 
@@ -291,6 +312,22 @@ GitHub Pages (Viewer)          Local MCP Server
 | `lsp` | 함수 탐색 (domains, describe, schema) |
 | `bash` | 씬 조회/내보내기 (tree, capture, svg 등) |
 
+**MAMA 도구** (Memory-Augmented Meta Agent) - 11개
+
+| 도구 | 설명 |
+|------|------|
+| `mama_save` | 결정/체크포인트/학습 저장 |
+| `mama_search` | 추론 그래프 검색 |
+| `mama_update` | 결정 결과 업데이트 |
+| `mama_load_checkpoint` | 이전 세션 복원 |
+| `mama_configure` | 설정 조회/수정 |
+| `mama_edit_hint` | 동적 힌트 관리 |
+| `mama_set_skill_level` | 스킬 레벨 설정 |
+| `mama_health` | 그래프 건강도 체크 |
+| `mama_growth_report` | 사용자 성장 리포트 |
+| `mama_recommend_modules` | 모듈 추천 |
+| `mama_workflow` | 디자인 워크플로우 관리 |
+
 **Sandbox 함수 도메인** (`lsp({ operation: 'describe', domain: '...' })`)
 ```
 📦 primitives, text
@@ -310,6 +347,7 @@ GitHub Pages (Viewer)          Local MCP Server
 
 | 문서 | 설명 |
 |------|------|
+| [Installation Guide](docs/installation.md) | OS별 빌드/설정 방법 |
 | [CHANGELOG](CHANGELOG.md) | 버전별 변경사항 |
 | [PRD](docs/prd.md) | 제품 요구사항 정의 |
 | [Architecture](docs/architecture.md) | 기술 아키텍처 설계 |
@@ -334,8 +372,9 @@ GitHub Pages (Viewer)          Local MCP Server
 | Epic 8 | 4 stories | ✅ done |
 | Epic 9 | 10 stories | ✅ done |
 | Epic 10 | 10 stories | ✅ done |
+| Epic 11 | 21 stories | ✅ done |
 
-**총 78개 스토리 완료**
+**총 99개 스토리 완료**
 
 ## Contributing
 
@@ -351,4 +390,4 @@ MIT
 
 ---
 
-*작성: 2025-12-17 | 최종 업데이트: 2026-01-19*
+*작성: 2025-12-17 | 최종 업데이트: 2026-01-22*
