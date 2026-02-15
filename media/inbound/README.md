@@ -10,3 +10,8 @@ Some design docs reference `media/inbound/WebMCP_Early_Preview.pdf`.
 - If you have access, place it at:
   - `media/inbound/WebMCP_Early_Preview.pdf`
 
+## Committed Summary (Source of Truth for Implementation)
+
+Because the PDF is not versioned, implementation-facing notes live in:
+
+- `docs/references/webmcp-early-preview-notes.md`

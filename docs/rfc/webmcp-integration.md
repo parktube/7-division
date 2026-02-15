@@ -46,8 +46,8 @@ WebMCP는 MCP와 유사한 목적(도구를 구조화해 에이전트가 호출)
 Viewer는 폼 중심 앱이 아니라 UI/상태 기반이므로, 초기에는 Imperative API로 등록합니다.
 
 - `registerTool()`로 개별 도구 추가
-- `provideContext()`로 상태 변화(예: 연결 상태, read-only 모드)에 따라 도구 목록을 교체
-- `clearContext()`로 비활성화
+- `provideContext()`로 현재 Viewer 상태와 함께 "노출할 도구(tool set)"를 제공
+- (가능한 경우) `clearContext()`로 비활성화
 
 Declarative API(`<form toolname=...>`)는 "사용자 확인이 필요한 작업"에 한해 **후속 단계에서 선택적으로** 도입합니다.
 
@@ -67,6 +67,28 @@ WebMCP 권장사항에 맞춰 도구는:
 - 입력 스키마는 단순/명확하게
 - 실패 시 오류를 명시적으로 반환(모델이 재시도/수정 가능하도록)
 
+## Phase 1: Tool Return Format (Normative)
+
+Phase 1에서 모든 도구 실행 결과는 아래 형태로 **통일**합니다.
+
+- 반환값은 항상 `{ content: [...] }` 형태
+- 최소 1개의 content item을 포함
+- JSON이 필요한 경우 `content[0].text`에 JSON 문자열을 담는다
+  - 이유: early preview 예시에서 `execute` 반환은 `content` 중심이며, 추가 필드 지원 여부가 불명확함
+
+예시:
+
+```ts
+return {
+  content: [
+    {
+      type: 'text',
+      text: JSON.stringify({ ok: true, data: { /* ... */ } }, null, 2),
+    },
+  ],
+}
+```
+
 ## 제안 도구 (초기 범위)
 
 초기에는 "안전한 읽기/조회" 중심으로 최소 세트부터 시작합니다.
@@ -75,22 +97,26 @@ WebMCP 권장사항에 맞춰 도구는:
 
 - 목적: 연결/버전/모드 상태를 반환
 - 입력: 없음
-- 출력 예:
-  - connectionState: `connected|connecting|disconnected`
-  - mcpVersion / viewerVersion / versionStatus
-  - readOnly 여부
+- 출력(JSON in `content[0].text`):
+  - `connection_state`: `connected|connecting|disconnected`
+  - `viewer_version`
+  - `version_status` (가능하면 raw object)
+  - `is_read_only`
 
 ### Tool 2: `viewer.get_scene_summary`
 
 - 목적: 현재 씬의 요약(엔티티 수, 마지막 작업 등)
-- 입력: `{ detailLevel: "short"|"full" }`
-- 출력: 텍스트 + 요약 JSON(가능하면)
+- 입력: 없음 (Phase 1)
+- 출력(JSON in `content[0].text`):
+  - `entity_count`
+  - `last_operation`
+  - `sample_entities` (최대 N개, payload 제한)
 
 ### Tool 3: `viewer.get_selection`
 
 - 목적: 현재 선택된 엔티티 ID 목록 반환
 - 입력: 없음
-- 출력: `selectedIds: string[]`
+- 출력(JSON in `content[0].text`): `selected_ids: string[]`
 
 ### Tool 4 (선택): `viewer.select_entities`
 
@@ -99,6 +125,9 @@ WebMCP 권장사항에 맞춰 도구는:
 - 가드:
   - `isReadOnly`여도 허용(씬 변경이 아니라 UI 선택만)
   - ids가 존재하지 않으면 오류 반환
+- 출력(JSON in `content[0].text`):
+  - `selected_ids` (적용 후)
+  - `changed`: boolean
 
 후속(Phase 2+)에서는 뷰포트 조작(`viewer.set_viewport`) 등으로 확장합니다.
 
@@ -156,11 +185,9 @@ WebMCP 권장사항에 맞춰 도구는:
 ## 오픈 이슈
 
 - Viewer에서 WebMCP opt-in 토글 UX 위치: Onboarding vs StatusBar vs TopBar
-- 도구 결과 포맷 표준화: `content: [{type:"text", text:"..."}]` 스타일로 통일할지 여부
 - Phase 3에서 Local MCP 연동 시 인증 방식(토큰 vs origin + 사용자 승인)
 
 ## 참고
 
-- `media/inbound/WebMCP_Early_Preview.pdf` (Chrome WebMCP Early Preview, Updated Feb 10, 2026)
+- `docs/references/webmcp-early-preview-notes.md` (early preview API 요약, 구현 기준)
 - `docs/adr/007-web-architecture.md` (Web + Local MCP)
-

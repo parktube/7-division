@@ -23,6 +23,15 @@ Expose a small, safe set of Viewer tools to agentic browsers via Chrome WebMCP (
   - `viewer.get_selection`
   - `viewer.select_entities` (UI-only, low risk)
 
+## Tool Return Format (Phase 1)
+
+All tools MUST return the same shape:
+
+- Return value: `{ content: [{ type: "text", text: string }] }`
+- `text` MUST be a JSON string (pretty-printed OK).
+
+Rationale: early preview examples center on `content`, and additional structured fields are not guaranteed.
+
 ## Non-Goals (Phase 1)
 
 - Headless WebMCP usage
@@ -53,17 +62,21 @@ Expose a small, safe set of Viewer tools to agentic browsers via Chrome WebMCP (
      - `useWebSocket()` for connection/version/readOnly
      - `useScene()` for scene summary
      - `useUIContext()` for selection read/write
+   - Toggle OFF behavior:
+     - If available, call `navigator.modelContext.clearContext()`
+     - Always guard tool execution with an internal `enabled` flag so disabled state returns an explicit error
 
 4. Tool schemas + behavior:
    - `viewer.get_status`:
-     - returns connectionState, versionStatus, viewerVersion, isReadOnly
+     - returns `{ connection_state, viewer_version, version_status, is_read_only }`
    - `viewer.get_scene_summary`:
-     - returns entityCount and optionally a compact list of recent ids/types (limit to avoid large payload)
+     - returns `{ entity_count, last_operation, sample_entities }` (limit to avoid large payload)
    - `viewer.get_selection`:
-     - returns current selected ids
+     - returns `{ selected_ids }`
    - `viewer.select_entities`:
      - validates ids exist (when scene loaded)
      - supports `mode: replace|add`
+     - returns `{ selected_ids, changed }`
 
 ## Tests
 

@@ -68,7 +68,6 @@ Viewer에 WebMCP를 **옵트인(opt-in)** 방식으로 도입합니다.
 
 ## References
 
-- WebMCP Early Preview (Updated 2026-02-10) - `media/inbound/WebMCP_Early_Preview.pdf`
+- WebMCP Early Preview (Updated 2026-02-10) - `docs/references/webmcp-early-preview-notes.md` (요약)
 - ADR-007: Web + MCP Architecture - `docs/adr/007-web-architecture.md`
 - RFC: WebMCP Integration (Viewer) - `docs/rfc/webmcp-integration.md`
-
