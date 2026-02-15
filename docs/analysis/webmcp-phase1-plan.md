@@ -2,7 +2,7 @@
 
 Date: 2026-02-15
 
-Branch: `feature/webmcp-integration`
+Branch: `feature/webmcp-phase1-viewer`
 
 Related:
 - ADR-009: `docs/adr/009-webmcp-integration.md`
@@ -87,4 +87,3 @@ Expose a small, safe set of Viewer tools to agentic browsers via Chrome WebMCP (
 - Code changes in `apps/viewer` implementing Phase 1
 - Tests covering registration and core tool behavior
 - Minimal documentation update (if UI placement differs from RFC)
-
