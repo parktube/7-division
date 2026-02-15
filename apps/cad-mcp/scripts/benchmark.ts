@@ -11,8 +11,9 @@
 
 import WebSocket from 'ws'
 
-// Port discovery: try ports 3001-3003 (matches CADWebSocketServer behavior)
-const WS_PORTS = [3001, 3002, 3003]
+// Port discovery: try ports 3002, 3001, 3003 (matches CADWebSocketServer behavior)
+// 3002 first: Windows often has svchost on 3001
+const WS_PORTS = [3002, 3001, 3003]
 const WS_HOST = process.env.WS_HOST ?? '127.0.0.1'
 const ITERATIONS = 100
 const CONNECT_TIMEOUT = 5000

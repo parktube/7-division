@@ -8,13 +8,44 @@
  */
 
 import puppeteer from 'puppeteer';
-import { promises as fs } from 'fs';
+import { promises as fs, existsSync } from 'fs';
 import { resolve, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import { logger } from './logger.js';
+import { getStateDir } from './run-cad-code/constants.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// ============================================================
+// Pixel Sampling Helper (injected into browser context)
+// ============================================================
+
+/**
+ * Browser-injectable pixel sampling function.
+ * Defined as string to be injected via page.evaluate() once,
+ * then reused in both injection path and WebSocket path.
+ *
+ * Samples 5 pixels from canvas corners + center for stability check.
+ * Returns a hash string for comparison between frames.
+ */
+const SAMPLE_PIXELS_SCRIPT = `
+  window.__sampleCanvasPixels = function(canvas) {
+    var ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    var w = canvas.width;
+    var h = canvas.height;
+    var samples = [
+      ctx.getImageData(Math.floor(w / 2), Math.floor(h / 2), 1, 1).data,
+      ctx.getImageData(Math.floor(w / 4), Math.floor(h / 4), 1, 1).data,
+      ctx.getImageData(Math.floor(3 * w / 4), Math.floor(h / 4), 1, 1).data,
+      ctx.getImageData(Math.floor(w / 4), Math.floor(3 * h / 4), 1, 1).data,
+      ctx.getImageData(Math.floor(3 * w / 4), Math.floor(3 * h / 4), 1, 1).data
+    ];
+    var hash = samples.map(function(d) { return d[0] + ',' + d[1] + ',' + d[2]; }).join('|');
+    return { hash: hash, samples: samples };
+  };
+`;
 
 export interface CaptureOptions {
   url?: string;
@@ -25,6 +56,43 @@ export interface CaptureOptions {
   forceMethod?: 'electron' | 'puppeteer';
   /** Scene data to inject directly (bypasses WebSocket for Puppeteer capture) */
   sceneData?: unknown;
+  /** Sketch data to inject directly (bypasses HTTP fetch for Puppeteer capture) */
+  sketchData?: unknown;
+}
+
+// Path to sketch.json for reading sketch data (getter로 테스트 격리 지원)
+function getSketchFile(): string {
+  return join(getStateDir(), 'sketch.json');
+}
+
+/**
+ * Read sketch data from ~/.ai-native-cad/sketch.json
+ * Handles both { strokes: [...] } and [...] array formats
+ */
+async function readSketchData(): Promise<unknown[] | null> {
+  try {
+    const data = await fs.readFile(getSketchFile(), 'utf-8');
+    const parsed = JSON.parse(data);
+    // Handle direct array format [...]
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    // Handle object format { strokes: [...] } - validate strokes is an array
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.strokes)) {
+      return parsed.strokes;
+    }
+    // Invalid format
+    logger.warn('Invalid sketch data format', { file: getSketchFile(), type: typeof parsed });
+    return null;
+  } catch (error) {
+    // Silently ignore ENOENT (file not found) - expected when no sketch exists
+    if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return null;
+    }
+    // Log other errors for debugging (corrupt file, parse error, etc.)
+    logger.warn('Failed to read sketch data', { file: getSketchFile(), error: String(error) });
+    return null;
+  }
 }
 
 export interface CaptureResult {
@@ -155,28 +223,41 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     forceMethod,
   } = options;
 
-  // On Windows/Mac, use Electron capture (unless forced to use Puppeteer)
-  if (forceMethod !== 'puppeteer' && (process.platform === 'win32' || process.platform === 'darwin')) {
+  // Check if Puppeteer is preferred via environment variable
+  // forceMethod takes precedence over env var
+  const preferPuppeteer = forceMethod === 'puppeteer' ||
+    (forceMethod !== 'electron' && process.env.CAD_CAPTURE_METHOD === 'puppeteer');
+
+  // On Windows/Mac, try Electron capture first (unless Puppeteer is preferred)
+  if (!preferPuppeteer && (process.platform === 'win32' || process.platform === 'darwin')) {
     logger.debug('Trying Electron capture');
     const electronResult = await tryElectronCapture(outputPath);
     if (electronResult?.success) {
       logger.debug('Electron capture succeeded');
       return electronResult;
     }
-    // Don't fall back to Puppeteer - Electron is the expected method on Windows/Mac
-    const portFile = join(getElectronUserDataPath(), '.server-port');
-    return {
-      success: false,
-      error: `Electron capture failed. Is the CADViewer app running? (Check ${portFile})`,
-      method: 'electron',
-    };
+
+    // If electron was explicitly requested, return failure immediately
+    if (forceMethod === 'electron') {
+      logger.error('Electron capture failed (forceMethod=electron): is the Electron app running?');
+      return electronResult ?? {
+        success: false,
+        error: 'Electron capture not available (is the Electron app running?)',
+        method: 'electron',
+      };
+    }
+
+    // Fall back to Puppeteer if Electron is not running
+    // Note: tryElectronCapture logs specific failure reason (no port, connection error, etc.)
+    logger.info('Electron capture unavailable, falling back to Puppeteer headless browser');
   }
 
-  // Skip Puppeteer if forced to use Electron
+  // Skip Puppeteer if forced to use Electron (non-Windows/Mac platforms)
   if (forceMethod === 'electron') {
+    logger.error('Electron capture not attempted on this platform (forceMethod=electron)');
     return {
       success: false,
-      error: 'Electron capture not available (is the Electron app running?)',
+      error: 'Electron capture not available on this platform',
       method: 'electron',
     };
   }
@@ -196,22 +277,79 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const isLocalUrl = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\b/.test(url);
     const isHttps = /^https:\/\//.test(url);
     const isCI = process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
-    const baseArgs = ['--disable-dev-shm-usage', '--disable-gpu'];
+    const baseArgs = [
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+    ];
+    // Security: --no-sandbox is required for Docker/CI but reduces security.
+    // Only enable for local URLs or CI environments where the content is trusted.
     const sandboxArgs = (isLocalUrl || isCI)
       ? ['--no-sandbox', '--disable-setuid-sandbox']
       : [];
-    // Mixed content args only when HTTPS page needs to connect to ws://localhost
+    // Mixed content handling: When HTTPS page (e.g., GitHub Pages) needs to connect
+    // to ws://localhost MCP server, browsers block this by default as "mixed content".
+    // These flags allow the connection for local development/capture purposes.
+    // Note: This is safe because we only connect to localhost, not arbitrary HTTP endpoints.
+    // In production, the viewer should use wss:// or run on the same origin.
     const mixedContentArgs = isHttps
       ? ['--allow-running-insecure-content', '--allow-insecure-localhost']
       : [];
 
+    // Try to find Chrome/Chromium executable
+    // Priority: System browsers > Puppeteer's bundled Chromium (fallback)
+    const chromePaths = [
+      // Windows - Chrome
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      // Windows - Edge (Chromium-based)
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      // Windows - Brave
+      `${process.env.LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\Application\\brave.exe`,
+      'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+      // macOS
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+      // Linux
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/snap/bin/chromium',
+    ];
+
+    // First try system browsers, then fall back to Puppeteer's bundled Chromium
+    const systemBrowser = chromePaths.find(p => p && existsSync(p));
+
+    // If no system browser found, Puppeteer will use its bundled Chromium (executablePath: undefined)
+    // This is the most reliable cross-platform approach
+    const executablePath = systemBrowser || undefined;
+
+    if (!executablePath) {
+      logger.debug('No system browser found, using Puppeteer bundled Chromium');
+    } else {
+      logger.debug('Using system browser', { path: executablePath });
+    }
+
     browser = await puppeteer.launch({
       headless: true,
+      executablePath,
       args: [...baseArgs, ...sandboxArgs, ...mixedContentArgs],
     });
 
     const page = await browser.newPage();
     await page.setViewport({ width, height });
+
+    // Disable Service Worker via CDP to avoid "InvalidStateError: Failed to register a ServiceWorker"
+    // Note: Command-line flags like --disable-features=ServiceWorker are unreliable.
+    // CDP is the official Puppeteer-supported method for this.
+    const cdp = await page.createCDPSession();
+    await cdp.send('Network.enable');
+    await cdp.send('Network.setBypassServiceWorker', { bypass: true });
+
+    // Inject pixel sampling helper function (reused in both stability check paths)
+    await page.evaluate(SAMPLE_PIXELS_SCRIPT);
 
     // Capture browser console logs for debugging
     const consoleLogs: string[] = [];
@@ -222,6 +360,11 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     // Navigate to viewer with increased timeout
     // Use networkidle0 to ensure React app is fully mounted before injection
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 30000 });
+
+    // Set capture mode flag to prevent onboarding dialog from appearing
+    await page.evaluate(() => {
+      (window as unknown as { __captureMode: boolean }).__captureMode = true;
+    });
 
     // If scene data is provided, inject it directly (bypass WebSocket)
     if (options.sceneData) {
@@ -234,110 +377,232 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
         if (i > 0) {
           await new Promise(done => setTimeout(done, 500));
         }
-        injected = await page.evaluate((sceneJson) => {
-          type WindowWithInject = Window & { __injectScene?: (scene: unknown) => void };
+        const injectResult = await page.evaluate((sceneJson) => {
+          type WindowWithInject = Window & {
+            __injectScene?: (scene: unknown) => void;
+            __getConnectionState?: () => string;
+          };
           const win = window as WindowWithInject;
+          const stateBefore = win.__getConnectionState?.() || 'no-func';
           if (win.__injectScene) {
-            // sceneJson이 문자열이면 파싱 (exportScene()은 string 반환)
-            const scene = typeof sceneJson === 'string' ? JSON.parse(sceneJson) : sceneJson;
-            win.__injectScene(scene);
-            return true;
+            try {
+              // sceneJson이 문자열이면 파싱 (exportScene()은 string 반환)
+              const scene = typeof sceneJson === 'string' ? JSON.parse(sceneJson) : sceneJson;
+              win.__injectScene(scene);
+              const stateAfter = win.__getConnectionState?.() || 'no-func';
+              return {
+                injected: true,
+                stateBefore,
+                stateAfter
+              };
+            } catch (parseError) {
+              return { injected: false, stateBefore, stateAfter: 'parse-error', error: String(parseError) };
+            }
           }
-          return false;
+          return { injected: false, stateBefore, stateAfter: 'n/a' };
         }, options.sceneData);
+        injected = injectResult.injected;
+        logger.debug('Scene injection result', injectResult);
       }
 
       if (injected) {
-        // Wait for Canvas component to mount and render
-        let canvasReady = false;
+        // Wait a bit for React to process the connectionState change
+        await new Promise(done => setTimeout(done, 200));
+
+        // Force hide any onboarding overlay (in case React re-render is slow)
+        await page.evaluate(() => {
+          // Hide onboarding modal overlay if it exists
+          const overlay = document.querySelector('.fixed.inset-0.z-40') as HTMLElement;
+          if (overlay) {
+            overlay.style.display = 'none';
+          }
+        });
+
+        // Wait for Canvas component to mount and render with frame stability check
+        // Uses same stableCount logic as WebSocket path for consistency
+        let canvasStable = false;
         const maxWaitTime = waitMs;
         const checkInterval = 200;
         let elapsed = 0;
+        let lastPixelHash = '';
+        let stableCount = 0;
+        const requiredStableChecks = 2;
 
-        while (elapsed < maxWaitTime && !canvasReady) {
+        while (elapsed < maxWaitTime && !canvasStable) {
           await new Promise(done => setTimeout(done, checkInterval));
           elapsed += checkInterval;
 
-          canvasReady = await page.evaluate(() => {
-            const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-            if (!canvas) return false;
-            // Check if canvas has non-zero dimensions
-            return canvas.width > 0 && canvas.height > 0;
+          const result = await page.evaluate(() => {
+            try {
+              const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
+              if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                return { ready: false, hash: '' };
+              }
+              // Use injected pixel sampling helper
+              type WindowWithSampler = Window & {
+                __sampleCanvasPixels?: (c: HTMLCanvasElement) => { hash: string } | null;
+              };
+              const sampler = (window as WindowWithSampler).__sampleCanvasPixels;
+              const result = sampler?.(canvas);
+              return { ready: !!result, hash: result?.hash || '' };
+            } catch {
+              // SecurityError when canvas is tainted, treat as unstable frame
+              return { ready: false, hash: '' };
+            }
           });
+
+          if (result.ready) {
+            if (result.hash === lastPixelHash && lastPixelHash !== '') {
+              // Consecutive identical frame
+              stableCount++;
+              if (stableCount >= requiredStableChecks) {
+                canvasStable = true;
+              }
+            } else if (result.hash !== '' && lastPixelHash === '') {
+              // First valid frame - count as first stable check
+              stableCount = 1;
+            } else {
+              // Content changed - reset
+              stableCount = 0;
+            }
+          } else {
+            stableCount = 0; // Not ready - reset
+          }
+          lastPixelHash = result.hash;
         }
 
-        if (!canvasReady) {
-          logger.warn('Canvas not ready after injection, proceeding with capture anyway');
+        if (!canvasStable) {
+          logger.warn('Canvas not stable after injection, proceeding with capture anyway');
         }
 
-        // Additional wait for render to complete
-        await new Promise(done => setTimeout(done, 500));
+        // Additional wait for any animations to settle
+        await new Promise(done => setTimeout(done, 300));
       } else {
-        // Injection failed - abort capture to avoid empty/misleading screenshots
-        logger.error('__injectScene not available after retries - aborting capture');
-        throw new Error('Scene injection failed: __injectScene not available in viewer');
+        // Injection failed - fall back to WebSocket scene loading
+        logger.warn('__injectScene not available after retries, falling back to WebSocket loading');
+        // Continue to WebSocket waiting logic below
       }
-    } else {
-      // Wait for WebSocket connection and scene to load
-      // Instead of fixed timeout, wait for scene to have entities
-      let sceneLoaded = false;
-      const maxWaitTime = waitMs;
-      const checkInterval = 500;
-      let elapsed = 0;
+    }
 
-      while (elapsed < maxWaitTime && !sceneLoaded) {
-        await new Promise(done => setTimeout(done, checkInterval));
-        elapsed += checkInterval;
+    // Wait for WebSocket connection and scene to load (common path for both injection fallback and no-injection)
+    // Use frame stability check to ensure rendering is complete
+    let sceneStable = false;
+    const maxWaitTime = waitMs;
+    const checkInterval = 300;
+    let elapsed = 0;
+    let lastPixelHash = '';
+    let stableCount = 0;
+    const requiredStableChecks = 2; // Require 2 consecutive stable frames
 
-        // Check if scene has entities
-        sceneLoaded = await page.evaluate(() => {
-          // Check if there are any rendered entities in the canvas
+    while (elapsed < maxWaitTime && !sceneStable) {
+      await new Promise(done => setTimeout(done, checkInterval));
+      elapsed += checkInterval;
+
+      // Check if scene is loaded and stable using injected pixel sampler
+      const result = await page.evaluate(() => {
+        try {
           const canvas = document.querySelector('#cad-canvas canvas') as HTMLCanvasElement;
-          if (!canvas) return false;
-
-          // Check WebSocket connection state from window
-          type WindowWithWS = Window & { __wsConnectionState?: string; __sceneEntityCount?: number };
-          const win = window as WindowWithWS;
-
-          // If we have entity count exposed, use it
-          if (typeof win.__sceneEntityCount === 'number') {
-            return win.__sceneEntityCount > 0;
+          if (!canvas || canvas.width === 0 || canvas.height === 0) {
+            return { loaded: false, hash: '', entityCount: 0 };
           }
 
-          // Fallback: check if canvas has been drawn to (not just background)
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return false;
+          // Check WebSocket connection state from window
+          type WindowWithWS = Window & {
+            __wsConnectionState?: string;
+            __sceneEntityCount?: number;
+            __sampleCanvasPixels?: (c: HTMLCanvasElement) => { hash: string; samples: Uint8ClampedArray[] } | null;
+          };
+          const win = window as WindowWithWS;
+          const entityCount = win.__sceneEntityCount ?? 0;
 
-          // Sample multiple pixels and check for variation (not uniform background)
-          const w = canvas.width;
-          const h = canvas.height;
-          const samplePoints = [
-            [w / 2, h / 2],
-            [w / 4, h / 4],
-            [3 * w / 4, h / 4],
-            [w / 4, 3 * h / 4],
-            [3 * w / 4, 3 * h / 4],
-          ];
+          // Use injected pixel sampling helper
+          const sampler = win.__sampleCanvasPixels;
+          const sampleResult = sampler?.(canvas);
+          if (!sampleResult) return { loaded: false, hash: '', entityCount };
 
-          const samples = samplePoints.map(([x, y]) => {
-            const data = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-            return [data[0], data[1], data[2]];
-          });
+          const { hash, samples } = sampleResult;
 
-          // Check if all samples are the same (uniform background)
+          // Check if content is not uniform background
           const first = samples[0];
           const tolerance = 5;
-          const allSame = samples.every(([r, g, b]) =>
-            Math.abs(r - first[0]) <= tolerance &&
-            Math.abs(g - first[1]) <= tolerance &&
-            Math.abs(b - first[2]) <= tolerance
+          const hasContent = !samples.every(d =>
+            Math.abs(d[0] - first[0]) <= tolerance &&
+            Math.abs(d[1] - first[1]) <= tolerance &&
+            Math.abs(d[2] - first[2]) <= tolerance
           );
 
-          // If not all same, something is drawn
-          return !allSame;
-        });
+          return { loaded: hasContent || entityCount > 0, hash, entityCount };
+        } catch {
+          // SecurityError when canvas is tainted, treat as unstable frame
+          return { loaded: false, hash: '', entityCount: 0 };
+        }
+      });
 
-        logger.debug(`Scene load check: ${sceneLoaded}, elapsed: ${elapsed}ms`);
+      if (result.loaded) {
+        if (result.hash === lastPixelHash && lastPixelHash !== '') {
+          // Consecutive identical frame
+          stableCount++;
+          if (stableCount >= requiredStableChecks) {
+            sceneStable = true;
+          }
+        } else if (result.hash !== '' && lastPixelHash === '') {
+          // First valid frame - count as first stable check
+          stableCount = 1;
+        } else {
+          // Content changed - reset
+          stableCount = 0;
+        }
+      } else {
+        stableCount = 0; // Not loaded - reset
+      }
+      lastPixelHash = result.hash;
+
+      logger.debug('Scene stability check', { loaded: result.loaded, stable: sceneStable, entities: result.entityCount, elapsed });
+    }
+
+    if (!sceneStable) {
+      logger.warn('Scene not stable after waiting, proceeding with capture anyway');
+    }
+
+    // Inject sketch data if provided or read from file (common for both paths)
+    // Normalize sketchData: accept both array and { strokes: [...] } formats
+    let sketchData: unknown[] | null = null;
+    if (options.sketchData) {
+      if (Array.isArray(options.sketchData)) {
+        sketchData = options.sketchData;
+      } else if (options.sketchData && typeof options.sketchData === 'object' &&
+                 'strokes' in options.sketchData && Array.isArray((options.sketchData as { strokes: unknown[] }).strokes)) {
+        sketchData = (options.sketchData as { strokes: unknown[] }).strokes;
+      } else {
+        logger.warn('Invalid sketchData format, skipping injection', { type: typeof options.sketchData });
+      }
+    } else {
+      sketchData = await readSketchData();
+    }
+    if (sketchData && sketchData.length > 0) {
+      logger.debug('Injecting sketch data', { strokeCount: sketchData.length });
+
+      let sketchInjected = false;
+      try {
+        sketchInjected = await page.evaluate((strokes) => {
+          type WindowWithSketch = Window & { __injectSketch?: (strokes: unknown) => void };
+          const win = window as WindowWithSketch;
+          if (win.__injectSketch) {
+            win.__injectSketch(strokes);
+            return true;
+          }
+          return false;
+        }, sketchData);
+      } catch (error) {
+        logger.warn('__injectSketch failed, continuing without sketch', { error: String(error) });
+        sketchInjected = false;
+      }
+
+      if (sketchInjected) {
+        // Wait for sketch overlay to render
+        await new Promise(done => setTimeout(done, 300));
+      } else {
+        logger.warn('__injectSketch not available - sketch will not be captured');
       }
     }
 
@@ -370,6 +635,40 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     logger.debug('Zoom setting', { zoomApplied, targetZoom: 1 });
     await new Promise(done => setTimeout(done, 500)); // Wait for zoom to apply
 
+    // Hide onboarding dialog right before capture (it appears after 1.5s delay)
+    const hiddenOverlay = await page.evaluate(() => {
+      // Find and hide any modal overlay (fixed position with z-40 class)
+      // Try multiple selectors to be safe
+      const selectors = [
+        '.fixed.inset-0.z-40',
+        '[class*="fixed"][class*="inset-0"][class*="z-40"]',
+        '.fixed.inset-0.z-\\[40\\]',
+      ];
+      for (const selector of selectors) {
+        try {
+          const overlay = document.querySelector(selector) as HTMLElement;
+          if (overlay) {
+            overlay.style.display = 'none';
+            return selector;
+          }
+        } catch {
+          // Intentionally ignored: querySelector with dynamic selector may fail
+          // on malformed patterns - we try multiple selectors as fallback
+        }
+      }
+      // Fallback: find by text content
+      const allDivs = document.querySelectorAll('div');
+      for (const div of allDivs) {
+        if (div.textContent?.includes('MCP 서버') &&
+            getComputedStyle(div).position === 'fixed') {
+          (div as HTMLElement).style.display = 'none';
+          return 'text-content-match';
+        }
+      }
+      return null;
+    });
+    logger.debug('Onboarding overlay hidden', { selector: hiddenOverlay });
+
     // Find the canvas container element
     const canvasElement = await page.$('#cad-canvas');
 
@@ -393,9 +692,22 @@ export async function captureViewport(options: CaptureOptions = {}): Promise<Cap
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error('Viewport capture failed', { error: errorMessage });
 
+    // Provide helpful error message for common issues
+    let helpMessage = errorMessage;
+    if (errorMessage.includes('Could not find Chrome') || errorMessage.includes('No usable sandbox')) {
+      helpMessage = `${errorMessage}\n\nTroubleshooting:\n` +
+        '1. Install Chrome, Edge, or Brave browser\n' +
+        '2. Or run: npx puppeteer browsers install chrome\n' +
+        '3. On Windows, ensure browsers are in standard install paths';
+    } else if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('net::ERR')) {
+      helpMessage = `${errorMessage}\n\nTroubleshooting:\n` +
+        '1. Check if viewer is running (pnpm --filter @ai-native-cad/viewer dev)\n' +
+        '2. Or use GitHub Pages viewer (default): set CAD_VIEWER_URL env var';
+    }
+
     return {
       success: false,
-      error: errorMessage,
+      error: helpMessage,
       method: 'puppeteer',
     };
   } finally {

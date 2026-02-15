@@ -4,6 +4,11 @@
  *
  * Epic 10: Claude Code 패턴 일치 MCP 도구
  * 6개 도구: glob, read, edit, write, lsp, bash
+ *
+ * Epic 11: MAMA 통합 도구
+ * 11개 도구: mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure,
+ *           mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report,
+ *           mama_recommend_modules, mama_workflow
  */
 
 export interface ParameterSchema {
@@ -251,6 +256,11 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
     description: "도형의 그리기 순서(z-order)를 변경. ⚠️ 'back'은 전체 씬의 맨 뒤로 이동(배경보다 뒤로 갈 수 있음!). 💡 레이어링 패턴: 배경을 먼저 생성 → 오브젝트 나중에 생성 = 자동으로 위에 배치. 'above:target'/'below:target'으로 특정 엔티티 기준 배치. 그룹 이동 시 자식도 함께 이동",
     example: "drawOrder('player', 'above:grass_0_0')  // grass_0_0 바로 위로",
   },
+  sortByIsoDepth: {
+    signature: "sortByIsoDepth(groupName?: string): boolean",
+    description: "그룹 내 자식들을 isometric depth(x+y) 기준으로 자동 정렬. x+y가 클수록 뒤(먼저 그림), 작을수록 앞(나중 그림). 💡 3D 가구/오브젝트 생성 후 호출하면 올바른 z-order로 자동 배치. groupName 생략 시 root level 정렬",
+    example: "sortByIsoDepth('tv_cabinet')  // 캐비닛 내부 자동 정렬\nsortByIsoDepth()  // 전체 씬 정렬",
+  },
   // transforms
   translate: {
     signature: "translate(name: string, dx: number, dy: number, options?: { space?: 'world' | 'local' }): boolean",
@@ -306,7 +316,7 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
   },
   getDrawOrder: {
     signature: "getDrawOrder(groupName?: string): string[] | null",
-    description: "그리기 순서 조회(뒤→앞, 배열 왼쪽이 뒤). 인자 없으면 root level, 그룹명 지정 시 해당 그룹의 자식 순서. 💡 drawOrder 전에 현재 상태 확인 권장. ⚠️ bash({command:'tree'})로도 구조 확인 가능",
+    description: "그리기 순서 조회(뒤→앞, z_index 오름차순). 배열 왼쪽이 먼저 그려짐(뒤). 인자 없으면 root level, 그룹명 지정 시 해당 그룹의 자식 순서. 💡 drawOrder 전에 현재 상태 확인 권장. ⚠️ bash({command:'tree'})로도 구조 확인 가능",
     example: "getDrawOrder()  // root: ['bg', 'player', 'ui']\ngetDrawOrder('robot')  // 그룹 내: ['body', 'head', 'arm']",
   },
   getTextMetrics: {
@@ -368,3 +378,10 @@ export const FUNCTION_SIGNATURES: Record<string, { signature: string; descriptio
     example: "mirror('arm_l', 'arm_r', 'x')",
   },
 };
+
+// ============================================================
+// MAMA Tools (Epic 11)
+// ============================================================
+
+// Re-export MAMA tools from mama/tools module
+export { MAMA_TOOLS, getMAMATools } from './mama/tools/index.js';

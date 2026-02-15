@@ -6,11 +6,15 @@
  * - 작성 후 자동 실행
  * - 기존 파일 덮어쓰기 경고
  * - 실행 실패 시 롤백
+ *
+ * Story 11.20: Dual-source 지원
+ * - builtin 모듈 수정 차단
+ * - 사용자 모듈만 쓰기 가능
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync } from 'fs';
 import { dirname } from 'path';
-import { getFilePath, isValidFileName } from '../utils/paths.js';
+import { getFilePath, isValidFileName, isBuiltinModule } from '../utils/paths.js';
 import { hasBeenRead } from './read.js';
 
 export interface WriteInput {
@@ -75,6 +79,18 @@ export function handleWrite(input: WriteInput): WriteOutput {
         success: false,
         data: { file, created: false, written: false },
         error: 'code parameter is required',
+      };
+    }
+
+    // Builtin 모듈 보호: 같은 이름으로 쓰기 차단
+    // 참조 후 다른 이름으로 저장하도록 안내
+    if (isBuiltinModule(file)) {
+      return {
+        success: false,
+        data: { file, created: false, written: false },
+        error: `Cannot write to builtin module name "${file}". ` +
+          `To customize: read("${file}") to reference the original, ` +
+          `then write("${file}_custom", <your code>) with a new name.`,
       };
     }
 

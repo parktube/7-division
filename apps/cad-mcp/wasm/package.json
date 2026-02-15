@@ -1,0 +1,17 @@
+{
+  "name": "cad-engine",
+  "description": "AI-Native CAD Engine - Rust WASM core",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parktube/7-division"
+  },
+  "files": [
+    "cad_engine_bg.wasm",
+    "cad_engine.js",
+    "cad_engine.d.ts"
+  ],
+  "main": "cad_engine.js",
+  "types": "cad_engine.d.ts"
+}

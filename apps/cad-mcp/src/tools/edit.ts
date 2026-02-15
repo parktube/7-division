@@ -7,6 +7,10 @@
  * - 실행 실패 시 롤백
  * - Read-first 경고
  *
+ * Story 11.20: Dual-source 지원
+ * - builtin 모듈 수정 차단
+ * - 사용자 모듈만 수정 가능
+ *
  * Note: Race Condition 고려사항
  * - read → write 사이 시간 차에서 동시 요청 시 데이터 손실 가능
  * - CAD-MCP는 단일 사용자 로컬 도구로 동시 요청이 드물어 허용 가능한 리스크
@@ -14,7 +18,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { getFilePath, isValidFileName } from '../utils/paths.js';
+import { getFilePath, isValidFileName, isBuiltinModule } from '../utils/paths.js';
 import { hasBeenRead } from './read.js';
 
 export interface EditInput {
@@ -105,9 +109,21 @@ export function handleEdit(input: EditInput): EditOutput {
       warnings.push('Warning: Consider using read first to verify the file content');
     }
 
-    // Read current file content
+    // Read current file content (user path)
     const currentContent = readFileContent(file);
+
+    // 파일이 없는 경우: builtin만 있는지 확인
     if (currentContent === null) {
+      // Builtin 모듈이 존재하면 참조 후 새 이름으로 작성 안내
+      if (isBuiltinModule(file)) {
+        return {
+          success: false,
+          data: { file, replaced: false },
+          error: `Cannot edit builtin module "${file}". ` +
+            `To customize: read("${file}") to reference the original, ` +
+            `then write("${file}_custom", <your code>) with a new name.`,
+        };
+      }
       return {
         success: false,
         data: { file, replaced: false },

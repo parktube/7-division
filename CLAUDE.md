@@ -9,7 +9,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 **7-division (도화지)**: AI-Native CAD 프로젝트
 
 - **비전**: "AI가 만들고, AI가 사용한다" - LLM이 도구를 조작하고, 인간은 의도/검증
-- **현재 단계**: Epic 1~10 완료 (MVP + 웹 아키텍처 + AX 개선)
+- **현재 단계**: Epic 1~11 완료 (MVP + 웹 아키텍처 + AX 개선 + MAMA Integration)
 - **아키텍처**: Web + Local MCP (GitHub Pages 뷰어 + 로컬 MCP 서버)
 - **구조**: pnpm workspace 모노레포
   - `apps/viewer` - React 뷰어 (GitHub Pages)
@@ -86,6 +86,47 @@ read({ file: 'chicken' })        // 모듈 읽기
 ```
 
 **상세 가이드**: [docs/cad-mcp-guide.md](docs/cad-mcp-guide.md)
+
+### 3. MAMA 도구 (Memory-Augmented Meta Agent)
+
+세션 간 컨텍스트 유지, 결정 추적, 학습 진행 관리를 위한 도구입니다.
+
+| MCP 도구 | 용도 | 예시 |
+|----------|------|------|
+| `mcp__ai-native-cad__mama_save` | 결정/체크포인트 저장 | `mama_save({ type: 'decision', topic: 'color', decision: '...' })` |
+| `mcp__ai-native-cad__mama_search` | 추론 그래프 검색 | `mama_search({ query: 'color' })` |
+| `mcp__ai-native-cad__mama_update` | 결정 결과 업데이트 | `mama_update({ id: 'decision_auth_abc123', outcome: 'success' })` |
+| `mcp__ai-native-cad__mama_load_checkpoint` | 이전 세션 복원 | `mama_load_checkpoint()` |
+| `mcp__ai-native-cad__mama_configure` | 설정 조회/수정 | `mama_configure({ action: 'get' })` |
+| `mcp__ai-native-cad__mama_edit_hint` | 동적 힌트 관리 | `mama_edit_hint({ action: 'list' })` |
+| `mcp__ai-native-cad__mama_set_skill_level` | 스킬 레벨 설정 | `mama_set_skill_level({ level: 'intermediate' })` |
+| `mcp__ai-native-cad__mama_health` | 추론 그래프 건강도 | `mama_health()` |
+| `mcp__ai-native-cad__mama_growth_report` | 성장 지표 리포트 | `mama_growth_report()` |
+| `mcp__ai-native-cad__mama_workflow` | 디자인 워크플로우 | `mama_workflow({ command: 'status' })` |
+| `mcp__ai-native-cad__mama_recommend_modules` | 모듈 추천 | `mama_recommend_modules({ query: 'chicken' })` |
+
+**자주 쓰는 MAMA 명령**:
+```javascript
+// 세션 시작 시 컨텍스트 로드
+mama_load_checkpoint()
+
+// 결정 저장 전 관련 결정 검색 (링크를 위해)
+mama_search({ query: 'authentication' })
+
+// 결정 저장 (반드시 search 후에!)
+mama_save({
+  type: 'decision',
+  topic: 'auth_strategy',
+  decision: 'Use JWT with refresh tokens',
+  reasoning: 'Stateless, scalable. builds_on: decision_auth_session_abc123'
+})
+
+// 디자인 프로젝트 시작
+mama_workflow({ command: 'start', project_name: 'My House' })
+
+// 모듈 추천
+mama_recommend_modules({ query: 'draw a chicken' })
+```
 
 ## Quick Start
 

@@ -17,10 +17,36 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  InitializeRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import { CADExecutor } from './executor.js'
-import { CAD_TOOLS, type ToolSchema } from './schema.js'
+import { CAD_TOOLS, MAMA_TOOLS, type ToolSchema } from './schema.js'
 import { handleGlob } from './tools/glob.js'
+import {
+  handleMamaSave,
+  handleMamaSearch,
+  handleMamaUpdate,
+  handleMamaLoadCheckpoint,
+  handleMamaConfigure,
+  handleMamaEditHint,
+  handleMamaSetSkillLevel,
+  handleMamaHealth,
+  handleMamaGrowthReport,
+  handleMamaRecommendModules,
+  handleMamaWorkflow,
+  type SaveArgs,
+  type SearchArgs,
+  type UpdateArgs,
+  type ConfigureArgs,
+  type EditHintArgs,
+  type SetSkillLevelArgs,
+  type HealthArgs,
+  type GrowthReportArgs,
+  type RecommendModulesArgs,
+  type WorkflowArgs,
+} from './mama/tools/index.js'
+import { shutdownMAMA, getHintsForTool, detectEntityTypes } from './mama/index.js'
+import { orchestrator } from './orchestrator.js'
 import { handleRead } from './tools/read.js'
 import { handleEdit, rollbackEdit } from './tools/edit.js'
 import { handleWrite, rollbackWrite, getOriginalContent } from './tools/write.js'
@@ -30,10 +56,9 @@ import { getWSServer, startWSServer, stopWSServer } from './ws-server.js'
 import { logger } from './logger.js'
 import { runCadCode } from './sandbox/index.js'
 import type { Scene } from './shared/index.js'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, unlinkSync, openSync, closeSync, constants } from 'fs'
 import { resolve, dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { homedir } from 'os'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -44,20 +69,139 @@ const packageJson = JSON.parse(
 )
 
 // run-cad-code 모듈에서 공유 상수/유틸리티 가져오기 (CLI와 경로 통일)
-import { SCENE_CODE_FILE, MODULES_DIR } from './run-cad-code/constants.js'
+import { getSceneCodeFile, getModulesDir, getStateDir, getSceneFile } from './run-cad-code/constants.js'
 import { preprocessCode } from './run-cad-code/utils.js'
 
-// 씬 영속성 파일 경로 (~/.ai-native-cad/scene.json)
-const CAD_DATA_DIR = resolve(homedir(), '.ai-native-cad')
-const SCENE_FILE = resolve(CAD_DATA_DIR, 'scene.json')
+// PID 파일 경로 (getStateDir() 사용으로 테스트 격리 지원)
+function getPidFile(): string {
+  return resolve(getStateDir(), 'mcp.pid')
+}
+
+/**
+ * Check if a process with given PID is running
+ */
+function isProcessRunning(pid: number): boolean {
+  try {
+    // Sending signal 0 checks if process exists without killing it
+    process.kill(pid, 0)
+    return true
+  } catch (err: unknown) {
+    // Distinguish error types:
+    // - EPERM: process exists but we don't have permission (still running)
+    // - ESRCH: no such process (not running)
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EPERM') {
+      return true // Process exists but we can't signal it
+    }
+    return false // ESRCH or other errors mean process is not running
+  }
+}
+
+/**
+ * Check if another MCP server instance is already running
+ * Returns the PID of existing process, or null if none
+ */
+function getExistingServerPid(): number | null {
+  try {
+    if (!existsSync(getPidFile())) {
+      return null
+    }
+    const pidStr = readFileSync(getPidFile(), 'utf-8').trim()
+    const pid = parseInt(pidStr, 10)
+    if (isNaN(pid)) {
+      return null
+    }
+    if (isProcessRunning(pid)) {
+      return pid
+    }
+    // Stale PID file - process no longer running
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Write current process PID to file
+ * Uses O_EXCL for atomic creation to prevent race conditions (TOCTOU)
+ * If file exists, attempts to remove stale PID file and retry
+ */
+/**
+ * Atomically create PID file with O_EXCL
+ * @returns file descriptor on success, null on EEXIST
+ * @throws on other errors
+ */
+function atomicCreatePidFile(pidContent: string): number | null {
+  try {
+    const fd = openSync(getPidFile(), constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL)
+    writeFileSync(fd, pidContent, 'utf-8')
+    return fd
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException
+    if (error.code === 'EEXIST') {
+      return null
+    }
+    throw error
+  }
+}
+
+function writePidFile(): void {
+  ensureCadDataDir()
+  const pidContent = process.pid.toString()
+
+  let fd: number | null = null
+  try {
+    // Try atomic create with O_EXCL (fail if file exists)
+    fd = atomicCreatePidFile(pidContent)
+
+    if (fd === null) {
+      // File exists - check if process is running, clean up if stale
+      const existingPid = getExistingServerPid()
+      if (existingPid === null) {
+        // Stale file, remove and retry with atomic create
+        try {
+          unlinkSync(getPidFile())
+          fd = atomicCreatePidFile(pidContent)
+        } catch {
+          // Ignore cleanup errors
+        }
+      }
+      // If process is running, let the main startup logic handle it
+    }
+  } finally {
+    // Close file descriptor if opened
+    if (fd !== null) {
+      try {
+        closeSync(fd)
+      } catch {
+        // Ignore close errors
+      }
+    }
+  }
+  logger.debug(`PID file written: ${getPidFile()} (PID: ${process.pid})`)
+}
+
+/**
+ * Remove PID file on shutdown
+ */
+function cleanupPidFile(): void {
+  try {
+    if (existsSync(getPidFile())) {
+      unlinkSync(getPidFile())
+      logger.debug('PID file removed')
+    }
+  } catch (e) {
+    logger.warn(`Failed to remove PID file: ${e}`)
+  }
+}
 
 /**
  * Ensure CAD data directory exists
  */
 function ensureCadDataDir(): void {
-  if (!existsSync(CAD_DATA_DIR)) {
-    mkdirSync(CAD_DATA_DIR, { recursive: true })
-    logger.info(`Created CAD data directory: ${CAD_DATA_DIR}`)
+  if (!existsSync(getStateDir())) {
+    mkdirSync(getStateDir(), { recursive: true })
+    logger.info(`Created CAD data directory: ${getStateDir()}`)
   }
 }
 
@@ -68,7 +212,7 @@ function saveScene(exec: CADExecutor): void {
   try {
     ensureCadDataDir()
     const sceneJson = exec.exportScene()
-    writeFileSync(SCENE_FILE, sceneJson, 'utf-8')
+    writeFileSync(getSceneFile(), sceneJson, 'utf-8')
     logger.debug('Scene saved to file')
   } catch (e) {
     logger.error(`Failed to save scene: ${e}`)
@@ -81,12 +225,12 @@ function saveScene(exec: CADExecutor): void {
  */
 function loadScene(exec: CADExecutor): boolean {
   try {
-    if (!existsSync(SCENE_FILE)) {
+    if (!existsSync(getSceneFile())) {
       logger.debug('No saved scene file found')
       return false
     }
 
-    const sceneJson = readFileSync(SCENE_FILE, 'utf-8')
+    const sceneJson = readFileSync(getSceneFile(), 'utf-8')
     const scene = JSON.parse(sceneJson) as Scene
 
     // Restore entities to executor
@@ -107,7 +251,7 @@ function loadScene(exec: CADExecutor): boolean {
 }
 
 function getModulePath(name: string): string {
-  return resolve(MODULES_DIR, `${name}.js`)
+  return resolve(getModulesDir(), `${name}.js`)
 }
 
 /**
@@ -115,7 +259,7 @@ function getModulePath(name: string): string {
  */
 function readMainCode(): string {
   try {
-    return existsSync(SCENE_CODE_FILE) ? readFileSync(SCENE_CODE_FILE, 'utf-8') : ''
+    return existsSync(getSceneCodeFile()) ? readFileSync(getSceneCodeFile(), 'utf-8') : ''
   } catch {
     return ''
   }
@@ -148,6 +292,15 @@ function getExecutor(): CADExecutor {
 }
 
 /**
+ * Add hints to tool result (max 3 hints per tool)
+ */
+function addHintsToResult<T extends object>(toolName: string, result: T): T & { _hints?: string[] } {
+  const hints = getHintsForTool(toolName)
+  if (hints.length === 0) return result
+  return { ...result, _hints: hints.map(h => `💡 ${h}`) }
+}
+
+/**
  * Convert internal tool schema to MCP format
  * Preserves all JSON Schema fields (enum, items, default, etc.)
  */
@@ -171,10 +324,13 @@ function toMCPToolSchema(tool: ToolSchema) {
 
 /**
  * Get all tools as MCP format
- * Epic 10: Claude Code 패턴 6개 도구만 제공
+ * Epic 10: Claude Code 패턴 6개 도구
+ * Epic 11: MAMA 5개 도구 추가
  */
 function getAllMCPTools() {
-  return Object.values(CAD_TOOLS).map(toMCPToolSchema)
+  const cadTools = Object.values(CAD_TOOLS).map(toMCPToolSchema)
+  const mamaTools = Object.values(MAMA_TOOLS).map(toMCPToolSchema)
+  return [...cadTools, ...mamaTools]
 }
 
 /**
@@ -268,15 +424,34 @@ async function executeRunCadCode(
  * Create and start the MCP server
  */
 export async function createMCPServer(): Promise<Server> {
+  // Initialize CADOrchestrator and MAMA (Epic 11, Story 11.8)
+  let sessionContext = ''
+  try {
+    // Use orchestrator for LLM-agnostic hook management
+    const hookResult = await orchestrator.handleInitialize()
+
+    if (hookResult) {
+      sessionContext = hookResult.formattedContext
+      logger.info(`MAMA initialized via orchestrator: mode=${hookResult.contextMode}, decisions=${hookResult.recentDecisions.length}`)
+
+      if (sessionContext) {
+        // Output session context for Claude to see
+        logger.info(`SessionStart context (${hookResult.contextMode} mode):\n${sessionContext}`)
+      }
+    }
+  } catch (err) {
+    logger.warn(`Orchestrator initialization failed (non-fatal): ${err}`)
+  }
+
   // Initialize executor
   const exec = getExecutor()
   let restored = false
 
   // Story 10.10: main.js 우선 실행, scene.json 폴백
   // 1차: main.js 실행으로 복원 시도
-  if (existsSync(SCENE_CODE_FILE)) {
+  if (existsSync(getSceneCodeFile())) {
     try {
-      const mainCode = readFileSync(SCENE_CODE_FILE, 'utf-8')
+      const mainCode = readFileSync(getSceneCodeFile(), 'utf-8')
       const preprocessed = preprocessCode(mainCode)
       if (preprocessed.errors.length === 0) {
         const result = await runCadCode(exec, preprocessed.code, 'warn')
@@ -321,13 +496,56 @@ export async function createMCPServer(): Promise<Server> {
       capabilities: {
         tools: {},
       },
+      // Story 11.5: SessionStart - inject checkpoint/decisions context
+      instructions: sessionContext || undefined,
     }
   )
 
-  // Handle list tools request
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
+  // Handle initialize request - return fresh checkpoint on each session
+  // Fix: Previously instructions were set once at server startup,
+  // so new sessions would see stale checkpoint data.
+  server.setRequestHandler(InitializeRequestSchema, async (_request) => {
+    // Get fresh session context on each initialize request
+    let instructions: string | undefined
+    try {
+      const hookResult = await orchestrator.handleInitialize()
+      if (hookResult) {
+        instructions = hookResult.formattedContext
+        logger.info(
+          `Initialize request: mode=${hookResult.contextMode}, decisions=${hookResult.recentDecisions.length}`
+        )
+        if (instructions) {
+          logger.info(`Fresh SessionStart context:\n${instructions}`)
+        }
+      }
+    } catch (err) {
+      logger.warn(`Initialize hook failed (non-fatal): ${err}`)
+    }
+
+    // Return standard MCP initialize response with fresh instructions
     return {
-      tools: getAllMCPTools(),
+      protocolVersion: '2024-11-05',
+      capabilities: {
+        tools: {},
+      },
+      serverInfo: {
+        name: MCP_SERVER_NAME,
+        version: MCP_SERVER_VERSION,
+      },
+      ...(instructions && { instructions }),
+    }
+  })
+
+  // Handle list tools request with dynamic hint injection (Story 11.8)
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+    const tools = getAllMCPTools()
+
+    // Apply preToolList hook via orchestrator (LLM-agnostic)
+    const enhancedTools = orchestrator.handleToolsList(tools)
+
+    // Return enhanced tools
+    return {
+      tools: enhancedTools,
     }
   })
 
@@ -344,30 +562,20 @@ export async function createMCPServer(): Promise<Server> {
         // === glob: 파일 목록 조회 ===
         case 'glob': {
           const pattern = (args as Record<string, unknown>)?.pattern as string | undefined
-          const result = handleGlob({ pattern })
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
+          const result = addHintsToResult('glob', handleGlob({ pattern }))
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
         // === read: 파일 읽기 ===
         case 'read': {
           const file = (args as Record<string, unknown>)?.file as string
-          const result = handleRead({ file })
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
+          const result = addHintsToResult('read', handleRead({ file }))
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
@@ -399,7 +607,7 @@ export async function createMCPServer(): Promise<Server> {
 
           if (!editResult.success) {
             return {
-              content: [{ type: 'text', text: JSON.stringify(editResult, null, 2) }],
+              content: [{ type: 'text', text: JSON.stringify(addHintsToResult('edit', editResult), null, 2) }],
               isError: true,
             }
           }
@@ -415,16 +623,26 @@ export async function createMCPServer(): Promise<Server> {
           ]
 
           if (execResult.success) {
-            const response = {
+            // Apply postExecute hook via orchestrator (Story 11.8)
+            const entities = getSceneEntities(exec)
+            const entityTypes = detectEntityTypes(entities)
+            const cadResult = orchestrator.handleToolCall(
+              'edit',
+              { success: true, data: { file, entities } },
+              { toolName: 'edit', file, entitiesCreated: entities, entityTypes, code: newCode }
+            )
+
+            const response = addHintsToResult('edit', {
               success: true,
               data: {
                 file,
                 replaced: true,
-                entities: getSceneEntities(exec),
+                entities,
               },
               logs: execResult.logs,
               warnings: allWarnings.length > 0 ? allWarnings : undefined,
-            }
+              actionHints: orchestrator.formatHints(cadResult),
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
             }
@@ -437,7 +655,7 @@ export async function createMCPServer(): Promise<Server> {
             // Story 10.10: Restore scene from main.js
             const sceneRestored = await restoreSceneFromMainCode(exec)
 
-            const response = {
+            const response = addHintsToResult('edit', {
               success: false,
               data: {
                 file,
@@ -449,7 +667,7 @@ export async function createMCPServer(): Promise<Server> {
               hint: sceneRestored
                 ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'
                 : 'Code execution failed. Changes rolled back.',
-            }
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
               isError: true,
@@ -470,7 +688,7 @@ export async function createMCPServer(): Promise<Server> {
 
           if (!writeResult.success) {
             return {
-              content: [{ type: 'text', text: JSON.stringify(writeResult, null, 2) }],
+              content: [{ type: 'text', text: JSON.stringify(addHintsToResult('write', writeResult), null, 2) }],
               isError: true,
             }
           }
@@ -480,17 +698,27 @@ export async function createMCPServer(): Promise<Server> {
           const execResult = await executeRunCadCode(mainCode)
 
           if (execResult.success) {
+            // Apply postExecute hook via orchestrator (Story 11.8)
+            const entities = getSceneEntities(exec)
+            const entityTypes = detectEntityTypes(entities)
+            const cadResult = orchestrator.handleToolCall(
+              'write',
+              { success: true, data: { file, entities } },
+              { toolName: 'write', file, entitiesCreated: entities, entityTypes, code }
+            )
+
             const combinedWarnings = [...(writeResult.warnings || []), ...(execResult.warnings || [])]
-            const response = {
+            const response = addHintsToResult('write', {
               success: true,
               data: {
                 file,
                 created: writeResult.data.created,
-                entities: getSceneEntities(exec),
+                entities,
               },
               logs: execResult.logs,
               warnings: combinedWarnings.length > 0 ? combinedWarnings : undefined,
-            }
+              actionHints: orchestrator.formatHints(cadResult),
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
             }
@@ -502,7 +730,7 @@ export async function createMCPServer(): Promise<Server> {
             const sceneRestored = await restoreSceneFromMainCode(exec)
 
             const combinedWarnings = [...(writeResult.warnings || []), ...(execResult.warnings || [])]
-            const response = {
+            const response = addHintsToResult('write', {
               success: false,
               data: {
                 file,
@@ -514,7 +742,7 @@ export async function createMCPServer(): Promise<Server> {
               hint: sceneRestored
                 ? 'Code execution failed. Changes rolled back. Scene restored to previous state.'
                 : 'Code execution failed. Changes rolled back.',
-            }
+            })
             return {
               content: [{ type: 'text', text: JSON.stringify(response, null, 2) }],
               isError: true,
@@ -529,21 +757,16 @@ export async function createMCPServer(): Promise<Server> {
           const funcName = (args as Record<string, unknown>)?.name as string | undefined
           const file = (args as Record<string, unknown>)?.file as string | undefined
 
-          const result = handleLsp({
+          const result = addHintsToResult('lsp', handleLsp({
             operation: operation as 'domains' | 'describe' | 'schema' | 'symbols',
             domain,
             name: funcName,
             file,
-          })
+          }))
 
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
           }
         }
 
@@ -555,7 +778,7 @@ export async function createMCPServer(): Promise<Server> {
           const clearSketch = (args as Record<string, unknown>)?.clearSketch as boolean | undefined
 
           const exec = getExecutor()
-          const result = await handleBash(
+          const bashResult = await handleBash(
             { command, name, group, clearSketch },
             exec,
             () => {
@@ -568,14 +791,123 @@ export async function createMCPServer(): Promise<Server> {
             }
           )
 
-          if (result.success) {
-            return {
-              content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            }
-          }
+          const result = addHintsToResult('bash', bashResult)
           return {
             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-            isError: true,
+            isError: !result.success,
+          }
+        }
+
+        // ============================================================
+        // MAMA 도구 (Epic 11)
+        // ============================================================
+
+        // === mama_save: Save decision or checkpoint ===
+        case 'mama_save': {
+          const saveArgs = args as unknown as SaveArgs
+          const result = await handleMamaSave(saveArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_search: Semantic search for decisions ===
+        case 'mama_search': {
+          const searchArgs = args as unknown as SearchArgs
+          const result = await handleMamaSearch(searchArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_update: Update decision outcome ===
+        case 'mama_update': {
+          const updateArgs = args as unknown as UpdateArgs
+          const result = await handleMamaUpdate(updateArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_load_checkpoint: Resume from checkpoint ===
+        case 'mama_load_checkpoint': {
+          const result = await handleMamaLoadCheckpoint()
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_configure: View/modify configuration ===
+        case 'mama_configure': {
+          const configArgs = args as unknown as ConfigureArgs
+          const result = await handleMamaConfigure(configArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_edit_hint: Manage dynamic hints ===
+        case 'mama_edit_hint': {
+          const editHintArgs = args as unknown as EditHintArgs
+          const result = await handleMamaEditHint(editHintArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_set_skill_level: Set skill level for adaptive mentoring ===
+        case 'mama_set_skill_level': {
+          const skillArgs = args as unknown as SetSkillLevelArgs
+          const result = await handleMamaSetSkillLevel(skillArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_health: Graph health metrics (Story 11.11) ===
+        case 'mama_health': {
+          const healthArgs = args as unknown as HealthArgs
+          const result = await handleMamaHealth(healthArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_growth_report: User growth metrics (Story 11.14) ===
+        case 'mama_growth_report': {
+          const growthArgs = args as unknown as GrowthReportArgs
+          const result = await handleMamaGrowthReport(growthArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_recommend_modules: Module library recommendation (Story 11.19) ===
+        case 'mama_recommend_modules': {
+          const recommendArgs = args as unknown as RecommendModulesArgs
+          const result = await handleMamaRecommendModules(recommendArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
+          }
+        }
+
+        // === mama_workflow: Design workflow management (Story 11.21) ===
+        case 'mama_workflow': {
+          const workflowArgs = args as unknown as WorkflowArgs
+          const result = await handleMamaWorkflow(workflowArgs)
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+            isError: !result.success,
           }
         }
 
@@ -583,7 +915,7 @@ export async function createMCPServer(): Promise<Server> {
           return {
             content: [{
               type: 'text',
-              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash`,
+              text: `Unknown tool: ${name}. Available: glob, read, edit, write, lsp, bash, mama_save, mama_search, mama_update, mama_load_checkpoint, mama_configure, mama_edit_hint, mama_set_skill_level, mama_health, mama_growth_report, mama_recommend_modules, mama_workflow`,
             }],
             isError: true,
           }
@@ -618,10 +950,34 @@ export async function startMCPServer(): Promise<void> {
  * CLI entry point for MCP server
  */
 export async function runMCPServer(): Promise<void> {
-  // Graceful shutdown handler
+  // Singleton check: prevent multiple instances
+  const existingPid = getExistingServerPid()
+  if (existingPid !== null) {
+    logger.error(`MCP server already running (PID: ${existingPid}). Kill it first or use the existing instance.`)
+    logger.error(`To kill: kill ${existingPid}`)
+    logger.error(`PID file: ${getPidFile()}`)
+    process.exit(1)
+  }
+
+  // Write PID file for singleton enforcement
+  writePidFile()
+
+  // Graceful shutdown handler (with guard against duplicate calls)
+  let isShuttingDown = false
   const shutdown = async (signal: string) => {
+    if (isShuttingDown) {
+      return // Prevent duplicate shutdown
+    }
+    isShuttingDown = true
+
     logger.info(`Received ${signal}, shutting down gracefully...`)
+
+    // Cleanup PID file first (synchronous) to prevent stale file
+    cleanupPidFile()
+
     try {
+      // Shutdown MAMA (Epic 11)
+      shutdownMAMA()
       await stopWSServer()
       logger.info('Cleanup complete, exiting')
       process.exit(0)
@@ -635,11 +991,16 @@ export async function runMCPServer(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'))
   process.on('SIGTERM', () => shutdown('SIGTERM'))
 
+  // Handle stdin close (when Claude Code disconnects/disables MCP)
+  process.stdin.on('end', () => void shutdown('stdin-end'))
+  process.stdin.on('close', () => void shutdown('stdin-close'))
+
   try {
     await startMCPServer()
   } catch (e) {
     logger.error(`MCP server error: ${e}`)
     await stopWSServer().catch(() => {}) // Best effort cleanup
+    cleanupPidFile() // Cleanup on error
     process.exit(1)
   }
 }
