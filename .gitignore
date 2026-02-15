@@ -108,3 +108,8 @@ apps/viewer/sketch.json
 fonts/
 docs/*.zip
 cad-tools/dxf-poc/
+
+# ===================
+# Inbound reference docs (not committed)
+# ===================
+media/inbound/*.pdf
