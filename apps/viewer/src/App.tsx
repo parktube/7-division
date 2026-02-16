@@ -8,6 +8,7 @@ import { UIProvider } from '@/contexts/UIContext'
 import { useSelectionSync } from '@/hooks/useSelectionSync'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { initDataServer } from '@/utils/dataUrl'
+import { setupWebMcp } from '@/webmcp'
 
 // Component to sync selection with selection.json
 function SelectionSync() {
@@ -31,8 +32,10 @@ function WebSocketManager() {
 
 export default function App() {
   // Initialize data server URL from query params (for Electron)
+  // Initialize WebMCP if enabled in localStorage
   useEffect(() => {
     initDataServer()
+    setupWebMcp()
   }, [])
 
   return (
