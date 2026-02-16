@@ -57,7 +57,12 @@ export function validateInput<T>(
 ): WebMcpResult<T> {
   const result = schema.safeParse(payload.input)
   if (!result.success) {
-    return err(`Invalid input: ${result.error.message}`)
+    // Format Zod errors into a readable message
+    const errors = result.error.errors.map(e => {
+      const path = e.path.length > 0 ? `${e.path.join('.')}: ` : ''
+      return `${path}${e.message}`
+    }).join('; ')
+    return err(`Invalid input - ${errors}`)
   }
   return ok(result.data)
 }

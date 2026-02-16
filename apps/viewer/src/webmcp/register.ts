@@ -22,7 +22,14 @@ function toWebMcpTool(def: WebMcpToolDefinition): WebMcpTool {
     description: def.description,
     inputSchema: def.inputSchema,
     execute: async (payload: { input: unknown }) => {
-      const result = await def.execute(payload as ToolPayload)
+      // Handle WebMCP payload format
+      // WebMCP sends parameters directly: { ids: [...] }
+      // We need to wrap it as { input: {...} } for our tools
+      const toolPayload: ToolPayload = {
+        input: payload?.input ?? payload ?? {},
+      }
+
+      const result = await def.execute(toolPayload)
       // Return data directly for success, throw for error
       if (result.ok) {
         return result.data

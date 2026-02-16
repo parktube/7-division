@@ -1,4 +1,4 @@
-// Re-export from ws-messages (standalone version for npm package)
+// WebSocket message types and schemas
 export {
   WSMessageSchema,
   SceneSchema,
@@ -6,12 +6,9 @@ export {
   SelectionDataSchema,
   ConnectionDataSchema,
   ErrorDataSchema,
-  SelectionUpdateDataSchema,
-  SketchUpdateDataSchema,
-  PointSchema,
-  StrokeSchema,
   validateMessage,
   safeValidateMessage,
+  // Internal schemas (exported for reusability)
   TransformSchema,
   StyleSchema,
   MetadataSchema,
@@ -29,10 +26,11 @@ export type {
   SelectionData,
   ConnectionData,
   ErrorData,
+  MCPCommandData,
+  MCPResponseData,
   SelectionUpdateData,
   SketchUpdateData,
-  Point,
-  Stroke,
+  // Internal schema types (exported for reusability)
   Transform,
   Style,
   Metadata,

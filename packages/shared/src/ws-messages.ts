@@ -123,6 +123,20 @@ export const SketchUpdateDataSchema = z.object({
   strokes: z.array(StrokeSchema),
 });
 
+// Client → Server: MCP command execution request
+export const MCPCommandDataSchema = z.object({
+  id: z.string(),
+  tool: z.string(),
+  params: z.unknown(),
+});
+
+// Server → Client: MCP command execution response
+export const MCPResponseDataSchema = z.object({
+  id: z.string(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
+
 // WebSocket Message Schema (Discriminated Union)
 export const WSMessageSchema = z.discriminatedUnion('type', [
   // Server → Client messages
@@ -168,6 +182,16 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     data: SketchUpdateDataSchema,
     timestamp: z.number().int().positive(),
   }),
+  z.object({
+    type: z.literal('mcp_command'),
+    data: MCPCommandDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('mcp_response'),
+    data: MCPResponseDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
 ]);
 
 // Type exports
@@ -180,6 +204,8 @@ export type ConnectionData = z.infer<typeof ConnectionDataSchema>;
 export type ErrorData = z.infer<typeof ErrorDataSchema>;
 export type SelectionUpdateData = z.infer<typeof SelectionUpdateDataSchema>;
 export type SketchUpdateData = z.infer<typeof SketchUpdateDataSchema>;
+export type MCPCommandData = z.infer<typeof MCPCommandDataSchema>;
+export type MCPResponseData = z.infer<typeof MCPResponseDataSchema>;
 export type Point = z.infer<typeof PointSchema>;
 export type Stroke = z.infer<typeof StrokeSchema>;
 

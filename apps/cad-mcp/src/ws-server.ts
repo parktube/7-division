@@ -21,8 +21,35 @@ import {
   type ConnectionData,
   type SelectionUpdateData,
   type SketchUpdateData,
+  type MCPCommandData,
 } from './shared/index.js'
 import { getStateDir } from './run-cad-code/constants.js'
+import { readMainCode, preprocessCode } from './run-cad-code/utils.js'
+import { runCadCode } from './sandbox/index.js'
+
+// CAD Tool handlers
+import { handleGlob } from './tools/glob.js'
+import { handleRead } from './tools/read.js'
+import { handleEdit } from './tools/edit.js'
+import { handleWrite } from './tools/write.js'
+import { handleLsp } from './tools/lsp.js'
+import { handleBash } from './tools/bash.js'
+import { getSharedExecutor } from './executor-instance.js'
+
+// MAMA Tool handlers
+import {
+  handleMamaSave,
+  handleMamaSearch,
+  handleMamaUpdate,
+  handleMamaLoadCheckpoint,
+  handleMamaConfigure,
+  handleMamaEditHint,
+  handleMamaSetSkillLevel,
+  handleMamaHealth,
+  handleMamaGrowthReport,
+  handleMamaRecommendModules,
+  handleMamaWorkflow,
+} from './mama/tools/index.js'
 
 // Data directory for selection/sketch files (getter로 테스트 격리 지원)
 function getSelectionFile(): string {
@@ -259,6 +286,10 @@ export class CADWebSocketServer {
           // Serialized async write (errors handled in method)
           this.handleSketchUpdate(message.data)
           break
+        case 'mcp_command':
+          // Execute MCP tool and send response
+          this.handleMCPCommand(ws, message.data)
+          break
         default:
           // Client shouldn't send scene_update, selection, etc.
           logger.warn(`Unexpected message type from client: ${message.type}`)
@@ -319,6 +350,185 @@ export class CADWebSocketServer {
         logger.error(`Failed to save sketch: ${e}`)
       }
     })
+  }
+
+  /**
+   * Handle MCP command execution from WebMCP
+   * Maps tool names to handler functions and executes them
+   */
+  private async handleMCPCommand(ws: WebSocket, data: MCPCommandData): Promise<void> {
+    const { id, tool, params } = data
+
+    try {
+      logger.info(`[WebMCP] Executing tool: ${tool}`)
+
+      let result: unknown
+
+      // Execute tool based on type
+      // Cast params to any for handler calls since we trust WebMCP to send correct types
+      const args = params as any
+
+      switch (tool) {
+        // CAD tools
+        case 'glob':
+          result = handleGlob(args)
+          break
+        case 'read':
+          result = handleRead(args)
+          break
+        case 'edit':
+          result = handleEdit(args)
+          break
+        case 'write': {
+          const file = args.file
+
+          // Perform write
+          const writeResult = handleWrite(args)
+
+          if (!writeResult.success) {
+            result = writeResult
+            break
+          }
+
+          // Execute main code after write (like MCP server)
+          try {
+            const exec = getSharedExecutor()
+            const mainCode = readMainCode()
+            
+            // Preprocess imports
+            const preprocessed = preprocessCode(mainCode)
+            if (preprocessed.errors.length > 0) {
+              result = {
+                success: false,
+                data: writeResult.data,
+                error: preprocessed.errors[0]
+              }
+              break
+            }
+
+            // Reset scene (HMR style)
+            exec.exec('reset', {})
+
+            // Run code
+            const execResult = await runCadCode(exec, preprocessed.code, 'warn')
+
+            if (execResult.success) {
+              // Broadcast scene to all clients
+              const sceneJson = exec.exportScene()
+              const scene = JSON.parse(sceneJson)
+              this.broadcastScene(scene)
+
+              result = {
+                success: true,
+                data: {
+                  file,
+                  created: writeResult.data.created,
+                  written: true,
+                },
+                logs: execResult.logs,
+                warnings: [...(writeResult.warnings || []), ...(execResult.warnings || [])].filter(Boolean)
+              }
+            } else {
+              result = {
+                success: false,
+                data: writeResult.data,
+                error: execResult.error,
+                logs: execResult.logs,
+                warnings: [...(writeResult.warnings || []), ...(execResult.warnings || [])].filter(Boolean)
+              }
+            }
+          } catch (e) {
+            result = {
+              success: false,
+              data: writeResult.data,
+              error: e instanceof Error ? e.message : String(e)
+            }
+          }
+          break
+        }
+        case 'lsp':
+          result = handleLsp(args)
+          break
+        case 'bash': {
+          // bash requires executor and onSceneChange callback
+          const exec = getSharedExecutor()
+          result = await handleBash(
+            args,
+            exec,
+            () => {
+              // On scene change, broadcast and save
+              const sceneJson = exec.exportScene()
+              const scene = JSON.parse(sceneJson) as Scene
+              this.broadcastScene(scene)
+            }
+          )
+          break
+        }
+
+        // MAMA tools (all async)
+        case 'mama_save':
+          result = await handleMamaSave(args)
+          break
+        case 'mama_search':
+          result = await handleMamaSearch(args)
+          break
+        case 'mama_update':
+          result = await handleMamaUpdate(args)
+          break
+        case 'mama_load_checkpoint':
+          result = await handleMamaLoadCheckpoint()
+          break
+        case 'mama_configure':
+          result = await handleMamaConfigure(args)
+          break
+        case 'mama_edit_hint':
+          result = await handleMamaEditHint(args)
+          break
+        case 'mama_set_skill_level':
+          result = await handleMamaSetSkillLevel(args)
+          break
+        case 'mama_health':
+          result = await handleMamaHealth(args)
+          break
+        case 'mama_growth_report':
+          result = await handleMamaGrowthReport(args)
+          break
+        case 'mama_recommend_modules':
+          result = await handleMamaRecommendModules(args)
+          break
+        case 'mama_workflow':
+          result = await handleMamaWorkflow(args)
+          break
+
+        default:
+          throw new Error(`Unknown tool: ${tool}`)
+      }
+
+      // Send success response
+      this.sendToClient(ws, {
+        type: 'mcp_response',
+        data: {
+          id,
+          result,
+        },
+        timestamp: Date.now(),
+      })
+
+      logger.info(`[WebMCP] Tool ${tool} completed successfully`)
+    } catch (error) {
+      // Send error response
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      this.sendToClient(ws, {
+        type: 'mcp_response',
+        data: {
+          id,
+          error: errorMessage,
+        },
+        timestamp: Date.now(),
+      })
+
+      logger.error(`[WebMCP] Tool ${tool} failed: ${errorMessage}`)
+    }
   }
 
   private sendConnectionMessage(ws: WebSocket): void {

@@ -8,6 +8,7 @@ import { ok, err, type WebMcpToolDefinition, type ToolPayload, type WebMcpResult
 interface EntitySample {
   id: string
   type: string
+  label?: string
 }
 
 interface GetSceneSummaryOutput {
@@ -29,6 +30,7 @@ export const getSceneSummaryTool: WebMcpToolDefinition = {
     const sampleEntities: EntitySample[] = entities.slice(0, 10).map((e) => ({
       id: e.id,
       type: e.entity_type,
+      label: e.metadata?.name,
     }))
 
     return ok({

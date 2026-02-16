@@ -3,6 +3,7 @@ import type { Scene } from '@/types/scene'
 import type { Selection } from '@/types/selection'
 import type { Stroke } from '@/types/sketch'
 import { safeValidateMessage, type ConnectionData } from '@ai-native-cad/shared'
+import { handleMCPResponse as handleMCPResponseSync } from '@/webmcp/mcp-bridge'
 import {
   VIEWER_VERSION,
   checkVersionCompatibility,
@@ -236,6 +237,14 @@ export function getWebSocketStore(): Readonly<Omit<WebSocketStore, 'listeners'>>
   }
 }
 
+/**
+ * Get the global WebSocket instance
+ * Used by WebMCP bridge to send commands to MCP server
+ */
+export function getWebSocket(): WebSocket | null {
+  return globalWs
+}
+
 export interface UseWebSocketResult {
   scene: Scene | null
   selection: string[]
@@ -312,6 +321,11 @@ export function useWebSocket(): UseWebSocketResult {
           break
         case 'pong':
           // Heartbeat response - connection is alive
+          break
+        case 'mcp_response':
+          // Forward to mcp-bridge for promise resolution
+          // Use static import to ensure pendingCommands Map is shared
+          handleMCPResponseSync(message.data)
           break
       }
     } catch (e) {

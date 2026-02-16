@@ -96,24 +96,26 @@ export const ErrorDataSchema = z.object({
 // Client → Server: Selection update from viewer
 export const SelectionUpdateDataSchema = z.object({
   selected_entities: z.array(z.string()),
-  locked_entities: z.array(z.string()).default([]),
-  hidden_entities: z.array(z.string()).default([]),
+  locked_entities: z.array(z.string()).optional(),
+  hidden_entities: z.array(z.string()).optional(),
 });
 
 // Client → Server: Sketch update from viewer
-// NOTE: Sketch strokes use hex color (#RRGGBB) instead of RGBA tuple because:
-// 1. Sketch is a separate feature (user annotations) from CAD entity styles
-// 2. Viewer's sketch UI uses HTML color picker which returns hex format
-// 3. Simpler for human-readable sketch data export
 export const PointSchema = z.object({
   x: z.number(),
   y: z.number(),
 });
 
+// Color formats: CSS color string (#fff, #ffffff, rgb(), rgba(), named colors)
+const CSSColorSchema = z.string().refine(
+  (val) => /^(#[0-9a-fA-F]{3,8}|rgb\(|rgba\(|[a-zA-Z]+)/.test(val),
+  { message: 'Invalid CSS color format' }
+);
+
 export const StrokeSchema = z.object({
   id: z.string(),
   points: z.array(PointSchema),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color must be a hex string (#RRGGBB)'),
+  color: CSSColorSchema,
   width: z.number().positive(),
 });
 
@@ -121,8 +123,23 @@ export const SketchUpdateDataSchema = z.object({
   strokes: z.array(StrokeSchema),
 });
 
+// Client → Server: MCP command execution request
+export const MCPCommandDataSchema = z.object({
+  id: z.string(),
+  tool: z.string(),
+  params: z.unknown(),
+});
+
+// Server → Client: MCP command execution response
+export const MCPResponseDataSchema = z.object({
+  id: z.string(),
+  result: z.unknown().optional(),
+  error: z.string().optional(),
+});
+
 // WebSocket Message Schema (Discriminated Union)
 export const WSMessageSchema = z.discriminatedUnion('type', [
+  // Server → Client messages
   z.object({
     type: z.literal('scene_update'),
     data: SceneUpdateDataSchema,
@@ -143,6 +160,7 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     data: ErrorDataSchema,
     timestamp: z.number().int().positive(),
   }),
+  // Bidirectional messages
   z.object({
     type: z.literal('ping'),
     data: z.object({}),
@@ -164,6 +182,16 @@ export const WSMessageSchema = z.discriminatedUnion('type', [
     data: SketchUpdateDataSchema,
     timestamp: z.number().int().positive(),
   }),
+  z.object({
+    type: z.literal('mcp_command'),
+    data: MCPCommandDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
+  z.object({
+    type: z.literal('mcp_response'),
+    data: MCPResponseDataSchema,
+    timestamp: z.number().int().positive(),
+  }),
 ]);
 
 // Type exports
@@ -176,6 +204,8 @@ export type ConnectionData = z.infer<typeof ConnectionDataSchema>;
 export type ErrorData = z.infer<typeof ErrorDataSchema>;
 export type SelectionUpdateData = z.infer<typeof SelectionUpdateDataSchema>;
 export type SketchUpdateData = z.infer<typeof SketchUpdateDataSchema>;
+export type MCPCommandData = z.infer<typeof MCPCommandDataSchema>;
+export type MCPResponseData = z.infer<typeof MCPResponseDataSchema>;
 export type Point = z.infer<typeof PointSchema>;
 export type Stroke = z.infer<typeof StrokeSchema>;
 

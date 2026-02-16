@@ -26,6 +26,8 @@ export type {
   SelectionData,
   ConnectionData,
   ErrorData,
+  MCPCommandData,
+  MCPResponseData,
   // Internal schema types (exported for reusability)
   Transform,
   Style,

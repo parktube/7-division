@@ -21,16 +21,16 @@ export interface WebMcpTool {
 export interface ModelContext {
   registerTool(tool: WebMcpTool): void
   unregisterTool(name: string): void
+  provideContext(context: unknown): void
+  clearContext(): void
 }
 
 /**
- * Extended window interface with model context
+ * Extended Navigator interface with model context
  */
 declare global {
-  interface Window {
-    ai?: {
-      modelContext?: ModelContext
-    }
+  interface Navigator {
+    modelContext?: ModelContext
   }
 }
 
@@ -38,8 +38,8 @@ declare global {
  * Check if WebMCP API is available
  */
 export function hasWebMcp(): boolean {
-  return typeof window !== 'undefined' &&
-    typeof window.ai?.modelContext !== 'undefined'
+  return typeof navigator !== 'undefined' &&
+    typeof navigator.modelContext !== 'undefined'
 }
 
 /**
@@ -48,5 +48,5 @@ export function hasWebMcp(): boolean {
 export function getModelContext(): ModelContext | null {
   if (!hasWebMcp()) return null
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return window.ai!.modelContext!
+  return navigator.modelContext!
 }
