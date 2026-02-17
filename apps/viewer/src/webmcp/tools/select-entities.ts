@@ -11,8 +11,6 @@ const SelectEntitiesInputSchema = z.object({
   mode: z.enum(['replace', 'add']).default('replace').describe('Selection mode: replace clears existing, add appends'),
 })
 
-type SelectEntitiesInput = z.infer<typeof SelectEntitiesInputSchema>
-
 interface SelectEntitiesOutput {
   selected_ids: string[]
   changed: boolean
@@ -45,7 +43,7 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
       return validated
     }
 
-    const { ids, mode } = validated.data as SelectEntitiesInput
+    const { ids, mode } = validated.data
     const actions = getUIActions()
 
     if (!actions) {

@@ -2,16 +2,14 @@
  * WebMCP Tools - Export all tools
  */
 
-export { getStatusTool } from './get-status'
-export { getSceneSummaryTool } from './get-scene-summary'
-export { getSelectionTool } from './get-selection'
-export { selectEntitiesTool } from './select-entities'
-
 import { getStatusTool } from './get-status'
 import { getSceneSummaryTool } from './get-scene-summary'
 import { getSelectionTool } from './get-selection'
 import { selectEntitiesTool } from './select-entities'
 import type { WebMcpToolDefinition } from '../types'
+
+// Re-export individual tools
+export { getStatusTool, getSceneSummaryTool, getSelectionTool, selectEntitiesTool }
 
 /**
  * All WebMCP tools
