@@ -25,30 +25,37 @@ export function setupWebMcp(): void {
 }
 
 /**
+ * Teardown WebMCP (cleanup for React StrictMode)
+ */
+export function teardownWebMcp(): void {
+  unregisterWebMcpTools()
+}
+
+/**
  * Hook for WebMCP toggle UI
  */
 export function useWebMcpToggle() {
   const enabled = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const available = hasWebMcp()
 
-  const toggle = useCallback(() => {
-    const newValue = toggleEnabled()
-    if (newValue) {
-      registerWebMcpTools()
-    } else {
-      unregisterWebMcpTools()
-    }
-    return newValue
-  }, [])
-
-  const setWebMcpEnabled = useCallback((value: boolean) => {
-    setEnabled(value)
+  const syncRegistration = useCallback((value: boolean) => {
     if (value) {
       registerWebMcpTools()
     } else {
       unregisterWebMcpTools()
     }
   }, [])
+
+  const toggle = useCallback(() => {
+    const newValue = toggleEnabled()
+    syncRegistration(newValue)
+    return newValue
+  }, [syncRegistration])
+
+  const setWebMcpEnabled = useCallback((value: boolean) => {
+    setEnabled(value)
+    syncRegistration(value)
+  }, [syncRegistration])
 
   return {
     enabled,

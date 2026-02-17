@@ -11,7 +11,6 @@ describe('webmcp/store', () => {
   beforeEach(() => {
     // Reset store state
     setEnabled(false)
-    localStorage.clear()
   })
 
   describe('getSnapshot', () => {

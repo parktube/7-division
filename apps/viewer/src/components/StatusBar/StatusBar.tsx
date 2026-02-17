@@ -34,6 +34,7 @@ function WebMcpToggle() {
 
   return (
     <button
+      type="button"
       onClick={toggle}
       className="flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors"
       style={{

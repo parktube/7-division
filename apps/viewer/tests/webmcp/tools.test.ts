@@ -8,7 +8,7 @@ let mockUIStore = {
   lockedIds: [] as string[],
 }
 
-let mockUIActions = {
+const mockUIActions = {
   selectMultiple: vi.fn((ids: string[]) => {
     mockUIStore.selectedIds = ids
   }),

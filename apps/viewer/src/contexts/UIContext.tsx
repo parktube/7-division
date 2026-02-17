@@ -9,9 +9,9 @@ interface MousePosition {
  * Global store reference for WebMCP tools (outside React context)
  */
 interface UIStoreSnapshot {
-  selectedIds: string[]
-  hiddenIds: string[]
-  lockedIds: string[]
+  selectedIds: readonly string[]
+  hiddenIds: readonly string[]
+  lockedIds: readonly string[]
 }
 
 interface UIActions {
@@ -114,7 +114,8 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setSketchModeState(enabled)
   }, [])
 
-  // Sync global store for WebMCP tools (outside React context)
+  // Sync global store for non-WebMCP state changes (hidden/locked + other selection paths)
+  // selectMultiple and clearSelection sync synchronously above for WebMCP stale-read prevention
   useEffect(() => {
     globalUIStore = {
       selectedIds: Array.from(selectedIds),
@@ -132,10 +133,12 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const selectMultiple = useCallback((ids: string[]) => {
     if (ids.length === 0) {
       setSelectedIds(new Set())
+      globalUIStore = { ...globalUIStore, selectedIds: [] }
       return
     }
     setSelectedIds(new Set(ids))
     setLastSelectedId(ids[ids.length - 1])
+    globalUIStore = { ...globalUIStore, selectedIds: ids }
   }, [])
 
   const deselect = useCallback((id: string) => {
@@ -186,6 +189,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set())
+    globalUIStore = { ...globalUIStore, selectedIds: [] }
   }, [])
 
   // Register global actions for WebMCP tools (outside React context)

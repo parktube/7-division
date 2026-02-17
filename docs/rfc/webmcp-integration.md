@@ -91,35 +91,9 @@ return {
 
 ## Phase 1: Minimal Schemas (Normative)
 
-Phase 1에서 스키마 불일치를 방지하기 위해, 아래 타입을 **문서 기준 스키마**로 고정합니다.
+Phase 1에서 사용될 구체적인 타입 스키마는 [WebMCP Integration Plan (Phase 1)](../analysis/webmcp-phase1-plan.md#phase-1-minimal-schemas-normative) 문서를 참조하십시오.
 
-```ts
-export type WebMcpExecuteResult = {
-  content: Array<{ type: 'text'; text: string }>;
-};
-
-export type ToolOk<T> = { ok: true; data: T };
-export type ToolErr = {
-  ok: false;
-  error: { code: string; message: string; details?: unknown };
-};
-export type ToolPayload<T> = ToolOk<T> | ToolErr;
-
-export type ConnectionState = 'connected' | 'connecting' | 'disconnected';
-
-export type ViewerGetStatusData = {
-  connection_state: ConnectionState;
-  viewer_version: string;
-  version_status: unknown; // keep raw in Phase 1 to avoid coupling
-  is_read_only: boolean;
-};
-
-export type ViewerGetSceneSummaryData = {
-  entity_count: number;
-  last_operation: string | null;
-  sample_entities: Array<{ id: string; kind?: string; label?: string }>;
-};
-```
+> **Single Source of Truth**: 스키마 중복 정의로 인한 불일치를 방지하기 위해, phase1-plan 문서를 정규 스키마 문서로 지정합니다.
 
 ## 제안 도구 (초기 범위)
 

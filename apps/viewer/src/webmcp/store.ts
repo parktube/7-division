@@ -24,8 +24,12 @@ const store: WebMcpStore = {
  * Load enabled state from localStorage
  */
 function loadEnabled(): boolean {
-  if (typeof localStorage === 'undefined') return false
-  return localStorage.getItem(STORAGE_KEY) === 'true'
+  try {
+    if (typeof localStorage === 'undefined') return false
+    return localStorage.getItem(STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -64,12 +68,16 @@ export function getServerSnapshot(): boolean {
  */
 export function setEnabled(enabled: boolean): void {
   store.enabled = enabled
-  if (typeof localStorage !== 'undefined') {
-    if (enabled) {
-      localStorage.setItem(STORAGE_KEY, 'true')
-    } else {
-      localStorage.removeItem(STORAGE_KEY)
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (enabled) {
+        localStorage.setItem(STORAGE_KEY, 'true')
+      } else {
+        localStorage.removeItem(STORAGE_KEY)
+      }
     }
+  } catch {
+    // localStorage unavailable (Safari private mode, quota exceeded, etc.)
   }
   emitChange()
 }

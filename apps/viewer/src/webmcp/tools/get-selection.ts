@@ -3,16 +3,16 @@
  */
 
 import { getUIStore } from '@/contexts/UIContext'
-import { ok, type WebMcpToolDefinition, type ToolPayload } from '../types'
+import { ok, type WebMcpToolDefinition, type ToolPayload, type WebMcpResult } from '../types'
 
 interface GetSelectionOutput {
-  selected_ids: string[]
+  selected_ids: readonly string[]
 }
 
 export const getSelectionTool: WebMcpToolDefinition = {
   name: 'viewer.get_selection',
   description: 'Get currently selected entity IDs',
-  execute: async (_payload: ToolPayload): Promise<ReturnType<typeof ok<GetSelectionOutput>>> => {
+  execute: async (_payload: ToolPayload): Promise<WebMcpResult<GetSelectionOutput>> => {
     const store = getUIStore()
 
     return ok({

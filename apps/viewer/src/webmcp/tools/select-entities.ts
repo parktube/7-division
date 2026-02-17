@@ -11,10 +11,8 @@ const SelectEntitiesInputSchema = z.object({
   mode: z.enum(['replace', 'add']).default('replace').describe('Selection mode: replace clears existing, add appends'),
 })
 
-type SelectEntitiesInput = z.infer<typeof SelectEntitiesInputSchema>
-
 interface SelectEntitiesOutput {
-  selected_ids: string[]
+  selected_ids: readonly string[]
   changed: boolean
 }
 
@@ -45,7 +43,7 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
       return validated
     }
 
-    const { ids, mode } = validated.data as SelectEntitiesInput
+    const { ids, mode } = validated.data
     const actions = getUIActions()
 
     if (!actions) {
@@ -63,9 +61,9 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
       actions.selectMultiple(merged)
     }
 
-    // Check if selection changed
+    // Check if selection changed (sort copies to avoid mutating store arrays)
     const newStore = getUIStore()
-    const changed = JSON.stringify(previousSelection.sort()) !== JSON.stringify(newStore.selectedIds.sort())
+    const changed = JSON.stringify([...previousSelection].sort()) !== JSON.stringify([...newStore.selectedIds].sort())
 
     return ok({
       selected_ids: newStore.selectedIds,

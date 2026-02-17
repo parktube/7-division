@@ -39,7 +39,7 @@ declare global {
  */
 export function hasWebMcp(): boolean {
   return typeof navigator !== 'undefined' &&
-    typeof navigator.modelContext !== 'undefined'
+    navigator.modelContext != null
 }
 
 /**
