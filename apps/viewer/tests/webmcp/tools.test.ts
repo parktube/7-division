@@ -2,6 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { __resetStoreForTesting } from '@/hooks/useWebSocket'
 
 // Mock UIContext store
+// Note: This mock updates synchronously, while production uses React setState + useEffect.
+// This difference is acceptable because select-entities.ts calculates expectedSelection
+// directly instead of reading from getUIStore() after selectMultiple() call.
 let mockUIStore = {
   selectedIds: [] as string[],
   hiddenIds: [] as string[],
