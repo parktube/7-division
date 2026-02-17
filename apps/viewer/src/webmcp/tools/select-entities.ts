@@ -55,9 +55,10 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
     const previousSelection = [...store.selectedIds]
 
     // Calculate expected new selection (don't rely on store after setState)
+    // Use Set to dedupe ids (matches selectMultiple behavior)
     let expectedSelection: string[]
     if (mode === 'replace') {
-      expectedSelection = [...ids]
+      expectedSelection = [...new Set(ids)]
       actions.selectMultiple(ids)
     } else {
       // add mode: merge with existing
