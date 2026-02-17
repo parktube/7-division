@@ -116,6 +116,9 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // Sync global store for WebMCP tools (outside React context)
+  // NOTE: Timing limitation - globalUIStore updates AFTER React render cycle completes.
+  // WebMCP tools reading immediately after state change may see stale data.
+  // This is acceptable for current use cases (selection queries are not latency-critical).
   useEffect(() => {
     globalUIStore = {
       selectedIds: Array.from(selectedIds),

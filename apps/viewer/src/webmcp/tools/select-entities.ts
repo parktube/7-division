@@ -51,22 +51,25 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
     }
 
     const store = getUIStore()
-    const previousSelection = store.selectedIds
+    // Copy to avoid mutation and capture current state
+    const previousSelection = [...store.selectedIds]
 
+    // Calculate expected new selection (don't rely on store after setState)
+    let expectedSelection: string[]
     if (mode === 'replace') {
+      expectedSelection = [...ids]
       actions.selectMultiple(ids)
     } else {
       // add mode: merge with existing
-      const merged = [...new Set([...previousSelection, ...ids])]
-      actions.selectMultiple(merged)
+      expectedSelection = [...new Set([...previousSelection, ...ids])]
+      actions.selectMultiple(expectedSelection)
     }
 
-    // Check if selection changed (use slice() to avoid mutating original arrays)
-    const newStore = getUIStore()
-    const changed = JSON.stringify([...previousSelection].sort()) !== JSON.stringify([...newStore.selectedIds].sort())
+    // Compare using calculated values (getUIStore() returns stale state after setState)
+    const changed = JSON.stringify([...previousSelection].sort()) !== JSON.stringify([...expectedSelection].sort())
 
     return ok({
-      selected_ids: [...newStore.selectedIds],
+      selected_ids: expectedSelection,
       changed,
     })
   },

@@ -36,11 +36,17 @@ declare global {
 
 /**
  * Check if WebMCP API is available
- * Note: checks for both undefined and null to handle edge cases
+ * Validates that modelContext exists and has the expected interface
  */
 export function hasWebMcp(): boolean {
-  return typeof window !== 'undefined' &&
-    window.ai?.modelContext != null
+  if (typeof window === 'undefined') return false
+
+  const modelContext = window.ai?.modelContext
+  if (modelContext === undefined || modelContext === null) return false
+
+  // Validate the interface has expected methods
+  return typeof modelContext.registerTool === 'function' &&
+    typeof modelContext.unregisterTool === 'function'
 }
 
 /**

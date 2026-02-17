@@ -38,7 +38,11 @@ function loadEnabled(): boolean {
  */
 function emitChange(): void {
   for (const listener of store.listeners) {
-    listener()
+    try {
+      listener()
+    } catch {
+      // Ignore listener errors
+    }
   }
 }
 

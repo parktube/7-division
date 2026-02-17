@@ -44,6 +44,7 @@ function WebMcpToggle() {
         border: 'none',
       }}
       title={enabled ? 'WebMCP: ON (click to disable)' : 'WebMCP: OFF (click to enable)'}
+      aria-pressed={enabled}
     >
       <Bot size={12} />
       <span style={{ fontSize: '10px' }}>MCP</span>

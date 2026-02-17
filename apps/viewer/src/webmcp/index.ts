@@ -20,7 +20,7 @@ export { hasWebMcp } from './model-context'
 export function setupWebMcp(): void {
   // If already enabled in localStorage, register tools
   if (getSnapshot() && hasWebMcp()) {
-    registerWebMcpTools()
+    updateToolRegistration(true)
   }
 }
 
@@ -29,18 +29,26 @@ export function setupWebMcp(): void {
  * Call this in useEffect cleanup
  */
 export function teardownWebMcp(): void {
-  unregisterWebMcpTools()
+  updateToolRegistration(false)
+}
+
+/**
+ * Helper to update tool registration
+ */
+function updateToolRegistration(shouldRegister: boolean): void {
+  if (shouldRegister) {
+    registerWebMcpTools()
+  } else {
+    unregisterWebMcpTools()
+  }
 }
 
 /**
  * Helper to sync tool registration with enabled state
  */
 function syncToolRegistration(enabled: boolean): void {
-  if (enabled) {
-    registerWebMcpTools()
-  } else {
-    unregisterWebMcpTools()
-  }
+  if (!hasWebMcp()) return
+  updateToolRegistration(enabled)
 }
 
 /**
