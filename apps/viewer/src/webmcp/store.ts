@@ -95,3 +95,19 @@ export function toggleEnabled(): boolean {
   setEnabled(newValue)
   return newValue
 }
+
+/**
+ * Reset store to initial state (for testing only)
+ * @internal
+ */
+export function resetStore(): void {
+  store.enabled = false
+  store.listeners.clear()
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // Ignore storage errors
+    }
+  }
+}

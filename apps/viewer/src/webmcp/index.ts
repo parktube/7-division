@@ -58,7 +58,7 @@ export function useWebMcpToggle() {
   const enabled = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const available = hasWebMcp()
 
-  const toggle = useCallback(() => {
+  const toggle: () => boolean = useCallback(() => {
     const newValue = toggleEnabled()
     syncToolRegistration(newValue)
     return newValue

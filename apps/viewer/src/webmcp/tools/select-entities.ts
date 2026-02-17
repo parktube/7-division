@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { getUIStore, getUIActions } from '@/contexts/UIContext'
 import { ok, err, validateInput, type WebMcpToolDefinition, type ToolPayload, type WebMcpResult } from '../types'
 
+// TODO: Consider using zod-to-json-schema to auto-generate inputSchema from Zod schema
+// This would eliminate duplication between SelectEntitiesInputSchema and inputSchema below
 const SelectEntitiesInputSchema = z.object({
   ids: z.array(z.string()).describe('Entity IDs to select'),
   mode: z.enum(['replace', 'add']).default('replace').describe('Selection mode: replace clears existing, add appends'),
@@ -59,7 +61,7 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
     let expectedSelection: string[]
     if (mode === 'replace') {
       expectedSelection = [...new Set(ids)]
-      actions.selectMultiple(ids)
+      actions.selectMultiple(expectedSelection)
     } else {
       // add mode: merge with existing
       expectedSelection = [...new Set([...previousSelection, ...ids])]

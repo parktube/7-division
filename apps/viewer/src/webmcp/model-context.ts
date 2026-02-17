@@ -17,10 +17,16 @@ export interface WebMcpTool {
 
 /**
  * WebMCP Model Context interface (Chrome 146+)
+ *
+ * Phase 1: registerTool/unregisterTool only
+ * Phase 2+: provideContext/clearContext will be added
  */
 export interface ModelContext {
   registerTool(tool: WebMcpTool): void
   unregisterTool(name: string): void
+  // TODO(Phase 2): Add context-aware API methods
+  // provideContext?(context: { tools?: WebMcpTool[]; data?: unknown }): void
+  // clearContext?(): void
 }
 
 /**
