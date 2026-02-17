@@ -1,0 +1,65 @@
+/**
+ * WebMCP Model Context API Detection
+ *
+ * Chrome WebMCP Early Preview API 감지 및 접근
+ * https://chromestatus.com/feature/5127871893405696
+ */
+
+/**
+ * WebMCP Tool interface (Chrome 146+)
+ */
+export interface WebMcpTool {
+  name: string
+  description: string
+  inputSchema?: Record<string, unknown>
+  execute: (payload: { input: unknown }) => Promise<unknown>
+}
+
+/**
+ * WebMCP Model Context interface (Chrome 146+)
+ *
+ * Phase 1: registerTool/unregisterTool only
+ * Phase 2+: provideContext/clearContext will be added
+ */
+export interface ModelContext {
+  registerTool(tool: WebMcpTool): void
+  unregisterTool(name: string): void
+  // TODO(Phase 2): Add context-aware API methods
+  // provideContext?(context: { tools?: WebMcpTool[]; data?: unknown }): void
+  // clearContext?(): void
+}
+
+/**
+ * Extended window interface with model context
+ */
+declare global {
+  interface Window {
+    ai?: {
+      modelContext?: ModelContext
+    }
+  }
+}
+
+/**
+ * Check if WebMCP API is available
+ * Validates that modelContext exists and has the expected interface
+ */
+export function hasWebMcp(): boolean {
+  if (typeof window === 'undefined') return false
+
+  const modelContext = window.ai?.modelContext
+  if (modelContext === undefined || modelContext === null) return false
+
+  // Validate the interface has expected methods
+  return typeof modelContext.registerTool === 'function' &&
+    typeof modelContext.unregisterTool === 'function'
+}
+
+/**
+ * Get Model Context instance (returns null if not available)
+ */
+export function getModelContext(): ModelContext | null {
+  if (!hasWebMcp()) return null
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  return window.ai!.modelContext!
+}

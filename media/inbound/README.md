@@ -1,0 +1,17 @@
+# Inbound References (Not Versioned)
+
+This folder is for large or redistribution-restricted reference documents used during development.
+
+## WebMCP Early Preview PDF
+
+Some design docs reference `media/inbound/WebMCP_Early_Preview.pdf`.
+
+- The PDF is intentionally not committed to git.
+- If you have access, place it at:
+  - `media/inbound/WebMCP_Early_Preview.pdf`
+
+## Committed Summary (Source of Truth for Implementation)
+
+Because the PDF is not versioned, implementation-facing notes live in:
+
+- `docs/references/webmcp-early-preview-notes.md` (7-division repo root; workspace: `7-division/docs/references/webmcp-early-preview-notes.md`)
