@@ -16,7 +16,7 @@ export const getSelectionTool: WebMcpToolDefinition = {
     const store = getUIStore()
 
     return ok({
-      selected_ids: store.selectedIds,
+      selected_ids: [...store.selectedIds],
     })
   },
 }

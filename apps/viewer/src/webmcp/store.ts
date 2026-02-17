@@ -22,10 +22,15 @@ const store: WebMcpStore = {
 
 /**
  * Load enabled state from localStorage
+ * Wrapped in try-catch for Safari private browsing and quota exceeded cases
  */
 function loadEnabled(): boolean {
   if (typeof localStorage === 'undefined') return false
-  return localStorage.getItem(STORAGE_KEY) === 'true'
+  try {
+    return localStorage.getItem(STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -65,10 +70,14 @@ export function getServerSnapshot(): boolean {
 export function setEnabled(enabled: boolean): void {
   store.enabled = enabled
   if (typeof localStorage !== 'undefined') {
-    if (enabled) {
-      localStorage.setItem(STORAGE_KEY, 'true')
-    } else {
-      localStorage.removeItem(STORAGE_KEY)
+    try {
+      if (enabled) {
+        localStorage.setItem(STORAGE_KEY, 'true')
+      } else {
+        localStorage.removeItem(STORAGE_KEY)
+      }
+    } catch {
+      // Ignore storage errors (Safari private browsing, quota exceeded)
     }
   }
   emitChange()

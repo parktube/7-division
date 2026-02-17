@@ -63,12 +63,12 @@ export const selectEntitiesTool: WebMcpToolDefinition = {
       actions.selectMultiple(merged)
     }
 
-    // Check if selection changed
+    // Check if selection changed (use slice() to avoid mutating original arrays)
     const newStore = getUIStore()
-    const changed = JSON.stringify(previousSelection.sort()) !== JSON.stringify(newStore.selectedIds.sort())
+    const changed = JSON.stringify([...previousSelection].sort()) !== JSON.stringify([...newStore.selectedIds].sort())
 
     return ok({
-      selected_ids: newStore.selectedIds,
+      selected_ids: [...newStore.selectedIds],
       changed,
     })
   },

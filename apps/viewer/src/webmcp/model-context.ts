@@ -36,10 +36,11 @@ declare global {
 
 /**
  * Check if WebMCP API is available
+ * Note: checks for both undefined and null to handle edge cases
  */
 export function hasWebMcp(): boolean {
   return typeof window !== 'undefined' &&
-    typeof window.ai?.modelContext !== 'undefined'
+    window.ai?.modelContext != null
 }
 
 /**

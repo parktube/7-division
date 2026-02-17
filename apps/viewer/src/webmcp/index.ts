@@ -25,6 +25,25 @@ export function setupWebMcp(): void {
 }
 
 /**
+ * Teardown WebMCP on app unmount
+ * Call this in useEffect cleanup
+ */
+export function teardownWebMcp(): void {
+  unregisterWebMcpTools()
+}
+
+/**
+ * Helper to sync tool registration with enabled state
+ */
+function syncToolRegistration(enabled: boolean): void {
+  if (enabled) {
+    registerWebMcpTools()
+  } else {
+    unregisterWebMcpTools()
+  }
+}
+
+/**
  * Hook for WebMCP toggle UI
  */
 export function useWebMcpToggle() {
@@ -33,21 +52,13 @@ export function useWebMcpToggle() {
 
   const toggle = useCallback(() => {
     const newValue = toggleEnabled()
-    if (newValue) {
-      registerWebMcpTools()
-    } else {
-      unregisterWebMcpTools()
-    }
+    syncToolRegistration(newValue)
     return newValue
   }, [])
 
   const setWebMcpEnabled = useCallback((value: boolean) => {
     setEnabled(value)
-    if (value) {
-      registerWebMcpTools()
-    } else {
-      unregisterWebMcpTools()
-    }
+    syncToolRegistration(value)
   }, [])
 
   return {

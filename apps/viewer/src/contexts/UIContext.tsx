@@ -7,11 +7,12 @@ interface MousePosition {
 
 /**
  * Global store reference for WebMCP tools (outside React context)
+ * Arrays are readonly to prevent accidental mutation
  */
 interface UIStoreSnapshot {
-  selectedIds: string[]
-  hiddenIds: string[]
-  lockedIds: string[]
+  readonly selectedIds: readonly string[]
+  readonly hiddenIds: readonly string[]
+  readonly lockedIds: readonly string[]
 }
 
 interface UIActions {

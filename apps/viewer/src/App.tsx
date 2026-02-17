@@ -8,7 +8,7 @@ import { UIProvider } from '@/contexts/UIContext'
 import { useSelectionSync } from '@/hooks/useSelectionSync'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { initDataServer } from '@/utils/dataUrl'
-import { setupWebMcp } from '@/webmcp'
+import { setupWebMcp, teardownWebMcp } from '@/webmcp'
 
 // Component to sync selection with selection.json
 function SelectionSync() {
@@ -36,6 +36,9 @@ export default function App() {
   useEffect(() => {
     initDataServer()
     setupWebMcp()
+    return () => {
+      teardownWebMcp()
+    }
   }, [])
 
   return (
