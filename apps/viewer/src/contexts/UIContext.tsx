@@ -1,8 +1,47 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react'
 
 interface MousePosition {
   x: number
   y: number
+}
+
+/**
+ * Global store reference for WebMCP tools (outside React context)
+ * Arrays are readonly to prevent accidental mutation
+ */
+interface UIStoreSnapshot {
+  readonly selectedIds: readonly string[]
+  readonly hiddenIds: readonly string[]
+  readonly lockedIds: readonly string[]
+}
+
+interface UIActions {
+  selectMultiple: (ids: string[]) => void
+  clearSelection: () => void
+}
+
+let globalUIStore: UIStoreSnapshot = {
+  selectedIds: [],
+  hiddenIds: [],
+  lockedIds: [],
+}
+
+let globalUIActions: UIActions | null = null
+
+/**
+ * Get UI store snapshot (for use outside React context)
+ * Used by WebMCP tools to access selection state
+ */
+export function getUIStore(): Readonly<UIStoreSnapshot> {
+  return globalUIStore
+}
+
+/**
+ * Get UI actions (for use outside React context)
+ * Used by WebMCP tools to modify selection
+ */
+export function getUIActions(): UIActions | null {
+  return globalUIActions
 }
 
 interface UIContextValue {
@@ -76,6 +115,18 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setSketchModeState(enabled)
   }, [])
 
+  // Sync global store for WebMCP tools (outside React context)
+  // NOTE: Timing limitation - globalUIStore updates AFTER React render cycle completes.
+  // WebMCP tools reading immediately after state change may see stale data.
+  // This is acceptable for current use cases (selection queries are not latency-critical).
+  useEffect(() => {
+    globalUIStore = {
+      selectedIds: Array.from(selectedIds),
+      hiddenIds: Array.from(hiddenIds),
+      lockedIds: Array.from(lockedIds),
+    }
+  }, [selectedIds, hiddenIds, lockedIds])
+
   // Selection functions
   const select = useCallback((id: string) => {
     setSelectedIds(new Set([id]))
@@ -140,6 +191,12 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set())
   }, [])
+
+  // Register global actions for WebMCP tools (outside React context)
+  useEffect(() => {
+    globalUIActions = { selectMultiple, clearSelection }
+    return () => { globalUIActions = null }
+  }, [selectMultiple, clearSelection])
 
   const isSelected = useCallback((id: string) => {
     return selectedIds.has(id)

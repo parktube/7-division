@@ -1,8 +1,9 @@
-import { Layers, SquareCheck, MousePointer, Wifi, WifiOff, Loader2 } from 'lucide-react'
+import { Layers, SquareCheck, MousePointer, Wifi, WifiOff, Loader2, Bot } from 'lucide-react'
 import { useViewportContext } from '@/contexts/ViewportContext'
 import { useUIContext } from '@/contexts/UIContext'
 import { useScene } from '@/hooks/useScene'
 import { useWebSocket, type ConnectionState } from '@/hooks/useWebSocket'
+import { useWebMcpToggle } from '@/webmcp'
 
 function ConnectionIndicator({ state }: { state: ConnectionState }) {
   const config = {
@@ -23,6 +24,31 @@ function ConnectionIndicator({ state }: { state: ConnectionState }) {
       <Icon size={12} className={isConnecting ? 'animate-spin' : ''} />
       <span style={{ fontSize: '10px', opacity: 0.9 }}>MCP</span>
     </div>
+  )
+}
+
+function WebMcpToggle() {
+  const { enabled, available, toggle } = useWebMcpToggle()
+
+  if (!available) return null
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="flex items-center gap-1.5 px-1.5 py-0.5 rounded transition-colors"
+      style={{
+        backgroundColor: enabled ? 'rgba(34,197,94,0.15)' : 'transparent',
+        color: enabled ? 'var(--success, #22c55e)' : 'var(--text-muted)',
+        cursor: 'pointer',
+        border: 'none',
+      }}
+      title={enabled ? 'WebMCP: ON (click to disable)' : 'WebMCP: OFF (click to enable)'}
+      aria-pressed={enabled}
+    >
+      <Bot size={12} />
+      <span style={{ fontSize: '10px' }}>MCP</span>
+    </button>
   )
 }
 
@@ -47,6 +73,7 @@ export default function StatusBar() {
       }}
     >
       <ConnectionIndicator state={connectionState} />
+      <WebMcpToggle />
       <div
         className="flex items-center gap-1.5 px-2 py-0.5 rounded font-medium"
         style={{

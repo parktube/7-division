@@ -218,6 +218,24 @@ function getServerSnapshot(): WebSocketStore {
   return getSnapshot()
 }
 
+/**
+ * Get WebSocket store state (for use outside React context)
+ * Used by WebMCP tools to access connection state
+ */
+export function getWebSocketStore(): Readonly<Omit<WebSocketStore, 'listeners'>> {
+  return {
+    scene: store.scene,
+    selection: store.selection,
+    connectionState: store.connectionState,
+    connectionData: store.connectionData,
+    versionStatus: store.versionStatus,
+    isReadOnly: store.isReadOnly,
+    error: store.error,
+    retryCount: store.retryCount,
+    maxRetriesReached: store.maxRetriesReached,
+  }
+}
+
 export interface UseWebSocketResult {
   scene: Scene | null
   selection: string[]
