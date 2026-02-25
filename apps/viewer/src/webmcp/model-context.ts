@@ -30,13 +30,11 @@ export interface ModelContext {
 }
 
 /**
- * Extended window interface with model context
+ * Extended Navigator interface with model context (Chrome 147+)
  */
 declare global {
-  interface Window {
-    ai?: {
-      modelContext?: ModelContext
-    }
+  interface Navigator {
+    modelContext?: ModelContext
   }
 }
 
@@ -47,8 +45,8 @@ declare global {
 export function hasWebMcp(): boolean {
   if (typeof window === 'undefined') return false
 
-  const modelContext = window.ai?.modelContext
-  if (modelContext === undefined || modelContext === null) return false
+  const modelContext = navigator.modelContext
+  if (modelContext == null) return false
 
   // Validate the interface has expected methods
   return typeof modelContext.registerTool === 'function' &&
@@ -61,5 +59,5 @@ export function hasWebMcp(): boolean {
 export function getModelContext(): ModelContext | null {
   if (!hasWebMcp()) return null
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  return window.ai!.modelContext!
+  return navigator.modelContext!
 }
