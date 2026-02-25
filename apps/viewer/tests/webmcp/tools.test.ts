@@ -194,12 +194,6 @@ describe('webmcp/tools', () => {
     it('should report changed=false when selection unchanged', async () => {
       mockUIStore.selectedIds = ['a']
 
-      // selectMultiple doesn't actually change the store in mock
-      // so we need to simulate the same selection
-      mockUIActions.selectMultiple.mockImplementationOnce(() => {
-        // Don't change selection
-      })
-
       const result = await selectEntitiesTool.execute({
         input: { ids: ['a'] },
       })
