@@ -133,10 +133,8 @@ describe('webmcp/tools', () => {
       })
 
       expect(result.ok).toBe(true)
-      // add mode merges with existing
-      expect(mockUIActions.selectMultiple).toHaveBeenCalledWith(
-        expect.arrayContaining(['existing', 'new'])
-      )
+      // add mode merges with existing — exact match
+      expect(mockUIActions.selectMultiple).toHaveBeenCalledWith(['existing', 'new'])
     })
 
     it('should deduplicate in add mode', async () => {
@@ -147,8 +145,7 @@ describe('webmcp/tools', () => {
       })
 
       // Should be ['a', 'b', 'c'] without duplicates
-      const calledWith = mockUIActions.selectMultiple.mock.calls[0][0]
-      expect(new Set(calledWith).size).toBe(calledWith.length)
+      expect(mockUIActions.selectMultiple).toHaveBeenCalledWith(['a', 'b', 'c'])
     })
 
     it('should return error for invalid input', async () => {
